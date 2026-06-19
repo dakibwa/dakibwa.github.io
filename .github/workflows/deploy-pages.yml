@@ -18,6 +18,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_CALCOM_LINK: ${{ vars.NEXT_PUBLIC_CALCOM_LINK }}
+      LESSON_PRICE_CENTS: ${{ vars.LESSON_PRICE_CENTS || '4500' }}
+      LESSON_CURRENCY: ${{ vars.LESSON_CURRENCY || 'eur' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,6 +34,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check booking link
+        if: ${{ env.NEXT_PUBLIC_CALCOM_LINK != '' }}
+        run: npm run check:booking
 
       - name: Build static site
         run: npm run build

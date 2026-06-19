@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "check:booking": "node scripts/check-booking-link.mjs",
     "test:flow": "node scripts/qa-flow.mjs"
   },
   "dependencies": {

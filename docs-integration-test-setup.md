@@ -8,7 +8,7 @@ The site only needs a Cal.com event slug:
 
 ```bash
 NEXT_PUBLIC_CALCOM_LINK=your-test-user/first-portuguese-lesson-test
-LESSON_PRICE_CENTS=4500
+LESSON_PRICE_CENTS=1500
 LESSON_CURRENCY=eur
 ```
 
@@ -43,7 +43,7 @@ Useful cards for manual testing:
    - Online/cafe preference if needed
    - Any notes for the lesson
 6. Connect Stripe in the event type payment settings.
-7. Set price to EUR 45 and require payment before confirmation.
+7. Set price to EUR 15 and require payment before confirmation.
 8. Confirm the event link works directly at `https://cal.com/<user>/<event-slug>`.
 
 ## Local Site Test
@@ -81,7 +81,7 @@ Open `http://localhost:3000/book` and check:
 After the test pass, replace only:
 
 ```bash
-NEXT_PUBLIC_CALCOM_LINK=ines/first-portuguese-lesson
+NEXT_PUBLIC_CALCOM_LINK=daniel-atkinson-7bslrj/first-portuguese-lesson
 ```
 
 Do not add Stripe secret keys to this app unless the architecture changes to a custom checkout flow.

@@ -52,7 +52,7 @@ export default function FAQPage() {
           </Link>
         </nav>
         <Link className="button button-primary compact" href="/book">
-          Book / manage
+          Book a lesson
         </Link>
       </header>
 
@@ -79,7 +79,7 @@ export default function FAQPage() {
           <p>Book a lesson or manage an existing booking from the same place.</p>
         </div>
         <Link className="button button-primary" href="/book">
-          Book / manage
+          Book a lesson
         </Link>
       </section>
     </main>

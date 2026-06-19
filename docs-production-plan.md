@@ -12,13 +12,17 @@ Use Cal.com as the source of truth for booking, payment, calendar sync, and stud
 6. Add invitee questions: level, lesson focus, phone/WhatsApp, online/cafe preference if needed, and accessibility or meeting notes.
 7. Keep Cal.com reschedule/cancel links in confirmation and reminder emails.
 
+## Account Connection Boundary
+
+The Stripe connection is an account-level setup inside Cal.com: log in to Inês's Cal.com account, install Stripe from the Cal.com app store, and authorize the Stripe account through Cal.com's connection flow. The website should not host its own Stripe OAuth flow, store Stripe API keys, or receive booking/payment webhooks in v1.
+
 ## Site Setup
 
 Set:
 
 ```bash
-NEXT_PUBLIC_CALCOM_LINK=ines/first-portuguese-lesson
-LESSON_PRICE_CENTS=4500
+NEXT_PUBLIC_CALCOM_LINK=daniel-atkinson-7bslrj/first-portuguese-lesson
+LESSON_PRICE_CENTS=1500
 LESSON_CURRENCY=eur
 ```
 

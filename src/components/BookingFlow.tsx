@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Mail, RotateCcw } from "lucide-react";
+import { CALCOM_LINK, getCalComUrl } from "@/lib/config";
 
 type CalCommandArgs = unknown[];
 type CalApi = ((command: string, ...args: CalCommandArgs) => void) & {
@@ -16,27 +17,9 @@ declare global {
   }
 }
 
-const calComLink = normalizeCalComLink(process.env.NEXT_PUBLIC_CALCOM_LINK ?? "");
+const calComLink = CALCOM_LINK;
+const calComUrl = getCalComUrl(calComLink);
 const calScriptSrc = "https://app.cal.com/embed/embed.js";
-
-function normalizeCalComLink(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.hostname === "cal.com" || parsed.hostname === "app.cal.com") {
-      return parsed.pathname.replace(/^\/+/, "").replace(/[?#].*$/, "");
-    }
-  } catch {
-    // Fall through for plain Cal.com links like "ines/first-portuguese-lesson".
-  }
-
-  return trimmed
-    .replace(/^https?:\/\/(?:app\.)?cal\.com\//, "")
-    .replace(/^\/+/, "")
-    .replace(/[?#].*$/, "");
-}
 
 function loadCalEmbed() {
   if (window.Cal) return window.Cal;
@@ -111,7 +94,7 @@ export function BookingFlow() {
           <Link href="/faq">FAQ</Link>
         </nav>
         <Link className="button button-primary compact" href="/book" aria-current="page">
-          Book / manage
+          Book a lesson
         </Link>
       </header>
 
@@ -148,12 +131,17 @@ export function BookingFlow() {
             <h2>Choose a time</h2>
           </div>
           {isConfigured ? (
-            <div
-              ref={widgetRef}
-              className="calcom-embed-frame"
-              aria-busy={!embedReady}
-              aria-label="Cal.com booking widget"
-            />
+            <div className="calcom-widget-stack">
+              <div
+                ref={widgetRef}
+                className="calcom-embed-frame"
+                aria-busy={!embedReady}
+                aria-label="Cal.com booking widget"
+              />
+              <a className="button button-secondary calcom-direct-link" href={calComUrl} target="_blank" rel="noreferrer">
+                Open in Cal.com
+              </a>
+            </div>
           ) : (
             <div className="booking-placeholder" aria-label="Cal.com setup placeholder">
               <span className="placeholder-icon" aria-hidden="true">

@@ -28,8 +28,8 @@ Open `http://localhost:3000`.
 Create `.env.local`:
 
 ```bash
-NEXT_PUBLIC_CALCOM_LINK=ines/first-portuguese-lesson
-LESSON_PRICE_CENTS=4500
+NEXT_PUBLIC_CALCOM_LINK=daniel-atkinson-7bslrj/first-portuguese-lesson
+LESSON_PRICE_CENTS=1500
 LESSON_CURRENCY=eur
 ```
 
@@ -38,6 +38,7 @@ Then restart the dev server.
 In Cal.com, configure the event type with:
 
 - 75-minute first Portuguese lesson.
+- Current Cal.com payment price set to EUR 15, charged on booking.
 - Location copy for Epoca Cafe, without implying an official partnership unless confirmed.
 - Calendar connected for conflict checking and event creation.
 - Stripe connected through the Cal.com app store and required for payment before booking.
