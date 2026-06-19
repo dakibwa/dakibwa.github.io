@@ -8,6 +8,7 @@ import { CALCOM_LINK, getCalComUrl } from "@/lib/config";
 type CalCommandArgs = unknown[];
 type CalApi = ((command: string, ...args: CalCommandArgs) => void) & {
   loaded?: boolean;
+  ns?: Record<string, CalApi>;
   q?: CalCommandArgs[];
 };
 
@@ -22,7 +23,10 @@ const calComUrl = getCalComUrl(calComLink);
 const calScriptSrc = "https://app.cal.com/embed/embed.js";
 
 function loadCalEmbed() {
-  if (window.Cal) return window.Cal;
+  if (window.Cal) {
+    window.Cal.ns = window.Cal.ns ?? {};
+    return window.Cal;
+  }
 
   const cal = ((...args: CalCommandArgs) => {
     cal.q = cal.q ?? [];
@@ -30,6 +34,7 @@ function loadCalEmbed() {
   }) as CalApi;
 
   cal.q = [];
+  cal.ns = {};
   window.Cal = cal;
 
   const script = document.createElement("script");

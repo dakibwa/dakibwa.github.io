@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_CALCOM_LINK: ${{ vars.NEXT_PUBLIC_CALCOM_LINK }}
-      LESSON_PRICE_CENTS: ${{ vars.LESSON_PRICE_CENTS || '4500' }}
+      LESSON_PRICE_CENTS: ${{ vars.LESSON_PRICE_CENTS || '1500' }}
       LESSON_CURRENCY: ${{ vars.LESSON_CURRENCY || 'eur' }}
     steps:
       - name: Checkout
