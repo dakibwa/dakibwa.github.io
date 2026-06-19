@@ -42,9 +42,8 @@ await page.goto(`${base}/book`, { waitUntil: "networkidle" });
 await page.waitForSelector(".booking-calendar-panel", { timeout: 10_000 });
 await page.screenshot({ path: path.join(outDir, "booking-desktop.png"), fullPage: true });
 const bookingHeading = await page.locator("h1").first().textContent();
-const bookingEmbedConfigured = (await page.locator(".calcom-embed-frame").count()) > 0;
+const bookingEmbedConfigured = (await page.locator(".booking-embed-frame").count()) > 0;
 const bookingText = await page.locator(".booking-shell").innerText();
-const aftercareText = await page.locator(".booking-side-notes").innerText();
 
 await page.setViewportSize({ width: 390, height: 900 });
 await page.goto(`${base}/book`, { waitUntil: "networkidle" });
@@ -63,7 +62,6 @@ console.log(
       bookingHeading,
       bookingEmbedConfigured,
       bookingText: bookingText.slice(0, 180),
-      aftercareText: aftercareText.slice(0, 180),
       logs,
       screenshots: outDir
     },

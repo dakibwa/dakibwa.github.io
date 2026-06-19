@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Mail, RotateCcw } from "lucide-react";
-import { CALCOM_LINK, getCalComUrl } from "@/lib/config";
+import { CalendarDays } from "lucide-react";
+import {
+  BOOKING_DIRECT_URL,
+  BOOKING_EMBED_URL,
+  BOOKING_PROVIDER,
+  CALCOM_LINK
+} from "@/lib/config";
 
 type CalCommandArgs = unknown[];
 type CalApi = ((command: string, ...args: CalCommandArgs) => void) & {
@@ -19,8 +25,13 @@ declare global {
 }
 
 const calComLink = CALCOM_LINK;
-const calComUrl = getCalComUrl(calComLink);
 const calScriptSrc = "https://app.cal.com/embed/embed.js";
+const acuityScriptSrc = "https://embed.acuityscheduling.com/js/embed.js";
+const bookingProvider = BOOKING_PROVIDER;
+const bookingDirectUrl = BOOKING_DIRECT_URL;
+const bookingEmbedUrl = BOOKING_EMBED_URL;
+const isAcuity = bookingProvider === "acuity";
+const isCalCom = bookingProvider === "calcom";
 
 function loadCalEmbed() {
   if (window.Cal) {
@@ -46,31 +57,12 @@ function loadCalEmbed() {
   return cal;
 }
 
-const manageNotes = [
-  {
-    title: "Book a new lesson",
-    text: "Pick a time in Cal.com, answer the lesson questions, and complete payment in the same flow.",
-    icon: CalendarDays
-  },
-  {
-    title: "Manage an existing booking",
-    text: "Use the reschedule or cancel links in your Cal.com confirmation email so the calendar stays accurate.",
-    icon: RotateCcw
-  },
-  {
-    title: "Check your confirmation",
-    text: "Cal.com emails the lesson details, location notes, payment receipt, and the links you need later.",
-    icon: Mail
-  }
-];
-
 export function BookingFlow() {
   const widgetRef = useRef<HTMLDivElement>(null);
   const [embedReady, setEmbedReady] = useState(false);
-  const isConfigured = Boolean(calComLink);
 
   useEffect(() => {
-    if (!isConfigured || !widgetRef.current) return;
+    if (!isCalCom || !calComLink || !widgetRef.current) return;
 
     const parentElement = widgetRef.current;
     parentElement.innerHTML = "";
@@ -86,7 +78,7 @@ export function BookingFlow() {
     return () => {
       parentElement.innerHTML = "";
     };
-  }, [isConfigured]);
+  }, []);
 
   return (
     <main>
@@ -103,57 +95,43 @@ export function BookingFlow() {
         </Link>
       </header>
 
-      <section className="booking-shell">
-        <div className="booking-story">
-          <h1>Book or manage your lesson.</h1>
-          <span className="hero-rule" aria-hidden="true" />
-          <p>
-            Choose a time for your first lesson or manage an existing booking.
-          </p>
-          <div className="manage-card">
-            <strong>Already booked?</strong>
-            <span>Search your email for Cal.com and Portuguese with Inês.</span>
-          </div>
-          <div className="booking-side-notes" aria-label="Booking and management details">
-            {manageNotes.map((item) => {
-              const Icon = item.icon;
-              return (
-                <article className="booking-side-note" key={item.title}>
-                  <Icon size={31} aria-hidden="true" />
-                  <div>
-                    <h3>{item.title}</h3>
-                    <p>{item.text}</p>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-
+      <section className="booking-shell" aria-label="Book a Portuguese lesson">
         <section className="booking-calendar-panel" aria-label="Embedded lesson booking">
-          <div className="calendar-panel-header">
-            <p className="quiet-line">Cal.com booking</p>
-            <h2>Choose a time</h2>
-          </div>
-          {isConfigured ? (
-            <div className="calcom-widget-stack">
-              <div
-                ref={widgetRef}
-                className="calcom-embed-frame"
-                aria-busy={!embedReady}
-                aria-label="Cal.com booking widget"
-              />
-              <a className="button button-secondary calcom-direct-link" href={calComUrl} target="_blank" rel="noreferrer">
-                Open in Cal.com
+          <div className="booking-panel-top">
+            <div className="booking-story">
+              <h1>{isAcuity ? "Book or manage a lesson" : "Book your first Portuguese lesson"}</h1>
+              <p>{isAcuity ? "Use the scheduler below to book, sign up, or log in." : "Choose a time and pay securely below."}</p>
+            </div>
+            {bookingDirectUrl ? (
+              <a className="booking-top-link" href={bookingDirectUrl} target="_blank" rel="noreferrer">
+                Open in new tab
               </a>
+            ) : null}
+          </div>
+          {isAcuity && bookingEmbedUrl ? (
+            <div className="booking-widget-stack">
+              <Script src={acuityScriptSrc} strategy="afterInteractive" />
+              <div className="booking-embed-frame" aria-busy={!embedReady} aria-label="Acuity booking widget">
+                <iframe
+                  src={bookingEmbedUrl}
+                  title="Schedule a Portuguese lesson"
+                  width="100%"
+                  height="800"
+                  onLoad={() => setEmbedReady(true)}
+                />
+              </div>
+            </div>
+          ) : isCalCom && calComLink ? (
+            <div className="booking-widget-stack">
+              <div ref={widgetRef} className="booking-embed-frame" aria-busy={!embedReady} aria-label="Cal.com booking widget" />
             </div>
           ) : (
-            <div className="booking-placeholder" aria-label="Cal.com setup placeholder">
+            <div className="booking-placeholder" aria-label="Booking setup placeholder">
               <span className="placeholder-icon" aria-hidden="true">
                 <CalendarDays size={34} />
               </span>
               <h2>Booking will open here.</h2>
-              <p>Once Inês connects her Cal.com event, available times and payment will appear in this space.</p>
+              <p>Once Inês connects Acuity, available times, payment, and student login will appear in this space.</p>
               <span className="placeholder-status">Calendar coming soon</span>
             </div>
           )}

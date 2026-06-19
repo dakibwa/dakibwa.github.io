@@ -1,5 +1,10 @@
 import Link from "next/link";
-import { formatMoney } from "@/lib/config";
+import { BOOKING_PROVIDER, BOOKING_PROVIDER_NAME, formatMoney } from "@/lib/config";
+
+const changeBookingAnswer =
+  BOOKING_PROVIDER === "acuity"
+    ? "Log in from the booking scheduler to review upcoming and past lessons. You can reschedule or cancel there when Inês has enabled those options, and the confirmation email will also include booking links."
+    : `Open your confirmation email and use the reschedule or cancel link. If you cannot find it, search for "Portuguese with Inês" or "${BOOKING_PROVIDER_NAME}".`;
 
 const faqs = [
   {
@@ -20,21 +25,20 @@ const faqs = [
   {
     question: "Where do lessons happen?",
     answer:
-      "Lessons are based in Porto. The current booking copy references Epoca Cafe on Rua do Rosario; Cal.com will show the confirmed location details when you book."
+      "Lessons are based in Porto. The booking form will show the confirmed location details before you book."
   },
   {
     question: "How do I book?",
     answer:
-      "Use the book/manage page. Cal.com shows live availability, collects the lesson details, and handles payment before the booking is confirmed."
+      "Use the booking page to choose a live available time, answer a few lesson questions, and pay before the lesson is confirmed."
   },
   {
     question: "How do I reschedule or cancel?",
-    answer:
-      "Use the reschedule or cancel links in your Cal.com confirmation email. That keeps the calendar, payment record, and confirmation details in one place."
+    answer: changeBookingAnswer
   },
   {
     question: "How much is the first lesson?",
-    answer: `The current first-lesson price is ${formatMoney()}. The final payment step happens inside Cal.com.`
+    answer: `The first lesson is ${formatMoney()}. You'll see the final payment step before confirming.`
   }
 ];
 
@@ -62,9 +66,17 @@ export default function FAQPage() {
           The basics, kept short: who lessons are for, what the booking flow does, and how to manage a lesson once it is
           confirmed.
         </p>
+        <div className="faq-hero-actions">
+          <Link className="button button-primary" href="/book">
+            Book a lesson
+          </Link>
+          <a className="quiet-link" href="#questions">
+            Or read the details below
+          </a>
+        </div>
       </section>
 
-      <section className="faq-list" aria-label="Frequently asked questions">
+      <section className="faq-list" id="questions" aria-label="Frequently asked questions">
         {faqs.map((item) => (
           <article className="faq-item" key={item.question}>
             <h2>{item.question}</h2>

@@ -1,24 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Coffee, MessageCircle, PencilLine } from "lucide-react";
-
-const teachingNotes = [
-  {
-    icon: MessageCircle,
-    title: "Conversation first",
-    text: "Lessons start with what you actually want to say, then build the grammar around that."
-  },
-  {
-    icon: PencilLine,
-    title: "Corrections that help",
-    text: "Inês keeps the atmosphere gentle while making pronunciation, phrasing, and small mistakes easier to notice."
-  },
-  {
-    icon: Coffee,
-    title: "Portuguese for daily life",
-    text: "Cafe orders, neighbours, appointments, travel, messages, and the little phrases that make Porto feel less distant."
-  }
-];
 
 export default function Home() {
   return (
@@ -32,84 +13,84 @@ export default function Home() {
           <Link href="/faq">FAQ</Link>
         </nav>
         <Link className="button button-primary compact" href="/book">
-          Book / manage
+          Book a lesson
         </Link>
       </header>
 
       <section className="home-hero">
         <div className="hero-copy">
-          <h1 aria-label="Portuguese that feels useful from day one.">
-            <span aria-hidden="true">Portuguese </span>
-            <span aria-hidden="true">that feels useful </span>
-            <span aria-hidden="true">from day one.</span>
-          </h1>
+          <h1>Portuguese lessons in Porto with Inês.</h1>
           <span className="hero-rule" aria-hidden="true" />
           <p>
-            One-to-one lessons in Porto with Inês Dias Baía, built around real conversation, gentle corrections, and
-            the small phrases that make daily life easier.
+            Friendly one-to-one lessons for everyday conversations, messages, appointments, and feeling more at home in
+            Portuguese.
           </p>
           <div className="hero-actions">
             <Link className="button button-primary" href="/book">
-              Book or manage a lesson
+              Book a lesson
             </Link>
             <Link className="button button-secondary" href="/faq">
-              Read the FAQ
+              Read FAQ
             </Link>
           </div>
         </div>
 
         <figure className="portrait-panel">
           <Image
-            src="/visuals/ines-portrait-placeholder.png"
-            alt="Placeholder portrait of a Portuguese teacher with bangs and translucent glasses"
-            width={449}
-            height={493}
+            src="/visuals/ines-dias-baia-portrait.png"
+            alt="Inês Dias Baía writing during a Portuguese lesson at a desk"
+            width={987}
+            height={793}
             priority
           />
+          <figcaption className="portrait-note">
+            Inês&apos;s approach: calm lessons, useful language, and Portuguese connected to real life.
+          </figcaption>
         </figure>
       </section>
 
-      <section className="simple-section teaching-section">
-        <div className="section-heading">
-          <h2>How teaching feels</h2>
-          <span className="section-flower" aria-hidden="true" />
+      <section className="context-line" aria-label="Who lessons are for">
+        <p>For beginners, returners, and Porto newcomers who want Portuguese for ordinary days, not textbook performance.</p>
+      </section>
+
+      <section className="simple-section lesson-section">
+        <div>
+          <h2>What lessons are like</h2>
         </div>
-        <div className="note-list">
-          {teachingNotes.map((item) => {
-            const Icon = item.icon;
-            return (
-              <article className="note-row" key={item.title}>
-                <span className="note-icon" aria-hidden="true">
-                  <Icon size={25} />
-                </span>
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{item.text}</p>
-                </div>
-                <ChevronRight className="note-chevron" size={18} aria-hidden="true" />
-              </article>
-            );
-          })}
+        <div className="lesson-copy">
+          <p className="lesson-lead">We start with what you need to say this week.</p>
+          <p>
+            A lesson might begin with a message you need to send, a conversation you avoided, or a phrase you keep
+            half-remembering in a cafe.
+          </p>
+          <ol className="lesson-steps">
+            <li>
+              <strong>You bring the situation.</strong>
+              <span>Cafes, neighbours, appointments, travel, messages, small talk, or whatever came up that week.</span>
+            </li>
+            <li>
+              <strong>We make it speakable.</strong>
+              <span>Inês helps with phrasing, rhythm, pronunciation, and grammar only when it makes the sentence clearer.</span>
+            </li>
+            <li>
+              <strong>You leave with something to reuse.</strong>
+              <span>A few natural phrases, a clearer ear for mistakes, and less hesitation the next time it happens.</span>
+            </li>
+          </ol>
         </div>
       </section>
 
       <section className="simple-section booking-callout">
         <div>
-          <h2>Ready to get started?</h2>
-          <p>
-            Use the booking page to choose a time or manage an existing lesson.
-          </p>
+          <h2>Ready to start?</h2>
+          <p>Choose a time, book a lesson, or manage an existing booking.</p>
         </div>
         <Link className="button button-primary" href="/book">
-          Book or manage a lesson
+          Book a lesson
         </Link>
-        <Image
-          src="/visuals/porto-line-reference.png"
-          alt="Blue line drawing of Porto"
-          width={213}
-          height={117}
-          className="porto-line"
-        />
+        <Link className="quiet-link" href="/faq">
+          Questions first? Read FAQ
+        </Link>
       </section>
     </main>
   );

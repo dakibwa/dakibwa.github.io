@@ -40,6 +40,12 @@ Cal.com should handle:
 
 The site should embed Cal.com inline when `NEXT_PUBLIC_CALCOM_LINK` is configured. If it is not configured, the fallback should be friendly and non-technical.
 
+## Booking Decision Update
+
+The product direction has changed: use Acuity when the student needs a lightweight account to review upcoming and past bookings. Acuity should now be the preferred production source of truth for booking, client accounts, payment, calendar sync, and student changes.
+
+The site should embed Acuity inline when `NEXT_PUBLIC_ACUITY_SCHEDULER_URL` is configured. `NEXT_PUBLIC_CALCOM_LINK` remains a temporary fallback only while the Acuity account and scheduler URL are being prepared.
+
 ## Design Feedback
 
 The first version felt too "AI slop coded": too many boxed panels, visible setup language, and detached workflows. The desired direction is more polished, integrated, and beautiful.
@@ -74,7 +80,7 @@ Primary target:
 - Make `/book` feel like an elegant continuation of the landing page.
 - Use fewer heavy card blocks.
 - Use better typography and spacing.
-- Keep the Cal.com embed central and integrated.
+- Keep the active booking-system embed central and integrated.
 - Preserve the two-page structure unless the product direction changes.
 
 ## Validation So Far
