@@ -18,7 +18,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 const changeBookingAnswer =
   BOOKING_PROVIDER === "acuity"
     ? "Log in from the booking scheduler to review upcoming and past lessons. You can reschedule or cancel there when Inês has enabled those options, and the confirmation email will also include booking links."
-    : `Open your confirmation email and use the reschedule or cancel link. If you cannot find it, search for "Portuguese with Inês" or "${BOOKING_PROVIDER_NAME}".`;
+    : `Open your confirmation email and use the reschedule or cancel link. If you cannot find it, search for "Português with Inês" or "${BOOKING_PROVIDER_NAME}".`;
 
 const faqSections = [
   {
