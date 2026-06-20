@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { CustomSquareBookingFlow } from "@/components/CustomSquareBookingFlow";
+import { SiteHeader } from "@/components/SiteHeader";
 import {
   BOOKING_DIRECT_URL,
   BOOKING_EMBED_URL,
@@ -88,20 +88,7 @@ export function BookingFlow() {
 
   return (
     <main>
-      <header className="site-header">
-        <Link href="/" className="brand" aria-label="Portuguese with Inês home">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>Portuguese with Inês</span>
-        </Link>
-        <nav className="nav-actions" aria-label="Main navigation">
-          <Link href="/faq" className="faq-tile-button" aria-label="Frequently asked questions">
-            <span>FAQ</span>
-          </Link>
-          <Link className="book-lesson-button" href="/book" aria-current="page" aria-label="Book a Portuguese lesson">
-            <span>Book a lesson</span>
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader currentPage="book" />
 
       <section className="booking-shell" aria-label="Book a Portuguese lesson">
         <section className="booking-calendar-panel" aria-label="Embedded lesson booking">

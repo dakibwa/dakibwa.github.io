@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Calendar, Check, Coffee, Heart, Leaf, MapPin, MessageCircle, Star, Users } from "lucide-react";
+import { SiteHeader } from "@/components/SiteHeader";
 
 const lessonCards = [
   {
@@ -32,22 +33,7 @@ const lessonCards = [
 export default function Home() {
   return (
     <main className="home-page">
-      <header className="site-header">
-        <Link href="/" className="brand" aria-label="Portuguese with Inês home">
-          <span className="brand-mark" aria-hidden="true" />
-          <span className="brand-text">
-            Portuguese with <span className="brand-red">Inês</span>
-          </span>
-        </Link>
-        <nav className="nav-actions" aria-label="Main navigation">
-          <Link href="/faq" className="faq-tile-button" aria-label="Frequently asked questions">
-            <span>FAQ</span>
-          </Link>
-          <Link className="book-lesson-button" href="/book" aria-label="Book a Portuguese lesson">
-            <span>Book a lesson</span>
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader currentPage="home" />
 
       <section className="home-hero">
         <div className="hero-copy">
@@ -95,10 +81,10 @@ export default function Home() {
 
         <figure className="hero-visual">
           <Image
-            src="/visuals/ines-dias-baia-portrait.png"
+            src="/visuals/ines-dias-baia-hero-green.png"
             alt="Inês Dias Baía writing during a Portuguese lesson at a desk"
-            width={987}
-            height={793}
+            width={547}
+            height={545}
             priority
           />
         </figure>

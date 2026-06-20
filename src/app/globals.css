@@ -101,11 +101,13 @@ h3 {
 
 .site-header {
   align-items: center;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid #eadfce;
   display: flex;
   gap: 30px;
-  min-height: 82px;
+  max-width: min(964px, calc(100vw - 60px));
+  min-height: 88px;
   padding: 20px 0;
+  width: 100%;
 }
 
 .brand {
@@ -115,7 +117,7 @@ h3 {
   font-family: var(--font-heading, var(--serif));
   font-size: 30px;
   font-weight: 700;
-  gap: 13px;
+  gap: 18px;
   line-height: 1;
   min-width: 0;
   position: relative;
@@ -124,33 +126,57 @@ h3 {
     transform 180ms ease;
 }
 
-.brand span:last-child {
-  background: linear-gradient(90deg, var(--portugal-green-dark) 0%, var(--ink) 52%, var(--red-dark) 100%);
-  background-clip: text;
-  background-size: 180% 100%;
-  color: transparent;
+.brand .brand-text {
+  color: var(--ink);
   display: inline-block;
-  padding-bottom: 4px;
+  margin-bottom: -5px;
+  padding-bottom: 5px;
   position: relative;
-  transition:
-    background-position 220ms ease,
-    filter 220ms ease;
-  -webkit-background-clip: text;
+  transition: color 180ms ease;
 }
 
-.brand span:last-child::after {
-  background: linear-gradient(90deg, var(--portugal-green) 0 44%, var(--portugal-gold) 44% 58%, var(--red) 58% 100%);
+.brand .brand-text::after {
+  background: linear-gradient(90deg, var(--portugal-green) 0 82%, var(--portugal-gold) 82% 100%);
+  bottom: 0;
+  content: "";
+  display: block;
+  height: 3px;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  right: 73px;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease;
+  width: auto;
+}
+
+.brand .brand-red {
+  color: var(--red);
+  display: inline-block;
+  margin-bottom: -5px;
+  padding-bottom: 5px;
+  position: relative;
+  transition:
+    color 180ms ease,
+    text-shadow 180ms ease;
+}
+
+.brand .brand-red::after {
+  background: linear-gradient(90deg, var(--red) 0 78%, var(--portugal-gold) 78% 100%);
   bottom: 0;
   content: "";
   height: 3px;
   left: 0;
   position: absolute;
+  right: 0;
+  transform: scaleX(1);
   transform-origin: left center;
   transition:
-    opacity 180ms ease,
-    transform 220ms ease,
-    width 220ms ease;
-  width: min(100%, 178px);
+    background 180ms ease,
+    transform 220ms ease;
 }
 
 .brand-mark {
@@ -163,12 +189,12 @@ h3 {
   box-sizing: border-box;
   flex: 0 0 auto;
   display: inline-block;
-  height: 34px;
+  height: 54px;
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
     transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  width: 34px;
+  width: 54px;
 }
 
 .brand:is(:hover, :focus-visible) .brand-mark {
@@ -180,13 +206,19 @@ h3 {
   transform: translateY(-2px) rotate(-3deg);
 }
 
-.brand:is(:hover, :focus-visible) span:last-child {
-  background-position: 100% 0;
-  filter: saturate(1.12);
+.brand:is(:hover, :focus-visible) .brand-text::after {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
-.brand:is(:hover, :focus-visible) span:last-child::after {
-  transform: scaleX(1.08);
+.brand:is(:hover, :focus-visible) .brand-red {
+  color: var(--red-dark);
+  text-shadow: 0 7px 18px rgba(223, 86, 61, 0.22);
+}
+
+.brand:is(:hover, :focus-visible) .brand-red::after {
+  background: linear-gradient(90deg, var(--red-dark) 0 78%, var(--portugal-gold) 78% 100%);
+  transform: scaleX(1.04);
 }
 
 .site-header nav {
@@ -271,12 +303,12 @@ h3 {
 
 .site-header .nav-actions .faq-tile-button,
 .site-header .nav-actions .book-lesson-button {
+  box-sizing: border-box;
   flex: 0 0 auto;
   font-family: var(--font-body, var(--sans));
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
-  will-change: transform;
 }
 
 .site-header .nav-actions .faq-tile-button {
@@ -299,10 +331,11 @@ h3 {
   height: 54px;
   justify-content: center;
   letter-spacing: 0.01em;
-  min-width: 152px;
+  min-width: 180px;
   overflow: hidden;
-  padding: 0 42px;
+  padding: 0 34px;
   position: relative;
+  width: 180px;
   isolation: isolate;
 }
 
@@ -348,7 +381,7 @@ h3 {
     inset 0 0 0 1px rgba(255, 255, 255, 0.88),
     inset 0 -2px 0 rgba(215, 169, 79, 0.28);
   color: var(--pw-green);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .site-header .nav-actions .faq-tile-button:hover::before,
@@ -369,8 +402,8 @@ h3 {
   border: 2px solid var(--pw-green);
   border-radius: 13px;
   box-shadow:
-    0 4px 0 var(--pw-terracotta-dark),
-    0 13px 24px var(--pw-shadow),
+    0 2px 0 var(--pw-terracotta-dark),
+    0 10px 20px rgba(55, 28, 18, 0.16),
     inset 0 0 0 1px rgba(255, 248, 236, 0.48),
     inset 0 -7px 13px rgba(119, 36, 25, 0.16);
   color: #fffaf2;
@@ -380,10 +413,11 @@ h3 {
   height: 54px;
   justify-content: center;
   letter-spacing: 0.005em;
-  min-width: 166px;
+  min-width: 180px;
   overflow: hidden;
   padding: 0 30px 1px 38px;
   position: relative;
+  width: 180px;
   isolation: isolate;
 }
 
@@ -422,12 +456,12 @@ h3 {
     linear-gradient(180deg, #f27056 0%, #df5b43 56%, #c84734 100%);
   border-color: var(--pw-green);
   box-shadow:
-    0 5px 0 var(--pw-terracotta-dark),
-    0 16px 28px rgba(55, 28, 18, 0.22),
+    0 3px 0 var(--pw-terracotta-dark),
+    0 12px 22px rgba(55, 28, 18, 0.18),
     inset 0 0 0 1px rgba(255, 248, 236, 0.55),
     inset 0 -7px 13px rgba(119, 36, 25, 0.15);
   color: #fffaf2;
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .site-header .nav-actions .book-lesson-button:active,
@@ -464,9 +498,10 @@ h3 {
 
   .site-header .nav-actions .faq-tile-button {
     font-size: 14px;
-    height: 44px;
+    height: 48px;
     min-width: 82px;
     padding: 0 18px;
+    width: auto;
   }
 
   .site-header .nav-actions .book-lesson-button {
@@ -474,6 +509,7 @@ h3 {
     height: 48px;
     min-width: 140px;
     padding: 0 22px 1px 32px;
+    width: auto;
   }
 
   .site-header .nav-actions .book-lesson-button::before {
@@ -522,32 +558,57 @@ h3 {
 }
 
 .button-primary {
-  background: linear-gradient(180deg, #ef6146 0%, var(--red) 48%, var(--red-dark) 100%);
-  border: 1px solid #c94431;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.02) 38%, rgba(108, 31, 22, 0.08) 100%),
+    linear-gradient(180deg, var(--pw-coral) 0%, var(--pw-terracotta) 58%, #c94b37 100%);
+  border: 2px solid var(--pw-green);
+  border-radius: 13px;
   box-shadow:
-    0 12px 26px rgba(191, 64, 47, 0.2),
-    0 4px 0 rgba(10, 111, 67, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    inset 0 -3px 0 rgba(242, 201, 76, 0.38);
-  color: #fff;
+    0 4px 0 var(--pw-terracotta-dark),
+    0 13px 24px var(--pw-shadow),
+    inset 0 0 0 1px rgba(255, 248, 236, 0.48),
+    inset 0 -7px 13px rgba(119, 36, 25, 0.16);
+  color: #fffaf2;
+  isolation: isolate;
+  min-height: 54px;
+  padding: 0 30px 1px 38px;
+  text-shadow: 0 1px 1px rgba(70, 24, 18, 0.25);
 }
 
 .button-primary::before {
-  background: linear-gradient(180deg, var(--portugal-green) 0%, var(--portugal-green-dark) 100%);
+  background: linear-gradient(180deg, var(--pw-green-soft), var(--pw-green-dark));
+  border-right: 1px solid rgba(255, 248, 236, 0.35);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.14);
   content: "";
-  inset: 0 auto 0 0;
+  height: 100%;
+  left: 0;
   position: absolute;
-  width: 9px;
+  top: 0;
+  width: 18px;
+}
+
+.button-primary::after {
+  border: 1px solid rgba(255, 248, 236, 0.46);
+  border-bottom-color: rgba(215, 169, 79, 0.55);
+  border-radius: 8px;
+  content: "";
+  inset: 6px;
+  pointer-events: none;
+  position: absolute;
 }
 
 .button-primary:hover {
-  background: linear-gradient(180deg, #f0694f 0%, #df563d 46%, var(--red-dark) 100%);
-  border-color: #c84430;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.03) 38%, rgba(108, 31, 22, 0.08) 100%),
+    linear-gradient(180deg, #f27056 0%, #df5b43 56%, #c84734 100%);
+  border-color: var(--pw-green);
   box-shadow:
-    0 16px 30px rgba(191, 64, 47, 0.24),
-    0 5px 0 rgba(10, 111, 67, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    inset 0 -3px 0 rgba(242, 201, 76, 0.5);
+    0 5px 0 var(--pw-terracotta-dark),
+    0 16px 28px rgba(55, 28, 18, 0.22),
+    inset 0 0 0 1px rgba(255, 248, 236, 0.55),
+    inset 0 -7px 13px rgba(119, 36, 25, 0.15);
+  color: #fffaf2;
+  transform: none;
 }
 
 .button-secondary {
@@ -676,81 +737,6 @@ h3 {
     var(--paper);
   overflow: hidden;
   padding-bottom: 0;
-}
-
-.home-page .site-header {
-  border-bottom-color: #eadfce;
-  max-width: min(964px, calc(100vw - 60px));
-  min-height: 88px;
-  padding: 20px 0;
-}
-
-.home-page .brand {
-  font-size: 30px;
-  gap: 18px;
-}
-
-.home-page .brand .brand-text {
-  background: none;
-  color: var(--ink);
-  padding-bottom: 0;
-  position: relative;
-  transition: color 180ms ease;
-  -webkit-background-clip: initial;
-}
-
-.home-page .brand .brand-text::after {
-  background: linear-gradient(90deg, var(--portugal-green) 0 82%, var(--portugal-gold) 82% 100%);
-  bottom: 0;
-  display: block;
-  height: 3px;
-  left: 0;
-  opacity: 0;
-  right: 73px;
-  transform: scaleX(0);
-  transform-origin: right center;
-  width: auto;
-}
-
-.home-page .brand .brand-red {
-  color: var(--red);
-  transition:
-    color 180ms ease,
-    text-shadow 180ms ease;
-}
-
-.home-page .brand .brand-red::after {
-  background: var(--red);
-  width: 100%;
-}
-
-.home-page .brand:is(:hover, :focus-visible) .brand-text::after {
-  opacity: 1;
-  transform: scaleX(1);
-}
-
-.home-page .brand:is(:hover, :focus-visible) .brand-red::after {
-  transform: scaleX(1);
-}
-
-.home-page .brand:is(:hover, :focus-visible) .brand-red {
-  color: var(--red-dark);
-  text-shadow: 0 7px 18px rgba(223, 86, 61, 0.22);
-}
-
-.home-page .brand-mark {
-  border-color: rgba(10, 111, 67, 0.36);
-  box-shadow:
-    0 0 0 3px #fff8dc,
-    0 8px 18px rgba(10, 111, 67, 0.1);
-  height: 48px;
-  width: 48px;
-}
-
-.home-page .site-header nav a {
-  min-height: 46px;
-  min-width: 78px;
-  padding-inline: 22px;
 }
 
 .home-page .button {
@@ -1600,93 +1586,6 @@ h3 {
   max-width: var(--faq-page);
 }
 
-.faq-site-header {
-  background: transparent;
-  border-bottom: 1px solid #eadccd;
-  max-width: min(964px, calc(100vw - 60px));
-  min-height: 88px;
-  padding: 20px 0;
-}
-
-.faq-site-header .brand {
-  font-size: 30px;
-  gap: 16px;
-}
-
-.faq-site-header .brand .brand-text {
-  background: none;
-  color: var(--ink);
-  padding-bottom: 0;
-  position: relative;
-  transition: color 180ms ease;
-  -webkit-background-clip: initial;
-}
-
-.faq-site-header .brand .brand-text::after {
-  background: linear-gradient(90deg, var(--portugal-green) 0 82%, var(--portugal-gold) 82% 100%);
-  bottom: 0;
-  display: block;
-  height: 3px;
-  left: 0;
-  opacity: 0;
-  right: 73px;
-  transform: scaleX(0);
-  transform-origin: right center;
-  width: auto;
-}
-
-.faq-site-header .brand .brand-red {
-  color: var(--red);
-  transition:
-    color 180ms ease,
-    text-shadow 180ms ease;
-}
-
-.faq-site-header .brand .brand-red::after {
-  background: var(--red);
-  display: block;
-  width: 100%;
-}
-
-.faq-site-header .brand:is(:hover, :focus-visible) .brand-text::after {
-  opacity: 1;
-  transform: scaleX(1);
-}
-
-.faq-site-header .brand:is(:hover, :focus-visible) .brand-red {
-  color: var(--red-dark);
-  text-shadow: 0 7px 18px rgba(223, 86, 61, 0.22);
-}
-
-.faq-site-header .brand-mark {
-  height: 44px;
-  width: 44px;
-}
-
-.faq-site-header nav {
-  gap: 0;
-}
-
-.faq-site-header nav a {
-  font-size: 14px;
-  min-height: 46px;
-  min-width: 78px;
-  padding-inline: 22px;
-}
-
-.faq-site-header nav a:hover,
-.faq-site-header nav a[aria-current="page"] {
-  color: var(--red-dark);
-}
-
-.faq-site-header .button.compact {
-  border-radius: 8px;
-  font-size: 15px;
-  min-height: 46px;
-  min-width: 147px;
-  padding-inline: 27px;
-}
-
 .faq-hero {
   background: var(--faq-cream);
   border-bottom: 1px solid rgba(234, 220, 205, 0.34);
@@ -2107,9 +2006,10 @@ h3 {
 }
 
 .faq-answer p {
-  color: #526b63;
-  font-size: 14px;
-  line-height: 1.55;
+  color: #273c35;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.65;
   margin: 0;
   padding: 0 46px 14px 17px;
 }
@@ -2150,10 +2050,8 @@ h3 {
 }
 
 .faq-booking-band-action .button {
-  border-radius: 8px;
   font-size: 16px;
-  min-height: 46px;
-  padding-inline: 30px;
+  min-height: 54px;
   width: 205px;
 }
 
@@ -2846,19 +2744,33 @@ h3 {
   }
 
   .site-header {
-    gap: 16px;
-    min-height: 76px;
-    padding: 18px 0;
+    gap: 12px;
+    max-width: min(calc(100vw - 32px), 560px);
+    min-height: 72px;
+    padding: 16px 0;
   }
 
   .brand {
-    font-size: 22px;
+    flex: 1 1 auto;
+    font-size: clamp(18px, 4.75vw, 21px);
     gap: 9px;
+    line-height: 1;
+    min-width: 0;
   }
 
   .brand-mark {
-    height: 28px;
-    width: 28px;
+    height: 32px;
+    width: 32px;
+  }
+
+  .brand .brand-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .brand .brand-text::after {
+    display: none;
   }
 
   .site-header .button {
@@ -2866,7 +2778,20 @@ h3 {
   }
 
   .site-header nav {
+    gap: 10px;
     margin-left: auto;
+  }
+
+  .site-header .nav-actions .faq-tile-button {
+    border-radius: 10px;
+    box-shadow:
+      0 1px 0 rgba(169, 59, 44, 0.24),
+      0 7px 14px rgba(85, 43, 24, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.88);
+    font-size: 12px;
+    height: 40px;
+    min-width: 64px;
+    padding: 0 14px;
   }
 
   .button {
@@ -3038,10 +2963,6 @@ h3 {
     --page: min(calc(100vw - 40px), 820px);
   }
 
-  .home-page .site-header {
-    max-width: var(--page);
-  }
-
   .home-page .home-hero {
     grid-template-columns: 1fr;
     min-height: 0;
@@ -3107,50 +3028,6 @@ h3 {
 @media (max-width: 620px) {
   .home-page {
     --page: min(calc(100vw - 32px), 560px);
-  }
-
-  .home-page .site-header {
-    min-height: 72px;
-    padding: 16px 0;
-  }
-
-  .home-page .brand {
-    font-size: clamp(18px, 4.75vw, 21px);
-    gap: 9px;
-    line-height: 1;
-    min-width: 0;
-  }
-
-  .home-page .brand-mark {
-    height: 32px;
-    width: 32px;
-  }
-
-  .home-page .brand .brand-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .home-page .brand .brand-text::after,
-  .home-page .brand .brand-red::after {
-    display: none;
-  }
-
-  .home-page .site-header .nav-actions {
-    gap: 10px;
-  }
-
-  .home-page .site-header .nav-actions .faq-tile-button {
-    border-radius: 10px;
-    box-shadow:
-      0 1px 0 rgba(169, 59, 44, 0.24),
-      0 7px 14px rgba(85, 43, 24, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.88);
-    font-size: 12px;
-    height: 40px;
-    min-width: 64px;
-    padding: 0 14px;
   }
 
   .home-page .home-hero {
@@ -3373,16 +3250,16 @@ h3 {
 }
 
 @media (max-width: 360px) {
-  .home-page .brand {
+  .brand {
     font-size: 17px;
   }
 
-  .home-page .brand-mark {
+  .brand-mark {
     height: 30px;
     width: 30px;
   }
 
-  .home-page .site-header .nav-actions .faq-tile-button {
+  .site-header .nav-actions .faq-tile-button {
     min-width: 58px;
     padding-inline: 12px;
   }
@@ -3414,10 +3291,6 @@ h3 {
 
   .faq-page .faq-hero {
     padding: 0;
-  }
-
-  .faq-site-header {
-    padding-inline: 24px;
   }
 
   .faq-hero-inner {
@@ -3461,42 +3334,6 @@ h3 {
 
   .faq-page .faq-hero {
     padding: 0;
-  }
-
-  .faq-site-header {
-    gap: 14px;
-    max-width: var(--faq-page);
-    min-height: 78px;
-    padding: 13px 0 14px;
-    width: 100%;
-  }
-
-  .faq-site-header .brand {
-    flex: 1 1 auto;
-    font-size: clamp(21px, 5.9vw, 23px);
-    gap: 11px;
-    min-width: 0;
-  }
-
-  .faq-site-header .brand .brand-text {
-    line-height: 0.96;
-  }
-
-  .faq-site-header .brand-mark {
-    height: 42px;
-    width: 42px;
-  }
-
-  .faq-site-header .button {
-    display: none;
-  }
-
-  .faq-site-header nav a {
-    font-size: 13px;
-    justify-content: center;
-    min-height: 40px;
-    min-width: 72px;
-    padding-inline: 16px;
   }
 
   .faq-hero-copy {

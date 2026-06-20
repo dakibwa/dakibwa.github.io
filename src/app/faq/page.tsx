@@ -13,6 +13,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import { BOOKING_PROVIDER, BOOKING_PROVIDER_NAME, CONTACT_WHATSAPP_URL, formatMoney } from "@/lib/config";
+import { SiteHeader } from "@/components/SiteHeader";
 
 const changeBookingAnswer =
   BOOKING_PROVIDER === "acuity"
@@ -254,22 +255,7 @@ export default function FAQPage() {
 
   return (
     <main className="faq-page">
-      <header className="site-header faq-site-header">
-        <Link href="/" className="brand" aria-label="Portuguese with Inês home">
-          <span className="brand-mark" aria-hidden="true" />
-          <span className="brand-text">
-            Portuguese with <span className="brand-red">Inês</span>
-          </span>
-        </Link>
-        <nav className="nav-actions" aria-label="Main navigation">
-          <Link href="/faq" className="faq-tile-button" aria-current="page" aria-label="Frequently asked questions">
-            <span>FAQ</span>
-          </Link>
-          <Link className="book-lesson-button" href="/book" aria-label="Book a Portuguese lesson">
-            <span>Book a lesson</span>
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader currentPage="faq" />
 
       <section className="faq-hero" aria-labelledby="faq-title">
         <div className="faq-hero-inner">
