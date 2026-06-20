@@ -180,7 +180,7 @@ h3 {
 }
 
 .brand-mark {
-  background: url("/visuals/azulejo-mark.svg") center / contain no-repeat;
+  background: var(--asset-azulejo-mark) center / contain no-repeat;
   border: 2px solid rgba(10, 111, 67, 0.36);
   box-shadow:
     0 0 0 3px rgba(242, 201, 76, 0.28),
@@ -340,7 +340,7 @@ h3 {
 }
 
 .site-header .nav-actions .faq-tile-button::before {
-  background: url("/visuals/faq-tile-frame.svg") center / 100% 100% no-repeat;
+  background: var(--asset-faq-tile-frame) center / 100% 100% no-repeat;
   content: "";
   inset: 0;
   opacity: 1;
@@ -1408,7 +1408,7 @@ h3 {
 
 .azulejo-band {
   background:
-    url("/visuals/azulejo-mark.svg") 0 50% / 58px 58px repeat-x,
+    var(--asset-azulejo-mark) 0 50% / 58px 58px repeat-x,
     linear-gradient(90deg, #f8efe0 0%, #fffefa 100%);
   border-top: 1px solid #e5d7c2;
   height: 52px;
@@ -1629,7 +1629,7 @@ h3 {
 .faq-hero-scene {
   background:
     linear-gradient(90deg, var(--faq-cream) 0%, rgba(250, 248, 245, 0.82) 8%, rgba(250, 248, 245, 0) 25%),
-    url("/visuals/faq-hero-scene.png") center / cover no-repeat;
+    var(--asset-faq-hero-scene) center / cover no-repeat;
   min-height: 0;
   min-width: 0;
 }
@@ -2026,7 +2026,7 @@ h3 {
 
 .faq-booking-band-pattern {
   align-self: stretch;
-  background: url("/visuals/faq-azulejo-corner.png") left center / cover no-repeat;
+  background: var(--asset-faq-azulejo-corner) left center / cover no-repeat;
   min-height: 133px;
 }
 

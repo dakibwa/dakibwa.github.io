@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
+import type { CSSProperties } from "react";
+import { publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
 
 const heading = Fraunces({
@@ -26,9 +28,16 @@ export const metadata: Metadata = {
   }
 };
 
+const assetVariables = {
+  "--asset-azulejo-mark": publicAssetUrl("/visuals/azulejo-mark.svg"),
+  "--asset-faq-azulejo-corner": publicAssetUrl("/visuals/faq-azulejo-corner.png"),
+  "--asset-faq-hero-scene": publicAssetUrl("/visuals/faq-hero-scene.png"),
+  "--asset-faq-tile-frame": publicAssetUrl("/visuals/faq-tile-frame.svg")
+} as CSSProperties;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en" data-scroll-behavior="smooth" style={assetVariables}>
       <body className={`${body.variable} ${heading.variable}`}>{children}</body>
     </html>
   );

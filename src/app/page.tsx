@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Calendar, Check, Coffee, Heart, Leaf, MapPin, MessageCircle, Star, Users } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { publicAssetPath } from "@/lib/paths";
 
 const lessonCards = [
   {
@@ -81,7 +82,7 @@ export default function Home() {
 
         <figure className="hero-visual">
           <Image
-            src="/visuals/ines-dias-baia-hero-green.png"
+            src={publicAssetPath("/visuals/ines-dias-baia-hero-green.png")}
             alt="Inês Dias Baía writing during a Portuguese lesson at a desk"
             width={547}
             height={545}
@@ -91,7 +92,7 @@ export default function Home() {
       </section>
 
       <section className="home-intro-card" aria-label="Who lessons are for">
-        <Image src="/visuals/porto-line.svg" alt="" width={180} height={75} aria-hidden="true" />
+        <Image src={publicAssetPath("/visuals/porto-line.svg")} alt="" width={180} height={75} aria-hidden="true" />
         <p>For beginners, returners, and Porto newcomers who want Portuguese for everyday life.</p>
         <span className="handwritten-note">♡ Vamos falar português!</span>
       </section>
@@ -146,7 +147,7 @@ export default function Home() {
       <section className="proof-section" aria-label="Student feedback and lesson style">
         <div className="testimonial">
           <Image
-            src="/visuals/ines-testimonial-avatar-mug.png"
+            src={publicAssetPath("/visuals/ines-testimonial-avatar-mug.png")}
             alt="Inês smiling with a mug in a Portuguese lesson room"
             width={136}
             height={136}
