@@ -39,7 +39,7 @@ export default function Home() {
       <section className="home-hero">
         <div className="hero-copy">
           <h1>
-            <span className="hero-title-line">Portuguese</span>
+            <span className="hero-title-line">Português</span>
             <span className="hero-title-line">lessons in Porto</span>
             <span className="hero-title-line">
               with <span>Inês.</span>

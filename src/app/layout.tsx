@@ -19,10 +19,10 @@ const body = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Inês Dias Baía | Portuguese Lessons in Porto",
+  title: "Inês Dias Baía | Português Lessons in Porto",
   description: "Simple, friendly Portuguese lessons in Porto with Inês Dias Baía.",
   openGraph: {
-    title: "Inês Dias Baía | Portuguese Lessons in Porto",
+    title: "Inês Dias Baía | Português Lessons in Porto",
     description: "Portuguese that feels useful from day one.",
     type: "website"
   }

@@ -9,10 +9,10 @@ type SiteHeaderProps = {
 export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
   return (
     <header className="site-header">
-      <Link href="/" className="brand" aria-current={currentPage === "home" ? "page" : undefined} aria-label="Portuguese with Inês home">
+      <Link href="/" className="brand" aria-current={currentPage === "home" ? "page" : undefined} aria-label="Português with Inês home">
         <span className="brand-mark" aria-hidden="true" />
         <span className="brand-text">
-          Portuguese with <span className="brand-red">Inês</span>
+          Português with <span className="brand-red">Inês</span>
         </span>
       </Link>
       <nav className="nav-actions" aria-label="Main navigation">

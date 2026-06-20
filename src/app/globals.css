@@ -759,27 +759,28 @@ h3 {
   align-items: stretch;
   display: grid;
   gap: 0;
-  grid-template-columns: minmax(392px, calc((100vw - var(--page)) / 2 + 358px)) minmax(0, 1fr);
+  grid-template-columns: minmax(470px, calc((100vw - var(--page)) / 2 + 460px)) minmax(0, 1fr);
+  height: clamp(620px, calc(100vh - 94px), 680px);
   margin: 0;
   max-width: none;
-  min-height: 628px;
+  min-height: 604px;
   padding: 0;
 }
 
 .home-page .hero-copy {
-  align-self: center;
+  align-self: start;
   max-width: none;
-  padding: 48px 0 10px calc((100vw - var(--page)) / 2);
+  padding: clamp(72px, 6vw, 96px) 0 24px calc((100vw - var(--page)) / 2);
   z-index: 2;
 }
 
 .home-page .hero-copy h1 {
   color: var(--ink);
-  font-size: clamp(56px, 5.65vw, 62px);
+  font-size: clamp(54px, 5.4vw, 62px);
   isolation: isolate;
   line-height: 0.99;
   margin-bottom: 26px;
-  max-width: 390px;
+  max-width: 470px;
   position: relative;
 }
 
@@ -973,7 +974,7 @@ h3 {
 .home-page .hero-visual {
   height: 100%;
   margin: 0;
-  min-height: 628px;
+  min-height: 604px;
   overflow: hidden;
   position: relative;
 }
@@ -990,7 +991,7 @@ h3 {
 .home-page .hero-visual img {
   height: 100%;
   object-fit: cover;
-  object-position: 66% center;
+  object-position: 58% center;
   width: 100%;
 }
 
@@ -2018,16 +2019,28 @@ h3 {
   align-items: center;
   background: #efe3d6;
   display: grid;
-  gap: 96px;
-  grid-template-columns: 176px minmax(0, 330px) 205px;
+  gap: 0;
+  grid-template-columns:
+    minmax(0, 1fr)
+    176px
+    54px
+    minmax(0, 535px)
+    54px
+    205px
+    minmax(0, 1fr);
   min-height: 133px;
-  padding: 0 calc((100vw - 1024px) / 2) 0 0;
+  padding: 0;
 }
 
 .faq-booking-band-pattern {
   align-self: stretch;
   background: var(--asset-faq-azulejo-corner) left center / cover no-repeat;
+  grid-column: 2;
   min-height: 133px;
+}
+
+.faq-booking-band-copy {
+  grid-column: 4;
 }
 
 .faq-booking-band-copy h2 {
@@ -2047,6 +2060,7 @@ h3 {
 .faq-booking-band-action {
   display: grid;
   gap: 10px;
+  grid-column: 6;
 }
 
 .faq-booking-band-action .button {
@@ -2964,6 +2978,7 @@ h3 {
   }
 
   .home-page .home-hero {
+    height: auto;
     grid-template-columns: 1fr;
     min-height: 0;
   }
@@ -3035,12 +3050,12 @@ h3 {
   }
 
   .home-page .hero-copy {
-    padding: 38px calc((100vw - var(--page)) / 2) 26px;
+    padding: 32px calc((100vw - var(--page)) / 2) 18px;
   }
 
   .home-page .hero-copy h1 {
-    font-size: clamp(39px, 10.8vw, 44px);
-    margin-bottom: 20px;
+    font-size: clamp(36px, 10vw, 40px);
+    margin-bottom: 16px;
     max-width: min(100%, 365px);
   }
 
@@ -3049,15 +3064,24 @@ h3 {
   }
 
   .home-page .hero-copy > p {
-    font-size: 16px;
+    font-size: 15px;
+    line-height: 1.48;
     max-width: 348px;
+  }
+
+  .home-page .hero-copy > p + p {
+    margin-top: 8px;
+  }
+
+  .home-page .hero-rule {
+    margin-bottom: 18px;
   }
 
   .hero-cta-row {
     align-items: stretch;
     flex-direction: column;
     gap: 10px;
-    margin-top: 24px;
+    margin-top: 18px;
     width: 100%;
   }
 
@@ -3086,15 +3110,47 @@ h3 {
     width: 22px;
   }
 
+  .hero-benefits {
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 18px;
+  }
+
+  .hero-benefits > div {
+    align-items: start;
+    gap: 8px;
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .hero-benefits > div > span {
+    height: 32px;
+    width: 32px;
+  }
+
+  .hero-benefits svg {
+    height: 15px;
+    width: 15px;
+  }
+
+  .hero-benefits strong {
+    font-size: 13px;
+  }
+
+  .hero-benefits small {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
   .home-page .hero-visual {
     border-bottom: 1px solid #eadfce;
     border-top: 1px solid #eadfce;
-    min-height: 330px;
+    height: 270px;
+    min-height: 0;
   }
 
   .home-page .hero-visual img {
-    object-position: 58% center;
-    transform: scale(1.05);
+    object-position: 56% 24%;
+    transform: scale(1.02);
   }
 
   .home-intro-card {
@@ -3324,6 +3380,12 @@ h3 {
     gap: 28px;
     grid-template-columns: 136px minmax(0, 1fr) auto;
     padding: 0 24px 0 0;
+  }
+
+  .faq-booking-band-pattern,
+  .faq-booking-band-copy,
+  .faq-booking-band-action {
+    grid-column: auto;
   }
 }
 
