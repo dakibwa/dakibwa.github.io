@@ -3,6 +3,73 @@ import { existsSync, readFileSync } from "node:fs";
 loadDotEnv(".env.local");
 loadDotEnv(".env");
 
+const rawBookingMode = process.env.NEXT_PUBLIC_BOOKING_MODE ?? "";
+const bookingMode = normalizeBookingMode(rawBookingMode);
+const rawBookingApiBaseUrl = process.env.NEXT_PUBLIC_BOOKING_API_BASE_URL ?? "";
+const bookingApiBaseUrl = normalizePublicHttpUrl(rawBookingApiBaseUrl);
+const allowPreviewBooking = process.env.ALLOW_BOOKING_PREVIEW === "1";
+
+if (rawBookingApiBaseUrl.trim() && !bookingApiBaseUrl) {
+  console.error("NEXT_PUBLIC_BOOKING_API_BASE_URL must be an http(s) URL for the Square booking adapter.");
+  process.exit(1);
+}
+
+const rawSquareUrl = process.env.NEXT_PUBLIC_SQUARE_BOOKING_URL ?? "";
+const squareUrl = normalizeSquareBookingUrl(rawSquareUrl);
+
+if (rawSquareUrl.trim() && !squareUrl) {
+  console.error(
+    "NEXT_PUBLIC_SQUARE_BOOKING_URL is set, but it is not a valid Square booking URL. Use a squareup.com or square.site booking link, or paste Square's one-line iframe/button code."
+  );
+  process.exit(1);
+}
+
+if (bookingMode === "custom-square") {
+  if (!bookingApiBaseUrl && !allowPreviewBooking) {
+    console.error(
+      "NEXT_PUBLIC_BOOKING_MODE=custom-square requires NEXT_PUBLIC_BOOKING_API_BASE_URL. Set ALLOW_BOOKING_PREVIEW=1 only for local/demo preview builds."
+    );
+    process.exit(1);
+  }
+
+  if (bookingApiBaseUrl) {
+    await checkBookingApiHealth(bookingApiBaseUrl);
+  } else {
+    console.log("Custom Square booking preview allowed; API health check skipped.");
+  }
+
+  if (!squareUrl && !allowPreviewBooking) {
+    console.error("NEXT_PUBLIC_SQUARE_BOOKING_URL is required as the hosted Square fallback/manage link.");
+    process.exit(1);
+  }
+
+  if (squareUrl) {
+    await checkUrl({
+      provider: "square",
+      url: squareUrl,
+      failureMessage:
+        "Square booking link is not live yet. In Square, go to Appointments > Online booking > Channels > Add your booking flow to an existing site."
+    });
+  }
+
+  process.exit(0);
+}
+
+if (bookingApiBaseUrl) {
+  await checkBookingApiHealth(bookingApiBaseUrl);
+  process.exit(0);
+}
+
+if (squareUrl) {
+  await checkUrl({
+    provider: "square",
+    url: squareUrl,
+    failureMessage:
+      "Square booking link is not live yet. In Square, go to Appointments > Online booking > Channels > Add your booking flow to an existing site."
+  });
+  process.exit(0);
+}
+
 const rawAcuityUrl = process.env.NEXT_PUBLIC_ACUITY_SCHEDULER_URL ?? "";
 const acuityUrl = normalizeAcuitySchedulerUrl(rawAcuityUrl);
 
@@ -83,16 +150,67 @@ function normalizeCalComLink(value) {
 }
 
 function normalizeAcuitySchedulerUrl(value) {
+  return normalizeExternalBookingUrl(value, isAcuityHost);
+}
+
+function normalizeSquareBookingUrl(value) {
+  return normalizeExternalBookingUrl(value, isSquareHost);
+}
+
+function normalizeBookingMode(value) {
+  if (value === "auto" || value === "square-hosted") return value;
+  return "custom-square";
+}
+
+function normalizePublicHttpUrl(value) {
   const trimmed = value.trim();
   if (!trimmed) return "";
 
-  const iframeSrc = trimmed.match(/src=["']([^"']+)["']/i)?.[1];
-  const rawUrl = iframeSrc ?? trimmed;
+  try {
+    const parsed = new URL(trimmed);
+    if (!["http:", "https:"].includes(parsed.protocol)) return "";
+    parsed.hash = "";
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+async function checkBookingApiHealth(apiBaseUrl) {
+  const response = await fetch(`${apiBaseUrl}/health`, { redirect: "follow" });
+  const body = await response.json().catch(() => ({}));
+  const ok = response.ok && body.ok === true;
+
+  console.log(
+    JSON.stringify(
+      {
+        provider: "square-api",
+        url: `${apiBaseUrl}/health`,
+        status: response.status,
+        ok,
+        missing: body.missing ?? []
+      },
+      null,
+      2
+    )
+  );
+
+  if (!ok) {
+    console.error("Square booking API health check failed. Check the Worker deployment and private Square env/secrets.");
+    process.exit(1);
+  }
+}
+
+function normalizeExternalBookingUrl(value, isAllowedHost) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const rawUrl = trimmed.match(/(?:src|href)=["']([^"']+)["']/i)?.[1] ?? trimmed;
   const withProtocol = /^[a-z][a-z\d+.-]*:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
 
   try {
     const parsed = new URL(withProtocol);
-    if (!["http:", "https:"].includes(parsed.protocol) || !isAcuityHost(parsed.hostname)) {
+    if (!["http:", "https:"].includes(parsed.protocol) || !isAllowedHost(parsed.hostname)) {
       return "";
     }
 
@@ -112,6 +230,15 @@ function isAcuityHost(hostname) {
     hostname.endsWith(".squarespacescheduling.com") ||
     hostname === "as.me" ||
     hostname.endsWith(".as.me")
+  );
+}
+
+function isSquareHost(hostname) {
+  return (
+    hostname === "squareup.com" ||
+    hostname.endsWith(".squareup.com") ||
+    hostname === "square.site" ||
+    hostname.endsWith(".square.site")
   );
 }
 

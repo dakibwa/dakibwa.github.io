@@ -4,11 +4,13 @@ import Link from "next/link";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
+import { CustomSquareBookingFlow } from "@/components/CustomSquareBookingFlow";
 import {
   BOOKING_DIRECT_URL,
   BOOKING_EMBED_URL,
   BOOKING_PROVIDER,
-  CALCOM_LINK
+  CALCOM_LINK,
+  USE_CUSTOM_SQUARE_BOOKING
 } from "@/lib/config";
 
 type CalCommandArgs = unknown[];
@@ -30,8 +32,12 @@ const acuityScriptSrc = "https://embed.acuityscheduling.com/js/embed.js";
 const bookingProvider = BOOKING_PROVIDER;
 const bookingDirectUrl = BOOKING_DIRECT_URL;
 const bookingEmbedUrl = BOOKING_EMBED_URL;
+const isSquare = bookingProvider === "square";
 const isAcuity = bookingProvider === "acuity";
 const isCalCom = bookingProvider === "calcom";
+const isAccountScheduler = isSquare || isAcuity;
+const isHostedSquare = isSquare && !USE_CUSTOM_SQUARE_BOOKING;
+const showTopExternalLink = Boolean(bookingDirectUrl && !isSquare);
 
 function loadCalEmbed() {
   if (window.Cal) {
@@ -87,28 +93,54 @@ export function BookingFlow() {
           <span className="brand-mark" aria-hidden="true" />
           <span>Portuguese with Inês</span>
         </Link>
-        <nav aria-label="Main navigation">
-          <Link href="/faq">FAQ</Link>
+        <nav className="nav-actions" aria-label="Main navigation">
+          <Link href="/faq" className="faq-tile-button" aria-label="Frequently asked questions">
+            <span>FAQ</span>
+          </Link>
+          <Link className="book-lesson-button" href="/book" aria-current="page" aria-label="Book a Portuguese lesson">
+            <span>Book a lesson</span>
+          </Link>
         </nav>
-        <Link className="button button-primary compact" href="/book" aria-current="page">
-          Book a lesson
-        </Link>
       </header>
 
       <section className="booking-shell" aria-label="Book a Portuguese lesson">
         <section className="booking-calendar-panel" aria-label="Embedded lesson booking">
           <div className="booking-panel-top">
             <div className="booking-story">
-              <h1>{isAcuity ? "Book or manage a lesson" : "Book your first Portuguese lesson"}</h1>
-              <p>{isAcuity ? "Use the scheduler below to book, sign up, or log in." : "Choose a time and pay securely below."}</p>
+              <h1>{USE_CUSTOM_SQUARE_BOOKING ? "Book your Portuguese lesson" : isHostedSquare ? "Book inside this page" : isAccountScheduler ? "Book or manage a lesson" : "Book your first Portuguese lesson"}</h1>
+              <p>
+                {USE_CUSTOM_SQUARE_BOOKING
+                  ? "Choose a day, pick a time, and enter your details. The lesson is created through Inês's Square calendar."
+                  : isHostedSquare
+                    ? "Choose a time below. Square handles the secure confirmation while the flow stays embedded here where possible."
+                  : isAccountScheduler
+                    ? "Use the scheduler below to book, sign up, or log in."
+                    : "Choose a time and pay securely below."}
+              </p>
             </div>
-            {bookingDirectUrl ? (
+            {showTopExternalLink ? (
               <a className="booking-top-link" href={bookingDirectUrl} target="_blank" rel="noreferrer">
                 Open in new tab
               </a>
             ) : null}
           </div>
-          {isAcuity && bookingEmbedUrl ? (
+          {USE_CUSTOM_SQUARE_BOOKING ? (
+            <CustomSquareBookingFlow />
+          ) : isSquare && bookingEmbedUrl ? (
+            <div className="booking-widget-stack">
+              <div className="booking-embed-frame" aria-busy={!embedReady} aria-label="Square booking widget">
+                <iframe
+                  src={bookingEmbedUrl}
+                  title="Schedule a Portuguese lesson"
+                  width="100%"
+                  height="980"
+                  allow="payment"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  onLoad={() => setEmbedReady(true)}
+                />
+              </div>
+            </div>
+          ) : isAcuity && bookingEmbedUrl ? (
             <div className="booking-widget-stack">
               <Script src={acuityScriptSrc} strategy="afterInteractive" />
               <div className="booking-embed-frame" aria-busy={!embedReady} aria-label="Acuity booking widget">
@@ -117,6 +149,7 @@ export function BookingFlow() {
                   title="Schedule a Portuguese lesson"
                   width="100%"
                   height="800"
+                  referrerPolicy="strict-origin-when-cross-origin"
                   onLoad={() => setEmbedReady(true)}
                 />
               </div>
@@ -131,7 +164,7 @@ export function BookingFlow() {
                 <CalendarDays size={34} />
               </span>
               <h2>Booking will open here.</h2>
-              <p>Once Inês connects Acuity, available times, payment, and student login will appear in this space.</p>
+              <p>Once Inês connects the booking system, available times, payment, and student login will appear here.</p>
               <span className="placeholder-status">Calendar coming soon</span>
             </div>
           )}

@@ -1,0 +1,20 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "ines-booking-api",
+  "main": "square-booking-worker.mjs",
+  "compatibility_date": "2026-06-19",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "secrets": {
+    "required": ["SQUARE_ACCESS_TOKEN"]
+  },
+  "vars": {
+    "ALLOWED_ORIGIN": "http://localhost:3000,http://127.0.0.1:3000,https://dakibwa.github.io",
+    "SQUARE_ENVIRONMENT": "production",
+    "SQUARE_API_VERSION": "2026-05-20",
+    "SQUARE_LOCATION_ID": "LM9S606EKRB6D",
+    "SQUARE_SERVICE_VARIATION_ID": "4XRWERRUTRGQYKBX24HPXGKT"
+  }
+}

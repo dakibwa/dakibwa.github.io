@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
   <title id="title">Azulejo tile mark</title>
-  <rect x="2.5" y="2.5" width="43" height="43" fill="#fff" stroke="#1d55c8" stroke-width="2"/>
-  <path d="M24 5v38M5 24h38" stroke="#1d55c8" stroke-width="1.6" opacity=".65"/>
-  <path d="M10 10c8 2 12 7 14 14C17 22 12 18 10 10ZM38 10c-2 8-7 12-14 14 2-7 6-12 14-14ZM38 38c-8-2-12-7-14-14 7 2 12 6 14 14ZM10 38c2-8 7-12 14-14-2 7-6 12-14 14Z" fill="none" stroke="#1d55c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="24" cy="24" r="4.5" fill="#1d55c8"/>
-  <circle cx="24" cy="24" r="11.5" fill="none" stroke="#1d55c8" stroke-width="1.6" opacity=".8"/>
+  <rect x="2.5" y="2.5" width="43" height="43" fill="#fffefa" stroke="#0a6f43" stroke-width="2"/>
+  <path d="M24 5v38M5 24h38" stroke="#0a6f43" stroke-width="1.6" opacity=".48"/>
+  <path d="M10 10c8 2 12 7 14 14C17 22 12 18 10 10ZM38 10c-2 8-7 12-14 14 2-7 6-12 14-14ZM38 38c-8-2-12-7-14-14 7 2 12 6 14 14ZM10 38c2-8 7-12 14-14-2 7-6 12-14 14Z" fill="none" stroke="#075437" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="24" cy="24" r="4.5" fill="#df563d"/>
+  <circle cx="24" cy="24" r="11.5" fill="none" stroke="#f2c94c" stroke-width="1.8" opacity=".9"/>
 </svg>

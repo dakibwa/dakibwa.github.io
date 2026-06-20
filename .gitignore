@@ -1,6 +1,8 @@
 .data/
 .DS_Store
 .env*.local
+workers/.dev.vars*
+workers/.env*
 .next/
 node_modules/
 out/

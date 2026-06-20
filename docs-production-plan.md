@@ -1,41 +1,46 @@
-# Acuity Launch Plan
+# Booking Launch Plan
 
-Use Acuity as the source of truth for booking, client accounts, payment, calendar sync, and student changes.
+Use Square as the source of truth for booking, client records, calendar sync, and student changes. The site can render a custom calendar UI, but all private Square API work must run through a separate backend adapter.
 
-## Acuity Setup
+## Provider Order
 
-1. Create one appointment type for the first Portuguese lesson.
-2. Set duration to 75 minutes and default timezone to Europe/Lisbon.
-3. Add location copy for Epoca Cafe. Avoid implying an official cafe partnership unless Ines confirms it.
-4. Connect Ines's calendar so Acuity checks conflicts and adds confirmed lessons automatically.
-5. Connect Stripe in Acuity's payment settings and require payment for the appointment type.
-6. Enable client accounts if students should log in to review upcoming and past appointments.
-7. Add intake questions: level, lesson focus, phone/WhatsApp, online/cafe preference if needed, and accessibility or meeting notes.
-8. Configure scheduling limits for how far ahead students can book, reschedule, and cancel.
-9. Keep confirmation/reminder emails clear, with the right client-account, reschedule, and cancel links.
+1. Custom Square calendar: set `NEXT_PUBLIC_BOOKING_MODE=custom-square` and `NEXT_PUBLIC_BOOKING_API_BASE_URL`.
+2. Hosted Square fallback/manage link: set `NEXT_PUBLIC_SQUARE_BOOKING_URL`.
+3. Acuity fallback: set `NEXT_PUBLIC_ACUITY_SCHEDULER_URL`.
+4. Cal.com fallback: set `NEXT_PUBLIC_CALCOM_LINK`.
 
-## Account Connection Boundary
+Square takes precedence when more than one provider is configured.
 
-The Stripe connection is an account-level setup inside Acuity: log in to Ines's Acuity account, choose Stripe as the payment processor, and authorize the Stripe account through Acuity's connection flow. The website should not host its own Stripe OAuth flow, store Stripe API keys, store booking/payment state, or receive booking/payment webhooks in v1.
+## Square Setup
 
-## Site Setup
-
-Set:
+1. In Square Dashboard, go to **Appointments > Online booking > Channels**.
+2. Finish the required setup first: location, business hours, and at least one bookable service.
+3. Under **Add your booking flow to an existing site**, click **Get Started**.
+4. Use **Get URL** or **Get embed code**.
+5. Set the copied URL or one-line snippet as:
 
 ```bash
-NEXT_PUBLIC_ACUITY_SCHEDULER_URL=https://your-production-scheduler.as.me/first-portuguese-lesson
+NEXT_PUBLIC_BOOKING_MODE=custom-square
+NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-api.dakibwa.workers.dev
+NEXT_PUBLIC_SQUARE_BOOKING_URL=https://squareup.com/appointments/book/...
 LESSON_PRICE_CENTS=1500
 LESSON_CURRENCY=eur
 ```
 
-`NEXT_PUBLIC_CALCOM_LINK` is supported only as a temporary fallback during the migration. Remove it once the Acuity booking flow is confirmed live.
+## Square API Adapter
 
-The custom site should not store bookings, payment state, or student records in v1. That keeps maintenance low and avoids building auth, Stripe webhooks, calendar OAuth, cancellation/refund handling, and GDPR workflows before Ines needs them.
+Keep this Next app as a static export for GitHub Pages. Do not add `src/app/api` routes for Square while `next.config.ts` uses `output: "export"`.
 
-For a safe pre-production pass, use [docs-integration-test-setup.md](./docs-integration-test-setup.md). Acuity's recommended scheduler test path is a private test coupon; payment-processor testing requires a real small charge and refund if you choose to test it end to end.
+Deploy `workers/square-booking-worker.mjs` as a separate Cloudflare Worker. Store `SQUARE_ACCESS_TOKEN` as a Worker secret, and keep location, service variation, and optional team member IDs in Worker config. See [docs-square-custom-booking.md](./docs-square-custom-booking.md).
+
+## Account Connection Boundary
+
+Calendar, confirmation emails, reschedule/cancel rules, and client account behavior belong inside Square. The website should not host its own Stripe OAuth flow, store Stripe API keys, store Square access tokens, store booking/payment state, or receive booking/payment webhooks until there is a deliberate backend data model.
+
+In-site prepayment is a separate phase. Square bookings and Square payments are not one atomic API call, so payment would need Square Web Payments SDK plus a Worker endpoint that authorizes payment, creates the booking, then captures or voids the payment depending on booking success.
 
 ## Optional Later
 
 - Add WhatsApp reminders through Zapier/Make/Twilio if Ines really needs them.
-- Add packages or subscriptions in Acuity if recurring lessons become the normal model.
-- Add a custom student portal only if Acuity client accounts become the bottleneck.
+- Add packages or subscriptions inside the chosen booking platform if recurring lessons become the normal model.
+- Add a custom student portal only if the external platform's client account area becomes the bottleneck.
