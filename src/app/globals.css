@@ -3106,21 +3106,51 @@ h3 {
 
 @media (max-width: 620px) {
   .home-page {
-    --page: min(calc(100vw - 26px), 560px);
+    --page: min(calc(100vw - 32px), 560px);
   }
 
   .home-page .site-header {
-    min-height: 76px;
+    min-height: 72px;
+    padding: 16px 0;
   }
 
   .home-page .brand {
-    font-size: 22px;
-    gap: 10px;
+    font-size: clamp(18px, 4.75vw, 21px);
+    gap: 9px;
+    line-height: 1;
+    min-width: 0;
   }
 
   .home-page .brand-mark {
-    height: 34px;
-    width: 34px;
+    height: 32px;
+    width: 32px;
+  }
+
+  .home-page .brand .brand-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .home-page .brand .brand-text::after,
+  .home-page .brand .brand-red::after {
+    display: none;
+  }
+
+  .home-page .site-header .nav-actions {
+    gap: 10px;
+  }
+
+  .home-page .site-header .nav-actions .faq-tile-button {
+    border-radius: 10px;
+    box-shadow:
+      0 1px 0 rgba(169, 59, 44, 0.24),
+      0 7px 14px rgba(85, 43, 24, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.88);
+    font-size: 12px;
+    height: 40px;
+    min-width: 64px;
+    padding: 0 14px;
   }
 
   .home-page .home-hero {
@@ -3128,79 +3158,238 @@ h3 {
   }
 
   .home-page .hero-copy {
-    padding: 44px calc((100vw - var(--page)) / 2) 30px;
+    padding: 38px calc((100vw - var(--page)) / 2) 26px;
   }
 
   .home-page .hero-copy h1 {
-    font-size: 43px;
-    margin-bottom: 22px;
+    font-size: clamp(39px, 10.8vw, 44px);
+    margin-bottom: 20px;
+    max-width: min(100%, 365px);
+  }
+
+  .home-page .hero-copy h1 .hero-title-line {
+    max-width: 100%;
   }
 
   .home-page .hero-copy > p {
     font-size: 16px;
+    max-width: 348px;
   }
 
   .hero-cta-row {
     align-items: stretch;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    margin-top: 24px;
+    width: 100%;
+  }
+
+  .hero-primary {
+    min-width: 0;
     width: 100%;
   }
 
   .hero-cta-row .handwritten-note {
+    display: inline-block;
     margin-left: 14px;
     max-width: none;
+    padding-left: 32px;
   }
 
   .hero-cta-row .handwritten-note::before {
-    display: none;
+    border-bottom: 0;
+    border-left: 2px solid #2457b7;
+    border-radius: 22px 0 0;
+    border-top: 2px solid #2457b7;
+    display: block;
+    height: 12px;
+    left: 3px;
+    top: -2px;
+    transform: rotate(-13deg);
+    width: 22px;
   }
 
   .home-page .hero-visual {
-    min-height: 340px;
+    border-bottom: 1px solid #eadfce;
+    border-top: 1px solid #eadfce;
+    min-height: 330px;
+  }
+
+  .home-page .hero-visual img {
+    object-position: 58% center;
+    transform: scale(1.05);
   }
 
   .home-intro-card {
-    gap: 15px;
-    grid-template-columns: 1fr;
-    padding: 20px;
+    gap: 14px;
+    grid-template-columns: 76px minmax(0, 1fr);
+    margin-top: 14px;
+    padding: 18px;
   }
 
   .home-intro-card img {
     justify-self: start;
-    width: 112px;
+    width: 74px;
   }
 
   .home-intro-card p {
-    font-size: 22px;
+    font-size: 20px;
+    line-height: 1.24;
   }
 
   .home-intro-card .handwritten-note {
-    grid-column: auto;
+    font-size: 17px;
+    grid-column: 2;
+    justify-self: start;
   }
 
   .pricing-section {
-    padding-top: 30px;
+    padding-top: 32px;
   }
 
   .section-heading h2 {
-    font-size: 32px;
+    font-size: 31px;
+  }
+
+  .pricing-grid {
+    gap: 16px;
+    max-width: none;
+  }
+
+  .pricing-card {
+    border-radius: 10px;
+    padding: 22px 20px 20px;
+  }
+
+  .pricing-card::after {
+    left: 20px;
+    right: 20px;
+  }
+
+  .card-topline {
+    gap: 14px;
+    grid-template-columns: 50px minmax(0, 1fr);
+    justify-items: start;
+    min-height: 0;
+    text-align: left;
+  }
+
+  .card-topline > div {
+    justify-items: start;
+    min-height: 0;
+  }
+
+  .card-icon {
+    height: 48px;
+    width: 48px;
+  }
+
+  .card-icon svg {
+    height: 25px;
+    width: 25px;
+  }
+
+  .card-topline h3,
+  .card-topline p {
+    max-width: none;
+  }
+
+  .card-topline p {
+    min-height: 0;
+  }
+
+  .price {
+    justify-items: start;
+    margin-top: 18px;
+  }
+
+  .pricing-card ul {
+    align-self: stretch;
+    width: 100%;
+  }
+
+  .pricing-card-action {
+    align-self: start;
   }
 
   .proof-section {
-    margin-bottom: 28px;
+    gap: 18px;
+    margin-bottom: 26px;
     padding: 0;
   }
 
   .testimonial {
-    grid-template-columns: 94px minmax(0, 1fr);
-    gap: 18px;
+    align-items: center;
+    gap: 12px 16px;
+    grid-template-columns: 86px minmax(0, 1fr);
+  }
+
+  .testimonial > div {
+    display: contents;
   }
 
   .testimonial img {
     border-width: 7px;
-    height: 92px;
-    width: 92px;
+    height: 84px;
+    width: 84px;
+  }
+
+  .testimonial .stars {
+    align-self: end;
+    margin: 0;
+  }
+
+  .testimonial blockquote,
+  .testimonial cite {
+    grid-column: 1 / -1;
+  }
+
+  .feature-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .feature-strip div {
+    border-left: 1px solid #eadfce;
+    border-top: 0;
+    gap: 7px;
+    min-height: 108px;
+    padding: 16px 10px;
+  }
+
+  .feature-strip div:first-child {
+    border-left: 0;
+    border-top: 0;
+  }
+
+  .feature-strip svg {
+    height: 27px;
+    width: 27px;
+  }
+
+  .feature-strip span {
+    font-size: 12px;
+    line-height: 1.28;
+  }
+}
+
+@media (max-width: 360px) {
+  .home-page .brand {
+    font-size: 17px;
+  }
+
+  .home-page .brand-mark {
+    height: 30px;
+    width: 30px;
+  }
+
+  .home-page .site-header .nav-actions .faq-tile-button {
+    min-width: 58px;
+    padding-inline: 12px;
+  }
+
+  .home-page .hero-copy h1 .hero-title-line {
+    white-space: normal;
+    width: auto;
   }
 
   .feature-strip {
@@ -3210,7 +3399,7 @@ h3 {
   .feature-strip div {
     border-left: 0;
     border-top: 1px solid #eadfce;
-    min-height: 92px;
+    min-height: 82px;
   }
 
   .feature-strip div:first-child {
