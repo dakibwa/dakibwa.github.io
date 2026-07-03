@@ -5912,3 +5912,618 @@ body {
     margin-top: 4px;
   }
 }
+
+/* QA stabilization: keep the mockup-inspired homepage composed instead of clipped. */
+.home-page {
+  --home-blue: #00156f;
+  --home-blue-deep: #001154;
+  --home-lavender: #dfccff;
+  --home-lavender-soft: #eee4ff;
+  --home-ink: #00156f;
+  --home-page-width: min(1120px, calc(100vw - 56px));
+  background: linear-gradient(180deg, var(--home-blue) 0 58%, var(--home-lavender-soft) 58% 100%);
+  color: var(--home-ink);
+  font-family: "Avenir Next", "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+.home-page .hero-poster {
+  background:
+    radial-gradient(circle at 74% 30%, rgba(64, 101, 203, 0.34) 0 20%, rgba(64, 101, 203, 0) 42%),
+    linear-gradient(180deg, #001e86 0%, var(--home-blue) 66%, #00145f 100%);
+  color: #fff;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.home-page .site-header {
+  align-items: center;
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
+  clip-path: none;
+  display: flex;
+  gap: 28px;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: var(--home-page-width);
+  min-height: 98px;
+  padding: 18px 0 8px;
+  position: relative;
+  width: 100%;
+  z-index: 20;
+}
+
+.home-page .brand {
+  flex: 0 0 auto;
+  width: clamp(178px, 20vw, 230px);
+}
+
+.home-page .brand-wordmark-image {
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.home-page .nav-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(18px, 3vw, 40px);
+  justify-content: flex-end;
+}
+
+.home-page .site-header .nav-actions .nav-text-link {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  min-height: 38px;
+  text-transform: uppercase;
+}
+
+.home-page .site-header .nav-actions .book-lesson-button,
+.home-page .site-header .nav-actions .book-lesson-button:hover,
+.home-page .site-header .nav-actions .book-lesson-button[aria-current="page"] {
+  background: linear-gradient(180deg, #f1e1ff 0%, #d9c2ff 100%);
+  border: 0;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+  color: var(--home-ink);
+  font-size: 13px;
+  font-weight: 900;
+  min-height: 44px;
+  min-width: 166px;
+  padding: 0 24px;
+  text-transform: uppercase;
+}
+
+.home-page .home-hero {
+  align-items: center;
+  display: grid;
+  gap: clamp(30px, 5vw, 68px);
+  grid-template-columns: minmax(0, 1.14fr) minmax(240px, 0.66fr);
+  height: auto;
+  margin: 0 auto;
+  max-width: var(--home-page-width);
+  min-height: 386px;
+  padding: 24px 0 28px;
+  position: relative;
+}
+
+.home-page .hero-copy {
+  color: #fff;
+  max-width: 590px;
+  padding: 0;
+  position: relative;
+  z-index: 8;
+}
+
+.home-page .hero-copy h1 {
+  color: #fff;
+  font-family: "Avenir Next", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  font-size: clamp(52px, 5.7vw, 72px);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.96;
+  margin: 0 0 24px;
+  max-width: 620px;
+}
+
+.home-page .hero-copy > p {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: clamp(16px, 1.55vw, 19px);
+  line-height: 1.48;
+  max-width: 445px;
+}
+
+.home-page .hero-cta-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  margin-top: 34px;
+}
+
+.home-page .hero-primary {
+  background: linear-gradient(180deg, #f2e3ff 0%, #d8c1ff 100%);
+  border: 0;
+  border-radius: 0;
+  color: var(--home-ink);
+  font-size: 13px;
+  font-weight: 900;
+  min-height: 48px;
+  min-width: 176px;
+  padding: 0 24px;
+  text-transform: uppercase;
+}
+
+.home-page .see-lessons-link {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.72);
+  color: #fff;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  gap: 18px;
+  letter-spacing: 0.02em;
+  min-height: 38px;
+  padding: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.home-page .hero-visual {
+  align-self: stretch;
+  height: auto;
+  min-height: 340px;
+  overflow: visible;
+  pointer-events: none;
+  position: relative;
+}
+
+.home-page .hero-radial-mark {
+  background: var(--asset-mockup-flower) center / contain no-repeat;
+  height: clamp(300px, 35vw, 460px);
+  left: 50%;
+  opacity: 0.78;
+  position: absolute;
+  top: 50%;
+  transform: translate(-46%, -50%) rotate(-4deg);
+  width: clamp(300px, 35vw, 460px);
+}
+
+.home-page .hero-table-strip {
+  background: var(--asset-hero-strip) center bottom / cover no-repeat;
+  bottom: auto;
+  height: clamp(158px, 18vw, 226px);
+  left: auto;
+  position: relative;
+  right: auto;
+  top: auto;
+  width: 100%;
+  z-index: 4;
+}
+
+.home-page .pricing-section {
+  align-items: stretch;
+  background:
+    linear-gradient(90deg, rgba(207, 180, 255, 0.92), rgba(236, 224, 255, 0.98) 46%, rgba(211, 187, 255, 0.96)),
+    var(--home-lavender);
+  display: grid;
+  gap: clamp(28px, 4vw, 54px);
+  grid-template-columns: minmax(250px, 330px) minmax(0, 1fr);
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(42px, 5vw, 64px) max(28px, calc((100vw - var(--home-page-width)) / 2)) clamp(44px, 5vw, 62px);
+  position: relative;
+}
+
+.home-page .pricing-intro {
+  max-width: 340px;
+  position: relative;
+  z-index: 2;
+}
+
+.home-page .section-kicker {
+  color: var(--home-ink);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+}
+
+.home-page .pricing-intro h2 {
+  color: var(--home-ink);
+  font-size: clamp(42px, 4.8vw, 58px);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.96;
+  margin: 0 0 20px;
+}
+
+.home-page .pricing-intro > p:not(.section-kicker) {
+  color: rgba(0, 21, 111, 0.82);
+  font-size: 16px;
+  line-height: 1.45;
+  max-width: 295px;
+}
+
+.home-page .pricing-corner-mark {
+  background: var(--asset-mockup-flower) center / contain no-repeat;
+  bottom: -112px;
+  filter: brightness(0) saturate(100%) invert(13%) sepia(88%) saturate(2954%) hue-rotate(225deg) brightness(82%) contrast(113%);
+  height: 280px;
+  left: -95px;
+  opacity: 0.12;
+  pointer-events: none;
+  position: absolute;
+  width: 280px;
+}
+
+.home-page .pricing-grid {
+  align-items: stretch;
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.home-page .pricing-card {
+  background: transparent;
+  border: 0;
+  border-left: 1px solid rgba(0, 21, 111, 0.22);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--home-ink);
+  display: grid;
+  justify-items: center;
+  min-height: 220px;
+  padding: 14px 26px 4px;
+  text-align: center;
+}
+
+.home-page .pricing-card:first-child {
+  border-left: 0;
+}
+
+.home-page .pricing-card::before,
+.home-page .pricing-card::after {
+  display: none;
+}
+
+.home-page .card-icon {
+  color: var(--home-ink);
+  height: 52px;
+  margin: 0 0 16px;
+  width: 52px;
+}
+
+.home-page .card-icon svg {
+  height: 46px;
+  stroke-width: 1.8;
+  width: 46px;
+}
+
+.home-page .pricing-card h3 {
+  color: var(--home-ink);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.home-page .card-duration {
+  color: rgba(0, 21, 111, 0.72);
+  font-size: 14px;
+  margin: 0;
+}
+
+.home-page .price {
+  color: var(--home-ink);
+  margin: 20px 0 18px;
+}
+
+.home-page .price span {
+  font-size: clamp(32px, 3.2vw, 44px);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.home-page .pricing-card-action {
+  align-items: center;
+  border: 1px solid rgba(0, 21, 111, 0.78);
+  color: var(--home-ink);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  min-width: 122px;
+  padding: 0 16px;
+  text-transform: uppercase;
+}
+
+.home-page .home-footer {
+  align-items: center;
+  background:
+    radial-gradient(circle at 82% 44%, rgba(244, 90, 203, 0.28) 0 10%, rgba(244, 90, 203, 0) 28%),
+    linear-gradient(90deg, #c8b0f6 0%, #d8c3ff 56%, #c6adf5 100%);
+  color: #fff;
+  display: grid;
+  gap: clamp(24px, 5vw, 72px);
+  grid-template-columns: minmax(180px, 250px) minmax(240px, 1fr);
+  min-height: 178px;
+  overflow: hidden;
+  padding: 30px max(28px, calc((100vw - var(--home-page-width)) / 2));
+  position: relative;
+}
+
+.home-page .footer-wordmark {
+  filter: brightness(0) invert(1);
+  height: auto;
+  opacity: 0.98;
+  position: relative;
+  width: clamp(170px, 18vw, 220px);
+  z-index: 2;
+}
+
+.home-page .home-footer p {
+  color: rgba(255, 255, 255, 0.96);
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.35;
+  margin: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.home-page .home-footer p span {
+  color: rgba(255, 255, 255, 0.82);
+  display: block;
+  font-size: 0.9em;
+}
+
+.home-page .footer-radial-mark {
+  background: var(--asset-mockup-flower) center / contain no-repeat;
+  height: 250px;
+  opacity: 0.16;
+  pointer-events: none;
+  position: absolute;
+  right: 3vw;
+  top: -42px;
+  transform: rotate(-8deg);
+  width: 250px;
+}
+
+@media (max-width: 900px) {
+  .home-page {
+    --home-page-width: min(680px, calc(100vw - 32px));
+    background: var(--home-lavender-soft);
+  }
+
+  .home-page .hero-poster {
+    height: auto;
+  }
+
+  .home-page .site-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+    min-height: 0;
+    padding: 18px 0 20px;
+  }
+
+  .home-page .brand {
+    width: clamp(168px, 48vw, 214px);
+  }
+
+  .home-page .site-header .nav-actions {
+    gap: 10px;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .home-page .site-header .nav-actions .nav-text-link {
+    min-height: 36px;
+  }
+
+  .home-page .site-header .nav-actions .book-lesson-button,
+  .home-page .site-header .nav-actions .book-lesson-button:hover,
+  .home-page .site-header .nav-actions .book-lesson-button[aria-current="page"] {
+    min-height: 38px;
+    min-width: 142px;
+    padding-inline: 15px;
+    width: auto;
+  }
+
+  .home-page .home-hero {
+    display: block;
+    min-height: 0;
+    padding: 30px 0 32px;
+  }
+
+  .home-page .hero-copy {
+    max-width: var(--home-page-width);
+  }
+
+  .home-page .hero-copy h1 {
+    font-size: clamp(44px, 13vw, 64px);
+    max-width: 430px;
+  }
+
+  .home-page .hero-copy > p {
+    max-width: 370px;
+  }
+
+  .home-page .hero-cta-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 260px;
+  }
+
+  .home-page .hero-primary {
+    width: 100%;
+  }
+
+  .home-page .see-lessons-link {
+    align-self: flex-start;
+  }
+
+  .home-page .hero-visual {
+    height: 0;
+    min-height: 0;
+    position: static;
+  }
+
+  .home-page .hero-radial-mark {
+    height: 260px;
+    left: auto;
+    opacity: 0.18;
+    right: -104px;
+    top: 300px;
+    transform: rotate(-8deg);
+    width: 260px;
+  }
+
+  .home-page .hero-table-strip {
+    height: clamp(144px, 45vw, 190px);
+  }
+
+  .home-page .pricing-section {
+    display: grid;
+    gap: 30px;
+    grid-template-columns: 1fr;
+    padding: 38px max(16px, calc((100vw - var(--home-page-width)) / 2)) 42px;
+  }
+
+  .home-page .pricing-intro {
+    max-width: 470px;
+  }
+
+  .home-page .pricing-intro h2 {
+    font-size: clamp(38px, 10vw, 50px);
+  }
+
+  .home-page .pricing-grid {
+    grid-template-columns: 1fr;
+    margin: 0 auto;
+    max-width: 470px;
+    width: 100%;
+  }
+
+  .home-page .pricing-card {
+    align-items: center;
+    border-left: 0;
+    border-top: 1px solid rgba(0, 21, 111, 0.2);
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    justify-items: start;
+    min-height: 132px;
+    padding: 18px 0;
+    text-align: left;
+  }
+
+  .home-page .pricing-card:first-child {
+    border-top: 0;
+  }
+
+  .home-page .card-icon {
+    grid-row: 1 / span 4;
+    margin: 0;
+  }
+
+  .home-page .price {
+    grid-column: 3;
+    grid-row: 1 / span 3;
+    margin: 0;
+    padding-left: 14px;
+  }
+
+  .home-page .pricing-card-action {
+    grid-column: 2 / 4;
+    margin-top: 12px;
+  }
+
+  .home-page .home-footer {
+    gap: 18px;
+    grid-template-columns: 1fr;
+    min-height: 220px;
+    padding: 32px max(16px, calc((100vw - var(--home-page-width)) / 2));
+  }
+
+  .home-page .footer-radial-mark {
+    opacity: 0.12;
+    right: -70px;
+    top: -10px;
+  }
+}
+
+@media (max-width: 430px) {
+  .home-page .site-header .nav-actions {
+    display: grid;
+    gap: 12px 22px;
+    grid-template-columns: auto auto;
+    justify-content: start;
+  }
+
+  .home-page .site-header .nav-actions .nav-lessons-link,
+  .home-page .site-header .nav-actions .nav-faq-link {
+    order: 0;
+  }
+
+  .home-page .site-header .nav-actions .book-lesson-button,
+  .home-page .site-header .nav-actions .book-lesson-button:hover,
+  .home-page .site-header .nav-actions .book-lesson-button[aria-current="page"] {
+    display: inline-flex;
+    grid-column: 1 / -1;
+    justify-self: start;
+    min-width: min(100%, 280px);
+    order: 1;
+    width: min(100%, 280px);
+  }
+
+  .home-page .hero-copy h1 {
+    font-size: clamp(40px, 12vw, 48px);
+  }
+
+  .home-page .hero-table-strip {
+    background-position: 45% bottom;
+  }
+
+  .home-page .pricing-card {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .home-page .price {
+    grid-column: 2;
+    grid-row: auto;
+    padding-left: 0;
+  }
+
+  .home-page .pricing-card-action {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 1100px) and (min-width: 981px) {
+  .booking-shell {
+    --page: min(calc(100vw - 48px), 860px);
+    grid-template-columns: 1fr;
+  }
+
+  .booking-brand-panel {
+    grid-template-columns: minmax(170px, 260px) minmax(240px, 1fr);
+  }
+
+  .booking-brand-still {
+    grid-row: span 2;
+    justify-self: end;
+    max-width: 360px;
+  }
+}

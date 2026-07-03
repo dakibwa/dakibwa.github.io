@@ -24,6 +24,7 @@ export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
           aria-hidden="true"
           className="brand-wordmark-image"
           height={84}
+          loading="eager"
           priority
           src={publicAssetPath("/visuals/mockup-wordmark-lavender.png")}
           width={192}
@@ -31,12 +32,12 @@ export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
         <span className="sr-only">Português com a Inês</span>
       </Link>
       <nav className="nav-actions" aria-label="Main navigation">
-        <Link href={lessonHref} className="nav-text-link">
+        <Link href={lessonHref} className="nav-text-link nav-lessons-link">
           Lessons
         </Link>
         <Link
           href="/faq"
-          className="nav-text-link"
+          className="nav-text-link nav-faq-link"
           aria-current={currentPage === "faq" ? "page" : undefined}
           aria-label="Frequently asked questions"
         >
