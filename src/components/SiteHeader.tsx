@@ -1,4 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
+import { publicAssetPath } from "@/lib/paths";
 
 type SiteHeaderPage = "home" | "faq" | "book";
 
@@ -7,18 +9,34 @@ type SiteHeaderProps = {
 };
 
 export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
+  const lessonHref = currentPage === "home" ? "#lessons" : "/#lessons";
+
   return (
     <header className="site-header">
-      <Link href="/" className="brand" aria-current={currentPage === "home" ? "page" : undefined} aria-label="Português with Inês home">
-        <span className="brand-mark" aria-hidden="true" />
-        <span className="brand-text">
-          Português with <span className="brand-red">Inês</span>
-        </span>
+      <Link
+        href="/"
+        className="brand"
+        aria-current={currentPage === "home" ? "page" : undefined}
+        aria-label="Português com a Inês home"
+      >
+        <Image
+          alt=""
+          aria-hidden="true"
+          className="brand-wordmark-image"
+          height={84}
+          priority
+          src={publicAssetPath("/visuals/mockup-wordmark-lavender.png")}
+          width={192}
+        />
+        <span className="sr-only">Português com a Inês</span>
       </Link>
       <nav className="nav-actions" aria-label="Main navigation">
+        <Link href={lessonHref} className="nav-text-link">
+          Lessons
+        </Link>
         <Link
           href="/faq"
-          className="faq-tile-button"
+          className="nav-text-link"
           aria-current={currentPage === "faq" ? "page" : undefined}
           aria-label="Frequently asked questions"
         >

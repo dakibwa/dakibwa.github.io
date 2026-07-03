@@ -1,4 +1,4 @@
-export const LESSON_PRICE_CENTS = Number(process.env.LESSON_PRICE_CENTS ?? 1500);
+export const LESSON_PRICE_CENTS = Number(process.env.LESSON_PRICE_CENTS ?? 2500);
 export const LESSON_CURRENCY = process.env.LESSON_CURRENCY ?? "eur";
 
 export type BookingProvider = "square" | "acuity" | "calcom" | "none";

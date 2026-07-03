@@ -1,22 +1,7 @@
 import type { Metadata } from "next";
-import { Fraunces, Manrope } from "next/font/google";
 import type { CSSProperties } from "react";
 import { publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
-
-const heading = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  display: "swap",
-  weight: ["500", "600", "700"]
-});
-
-const body = Manrope({
-  subsets: ["latin"],
-  variable: "--font-body",
-  display: "swap",
-  weight: ["400", "500", "600", "700", "800"]
-});
 
 export const metadata: Metadata = {
   title: "Inês Dias Baía | Português lessons in Porto",
@@ -30,15 +15,22 @@ export const metadata: Metadata = {
 
 const assetVariables = {
   "--asset-azulejo-mark": publicAssetUrl("/visuals/azulejo-mark.svg"),
+  "--asset-card-radial": publicAssetUrl("/visuals/card-radial-lavender.svg"),
+  "--asset-card-wordmark": publicAssetUrl("/visuals/card-wordmark-lavender.svg"),
+  "--asset-mockup-wordmark": publicAssetUrl("/visuals/mockup-wordmark-lavender.png"),
+  "--asset-brand-flower": publicAssetUrl("/visuals/brand-flower-brush.svg"),
+  "--asset-mockup-flower": publicAssetUrl("/visuals/mockup-flower-lavender.png"),
+  "--asset-booking-still": publicAssetUrl("/visuals/lesson-booking-still.webp"),
+  "--asset-hero-strip": publicAssetUrl("/visuals/lesson-hero-strip.webp"),
   "--asset-faq-azulejo-corner": publicAssetUrl("/visuals/faq-azulejo-corner.png"),
-  "--asset-faq-hero-scene": publicAssetUrl("/visuals/faq-hero-scene.png"),
+  "--asset-faq-hero-scene": publicAssetUrl("/visuals/lesson-faq-contact-graphic.webp"),
   "--asset-faq-tile-frame": publicAssetUrl("/visuals/faq-tile-frame.svg")
 } as CSSProperties;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth" style={assetVariables}>
-      <body className={`${body.variable} ${heading.variable}`}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 620" aria-hidden="true">
+  <defs>
+    <filter id="rough" x="-8%" y="-8%" width="116%" height="116%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="14" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </defs>
+  <g fill="#c7a4ff" filter="url(#rough)" transform="translate(310 310)">
+    <circle r="34" />
+    <g>
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(0)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(21)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(42)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(63)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(84)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(105)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(126)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(147)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(168)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(189)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(210)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(231)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(252)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(273)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(294)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(315)" />
+      <rect x="-18" y="-238" width="36" height="172" rx="18" transform="rotate(336)" />
+    </g>
+  </g>
+</svg>
