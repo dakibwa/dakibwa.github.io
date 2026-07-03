@@ -1,4 +1,5 @@
-const rawSiteBasePath = process.env.SITE_BASE_PATH?.replace(/^\/+|\/+$/g, "") ?? "";
+const rawSiteBasePath =
+  (process.env.NEXT_PUBLIC_SITE_BASE_PATH ?? process.env.SITE_BASE_PATH)?.replace(/^\/+|\/+$/g, "") ?? "";
 
 export const SITE_BASE_PATH = rawSiteBasePath ? `/${rawSiteBasePath}` : "";
 
