@@ -6641,9 +6641,9 @@ body {
     align-items: center;
     background: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(0, 21, 111, 0.2);
-    grid-template-columns: 52px minmax(0, 1fr) auto;
+    grid-template-columns: 66px minmax(0, 1fr) auto;
     min-height: 124px;
-    padding: 16px;
+    padding: 18px 20px 18px 18px;
   }
 
   .home-page .pricing-card:first-child {
@@ -6654,13 +6654,14 @@ body {
     align-self: center;
     grid-column: 1;
     grid-row: 1 / span 3;
-    height: 44px;
-    width: 44px;
+    height: 42px;
+    justify-self: center;
+    width: 42px;
   }
 
   .home-page .card-icon svg {
-    height: 40px;
-    width: 40px;
+    height: 38px;
+    width: 38px;
   }
 
   .home-page .pricing-card h3 {
@@ -6737,8 +6738,22 @@ body {
   }
 
   .home-page .pricing-card {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    padding: 14px;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    padding: 16px;
+  }
+
+  .home-page .card-icon {
+    height: 40px;
+    width: 40px;
+  }
+
+  .home-page .card-icon svg {
+    height: 36px;
+    width: 36px;
+  }
+
+  .home-page .price {
+    padding-left: 10px;
   }
 
   .home-page .price span {
