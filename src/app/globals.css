@@ -6527,3 +6527,221 @@ body {
     max-width: 360px;
   }
 }
+
+/* Mobile polish: make the homepage feel deliberately composed, not merely stacked. */
+@media (max-width: 560px) {
+  .home-page {
+    --home-page-width: min(468px, calc(100vw - 36px));
+  }
+
+  .home-page .site-header {
+    gap: 18px;
+    padding: 18px 0 10px;
+  }
+
+  .home-page .brand {
+    width: 208px;
+  }
+
+  .home-page .site-header .nav-actions {
+    align-items: center;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: auto auto minmax(148px, 1fr);
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .home-page .site-header .nav-actions .nav-text-link {
+    font-size: 12px;
+    min-height: 40px;
+    order: 0;
+  }
+
+  .home-page .site-header .nav-actions .book-lesson-button,
+  .home-page .site-header .nav-actions .book-lesson-button:hover,
+  .home-page .site-header .nav-actions .book-lesson-button[aria-current="page"] {
+    display: inline-flex;
+    grid-column: auto;
+    justify-self: end;
+    min-height: 42px;
+    min-width: 148px;
+    order: 0;
+    padding-inline: 14px;
+    width: 156px;
+  }
+
+  .home-page .home-hero {
+    padding: 22px 0 26px;
+  }
+
+  .home-page .hero-copy h1 {
+    font-size: 52px;
+    line-height: 0.92;
+    margin-bottom: 24px;
+    max-width: 360px;
+  }
+
+  .home-page .hero-copy > p {
+    font-size: 18px;
+    line-height: 1.44;
+    max-width: 350px;
+  }
+
+  .home-page .hero-cta-row {
+    gap: 16px;
+    margin-top: 36px;
+    max-width: 330px;
+  }
+
+  .home-page .hero-primary {
+    min-height: 52px;
+    width: 100%;
+  }
+
+  .home-page .see-lessons-link {
+    justify-content: space-between;
+    min-height: 42px;
+    width: 100%;
+  }
+
+  .home-page .hero-radial-mark {
+    opacity: 0.14;
+    right: -116px;
+    top: 318px;
+  }
+
+  .home-page .hero-table-strip {
+    height: 158px;
+  }
+
+  .home-page .pricing-section {
+    gap: 24px;
+    padding-top: 34px;
+  }
+
+  .home-page .pricing-intro h2 {
+    font-size: 46px;
+    line-height: 0.94;
+    max-width: 350px;
+  }
+
+  .home-page .pricing-intro > p:not(.section-kicker) {
+    font-size: 17px;
+    line-height: 1.42;
+    max-width: 320px;
+  }
+
+  .home-page .pricing-grid {
+    gap: 14px;
+    max-width: none;
+  }
+
+  .home-page .pricing-card {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(0, 21, 111, 0.2);
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    min-height: 124px;
+    padding: 16px;
+  }
+
+  .home-page .pricing-card:first-child {
+    border-top: 1px solid rgba(0, 21, 111, 0.2);
+  }
+
+  .home-page .card-icon {
+    align-self: center;
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    height: 44px;
+    width: 44px;
+  }
+
+  .home-page .card-icon svg {
+    height: 40px;
+    width: 40px;
+  }
+
+  .home-page .pricing-card h3 {
+    font-size: 14px;
+    grid-column: 2;
+    grid-row: 1;
+    margin-bottom: 3px;
+  }
+
+  .home-page .card-duration {
+    font-size: 14px;
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .home-page .price {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    justify-self: end;
+    margin: 0;
+    padding-left: 14px;
+  }
+
+  .home-page .price span {
+    font-size: 40px;
+  }
+
+  .home-page .pricing-card-action {
+    grid-column: 2 / 4;
+    height: 38px;
+    justify-self: stretch;
+    margin-top: 12px;
+    width: 100%;
+  }
+
+  .home-page .pricing-corner-mark {
+    bottom: -92px;
+    left: auto;
+    right: -98px;
+  }
+}
+
+@media (max-width: 360px) {
+  .home-page {
+    --home-page-width: calc(100vw - 28px);
+  }
+
+  .home-page .brand {
+    width: 190px;
+  }
+
+  .home-page .site-header .nav-actions {
+    gap: 9px;
+    grid-template-columns: auto auto minmax(136px, 1fr);
+  }
+
+  .home-page .site-header .nav-actions .book-lesson-button,
+  .home-page .site-header .nav-actions .book-lesson-button:hover,
+  .home-page .site-header .nav-actions .book-lesson-button[aria-current="page"] {
+    min-width: 136px;
+    width: 142px;
+  }
+
+  .home-page .hero-copy h1 {
+    font-size: 46px;
+  }
+
+  .home-page .hero-copy > p {
+    font-size: 16px;
+  }
+
+  .home-page .pricing-intro h2 {
+    font-size: 42px;
+  }
+
+  .home-page .pricing-card {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    padding: 14px;
+  }
+
+  .home-page .price span {
+    font-size: 36px;
+  }
+}
