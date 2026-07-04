@@ -6253,8 +6253,9 @@ body {
 .home-page .home-footer {
   align-items: center;
   background:
-    radial-gradient(circle at 82% 44%, rgba(244, 90, 203, 0.28) 0 10%, rgba(244, 90, 203, 0) 28%),
-    linear-gradient(90deg, #c8b0f6 0%, #d8c3ff 56%, #c6adf5 100%);
+    radial-gradient(circle at 82% 18%, rgba(216, 195, 255, 0.2) 0 13%, rgba(216, 195, 255, 0) 34%),
+    linear-gradient(180deg, #001e86 0%, var(--home-blue) 58%, var(--home-blue-deep) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
   color: #fff;
   display: grid;
   gap: clamp(24px, 5vw, 72px);
@@ -6266,33 +6267,36 @@ body {
 }
 
 .home-page .footer-wordmark {
-  filter: brightness(0) invert(1);
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.16));
   height: auto;
-  opacity: 0.98;
+  opacity: 1;
   position: relative;
   width: clamp(170px, 18vw, 220px);
   z-index: 2;
 }
 
 .home-page .home-footer p {
-  color: rgba(255, 255, 255, 0.96);
+  color: rgba(255, 255, 255, 0.94);
   font-size: clamp(18px, 2vw, 24px);
+  font-weight: 500;
   line-height: 1.35;
   margin: 0;
+  max-width: 440px;
   position: relative;
   z-index: 2;
 }
 
 .home-page .home-footer p span {
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(216, 195, 255, 0.96);
   display: block;
   font-size: 0.9em;
 }
 
 .home-page .footer-radial-mark {
   background: var(--asset-mockup-flower) center / contain no-repeat;
+  filter: brightness(1.08);
   height: 250px;
-  opacity: 0.16;
+  opacity: 0.18;
   pointer-events: none;
   position: absolute;
   right: 3vw;
@@ -6701,6 +6705,29 @@ body {
     bottom: -92px;
     left: auto;
     right: -98px;
+  }
+
+  .home-page .home-footer {
+    gap: 22px;
+    min-height: 250px;
+    padding-bottom: 42px;
+    padding-top: 38px;
+  }
+
+  .home-page .footer-wordmark {
+    width: 190px;
+  }
+
+  .home-page .home-footer p {
+    font-size: 20px;
+    line-height: 1.34;
+    max-width: 320px;
+  }
+
+  .home-page .footer-radial-mark {
+    opacity: 0.16;
+    right: -88px;
+    top: 12px;
   }
 }
 
