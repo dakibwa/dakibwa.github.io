@@ -1,8 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Coffee, Sprout } from "lucide-react";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { publicAssetPath } from "@/lib/paths";
 
 const lessonCards = [
   {
@@ -95,20 +94,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="home-footer">
-        <Image
-          alt="Português com a Inês"
-          className="footer-wordmark"
-          height={84}
-          src={publicAssetPath("/visuals/mockup-wordmark-lavender.png")}
-          width={192}
-        />
-        <p>
-          Portuguese lessons in Porto
-          <span>One-to-one. Practical. Personal.</span>
-        </p>
-        <span className="footer-radial-mark" aria-hidden="true" />
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

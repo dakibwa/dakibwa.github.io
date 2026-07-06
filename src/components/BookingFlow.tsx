@@ -5,6 +5,7 @@ import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { CustomSquareBookingFlow } from "@/components/CustomSquareBookingFlow";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { publicAssetPath } from "@/lib/paths";
 import {
@@ -89,7 +90,7 @@ export function BookingFlow() {
   }, []);
 
   return (
-    <main>
+    <main className="book-page">
       <SiteHeader currentPage="book" />
 
       <section className="booking-shell" aria-label="Book a Portuguese lesson">
@@ -177,6 +178,8 @@ export function BookingFlow() {
           )}
         </section>
       </section>
+
+      <SiteFooter />
     </main>
   );
 }

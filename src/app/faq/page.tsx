@@ -13,6 +13,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import { BOOKING_PROVIDER, BOOKING_PROVIDER_NAME, CONTACT_WHATSAPP_URL, formatMoney } from "@/lib/config";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
 const changeBookingAnswer =
@@ -359,6 +360,8 @@ export default function FAQPage() {
           </p>
         </div>
       </section>
+
+      <SiteFooter />
     </main>
   );
 }

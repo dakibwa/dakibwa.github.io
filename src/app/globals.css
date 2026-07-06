@@ -2588,6 +2588,7 @@ h3 {
   display: inline-flex;
   font-weight: 760;
   gap: 5px;
+  min-height: 34px;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -6785,5 +6786,700 @@ body {
 
   .home-page .price span {
     font-size: 36px;
+  }
+}
+
+/* Cross-page Portugal polish: keep FAQ and booking in the same poster system as home. */
+.faq-page,
+.book-page {
+  --home-blue: #00156f;
+  --home-blue-deep: #001154;
+  --home-lavender: #dfccff;
+  --home-lavender-soft: #eee4ff;
+  --home-ink: #00156f;
+  --home-page-width: min(1120px, calc(100vw - 56px));
+  background: var(--home-lavender-soft);
+  color: var(--home-ink);
+  font-family: "Avenir Next", "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+.faq-page .site-header,
+.book-page .site-header {
+  align-items: center;
+  background:
+    radial-gradient(circle at 75% 8%, rgba(64, 101, 203, 0.36) 0 18%, rgba(64, 101, 203, 0) 38%),
+    linear-gradient(180deg, #001e86 0%, var(--home-blue) 100%);
+  border-bottom: 0;
+  box-shadow: none;
+  box-sizing: border-box;
+  gap: 28px;
+  justify-content: space-between;
+  margin: 0;
+  max-width: none;
+  min-height: 98px;
+  padding: 18px max(28px, calc((100vw - var(--home-page-width)) / 2)) 8px;
+  width: 100%;
+}
+
+.faq-page .brand,
+.book-page .brand {
+  flex: 0 0 auto;
+  width: clamp(178px, 20vw, 230px);
+}
+
+.faq-page .brand-wordmark-image,
+.book-page .brand-wordmark-image {
+  height: auto;
+  width: 100%;
+}
+
+.faq-page .nav-actions,
+.book-page .nav-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(18px, 3vw, 40px);
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.faq-page .site-header .nav-actions .nav-text-link,
+.book-page .site-header .nav-actions .nav-text-link {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  min-height: 38px;
+  overflow: visible;
+  padding: 0;
+  text-transform: uppercase;
+}
+
+.faq-page .site-header .nav-actions .nav-text-link::before,
+.faq-page .site-header .nav-actions .nav-text-link::after,
+.book-page .site-header .nav-actions .nav-text-link::before,
+.book-page .site-header .nav-actions .nav-text-link::after,
+.faq-page .site-header .nav-actions .book-lesson-button::before,
+.faq-page .site-header .nav-actions .book-lesson-button::after,
+.book-page .site-header .nav-actions .book-lesson-button::before,
+.book-page .site-header .nav-actions .book-lesson-button::after {
+  display: none;
+}
+
+.faq-page .site-header .nav-actions .nav-text-link:hover,
+.faq-page .site-header .nav-actions .nav-text-link[aria-current="page"],
+.book-page .site-header .nav-actions .nav-text-link:hover,
+.book-page .site-header .nav-actions .nav-text-link[aria-current="page"] {
+  background: transparent;
+  color: #d8c3ff;
+  transform: none;
+}
+
+.faq-page .site-header .nav-actions .book-lesson-button,
+.faq-page .site-header .nav-actions .book-lesson-button:hover,
+.faq-page .site-header .nav-actions .book-lesson-button[aria-current="page"],
+.book-page .site-header .nav-actions .book-lesson-button,
+.book-page .site-header .nav-actions .book-lesson-button:hover,
+.book-page .site-header .nav-actions .book-lesson-button[aria-current="page"] {
+  background: linear-gradient(180deg, #f1e1ff 0%, #d9c2ff 100%);
+  border: 0;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+  color: var(--home-ink);
+  font-size: 13px;
+  font-weight: 900;
+  min-height: 44px;
+  min-width: 166px;
+  overflow: visible;
+  padding: 0 24px;
+  text-transform: uppercase;
+  transform: none;
+}
+
+.faq-page .site-header .nav-actions .book-lesson-button span,
+.book-page .site-header .nav-actions .book-lesson-button span {
+  position: relative;
+  z-index: 1;
+}
+
+.faq-page .faq-hero {
+  background:
+    radial-gradient(circle at 83% 36%, rgba(216, 195, 255, 0.22) 0 16%, rgba(216, 195, 255, 0) 40%),
+    linear-gradient(180deg, var(--home-blue) 0%, var(--home-blue-deep) 100%);
+  border-bottom: 0;
+  color: #fff;
+  overflow: hidden;
+}
+
+.faq-page .faq-hero-inner {
+  align-items: center;
+  grid-template-columns: minmax(0, 0.92fr) minmax(300px, 0.74fr);
+  height: auto;
+  max-width: var(--home-page-width);
+  min-height: 386px;
+}
+
+.faq-page .faq-hero-copy {
+  padding: 42px 0 52px;
+}
+
+.faq-page .faq-hero h1 {
+  color: #fff;
+  font-family: "Avenir Next", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  font-size: clamp(48px, 5.2vw, 68px);
+  font-weight: 900;
+  line-height: 0.96;
+  margin: 0 0 24px;
+  max-width: 590px;
+}
+
+.faq-page .faq-hero p {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(16px, 1.55vw, 19px);
+  line-height: 1.48;
+  max-width: 460px;
+}
+
+.faq-page .faq-hero-scene {
+  background:
+    linear-gradient(90deg, var(--home-blue-deep) 0%, rgba(0, 21, 111, 0.5) 22%, rgba(0, 21, 111, 0) 44%),
+    var(--asset-faq-hero-scene) 58% center / cover no-repeat;
+  border-left: 1px solid rgba(216, 195, 255, 0.18);
+  min-height: 300px;
+}
+
+.faq-page .faq-content-shell {
+  max-width: min(900px, calc(100vw - 56px));
+  padding: 36px 0 42px;
+}
+
+.faq-page .faq-tabs,
+.faq-page .faq-stack-contact,
+.faq-page .faq-accordion {
+  background: rgba(255, 255, 255, 0.38);
+  border: 1px solid rgba(0, 21, 111, 0.18);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.faq-page .faq-tabs {
+  backdrop-filter: none;
+  gap: 10px;
+  padding: 10px;
+  top: 8px;
+}
+
+.faq-page .faq-tabs a {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  color: var(--home-ink);
+  font-weight: 900;
+}
+
+.faq-page .faq-tabs a:hover,
+.faq-page .faq-tabs a.is-active,
+.faq-page .faq-tabs a[aria-current="location"] {
+  background: var(--home-blue);
+  border-color: var(--home-blue);
+  box-shadow: none;
+  color: #fff;
+  transform: none;
+}
+
+.faq-page .faq-tabs svg,
+.faq-page .faq-tabs a:hover svg,
+.faq-page .faq-tabs a.is-active svg,
+.faq-page .faq-tabs a[aria-current="location"] svg,
+.faq-page .faq-section-heading > span,
+.faq-page .faq-stack-contact-icon {
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(0, 21, 111, 0.18);
+  color: currentColor;
+}
+
+.faq-page .faq-stack-contact {
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  margin-bottom: 28px;
+}
+
+.faq-page .faq-stack-contact::before {
+  background: var(--home-blue);
+}
+
+.faq-page .faq-stack-kicker,
+.faq-page .faq-section-heading h2,
+.faq-page .faq-item[data-open="true"] .faq-question-button {
+  color: var(--home-ink);
+  font-family: "Avenir Next", "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+  font-weight: 900;
+}
+
+.faq-page .faq-section-stack {
+  gap: 24px;
+}
+
+.faq-page .faq-section-heading {
+  grid-template-columns: 42px minmax(0, 1fr);
+}
+
+.faq-page .faq-item {
+  border-color: rgba(0, 21, 111, 0.16);
+}
+
+.faq-page .faq-item[data-open="true"] {
+  background: rgba(255, 255, 255, 0.34);
+  box-shadow: inset 4px 0 0 var(--home-blue);
+}
+
+.faq-page .faq-question-button {
+  color: var(--home-ink);
+  font-weight: 750;
+  min-height: 56px;
+}
+
+.faq-page .faq-question-button:hover {
+  background: rgba(255, 255, 255, 0.24);
+  color: var(--home-ink);
+}
+
+.faq-page .faq-answer p {
+  color: rgba(0, 21, 111, 0.78);
+}
+
+.faq-page .faq-contact-button,
+.faq-page .button-primary,
+.faq-page .button-primary:hover {
+  background: linear-gradient(180deg, #f1e1ff 0%, #d9c2ff 100%);
+  border: 0;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+  color: var(--home-ink);
+  font-weight: 900;
+}
+
+.faq-page .faq-booking-band {
+  background:
+    radial-gradient(circle at 16% 38%, rgba(216, 195, 255, 0.2) 0 14%, rgba(216, 195, 255, 0) 34%),
+    linear-gradient(180deg, var(--home-blue) 0%, var(--home-blue-deep) 100%);
+  color: #fff;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 176px)
+    44px
+    minmax(0, 535px)
+    44px
+    minmax(170px, 205px)
+    minmax(0, 1fr);
+}
+
+.faq-page .faq-booking-band-copy h2,
+.faq-page .faq-booking-band-copy p,
+.faq-page .faq-booking-band-action p {
+  color: #fff;
+}
+
+.book-page .booking-shell {
+  --page: min(1180px, calc(100vw - 56px));
+  align-items: stretch;
+  background: var(--home-lavender-soft);
+  gap: 22px;
+  grid-template-columns: minmax(260px, 0.34fr) minmax(0, 1fr);
+  margin: 0 auto;
+  max-width: var(--page);
+  padding: 38px 0 58px;
+}
+
+.book-page .booking-brand-panel {
+  background:
+    radial-gradient(circle at 96% 86%, rgba(216, 195, 255, 0.2) 0 14%, rgba(216, 195, 255, 0) 34%),
+    linear-gradient(180deg, var(--home-blue) 0%, var(--home-blue-deep) 100%);
+  border: 1px solid rgba(216, 195, 255, 0.22);
+  border-radius: 0;
+  box-shadow: none;
+  color: #fff;
+}
+
+.book-page .booking-brand-panel::after {
+  opacity: 0.32;
+}
+
+.book-page .booking-brand-panel p {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.book-page .booking-brand-still {
+  border-radius: 0;
+}
+
+.book-page .booking-calendar-panel {
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(0, 21, 111, 0.18);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.book-page .booking-story h1 {
+  color: var(--home-ink);
+  font-family: "Avenir Next", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 900;
+}
+
+.book-page .booking-story > p {
+  color: rgba(0, 21, 111, 0.72);
+}
+
+.book-page .booking-top-link,
+.book-page .quiet-link,
+.book-page .booking-manage-link a,
+.book-page .slot-grid button {
+  color: var(--home-blue);
+}
+
+.book-page .calendar-grid button.is-selected,
+.book-page .slot-grid button:hover,
+.book-page .slot-grid button.is-selected,
+.book-page .booking-confirm-button {
+  background: var(--home-blue);
+  border-color: var(--home-blue);
+  box-shadow: none;
+  color: #fff;
+}
+
+.book-page .slot-grid button {
+  border-color: var(--home-blue);
+}
+
+@media (max-width: 1180px) {
+  .book-page .booking-shell {
+    --page: min(980px, calc(100vw - 56px));
+    grid-template-columns: 1fr;
+    padding-top: 32px;
+  }
+
+  .book-page .booking-brand-panel {
+    align-items: center;
+    grid-template-columns: minmax(178px, 260px) minmax(0, 1fr);
+  }
+
+  .book-page .booking-brand-still {
+    grid-row: span 2;
+    justify-self: end;
+    max-width: 360px;
+  }
+}
+
+.home-footer {
+  align-items: center;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(216, 195, 255, 0.2) 0 13%, rgba(216, 195, 255, 0) 34%),
+    linear-gradient(180deg, #001e86 0%, #00156f 58%, #001154 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  display: grid;
+  gap: clamp(24px, 5vw, 72px);
+  grid-template-columns: minmax(180px, 250px) minmax(240px, 1fr);
+  min-height: 178px;
+  overflow: hidden;
+  padding: 30px max(28px, calc((100vw - var(--home-page-width, min(1120px, calc(100vw - 56px)))) / 2));
+  position: relative;
+}
+
+.footer-wordmark {
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.16));
+  height: auto;
+  opacity: 1;
+  position: relative;
+  width: clamp(170px, 18vw, 220px);
+  z-index: 2;
+}
+
+.home-footer p {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: 500;
+  line-height: 1.35;
+  margin: 0;
+  max-width: 440px;
+  position: relative;
+  z-index: 2;
+}
+
+.home-footer p span {
+  color: rgba(216, 195, 255, 0.96);
+  display: block;
+  font-size: 0.9em;
+}
+
+.footer-radial-mark {
+  background: var(--asset-mockup-flower) center / contain no-repeat;
+  filter: brightness(1.08);
+  height: 250px;
+  opacity: 0.18;
+  pointer-events: none;
+  position: absolute;
+  right: 3vw;
+  top: -42px;
+  transform: rotate(-8deg);
+  width: 250px;
+}
+
+@media (max-width: 900px) {
+  .faq-page,
+  .book-page {
+    --home-page-width: min(680px, calc(100vw - 32px));
+  }
+
+  .faq-page .site-header,
+  .book-page .site-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+    min-height: 0;
+    padding: 18px max(16px, calc((100vw - var(--home-page-width)) / 2)) 20px;
+  }
+
+  .faq-page .brand,
+  .book-page .brand {
+    width: clamp(168px, 48vw, 214px);
+  }
+
+  .faq-page .site-header .nav-actions,
+  .book-page .site-header .nav-actions {
+    gap: 10px;
+    justify-content: space-between;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .faq-page .faq-hero-inner {
+    display: block;
+    min-height: 0;
+  }
+
+  .faq-page .faq-hero-copy {
+    padding: 34px max(16px, calc((100vw - var(--home-page-width)) / 2)) 30px;
+  }
+
+  .faq-page .faq-hero h1 {
+    font-size: clamp(42px, 11vw, 56px);
+  }
+
+  .faq-page .faq-hero-scene {
+    min-height: 190px;
+  }
+
+  .faq-page .faq-content-shell {
+    max-width: var(--home-page-width);
+    padding: 30px 0 36px;
+  }
+
+  .faq-page .faq-tabs {
+    grid-template-columns: 1fr;
+    position: static;
+  }
+
+  .faq-page .faq-stack-contact {
+    grid-template-columns: 46px minmax(0, 1fr);
+  }
+
+  .faq-page .faq-contact-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .faq-page .faq-booking-band {
+    gap: 20px;
+    grid-template-columns: 1fr;
+    padding: 30px max(16px, calc((100vw - var(--home-page-width)) / 2));
+  }
+
+  .faq-page .faq-booking-band-pattern,
+  .faq-page .faq-booking-band-copy,
+  .faq-page .faq-booking-band-action {
+    grid-column: auto;
+  }
+
+  .faq-page .faq-booking-band-pattern {
+    display: none;
+  }
+
+  .faq-page .faq-booking-band-action .button {
+    width: 100%;
+  }
+
+  .book-page .booking-shell {
+    --page: var(--home-page-width);
+    grid-template-columns: 1fr;
+    padding: 32px 0 42px;
+  }
+
+  .book-page .booking-brand-panel {
+    grid-template-columns: minmax(150px, 240px) minmax(0, 1fr);
+  }
+
+  .book-page .booking-brand-still {
+    grid-row: span 2;
+    justify-self: end;
+    max-width: 340px;
+  }
+
+  .home-footer {
+    gap: 18px;
+    grid-template-columns: 1fr;
+    min-height: 220px;
+    padding: 32px max(16px, calc((100vw - var(--home-page-width, min(680px, calc(100vw - 32px)))) / 2));
+  }
+
+  .footer-radial-mark {
+    opacity: 0.12;
+    right: -70px;
+    top: -10px;
+  }
+}
+
+@media (max-width: 560px) {
+  .faq-page,
+  .book-page {
+    --home-page-width: min(468px, calc(100vw - 36px));
+  }
+
+  .faq-page .site-header,
+  .book-page .site-header {
+    gap: 18px;
+    padding-bottom: 10px;
+  }
+
+  .faq-page .brand,
+  .book-page .brand {
+    width: 208px;
+  }
+
+  .faq-page .site-header .nav-actions,
+  .book-page .site-header .nav-actions {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: auto auto minmax(148px, 1fr);
+  }
+
+  .faq-page .site-header .nav-actions .nav-text-link,
+  .book-page .site-header .nav-actions .nav-text-link {
+    font-size: 12px;
+    min-height: 40px;
+    grid-column: auto;
+    order: 0;
+  }
+
+  .faq-page .site-header .nav-actions .nav-lessons-link,
+  .book-page .site-header .nav-actions .nav-lessons-link {
+    order: 1;
+  }
+
+  .faq-page .site-header .nav-actions .nav-faq-link,
+  .book-page .site-header .nav-actions .nav-faq-link {
+    order: 2;
+  }
+
+  .faq-page .site-header .nav-actions .book-lesson-button,
+  .faq-page .site-header .nav-actions .book-lesson-button:hover,
+  .faq-page .site-header .nav-actions .book-lesson-button[aria-current="page"],
+  .book-page .site-header .nav-actions .book-lesson-button,
+  .book-page .site-header .nav-actions .book-lesson-button:hover,
+  .book-page .site-header .nav-actions .book-lesson-button[aria-current="page"] {
+    grid-column: auto;
+    justify-self: end;
+    min-height: 42px;
+    min-width: 148px;
+    order: 3;
+    padding-inline: 14px;
+    width: 156px;
+  }
+
+  .faq-page .faq-hero-copy {
+    padding-bottom: 28px;
+    padding-top: 28px;
+  }
+
+  .faq-page .faq-hero h1 {
+    font-size: 48px;
+  }
+
+  .faq-page .faq-hero p {
+    font-size: 17px;
+  }
+
+  .faq-page .faq-hero-scene {
+    min-height: 150px;
+  }
+
+  .book-page .booking-brand-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .book-page .booking-brand-still {
+    grid-row: auto;
+    justify-self: stretch;
+    max-width: none;
+  }
+
+  .home-footer {
+    gap: 22px;
+    min-height: 250px;
+    padding-bottom: 42px;
+    padding-top: 38px;
+  }
+
+  .footer-wordmark {
+    width: 190px;
+  }
+
+  .home-footer p {
+    font-size: 20px;
+    line-height: 1.34;
+    max-width: 320px;
+  }
+
+  .footer-radial-mark {
+    opacity: 0.16;
+    right: -88px;
+    top: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .faq-page,
+  .book-page {
+    --home-page-width: calc(100vw - 28px);
+  }
+
+  .faq-page .brand,
+  .book-page .brand {
+    width: 190px;
+  }
+
+  .faq-page .site-header .nav-actions,
+  .book-page .site-header .nav-actions {
+    gap: 9px;
+    grid-template-columns: auto auto minmax(136px, 1fr);
+  }
+
+  .faq-page .site-header .nav-actions .book-lesson-button,
+  .faq-page .site-header .nav-actions .book-lesson-button:hover,
+  .faq-page .site-header .nav-actions .book-lesson-button[aria-current="page"],
+  .book-page .site-header .nav-actions .book-lesson-button,
+  .book-page .site-header .nav-actions .book-lesson-button:hover,
+  .book-page .site-header .nav-actions .book-lesson-button[aria-current="page"] {
+    min-width: 136px;
+    width: 142px;
+  }
+
+  .faq-page .faq-hero h1 {
+    font-size: 44px;
   }
 }
