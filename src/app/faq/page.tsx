@@ -12,6 +12,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import { BOOKING_PROVIDER, BOOKING_PROVIDER_NAME, CONTACT_WHATSAPP_URL, formatMoney } from "@/lib/config";
+import { publicAssetPath } from "@/lib/paths";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -266,7 +267,7 @@ export default function FAQPage() {
           <figure className="faq-hero-scene" aria-hidden="true">
             <Image
               className="brand-card-sticker"
-              src="/visuals/business-card-blue.png"
+              src={publicAssetPath("/visuals/business-card-blue.png")}
               alt=""
               width={1000}
               height={663}
