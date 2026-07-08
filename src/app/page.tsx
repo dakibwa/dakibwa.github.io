@@ -1,5 +1,16 @@
 import Link from "next/link";
-import { ArrowRight, MapPin, MonitorSmartphone, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Coffee,
+  Globe,
+  MapPin,
+  MessageCircle,
+  MonitorSmartphone,
+  Sparkles,
+  Target,
+  Video
+} from "lucide-react";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -31,6 +42,49 @@ const heroPoints = [
   { icon: MapPin, label: "In Porto" },
   { icon: MonitorSmartphone, label: "Online" },
   { icon: Sparkles, label: "Native teacher" }
+];
+
+const credentials = [
+  "Native speaker from Porto",
+  "BA in Languages, Literatures & Cultures",
+  "Teaches in Portuguese & English",
+  "Online & in person"
+];
+
+const reasons = [
+  {
+    icon: Globe,
+    title: "Real European Portuguese",
+    body: "Learn the language spoken in Portugal today — the pronunciation, rhythm and everyday expressions you won't find in a textbook."
+  },
+  {
+    icon: Target,
+    title: "Built around you",
+    body: "Every lesson is one-to-one and tailored to your goals: travel, daily life, work, exams, or moving to Portugal."
+  },
+  {
+    icon: Coffee,
+    title: "Relaxed and practical",
+    body: "A patient, conversation-led approach with gentle correction, so speaking feels natural instead of nerve-wracking."
+  }
+];
+
+const steps = [
+  {
+    icon: CalendarDays,
+    title: "Choose a time",
+    body: "Pick a slot that suits you and book securely online in a couple of clicks."
+  },
+  {
+    icon: Video,
+    title: "Meet Inês",
+    body: "Join by video from anywhere, or in person in Porto, for your one-to-one lesson."
+  },
+  {
+    icon: MessageCircle,
+    title: "Start speaking",
+    body: "Practise real conversations and leave every lesson with Portuguese you can use straight away."
+  }
 ];
 
 export default function Home() {
@@ -93,6 +147,80 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="about-section" aria-labelledby="about-heading">
+        <div className="about-copy">
+          <p className="section-kicker">Your teacher</p>
+          <h2 id="about-heading">Meet Inês</h2>
+          <p>
+            Inês is a native Portuguese speaker, born and based in Porto, with a bachelor&apos;s degree in Languages,
+            Literatures and Cultures. She teaches the European Portuguese people really speak in Portugal — the
+            pronunciation, rhythm and everyday expressions you won&apos;t find in a textbook.
+          </p>
+          <p>
+            Every lesson is one-to-one and shaped around you — your goals, your level and your pace — with gentle
+            correction and plenty of real speaking practice. Explanations can be in Portuguese, English, or a mix, so
+            you&apos;re never left behind.
+          </p>
+          <ul className="credential-list">
+            {credentials.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <figure className="about-medallion" aria-hidden="true">
+          <span className="hero-radial-mark" />
+          <span className="about-stamp">
+            <span>Native speaker in Porto</span>
+          </span>
+        </figure>
+      </section>
+
+      <section className="reasons-section" aria-labelledby="reasons-heading">
+        <div className="section-head">
+          <p className="section-kicker">Why learn with Inês</p>
+          <h2 id="reasons-heading">Portuguese that actually sticks</h2>
+        </div>
+        <div className="reasons-grid">
+          {reasons.map((reason) => {
+            const Icon = reason.icon;
+            return (
+              <article className="reason-card" key={reason.title}>
+                <span className="reason-icon" aria-hidden="true">
+                  <Icon />
+                </span>
+                <h3>{reason.title}</h3>
+                <p>{reason.body}</p>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="steps-section" aria-labelledby="steps-heading">
+        <div className="section-head">
+          <p className="section-kicker">How it works</p>
+          <h2 id="steps-heading">Start in three simple steps</h2>
+        </div>
+        <ol className="steps-grid">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            return (
+              <li className="step-card" key={step.title}>
+                <span className="step-number" aria-hidden="true">
+                  {index + 1}
+                </span>
+                <span className="step-icon" aria-hidden="true">
+                  <Icon />
+                </span>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
       <section className="pricing-section" id="lessons" aria-labelledby="pricing-heading">
         <div className="pricing-intro">
           <p className="section-kicker">Lessons</p>
@@ -122,6 +250,20 @@ export default function Home() {
               </span>
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section className="closing-cta" aria-labelledby="closing-heading">
+        <span className="closing-radial" aria-hidden="true" />
+        <div className="closing-copy">
+          <h2 id="closing-heading">Ready to start speaking Portuguese?</h2>
+          <p>Book a trial lesson — 45 minutes, online or in Porto — and see how it feels.</p>
+        </div>
+        <div className="closing-action">
+          <Link className="button button-primary" href="/book">
+            Book a lesson
+          </Link>
+          <span className="closing-note">Secure online booking</span>
         </div>
       </section>
 

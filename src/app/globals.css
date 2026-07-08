@@ -367,7 +367,8 @@ svg {
 /* Radial "sunburst" mark from the original cards — code-native */
 .hero-radial-mark,
 .footer-radial-mark,
-.pricing-corner-mark {
+.pricing-corner-mark,
+.closing-radial {
   background:
     repeating-conic-gradient(
       from 0deg,
@@ -611,6 +612,287 @@ svg {
 
 .pricing-card:hover .pricing-card-action svg {
   transform: translateX(3px);
+}
+
+/* ---------- Section heads (shared) ------------------------------------- */
+
+.section-head {
+  max-width: 48ch;
+  margin: 0 auto clamp(2rem, 4vw, 2.8rem);
+  text-align: center;
+}
+
+.section-head h2 {
+  margin-top: 0.6rem;
+  font-size: clamp(1.9rem, 1.5rem + 1.8vw, 2.9rem);
+  font-weight: 800;
+}
+
+/* ---------- About Inês -------------------------------------------------- */
+
+.about-section {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: clamp(1.8rem, 4vw, 3.5rem);
+  align-items: center;
+  padding: clamp(3rem, 6vw, 5rem) clamp(0.5rem, 2vw, 1.5rem);
+}
+
+.about-copy h2 {
+  font-size: clamp(1.9rem, 1.5rem + 1.8vw, 2.9rem);
+  font-weight: 800;
+  margin-bottom: 1.1rem;
+}
+
+.about-copy > p {
+  color: rgba(8, 43, 36, 0.8);
+  margin-bottom: 1rem;
+  max-width: 58ch;
+  font-size: 1.05rem;
+}
+
+.credential-list {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.5rem;
+}
+
+.credential-list li {
+  position: relative;
+  padding-left: 1.1rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--green-deep);
+}
+
+.credential-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+
+.about-medallion {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-lg);
+  background: var(--green-deep);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.about-medallion .hero-radial-mark {
+  color: var(--lavender);
+  background: repeating-conic-gradient(from 0deg, currentColor 0deg 1.6deg, transparent 1.6deg 4.6deg);
+}
+
+.about-stamp {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(128px, 48%, 168px);
+  aspect-ratio: 1 / 1;
+  border: 3px solid var(--coral);
+  border-radius: 50%;
+  color: var(--coral);
+  text-align: center;
+  background: var(--paper);
+  box-shadow: 0 10px 28px rgba(8, 43, 36, 0.2);
+}
+
+.about-stamp::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(255, 107, 53, 0.45);
+  border-radius: 50%;
+}
+
+.about-stamp span {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-size: 0.74rem;
+  max-width: 8ch;
+  line-height: 1.4;
+}
+
+/* ---------- Why / reasons ---------------------------------------------- */
+
+.reasons-section {
+  padding: clamp(3rem, 6vw, 4.5rem) clamp(1.4rem, 3vw, 2.6rem);
+  background: var(--mint);
+  border-radius: var(--radius-lg);
+  margin: 1rem 0;
+}
+
+.reasons-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(1.5rem, 3vw, 2.4rem);
+}
+
+.reason-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.reason-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: var(--lavender-light);
+  color: var(--azulejo);
+  margin-bottom: 1.1rem;
+}
+
+.reason-icon svg {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.reason-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.reason-card p {
+  color: rgba(8, 43, 36, 0.74);
+  font-size: 1rem;
+}
+
+/* ---------- How it works ----------------------------------------------- */
+
+.steps-section {
+  padding: clamp(3rem, 6vw, 5rem) clamp(0.5rem, 2vw, 1.5rem);
+}
+
+.steps-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(1.6rem, 3vw, 2.6rem);
+}
+
+.step-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.step-number {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  box-shadow: 0 6px 14px rgba(255, 107, 53, 0.3);
+}
+
+.step-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--lavender-light);
+  color: var(--green-deep);
+  margin: 1rem 0 0.9rem;
+}
+
+.step-icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.step-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.step-card p {
+  color: rgba(8, 43, 36, 0.74);
+}
+
+/* ---------- Closing CTA ------------------------------------------------- */
+
+.closing-cta {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.6rem;
+  margin: 1rem 0 0;
+  padding: clamp(2.2rem, 5vw, 3.4rem);
+  background: var(--lavender-light);
+  border: 1px solid rgba(166, 165, 218, 0.45);
+  border-radius: var(--radius-lg);
+}
+
+.closing-radial {
+  position: absolute;
+  top: -70px;
+  right: -40px;
+  width: 210px;
+  height: 210px;
+  color: rgba(166, 165, 218, 0.55);
+  pointer-events: none;
+}
+
+.closing-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 42ch;
+}
+
+.closing-copy h2 {
+  font-size: clamp(1.7rem, 1.4rem + 1.4vw, 2.4rem);
+  font-weight: 800;
+}
+
+.closing-copy p {
+  margin-top: 0.6rem;
+  color: rgba(8, 43, 36, 0.78);
+  font-size: 1.05rem;
+}
+
+.closing-action {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.closing-note {
+  font-size: 0.85rem;
+  color: rgba(8, 43, 36, 0.6);
 }
 
 /* ---------- Footer ------------------------------------------------------ */
@@ -1486,6 +1768,22 @@ svg {
     grid-template-columns: 1fr;
   }
 
+  .about-section {
+    grid-template-columns: 1fr;
+  }
+
+  .about-medallion {
+    order: -1;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .reasons-grid,
+  .steps-grid {
+    grid-template-columns: 1fr;
+    gap: 1.8rem;
+  }
+
   .booking-shell {
     grid-template-columns: 1fr;
   }
@@ -1566,7 +1864,8 @@ svg {
     align-items: flex-start;
   }
 
-  .home-footer {
+  .home-footer,
+  .closing-cta {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1618,7 +1917,13 @@ svg {
     .pricing-intro,
     .faq-section-group,
     .booking-brand-panel,
-    .booking-calendar-panel {
+    .booking-calendar-panel,
+    .about-copy,
+    .about-medallion,
+    .section-head,
+    .reason-card,
+    .step-card,
+    .closing-cta {
       animation: revealUp linear both;
       animation-timeline: view();
       animation-range: entry 2% entry 40%;
