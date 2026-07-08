@@ -1,6 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
-import { publicAssetPath } from "@/lib/paths";
+import { BrandWordmark } from "@/components/BrandWordmark";
 
 type SiteHeaderPage = "home" | "faq" | "book";
 
@@ -9,8 +8,6 @@ type SiteHeaderProps = {
 };
 
 export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
-  const lessonHref = currentPage === "home" ? "#lessons" : "/#lessons";
-
   return (
     <header className="site-header">
       <Link
@@ -19,22 +16,9 @@ export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
         aria-current={currentPage === "home" ? "page" : undefined}
         aria-label="Português com a Inês home"
       >
-        <Image
-          alt=""
-          aria-hidden="true"
-          className="brand-wordmark-image"
-          height={84}
-          loading="eager"
-          priority
-          src={publicAssetPath("/visuals/mockup-wordmark-lavender.png")}
-          width={192}
-        />
-        <span className="sr-only">Português com a Inês</span>
+        <BrandWordmark priority className="header-wordmark" />
       </Link>
       <nav className="nav-actions" aria-label="Main navigation">
-        <Link href={lessonHref} className="nav-text-link nav-lessons-link">
-          Lessons
-        </Link>
         <Link
           href="/faq"
           className="nav-text-link nav-faq-link"

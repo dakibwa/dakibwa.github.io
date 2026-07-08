@@ -4,7 +4,7 @@ A simple, friendly site for Inês Dias Baía, a Portuguese teacher in Porto. The
 
 The current implementation keeps Square as the booking source of truth, but the preferred booking surface is a custom calendar-style screen inside `/book` backed by a separate Cloudflare Worker/Square API adapter. The hosted Square page remains the fallback and manage-booking route.
 
-For the project history and design/product decisions from the Codex conversation, see [conversation-brief.md](./conversation-brief.md).
+For the project history and design/product decisions from the Codex conversation, see [conversation-brief.md](./conversation-brief.md). For the latest design reset and future rebuild brief, start with [docs-design-reset-audit-2026-07-07.md](./docs-design-reset-audit-2026-07-07.md), [docs-future-perfect-site-brief.md](./docs-future-perfect-site-brief.md), and [design/README.md](./design/README.md).
 
 ## What is included
 

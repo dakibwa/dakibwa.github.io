@@ -1,5 +1,17 @@
 # Conversation Brief
 
+## 2026-07-07 Design Reset Note
+
+The attempted generated-asset redesign was rejected and cleaned up. Treat it as discarded work, not a source to revive.
+
+For the current clean asset baseline and next-build instructions, read:
+
+- [docs-design-reset-audit-2026-07-07.md](./docs-design-reset-audit-2026-07-07.md)
+- [docs-future-perfect-site-brief.md](./docs-future-perfect-site-brief.md)
+- [design/README.md](./design/README.md)
+
+The historical booking notes below are useful context, but the current repo docs/code now include a Square custom-booking direction. Before changing booking behavior, verify the active provider decision.
+
 This project began in the wrong scratch folder:
 
 `/Users/danatkinson/Documents/Akibwa/projects/ines-portuguese-lessons`

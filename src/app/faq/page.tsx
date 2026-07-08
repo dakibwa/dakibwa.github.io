@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState, type MouseEvent } from "react";
 import {
   BarChart3,
@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Clock3,
   CreditCard,
-  LockKeyhole,
   MapPin,
   MessageCircle
 } from "lucide-react";
@@ -264,7 +263,16 @@ export default function FAQPage() {
             <h1 id="faq-title">Questions before booking?</h1>
             <p>Everything you need to know about lessons, payment, rescheduling, location, and what to expect.</p>
           </div>
-          <div className="faq-hero-scene" aria-hidden="true" />
+          <figure className="faq-hero-scene" aria-hidden="true">
+            <Image
+              className="brand-card-sticker"
+              src="/visuals/business-card-blue.png"
+              alt=""
+              width={1000}
+              height={663}
+              sizes="(max-width: 900px) 0px, 320px"
+            />
+          </figure>
         </div>
       </section>
 
@@ -341,23 +349,6 @@ export default function FAQPage() {
               </section>
             );
           })}
-        </div>
-      </section>
-
-      <section className="faq-booking-band" aria-label="Ready to book">
-        <div className="faq-booking-band-pattern" aria-hidden="true" />
-        <div className="faq-booking-band-copy">
-          <h2>Ready to book?</h2>
-          <p>Choose a time and book your first lesson online.</p>
-        </div>
-        <div className="faq-booking-band-action">
-          <Link className="button button-primary" href="/book">
-            Book a lesson
-          </Link>
-          <p>
-            <LockKeyhole aria-hidden="true" />
-            <span>Secure booking &amp; payment</span>
-          </p>
         </div>
       </section>
 

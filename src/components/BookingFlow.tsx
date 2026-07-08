@@ -1,13 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
+import { BrandWordmark } from "@/components/BrandWordmark";
 import { CustomSquareBookingFlow } from "@/components/CustomSquareBookingFlow";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { publicAssetPath } from "@/lib/paths";
 import {
   BOOKING_DIRECT_URL,
   BOOKING_EMBED_URL,
@@ -95,22 +94,14 @@ export function BookingFlow() {
 
       <section className="booking-shell" aria-label="Book a Portuguese lesson">
         <aside className="booking-brand-panel" aria-label="Português com a Inês lesson style">
-          <Image
-            alt="Português com a Inês"
-            className="booking-brand-wordmark"
-            height={90}
-            src={publicAssetPath("/visuals/card-wordmark-lavender.svg")}
-            width={252}
-          />
-          <Image
-            alt="Portuguese lesson notebook, blue pen, ceramic cup, and lavender radial card"
-            className="booking-brand-still"
-            height={1024}
-            priority
-            src={publicAssetPath("/visuals/lesson-booking-still.webp")}
-            width={1536}
-          />
+          <BrandWordmark className="booking-brand-wordmark" />
+          <span className="booking-brand-still" aria-hidden="true" />
           <p>Pick a time that works for you. Inês will meet you with practical European Portuguese, gentle correction, and useful everyday phrases.</p>
+          <ul className="booking-brand-points">
+            <li>One-to-one, tailored to your goals</li>
+            <li>Online or in person in Porto</li>
+            <li>Native speaker · European Portuguese</li>
+          </ul>
         </aside>
         <section className="booking-calendar-panel" aria-label="Embedded lesson booking">
           <div className="booking-panel-top">
