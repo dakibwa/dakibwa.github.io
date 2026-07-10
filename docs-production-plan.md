@@ -34,7 +34,7 @@ NEXT_PUBLIC_RESCHEDULE_FEE_MODE=policy-only
 
 Use `Europe/Lisbon` as the policy clock. A change is free when it is requested on any calendar day before the lesson date. A EUR 5 fee applies only when the request date and original lesson date are the same in Porto time. This is not the same as a rolling 24-hour cutoff.
 
-The website now exposes the rule consistently on `/`, `/book`, and `/faq`, and routes existing students to Square to change a booking. Before launch, replace `policy-only` with one of these reviewed operating modes:
+The website now exposes the rule consistently on `/`, `/book`, and `/faq`. Existing students use the reschedule link in their Square confirmation email; the site also sends them to the Square page, where the menu exposes sign-in. Before launch, replace `policy-only` with one of these reviewed operating modes:
 
 - `manual`: Inês validates the date and collects the EUR 5 fee in Square for same-day changes.
 - `square-policy`: Square Appointments Plus or Premium has card-on-file cancellation protection and a flat EUR 5 fee configured. Native enforcement is cutoff-based and discretionary, so only apply it when the exact Porto calendar-day rule is met.

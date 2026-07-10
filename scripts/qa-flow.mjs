@@ -63,6 +63,7 @@ assertIncludes(homeText, "€5 fee", "homepage same-day fee");
 assertIncludes(faqText, "same calendar day", "FAQ same-day definition");
 assertIncludes(bookingText, "Move to any available time", "booking flexibility policy");
 assertIncludes(bookingText, "€5 fee", "booking same-day fee");
+assertIncludes(bookingText, "Open Square to sign in", "booking management route");
 
 if (expectCustomBooking && !customBookingConfigured) {
   throw new Error("Expected the custom Square booking calendar in custom-square mode.");

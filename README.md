@@ -55,7 +55,7 @@ The student-facing rule is deliberately precise:
 - Changes made before the calendar day of the lesson are free.
 - A EUR 5 fee applies when the change is made on the lesson day itself, using `Europe/Lisbon` (Porto) time.
 
-The homepage, booking page, and FAQ now use that same wording. Students change an existing booking from their Square confirmation or the **Change a booking** link on `/book`.
+The homepage, booking page, and FAQ now use that same wording. The quickest route is the reschedule link in the student’s Square confirmation email. `/book` also links to the Square page, where an existing student can open the menu and sign in.
 
 Before production, choose one operational mode:
 

@@ -134,13 +134,13 @@ export function BookingFlow() {
               <p className="booking-policy-kicker">Flexible rescheduling</p>
               <strong>Move to any available time</strong>
               <p>
-                Changes are free before the day of your lesson. If you reschedule on the lesson day itself, a {sameDayFee}{" "}
-                fee applies.
+                Use the link in your confirmation email to choose another time. Changes are free before the lesson day;
+                a {sameDayFee} fee applies on the day itself.
               </p>
             </div>
             {bookingDirectUrl ? (
               <a className="booking-policy-action" href={bookingDirectUrl} target="_blank" rel="noreferrer">
-                Change a booking
+                Open Square to sign in
                 <ExternalLink size={15} aria-hidden="true" />
               </a>
             ) : null}

@@ -428,7 +428,7 @@ export function CustomSquareBookingFlow() {
           <p className="booking-manage-link">
             Already have a booking?{" "}
             <a href={hostedBookingUrl} target="_blank" rel="noreferrer">
-              Open it to reschedule <ExternalLink size={14} aria-hidden="true" />
+              Open Square to sign in <ExternalLink size={14} aria-hidden="true" />
             </a>
           </p>
         ) : null}
