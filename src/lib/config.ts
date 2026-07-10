@@ -1,8 +1,16 @@
-export const LESSON_PRICE_CENTS = Number(process.env.LESSON_PRICE_CENTS ?? 2500);
+export const LESSON_PRICE_CENTS = Number(
+  process.env.NEXT_PUBLIC_LESSON_PRICE_CENTS ?? process.env.LESSON_PRICE_CENTS ?? 2500
+);
 export const LESSON_CURRENCY = process.env.LESSON_CURRENCY ?? "eur";
+export const LESSON_DURATION_MINUTES = Number(process.env.NEXT_PUBLIC_LESSON_DURATION_MINUTES ?? 45);
+export const SAME_DAY_RESCHEDULE_FEE_CENTS = Number(
+  process.env.NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS ?? 500
+);
+export const BOOKING_TIME_ZONE = "Europe/Lisbon";
 
 export type BookingProvider = "square" | "acuity" | "calcom" | "none";
 export type BookingMode = "auto" | "custom-square" | "square-hosted";
+export type RescheduleFeeMode = "manual" | "policy-only" | "square-policy";
 
 function normalizePublicHttpUrl(value: string) {
   const trimmed = value.trim();
@@ -22,6 +30,11 @@ function normalizePublicHttpUrl(value: string) {
 function normalizeBookingMode(value: string): BookingMode {
   if (value === "auto" || value === "square-hosted") return value;
   return "custom-square";
+}
+
+function normalizeRescheduleFeeMode(value: string): RescheduleFeeMode {
+  if (value === "manual" || value === "square-policy") return value;
+  return "policy-only";
 }
 
 export function normalizeCalComLink(value: string) {
@@ -109,6 +122,9 @@ export const ACUITY_SCHEDULER_URL = normalizeAcuitySchedulerUrl(
 );
 export const SQUARE_BOOKING_URL = normalizeSquareBookingUrl(process.env.NEXT_PUBLIC_SQUARE_BOOKING_URL ?? "");
 export const BOOKING_MODE = normalizeBookingMode(process.env.NEXT_PUBLIC_BOOKING_MODE ?? "");
+export const RESCHEDULE_FEE_MODE = normalizeRescheduleFeeMode(
+  process.env.NEXT_PUBLIC_RESCHEDULE_FEE_MODE ?? ""
+);
 export const BOOKING_API_BASE_URL = normalizePublicHttpUrl(process.env.NEXT_PUBLIC_BOOKING_API_BASE_URL ?? "");
 export const USE_CUSTOM_SQUARE_BOOKING =
   BOOKING_MODE === "custom-square" || (BOOKING_MODE === "auto" && Boolean(BOOKING_API_BASE_URL));
@@ -149,4 +165,14 @@ export function formatMoney(cents = LESSON_PRICE_CENTS, currency = LESSON_CURREN
     currency: currency.toUpperCase(),
     maximumFractionDigits: 0
   }).format(cents / 100);
+}
+
+export function formatLessonDuration(minutes = LESSON_DURATION_MINUTES) {
+  if (minutes < 60) return `${minutes} minutes`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  const hourLabel = `${hours} ${hours === 1 ? "hour" : "hours"}`;
+
+  return remainingMinutes ? `${hourLabel} ${remainingMinutes} minutes` : hourLabel;
 }

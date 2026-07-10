@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ExternalLink, RefreshCcw } from "lucide-react";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { CustomSquareBookingFlow } from "@/components/CustomSquareBookingFlow";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -12,7 +12,9 @@ import {
   BOOKING_EMBED_URL,
   BOOKING_PROVIDER,
   CALCOM_LINK,
-  USE_CUSTOM_SQUARE_BOOKING
+  SAME_DAY_RESCHEDULE_FEE_CENTS,
+  USE_CUSTOM_SQUARE_BOOKING,
+  formatMoney
 } from "@/lib/config";
 
 type CalCommandArgs = unknown[];
@@ -40,6 +42,7 @@ const isCalCom = bookingProvider === "calcom";
 const isAccountScheduler = isSquare || isAcuity;
 const isHostedSquare = isSquare && !USE_CUSTOM_SQUARE_BOOKING;
 const showTopExternalLink = Boolean(bookingDirectUrl && !isSquare);
+const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 
 function loadCalEmbed() {
   if (window.Cal) {
@@ -96,11 +99,11 @@ export function BookingFlow() {
         <aside className="booking-brand-panel" aria-label="Português com a Inês lesson style">
           <BrandWordmark className="booking-brand-wordmark" />
           <span className="booking-brand-still" aria-hidden="true" />
-          <p>Pick a time that works for you. Inês will meet you with practical European Portuguese, gentle correction, and useful everyday phrases.</p>
+          <p>Pick a time that works for you. If plans change, move your lesson to another available time with one clear, simple policy.</p>
           <ul className="booking-brand-points">
             <li>One-to-one, tailored to your goals</li>
             <li>Online or in person in Porto</li>
-            <li>Native speaker · European Portuguese</li>
+            <li>Flexible changes to any open time</li>
           </ul>
         </aside>
         <section className="booking-calendar-panel" aria-label="Embedded lesson booking">
@@ -109,7 +112,7 @@ export function BookingFlow() {
               <h1>{USE_CUSTOM_SQUARE_BOOKING ? "Book your Portuguese lesson" : isHostedSquare ? "Book inside this page" : isAccountScheduler ? "Book or manage a lesson" : "Book your first Portuguese lesson"}</h1>
               <p>
                 {USE_CUSTOM_SQUARE_BOOKING
-                  ? "Choose a day, pick a time, and enter your details. The lesson is created through Inês's Square calendar."
+                  ? "Choose an available day, pick a time, and enter your details. All times are shown in Porto time."
                   : isHostedSquare
                     ? "Choose a time below. Square handles the secure confirmation while the flow stays embedded here where possible."
                   : isAccountScheduler
@@ -120,6 +123,25 @@ export function BookingFlow() {
             {showTopExternalLink ? (
               <a className="booking-top-link" href={bookingDirectUrl} target="_blank" rel="noreferrer">
                 Open in new tab
+              </a>
+            ) : null}
+          </div>
+          <div className="booking-policy-banner" id="change-booking">
+            <span className="booking-policy-icon" aria-hidden="true">
+              <RefreshCcw />
+            </span>
+            <div className="booking-policy-copy">
+              <p className="booking-policy-kicker">Flexible rescheduling</p>
+              <strong>Move to any available time</strong>
+              <p>
+                Changes are free before the day of your lesson. If you reschedule on the lesson day itself, a {sameDayFee}{" "}
+                fee applies.
+              </p>
+            </div>
+            {bookingDirectUrl ? (
+              <a className="booking-policy-action" href={bookingDirectUrl} target="_blank" rel="noreferrer">
+                Change a booking
+                <ExternalLink size={15} aria-hidden="true" />
               </a>
             ) : null}
           </div>

@@ -15,7 +15,13 @@ import {
   Phone,
   UserRound
 } from "lucide-react";
-import { BOOKING_API_BASE_URL, SQUARE_BOOKING_URL, formatMoney } from "@/lib/config";
+import {
+  BOOKING_API_BASE_URL,
+  LESSON_DURATION_MINUTES,
+  SQUARE_BOOKING_URL,
+  formatLessonDuration,
+  formatMoney
+} from "@/lib/config";
 
 type BookingSlot = {
   id: string;
@@ -136,15 +142,14 @@ export function CustomSquareBookingFlow() {
       })
       .then((slotsByDate) => {
         setLiveSlots(slotsByDate);
-        const hasSelectedDate = selectedDate && slotsByDate[selectedDate]?.length;
         const firstDate = Object.keys(slotsByDate)
           .sort()
           .find((dateKey) => dateKey >= todayKey);
 
-        if (!hasSelectedDate && firstDate) {
-          setSelectedDate(firstDate);
-          setSelectedSlotId("");
-        }
+        setSelectedDate((currentDate) =>
+          currentDate && slotsByDate[currentDate]?.length ? currentDate : firstDate ?? currentDate
+        );
+        setSelectedSlotId("");
       })
       .catch((error: Error) => {
         if (controller.signal.aborted) return;
@@ -156,7 +161,7 @@ export function CustomSquareBookingFlow() {
       });
 
     return () => controller.abort();
-  }, [monthKey, ready, selectedDate, todayKey]);
+  }, [monthKey, ready, todayKey]);
 
   const slotsByDate = apiBaseUrl ? liveSlots : demoSlots;
   const selectedSlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
@@ -229,7 +234,7 @@ export function CustomSquareBookingFlow() {
 
       setSubmitState({
         bookingId: data.bookingId,
-        message: "Booked. Square has accepted the appointment.",
+        message: "Booked. Check your email for the confirmation and change-booking link.",
         status: "success"
       });
     } catch (error) {
@@ -245,7 +250,7 @@ export function CustomSquareBookingFlow() {
       <div className="calendar-column">
         <div className="calendar-section-heading">
           <h2>Choose a day</h2>
-          <p>Blue dates have bookable times.</p>
+          <p>Outlined dates have bookable times.</p>
         </div>
 
         <div className="calendar-month-nav">
@@ -270,7 +275,7 @@ export function CustomSquareBookingFlow() {
             const hasSlots = slots.length > 0;
             const isSelected = selectedDate === day.dateKey;
             const isPast = day.dateKey < todayKey;
-            const disabled = isPast || (!hasSlots && apiBaseUrl !== "");
+            const disabled = isPast || !hasSlots;
 
             return (
               <button
@@ -292,7 +297,7 @@ export function CustomSquareBookingFlow() {
           <span aria-hidden="true" />
           <p>
             {apiBaseUrl
-              ? "Times come from the Square API adapter."
+              ? "Live availability · Porto time"
               : "Preview mode is showing sample slots until the Square API is connected."}
           </p>
         </div>
@@ -338,7 +343,7 @@ export function CustomSquareBookingFlow() {
             <h3>Portuguese lesson</h3>
             <p>
               <Clock3 size={18} aria-hidden="true" />
-              1 hr 15 mins
+              {formatLessonDuration(selectedSlot?.durationMinutes ?? LESSON_DURATION_MINUTES)}
             </p>
             <p>
               <CalendarDays size={18} aria-hidden="true" />
@@ -423,7 +428,7 @@ export function CustomSquareBookingFlow() {
           <p className="booking-manage-link">
             Already have a booking?{" "}
             <a href={hostedBookingUrl} target="_blank" rel="noreferrer">
-              Manage it in Square <ExternalLink size={14} aria-hidden="true" />
+              Open it to reschedule <ExternalLink size={14} aria-hidden="true" />
             </a>
           </p>
         ) : null}
@@ -476,10 +481,10 @@ function makeDemoSlot(dateKey: string, time: string): BookingSlot {
   const start = parseDateKey(dateKey);
   start.setHours(hour, minute, 0, 0);
   const end = new Date(start);
-  end.setMinutes(start.getMinutes() + 75);
+  end.setMinutes(start.getMinutes() + LESSON_DURATION_MINUTES);
 
   return {
-    durationMinutes: 75,
+    durationMinutes: LESSON_DURATION_MINUTES,
     endAt: end.toISOString(),
     id: `preview-${dateKey}-${time}`,
     startAt: start.toISOString()

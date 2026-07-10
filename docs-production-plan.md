@@ -25,7 +25,21 @@ NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-api.dakibwa.workers.dev
 NEXT_PUBLIC_SQUARE_BOOKING_URL=https://squareup.com/appointments/book/...
 LESSON_PRICE_CENTS=1500
 LESSON_CURRENCY=eur
+NEXT_PUBLIC_LESSON_DURATION_MINUTES=45
+NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
+NEXT_PUBLIC_RESCHEDULE_FEE_MODE=policy-only
 ```
+
+## Flexible Rescheduling Contract
+
+Use `Europe/Lisbon` as the policy clock. A change is free when it is requested on any calendar day before the lesson date. A EUR 5 fee applies only when the request date and original lesson date are the same in Porto time. This is not the same as a rolling 24-hour cutoff.
+
+The website now exposes the rule consistently on `/`, `/book`, and `/faq`, and routes existing students to Square to change a booking. Before launch, replace `policy-only` with one of these reviewed operating modes:
+
+- `manual`: Inês validates the date and collects the EUR 5 fee in Square for same-day changes.
+- `square-policy`: Square Appointments Plus or Premium has card-on-file cancellation protection and a flat EUR 5 fee configured. Native enforcement is cutoff-based and discretionary, so only apply it when the exact Porto calendar-day rule is met.
+
+Do not approximate the promise with a 24-hour cutoff. Exact automatic self-service enforcement is a later architecture phase because it needs authenticated booking access, verified payment state, and a Bookings API update. Square documents cancellation policy and fees as a Plus/Premium feature, and seller-level `UpdateBooking` calls also require Plus or Premium.
 
 ## Square API Adapter
 
@@ -35,7 +49,7 @@ Deploy `workers/square-booking-worker.mjs` as a separate Cloudflare Worker. Stor
 
 ## Account Connection Boundary
 
-Calendar, confirmation emails, reschedule/cancel rules, and client account behavior belong inside Square. The website should not host its own Stripe OAuth flow, store Stripe API keys, store Square access tokens, store booking/payment state, or receive booking/payment webhooks until there is a deliberate backend data model.
+Calendar, confirmation emails, the existing-booking link, and client account behavior belong inside Square. The website should not host its own Stripe OAuth flow, store Stripe API keys, store Square access tokens, store booking/payment state, or receive booking/payment webhooks until there is a deliberate backend data model.
 
 In-site prepayment is a separate phase. Square bookings and Square payments are not one atomic API call, so payment would need Square Web Payments SDK plus a Worker endpoint that authorizes payment, creates the booking, then captures or voids the payment depending on booking success.
 

@@ -22,6 +22,7 @@ await page.goto(base, { waitUntil: "networkidle" });
 await page.screenshot({ path: path.join(outDir, "landing-desktop.png"), fullPage: true });
 const heroText = await page.locator("h1").first().textContent();
 const homeNavText = await page.locator(".site-header").innerText();
+const homeText = await page.locator(".home-page").innerText();
 
 await page.setViewportSize({ width: 390, height: 900 });
 await page.goto(base, { waitUntil: "networkidle" });
@@ -56,6 +57,12 @@ const bookingHeading = await page.locator("h1").first().textContent();
 const bookingEmbedConfigured = (await page.locator(".booking-embed-frame").count()) > 0;
 const customBookingConfigured = (await page.locator(".custom-booking-calendar").count()) > 0;
 const bookingText = await page.locator(".booking-shell").innerText();
+
+assertIncludes(homeText, "Plans change. Your lesson can too.", "homepage flexibility message");
+assertIncludes(homeText, "€5 fee", "homepage same-day fee");
+assertIncludes(faqText, "same calendar day", "FAQ same-day definition");
+assertIncludes(bookingText, "Move to any available time", "booking flexibility policy");
+assertIncludes(bookingText, "€5 fee", "booking same-day fee");
 
 if (expectCustomBooking && !customBookingConfigured) {
   throw new Error("Expected the custom Square booking calendar in custom-square mode.");
@@ -95,4 +102,10 @@ console.log(
 function normalizeBookingMode(value) {
   if (value === "auto" || value === "square-hosted") return value;
   return "custom-square";
+}
+
+function assertIncludes(value, expected, label) {
+  if (!value.includes(expected)) {
+    throw new Error(`Missing ${label}: ${expected}`);
+  }
 }

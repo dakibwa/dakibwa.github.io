@@ -11,6 +11,14 @@ The custom Square booking flow keeps this Next.js site as a static GitHub Pages 
 - Square remains the source of truth for confirmed appointments, customer records, reschedule/cancel rules, and emails.
 - Appointment prepayment is not covered by this adapter. If prepayment must also happen inside the site, add Square Web Payments SDK plus a Payments API endpoint as a separate phase and test how the payment record is reconciled with the booking.
 
+## Same-day rescheduling
+
+The public contract uses Porto calendar days, not a rolling number of hours: rescheduling is free before the lesson date and costs EUR 5 when requested on the lesson date itself. The site links students back to Square to choose another available time.
+
+Set `NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual` when Inês will validate and collect same-day fees in Square, or `square-policy` only after Square Appointments Plus/Premium cancellation protection is configured. Keep `policy-only` for local previews; the production booking check rejects it.
+
+Square's native cancellation policy is cutoff-based and discretionary rather than an exact automatic calendar-day rescheduling charge. A truly automatic version needs authenticated booking access, verified payment completion, and an `UpdateBooking` call; seller-level updates require Square Appointments Plus or Premium. Do not add an unauthenticated public reschedule endpoint to this Worker.
+
 ## Frontend Env
 
 Set these in `.env.local` for development and GitHub Pages repository variables for production:
@@ -21,6 +29,9 @@ NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-api.dakibwa.workers.dev
 NEXT_PUBLIC_SQUARE_BOOKING_URL=https://book.squareup.com/appointments/...
 LESSON_PRICE_CENTS=1500
 LESSON_CURRENCY=eur
+NEXT_PUBLIC_LESSON_DURATION_MINUTES=45
+NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
+NEXT_PUBLIC_RESCHEDULE_FEE_MODE=policy-only
 ```
 
 If `NEXT_PUBLIC_BOOKING_API_BASE_URL` is blank, the custom calendar renders sample slots and disables confirmation. Students can still use the Square hosted link when `NEXT_PUBLIC_SQUARE_BOOKING_URL` is set.

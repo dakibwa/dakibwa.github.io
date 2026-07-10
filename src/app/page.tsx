@@ -1,12 +1,15 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  BadgeEuro,
+  CalendarCheck2,
   CalendarDays,
   Coffee,
   Globe,
   MapPin,
   MessageCircle,
   MonitorSmartphone,
+  RefreshCcw,
   Sparkles,
   Target,
   Video
@@ -73,7 +76,7 @@ const steps = [
   {
     icon: CalendarDays,
     title: "Choose a time",
-    body: "Pick a slot that suits you and book securely online in a couple of clicks."
+    body: "Choose any live opening that suits you and book online in a couple of clicks."
   },
   {
     icon: Video,
@@ -84,6 +87,24 @@ const steps = [
     icon: MessageCircle,
     title: "Start speaking",
     body: "Practise real conversations and leave every lesson with Portuguese you can use straight away."
+  }
+];
+
+const flexibilityPoints = [
+  {
+    icon: CalendarCheck2,
+    title: "Book what works",
+    body: "Choose from every time Inês has made available — in Porto or online."
+  },
+  {
+    icon: RefreshCcw,
+    title: "Move it freely",
+    body: "Reschedule to any other open time at no charge before the day of your lesson."
+  },
+  {
+    icon: BadgeEuro,
+    title: "One clear exception",
+    body: "A simple €5 fee applies only when you reschedule on the lesson day itself."
   }
 ];
 
@@ -221,6 +242,37 @@ export default function Home() {
         </ol>
       </section>
 
+      <section className="flexibility-section" aria-labelledby="flexibility-heading">
+        <div className="flexibility-copy">
+          <p className="section-kicker">Made for real life</p>
+          <h2 id="flexibility-heading">Plans change. Your lesson can too.</h2>
+          <p>
+            Book the time that works now, then move it later if you need to. The policy is deliberately simple and
+            flexible.
+          </p>
+          <Link className="flexibility-link" href="/book#change-booking">
+            See how changes work
+            <ArrowRight aria-hidden="true" />
+          </Link>
+        </div>
+        <div className="flexibility-rules">
+          {flexibilityPoints.map((point) => {
+            const Icon = point.icon;
+            return (
+              <article className="flexibility-rule" key={point.title}>
+                <span className="flexibility-icon" aria-hidden="true">
+                  <Icon />
+                </span>
+                <div>
+                  <h3>{point.title}</h3>
+                  <p>{point.body}</p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="pricing-section" id="lessons" aria-labelledby="pricing-heading">
         <div className="pricing-intro">
           <p className="section-kicker">Lessons</p>
@@ -263,7 +315,7 @@ export default function Home() {
           <Link className="button button-primary" href="/book">
             Book a lesson
           </Link>
-          <span className="closing-note">Secure online booking</span>
+          <span className="closing-note">Flexible rescheduling</span>
         </div>
       </section>
 

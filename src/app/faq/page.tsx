@@ -11,15 +11,23 @@ import {
   MapPin,
   MessageCircle
 } from "lucide-react";
-import { BOOKING_PROVIDER, BOOKING_PROVIDER_NAME, CONTACT_WHATSAPP_URL, formatMoney } from "@/lib/config";
+import {
+  BOOKING_PROVIDER,
+  BOOKING_PROVIDER_NAME,
+  CONTACT_WHATSAPP_URL,
+  SAME_DAY_RESCHEDULE_FEE_CENTS,
+  formatMoney
+} from "@/lib/config";
 import { publicAssetPath } from "@/lib/paths";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
-const changeBookingAnswer =
+const changeBookingInstructions =
   BOOKING_PROVIDER === "acuity"
-    ? "Log in from the booking scheduler to review upcoming and past lessons. You can reschedule or cancel there when Inês has enabled those options, and the confirmation email will also include booking links."
+    ? "Log in from the booking scheduler or use the link in your confirmation email."
     : `Open your confirmation email and use the reschedule or cancel link. If you cannot find it, search for "Português with Inês" or "${BOOKING_PROVIDER_NAME}".`;
+const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
+const changeBookingAnswer = `${changeBookingInstructions} You can move your lesson to any available time. It is free before the lesson day; a ${sameDayFee} fee applies if you reschedule on the day itself.`;
 
 const faqSections = [
   {
@@ -92,7 +100,7 @@ const faqSections = [
     questions: [
       {
         question: "How do I pay?",
-        answer: "Payment is handled securely inside the booking flow before the lesson is confirmed."
+        answer: "Any lesson payment or rescheduling fee due is shown and handled securely in Square."
       },
       {
         question: "How much does a lesson cost?",
@@ -108,6 +116,11 @@ const faqSections = [
       {
         question: "Can I reschedule?",
         answer: changeBookingAnswer
+      },
+      {
+        question: `When does the ${sameDayFee} rescheduling fee apply?`,
+        answer:
+          `Only when you make the change on the same calendar day as the lesson, using Porto time. Changes made on any earlier day are free.`
       },
       {
         question: "Can I cancel?",

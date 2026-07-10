@@ -33,6 +33,9 @@ NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-api.dakibwa.workers.dev
 NEXT_PUBLIC_SQUARE_BOOKING_URL=https://squareup.com/appointments/book/...
 LESSON_PRICE_CENTS=1500
 LESSON_CURRENCY=eur
+NEXT_PUBLIC_LESSON_DURATION_MINUTES=45
+NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
+NEXT_PUBLIC_RESCHEDULE_FEE_MODE=policy-only
 ```
 
 Then restart the dev server.
@@ -42,6 +45,24 @@ Then restart the dev server.
 For local layout preview before the Worker is live, use `ALLOW_BOOKING_PREVIEW=1 npm run check:booking`. Production checks intentionally fail if the custom Square API URL is missing or unhealthy.
 
 Use `NEXT_PUBLIC_BOOKING_MODE=square-hosted` only if you want to temporarily return `/book` to the hosted Square iframe while the adapter is not ready.
+
+## Flexible rescheduling policy
+
+The student-facing rule is deliberately precise:
+
+- Students can book any live available time.
+- They can move a lesson to any other available time.
+- Changes made before the calendar day of the lesson are free.
+- A EUR 5 fee applies when the change is made on the lesson day itself, using `Europe/Lisbon` (Porto) time.
+
+The homepage, booking page, and FAQ now use that same wording. Students change an existing booking from their Square confirmation or the **Change a booking** link on `/book`.
+
+Before production, choose one operational mode:
+
+- `NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual`: Inês checks the original lesson date in Porto time and collects the EUR 5 fee in Square for a same-day change. This preserves the exact calendar-day rule without silently adding a subscription.
+- `NEXT_PUBLIC_RESCHEDULE_FEE_MODE=square-policy`: configure Square Appointments Plus or Premium with a card-on-file cancellation policy and flat EUR 5 fee. Square's native policy is cutoff-based and enforcement remains discretionary, so Inês must still apply the fee only to same-calendar-day reschedules.
+
+`policy-only` is a local design/QA mode and intentionally fails the production booking check. Square does not currently provide an exact automatic “same Porto calendar day” reschedule charge in this static-site flow. Fully automatic enforcement would require an authenticated student change flow, payment completion verification, and then a Bookings API update.
 
 In Square, go to **Appointments > Online booking > Channels > Add your booking flow to an existing site > Get Started**, then copy either the booking flow URL or the one-line embed/button code. Paste it into `NEXT_PUBLIC_SQUARE_BOOKING_URL`.
 

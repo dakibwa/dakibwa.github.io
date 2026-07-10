@@ -8,6 +8,20 @@ const bookingMode = normalizeBookingMode(rawBookingMode);
 const rawBookingApiBaseUrl = process.env.NEXT_PUBLIC_BOOKING_API_BASE_URL ?? "";
 const bookingApiBaseUrl = normalizePublicHttpUrl(rawBookingApiBaseUrl);
 const allowPreviewBooking = process.env.ALLOW_BOOKING_PREVIEW === "1";
+const rawRescheduleFeeMode = process.env.NEXT_PUBLIC_RESCHEDULE_FEE_MODE ?? "";
+const rescheduleFeeMode = normalizeRescheduleFeeMode(rawRescheduleFeeMode);
+
+if (rawRescheduleFeeMode.trim() && !rescheduleFeeMode) {
+  console.error("NEXT_PUBLIC_RESCHEDULE_FEE_MODE must be manual, square-policy, or policy-only.");
+  process.exit(1);
+}
+
+if (!allowPreviewBooking && (!rescheduleFeeMode || rescheduleFeeMode === "policy-only")) {
+  console.error(
+    "Choose NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual or square-policy before production. policy-only is for local design preview and does not enforce the €5 same-day rule."
+  );
+  process.exit(1);
+}
 
 if (rawBookingApiBaseUrl.trim() && !bookingApiBaseUrl) {
   console.error("NEXT_PUBLIC_BOOKING_API_BASE_URL must be an http(s) URL for the Square booking adapter.");
@@ -160,6 +174,11 @@ function normalizeSquareBookingUrl(value) {
 function normalizeBookingMode(value) {
   if (value === "auto" || value === "square-hosted") return value;
   return "custom-square";
+}
+
+function normalizeRescheduleFeeMode(value) {
+  if (value === "manual" || value === "square-policy" || value === "policy-only") return value;
+  return "";
 }
 
 function normalizePublicHttpUrl(value) {

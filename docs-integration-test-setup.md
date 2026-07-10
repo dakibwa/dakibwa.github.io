@@ -12,6 +12,9 @@ NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-api.dakibwa.workers.dev
 NEXT_PUBLIC_SQUARE_BOOKING_URL=https://squareup.com/appointments/book/...
 LESSON_PRICE_CENTS=1500
 LESSON_CURRENCY=eur
+NEXT_PUBLIC_LESSON_DURATION_MINUTES=45
+NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
+NEXT_PUBLIC_RESCHEDULE_FEE_MODE=policy-only
 ```
 
 The site does not need Stripe keys or Square access tokens. Square owns booking confirmation, customer records, reschedule/cancel rules, and calendar sync. The Worker owns private Square API calls.
@@ -40,6 +43,8 @@ Before pointing production at the adapter, test:
 3. `POST /bookings` creates a test booking in Square.
 4. A blocked origin gets a CORS/403 response.
 5. Browser network responses do not expose `SQUARE_ACCESS_TOKEN`.
+6. The homepage, booking page, and FAQ all say that earlier-day changes are free and same-day changes cost EUR 5 in Porto time.
+7. Before production, choose and test `manual` or `square-policy` enforcement; `policy-only` must fail `npm run check:booking` unless preview mode is explicitly enabled.
 
 ## Acuity Test Setup
 
@@ -110,6 +115,8 @@ After the test pass, keep:
 NEXT_PUBLIC_BOOKING_MODE=custom-square
 NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-api.dakibwa.workers.dev
 NEXT_PUBLIC_SQUARE_BOOKING_URL=https://squareup.com/appointments/book/...
+NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
+NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual
 ```
 
 Remove unused fallback provider variables once the production booking flow is confirmed live. Do not add Stripe secret keys or Square access tokens to this app unless the architecture changes to a real backend-owned checkout flow.
