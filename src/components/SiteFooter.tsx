@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Mail } from "lucide-react";
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { Splat } from "@/components/BrandMarks";
 import { CONTACT_WHATSAPP_URL } from "@/lib/config";
 
 function InstagramGlyph() {
@@ -16,34 +17,37 @@ function InstagramGlyph() {
 export function SiteFooter() {
   return (
     <footer className="home-footer">
-      <span className="footer-radial-mark" aria-hidden="true" />
-      <div className="footer-brand">
-        <BrandWordmark className="footer-wordmark" />
-        <p>
-          Portuguese lessons in Porto
-          <span>One-to-one. Practical. Personal.</span>
-        </p>
-      </div>
-      <div className="footer-side">
-        <nav className="footer-nav" aria-label="Footer">
-          <Link href="/faq">FAQ</Link>
-        </nav>
-        <div className="footer-social" aria-label="Contact Inês">
-          <a
-            href="https://www.instagram.com/aprenderportuguelines"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Instagram"
-          >
-            <InstagramGlyph />
-          </a>
-          <a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer" aria-label="Message Inês">
-            <Mail aria-hidden="true" />
-          </a>
+      <Splat className="footer-splat" />
+      <div className="wrap footer-inner">
+        <div className="footer-brand">
+          <BrandWordmark className="footer-wordmark" />
+          <p>
+            Portuguese lessons in Porto
+            <span>One-to-one. Practical. Personal.</span>
+          </p>
+          <p className="footer-tagline">Handmade · Practical · Personal</p>
         </div>
-        <Link className="book-lesson-button footer-book-button" href="/book">
-          <span>Book a lesson</span>
-        </Link>
+        <div className="footer-side">
+          <nav className="footer-nav" aria-label="Footer">
+            <Link href="/faq">FAQ</Link>
+          </nav>
+          <div className="footer-social" aria-label="Contact Inês">
+            <a
+              href="https://www.instagram.com/aprenderportuguelines"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Instagram"
+            >
+              <InstagramGlyph />
+            </a>
+            <a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer" aria-label="Message Inês">
+              <Mail aria-hidden="true" />
+            </a>
+          </div>
+          <Link className="book-lesson-button footer-book-button" href="/book">
+            <span>Book a lesson</span>
+          </Link>
+        </div>
       </div>
     </footer>
   );
