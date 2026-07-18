@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { BrandMarkSprite } from "@/components/BrandMarks";
+import { publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +17,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body>{children}</body>
+      {/* The recolourable splat mask (extracted from the green business card)
+          is exposed as a CSS var here so it resolves through the site base
+          path and every surface can paint the motif in any brand colour. */}
+      <body style={{ ["--splat-mask" as string]: publicAssetUrl("/visuals/splat-mask.png") }}>
+        <BrandMarkSprite />
+        {children}
+      </body>
     </html>
   );
 }

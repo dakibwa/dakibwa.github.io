@@ -2,24 +2,25 @@
 
 /* =========================================================================
    Português com a Inês — brand system
-   Source of truth: design/primary-brand-direction.png
-   Deep green structure · warm paper · lavender brand moments · coral actions.
-   Blue (azulejo) is a small detail only. All visuals are code-native.
+   Source of truth: design/primary-brand-direction.png + the business cards.
+   Deep-green structure · warm paper · lavender splat moments · coral actions.
+   Full-bleed hand-cut colour bands, the real card splat, and stamp/sticker
+   marks — not a boxed SaaS page. Blue (azulejo) is a small detail only.
    ========================================================================= */
 
 :root {
   /* Palette (from the brand board) */
-  --paper: #fff8ef;         /* Papel Quente */
+  --paper: #fff8ef;          /* Papel Quente */
   --paper-deep: #f6e9d7;
-  --green: #2db73b;         /* Verde 02-2 */
-  --green-deep: #005c2b;    /* Verde Escuro */
-  --mint: #dff4e7;          /* Verde Claro */
-  --lavender: #a6a5da;      /* Lavanda */
-  --lavender-light: #f0efff;/* Lavanda Clara */
-  --coral: #ff6b35;         /* Coral */
-  --rust: #c73e1d;          /* Canela */
-  --ink: #082b24;           /* Tinta */
-  --azulejo: #0a55a3;       /* Azulejo (detail only) */
+  --green: #2db73b;          /* Verde 02-2 */
+  --green-deep: #005c2b;     /* Verde Escuro */
+  --mint: #dff4e7;           /* Verde Claro */
+  --lavender: #a6a5da;       /* Lavanda */
+  --lavender-light: #f0efff; /* Lavanda Clara */
+  --coral: #ff6b35;          /* Coral */
+  --rust: #c73e1d;           /* Canela */
+  --ink: #082b24;            /* Tinta */
+  --azulejo: #0a55a3;        /* Azulejo (detail only) */
 
   --line: rgba(8, 43, 36, 0.12);
   --line-strong: rgba(8, 43, 36, 0.2);
@@ -35,10 +36,13 @@
   --shadow-md: 0 14px 34px rgba(8, 43, 36, 0.1);
   --shadow-lg: 0 26px 60px rgba(8, 43, 36, 0.14);
 
-  --page-max: 1120px;
+  --page-max: 1180px;
 
   /* Code-native azulejo tile, used as a small decorative detail only */
   --azulejo-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%230A55A3' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M42 12 C50 30 54 34 72 42 C54 50 50 54 42 72 C34 54 30 50 12 42 C30 34 34 30 42 12 Z'/%3E%3Ccircle cx='42' cy='42' r='7'/%3E%3C/g%3E%3Ccircle cx='42' cy='42' r='3.4' fill='%23FF6B35'/%3E%3C/svg%3E");
+
+  /* Hand-torn paper fringe (repeats along x, hangs under a colour band) */
+  --deckle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='18' viewBox='0 0 160 18' preserveAspectRatio='none'%3E%3Cpath d='M0 0 H160 V4 C150 6 146 13 136 12 C128 11 124 5 114 6 C104 7 101 15 90 14 C80 13 77 6 66 7 C56 8 52 15 42 13 C33 11 30 5 20 7 C12 8.5 8 13 0 11 Z' fill='%23000'/%3E%3C/svg%3E");
 }
 
 * {
@@ -58,6 +62,7 @@ body {
   font-size: clamp(1rem, 0.96rem + 0.2vw, 1.06rem);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 
 h1,
@@ -66,10 +71,10 @@ h3,
 h4 {
   font-family: var(--font-display);
   color: var(--green-deep);
-  line-height: 1.05;
-  letter-spacing: -0.015em;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
   margin: 0;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 p {
@@ -105,29 +110,105 @@ svg {
   border: 0;
 }
 
-/* ---------- Wordmark ---------------------------------------------------- */
+/* ---------- Layout: full-bleed bands with a centred inner column -------- */
 
-/* The real hand-lettered wordmark, extracted from the green business card */
+.home-page {
+  width: 100%;
+}
+
+.wrap {
+  width: min(100% - 2.5rem, var(--page-max));
+  margin-inline: auto;
+}
+
+.band {
+  position: relative;
+  padding-block: clamp(3.5rem, 7vw, 6.5rem);
+}
+
+.band-paper {
+  background: var(--paper);
+}
+.band-mint {
+  background: var(--mint);
+}
+.band-lav {
+  background: var(--lavender-light);
+}
+.band-green {
+  background: var(--green-deep);
+  color: var(--paper);
+}
+.band-green h1,
+.band-green h2,
+.band-green h3 {
+  color: var(--paper);
+}
+
+/* Hand-torn bottom fringe on a colour band */
+.torn-bottom::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -13px;
+  height: 16px;
+  background: inherit;
+  -webkit-mask: var(--deckle) repeat-x center top / 160px 100%;
+  mask: var(--deckle) repeat-x center top / 160px 100%;
+  z-index: 2;
+}
+.band-green.torn-bottom::after {
+  background: var(--green-deep);
+}
+
+.section-kicker {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.78rem;
+  color: var(--coral);
+  margin-bottom: 0.7rem;
+}
+.band-green .section-kicker {
+  color: var(--lavender);
+}
+
+/* ---------- The splat (real card artwork, recoloured via mask) --------- */
+
+.splat {
+  -webkit-mask-image: var(--splat-mask);
+  mask-image: var(--splat-mask);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  background-color: currentColor;
+  pointer-events: none;
+}
+
+/* ---------- Wordmark --------------------------------------------------- */
+
 .brand-wordmark {
   display: block;
   width: auto;
   height: 2.6rem;
   filter: drop-shadow(0 2px 6px rgba(8, 43, 36, 0.28));
 }
-
 .header-wordmark {
   height: 2.5rem;
 }
-
 .footer-wordmark {
-  height: 3.4rem;
+  height: 3.6rem;
 }
-
 .booking-brand-wordmark {
   height: 3.6rem;
 }
 
-/* ---------- Buttons ----------------------------------------------------- */
+/* ---------- Buttons: coral hand-cut stickers -------------------------- */
 
 .button {
   display: inline-flex;
@@ -137,19 +218,19 @@ svg {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1rem;
-  padding: 0.85rem 1.6rem;
+  padding: 0.9rem 1.7rem;
   border-radius: var(--radius-pill);
   border: none;
   cursor: pointer;
-  transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-/* Coral CTAs styled as hand-cut stickers: cream die-cut border, thin keyline,
-   drop shadow, and a slight hand-placed peel on hover. */
-.button-primary {
+.button-primary,
+.book-lesson-button,
+.footer-book-button {
   color: #fff;
   background: var(--coral);
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 52%);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 52%);
   border: 3px solid var(--paper);
   box-shadow: 0 0 0 1.5px rgba(160, 45, 20, 0.55), 0 9px 18px rgba(8, 43, 36, 0.22);
 }
@@ -167,54 +248,148 @@ svg {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 0.95rem;
-  padding: 0.6rem 1.2rem;
+  padding: 0.62rem 1.2rem;
   border-radius: var(--radius-pill);
-  color: #fff;
-  background: var(--coral);
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 52%);
-  border: 3px solid var(--paper);
+  border-width: 2.5px;
   box-shadow: 0 0 0 1.5px rgba(160, 45, 20, 0.55), 0 7px 15px rgba(8, 43, 36, 0.2);
 }
 
-/* Shared sticker peel-and-lift */
-.button-primary,
-.book-lesson-button {
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
 .button-primary:hover,
-.book-lesson-button:hover {
+.book-lesson-button:hover,
+.footer-book-button:hover {
   transform: rotate(-2deg) translateY(-2px);
   box-shadow: 0 0 0 1.5px rgba(160, 45, 20, 0.55), 0 14px 24px rgba(8, 43, 36, 0.28);
 }
-
 .button-primary:active,
-.book-lesson-button:active {
+.book-lesson-button:active,
+.footer-book-button:active {
   transform: rotate(-1deg) translateY(0);
 }
 
-/* The prominent booking CTAs sit slightly tilted, like a placed sticker */
+/* Prominent booking CTAs sit slightly tilted, like a placed sticker */
 .hero-primary,
 .footer-book-button {
   transform: rotate(-1.8deg);
 }
-
 .hero-primary:hover,
 .footer-book-button:hover {
   transform: rotate(-3.2deg) translateY(-2px);
 }
 
-/* ---------- Header ------------------------------------------------------ */
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--green-deep);
+}
+.band-green .text-link {
+  color: var(--paper);
+}
+.text-link svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  transition: transform 0.16s ease;
+}
+.text-link:hover svg {
+  transform: translateX(4px);
+}
+
+/* ---------- Brand marks: Porto stamp + Vamos sticker ------------------ */
+
+.porto-stamp {
+  display: inline-block;
+  width: clamp(112px, 15vw, 152px);
+  line-height: 0;
+}
+.porto-stamp svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  transform: rotate(-8deg);
+}
+.porto-stamp-ring {
+  fill: none;
+  stroke: var(--coral);
+  stroke-width: 3;
+}
+.porto-stamp-ring.is-inner {
+  stroke-width: 1.4;
+  opacity: 0.5;
+}
+.porto-stamp-text {
+  fill: var(--coral);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 2.5px;
+}
+.porto-stamp-word {
+  fill: var(--coral);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 27px;
+  letter-spacing: 0.5px;
+}
+.porto-stamp-sub {
+  fill: var(--coral);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 3.5px;
+}
+
+.vamos-sticker {
+  display: inline-block;
+  width: clamp(118px, 16vw, 158px);
+  line-height: 0;
+}
+.vamos-sticker svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  transform: rotate(7deg);
+  filter: drop-shadow(0 8px 16px rgba(8, 43, 36, 0.24));
+}
+.vamos-sticker-burst {
+  fill: var(--lavender);
+  stroke: var(--green-deep);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.vamos-sticker-top {
+  fill: var(--green-deep);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+.vamos-sticker-script {
+  fill: var(--green-deep);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-style: italic;
+  font-size: 27px;
+}
+
+/* ---------- Header: deep-green bar, torn edge, coral CTA -------------- */
 
 .site-header {
+  position: relative;
+  z-index: 5;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding-block: 1rem 1.15rem;
+  background: var(--green-deep);
+}
+.site-header .wrap {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  padding: 0.9rem 1.4rem 0.9rem 1.7rem;
-  background: var(--green-deep);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
 }
 
 .brand {
@@ -236,318 +411,453 @@ svg {
   color: rgba(240, 239, 255, 0.86);
   transition: color 0.15s ease;
 }
-
 .nav-text-link:hover,
 .nav-text-link[aria-current="page"] {
   color: #fff;
 }
 
-/* ---------- Layout shells ---------------------------------------------- */
+/* ---------- Hero: lavender band, real splat, big green type ----------- */
 
-.home-page,
-.book-page,
-.faq-page {
-  max-width: var(--page-max);
-  margin: 0 auto;
-  padding: 1.5rem clamp(1rem, 3vw, 2rem) 0;
-}
-
-/* ---------- Home hero --------------------------------------------------- */
-
-.hero-poster {
+.hero {
   position: relative;
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: var(--lavender-light);
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(166, 165, 218, 0.35);
   overflow: hidden;
+  background: var(--lavender-light);
+  padding-block: clamp(3rem, 6vw, 5.5rem) clamp(4rem, 8vw, 7rem);
+}
+.hero-splat {
+  position: absolute;
+  top: -18%;
+  right: -14%;
+  width: min(760px, 78vw);
+  aspect-ratio: 1500 / 995;
+  color: var(--lavender);
+  opacity: 0.85;
+}
+.hero-splat.is-back {
+  top: 8%;
+  right: 2%;
+  width: min(560px, 60vw);
+  color: var(--green);
+  opacity: 0.14;
 }
 
-.home-hero {
+.hero-inner {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: 1.4fr 0.9fr;
-  gap: 1.5rem;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: clamp(1.5rem, 4vw, 3rem);
   align-items: center;
-  padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2.5rem);
 }
 
 .hero-kicker {
   font-family: var(--font-display);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  font-size: 0.82rem;
   color: var(--green);
-  margin-bottom: 0.9rem;
+  margin-bottom: 1rem;
 }
 
 .hero-copy h1 {
-  font-size: clamp(2.6rem, 2rem + 3.4vw, 4.4rem);
+  font-size: clamp(2.8rem, 2rem + 4.2vw, 5.2rem);
   font-weight: 800;
   color: var(--green-deep);
+  letter-spacing: -0.03em;
+}
+.hero-copy h1 em {
+  font-style: normal;
+  color: var(--coral);
 }
 
 .hero-lede {
-  margin-top: 1.1rem;
-  max-width: 34ch;
-  font-size: clamp(1.05rem, 1rem + 0.4vw, 1.22rem);
+  margin-top: 1.2rem;
+  max-width: 38ch;
+  font-size: clamp(1.05rem, 1rem + 0.4vw, 1.24rem);
   color: rgba(8, 43, 36, 0.82);
 }
 
 .hero-cta-row {
   display: flex;
   align-items: center;
-  gap: 1.4rem;
-  margin-top: 1.7rem;
+  gap: 1.6rem;
+  margin-top: 1.9rem;
   flex-wrap: wrap;
-}
-
-.see-lessons-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: var(--font-display);
-  font-weight: 600;
-  color: var(--green-deep);
-}
-
-.see-lessons-link svg {
-  width: 1.05rem;
-  height: 1.05rem;
-  transition: transform 0.15s ease;
-}
-
-.see-lessons-link:hover svg {
-  transform: translateX(3px);
 }
 
 .hero-points {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.4rem;
-  margin: 2rem 0 0;
+  gap: 0.7rem 0.9rem;
+  margin: 2.1rem 0 0;
   padding: 0;
   list-style: none;
 }
-
 .hero-points li {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
   color: var(--green-deep);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1.5px solid rgba(8, 43, 36, 0.12);
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-pill);
 }
-
 .hero-points svg {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.05rem;
+  height: 1.05rem;
   color: var(--azulejo);
 }
 
+/* Hero right: the Porto stamp placed over the splat */
 .hero-visual {
   position: relative;
   margin: 0;
-  aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
   min-height: 260px;
 }
-
-/* Soft lavender glow behind the medallion for weight */
-.hero-visual::before {
-  content: "";
-  position: absolute;
-  inset: 6%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(166, 165, 218, 0.4), rgba(166, 165, 218, 0.1) 58%, transparent 70%);
-}
-
-/* Radial "sunburst" mark from the original cards — code-native */
-.hero-radial-mark,
-.footer-radial-mark,
-.pricing-corner-mark,
-.closing-radial {
-  background:
-    repeating-conic-gradient(
-      from 0deg,
-      currentColor 0deg 0.9deg,
-      transparent 0.9deg 7deg
-    );
-  border-radius: 50%;
-  -webkit-mask: radial-gradient(circle, #000 30%, transparent 71%);
-  mask: radial-gradient(circle, #000 30%, transparent 71%);
-}
-
-.hero-radial-mark {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  color: var(--lavender);
-  background:
-    repeating-conic-gradient(from 3deg, var(--green) 0deg 0.8deg, transparent 0.8deg 24deg),
-    repeating-conic-gradient(from 0deg, currentColor 0deg 1.5deg, transparent 1.5deg 4.5deg);
-  -webkit-mask: radial-gradient(circle, transparent 22%, #000 25%, #000 67%, transparent 72%);
-  mask: radial-gradient(circle, transparent 22%, #000 25%, #000 67%, transparent 72%);
-}
-
-.hero-stamp {
+.hero-visual .porto-stamp {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: clamp(140px, 46%, 190px);
-  aspect-ratio: 1 / 1;
-  border: 3px solid var(--coral);
-  border-radius: 50%;
-  color: var(--coral);
-  text-align: center;
-  background: var(--paper);
-  box-shadow: 0 10px 28px rgba(8, 43, 36, 0.14);
+  z-index: 2;
+  width: clamp(150px, 22vw, 220px);
 }
 
-.hero-stamp::after {
-  content: "";
-  position: absolute;
-  inset: 7px;
-  border: 1px solid rgba(255, 107, 53, 0.45);
-  border-radius: 50%;
+/* Section divider motif (hand-drawn green + coral waves, dots) */
+.wave-divider {
+  display: block;
+  line-height: 0;
+  margin: 0;
 }
-
-.hero-stamp span {
-  font-family: var(--font-display);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.82rem;
-  max-width: 7ch;
-  line-height: 1.35;
-}
-
-/* Section divider motif (wavy green + coral lines, dots) */
-.hero-divider {
-  margin: 0.25rem 0 -0.25rem;
-}
-
-.hero-divider svg {
+.wave-divider svg {
   width: 100%;
-  height: 54px;
+  height: clamp(38px, 5vw, 60px);
 }
-
-.hero-divider path {
+.wave-divider path {
   fill: none;
-  stroke-width: 4;
+  stroke-width: 5;
   stroke-linecap: round;
 }
-
-.hero-divider .wave-green {
+.wave-divider .wave-green {
   stroke: var(--green);
 }
-
-.hero-divider .wave-coral {
+.wave-divider .wave-coral {
   stroke: var(--coral);
 }
-
-.hero-divider .dot-lavender {
+.wave-divider .dot-lavender {
   fill: var(--lavender);
 }
-
-.hero-divider .dot-coral {
+.wave-divider .dot-coral {
   fill: var(--coral);
 }
 
-/* ---------- Pricing ----------------------------------------------------- */
+/* ---------- Meet Inês: green card-back panel + copy ------------------- */
 
-.pricing-section {
-  padding: clamp(3rem, 6vw, 5rem) clamp(0.5rem, 2vw, 1.5rem) 2rem;
+.about-section {
+  overflow: hidden;
 }
+.about-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: clamp(1.8rem, 4vw, 3.5rem);
+  align-items: center;
+}
+
+/* The green business-card back, rebuilt: lavender splat on deep green */
+.about-card {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  border-radius: var(--radius-lg);
+  background: var(--green);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  place-items: center;
+}
+.about-card .splat {
+  position: absolute;
+  inset: -6%;
+  color: var(--lavender);
+}
+.about-card .porto-stamp {
+  position: relative;
+  z-index: 1;
+  width: 40%;
+}
+.about-card .porto-stamp svg {
+  transform: rotate(-6deg);
+}
+
+.about-copy h2 {
+  font-size: clamp(2rem, 1.5rem + 2.2vw, 3.2rem);
+  margin-bottom: 1.1rem;
+}
+.about-copy > p {
+  color: rgba(8, 43, 36, 0.82);
+  margin-bottom: 1rem;
+  max-width: 60ch;
+  font-size: 1.06rem;
+}
+
+.credential-list {
+  list-style: none;
+  margin: 1.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.6rem;
+}
+.credential-list li {
+  position: relative;
+  padding-left: 1.15rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--green-deep);
+}
+.credential-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+
+/* ---------- Why / reasons: mint band, restrained columns ------------- */
+
+.section-head {
+  max-width: 52ch;
+  margin: 0 auto clamp(2rem, 4vw, 3rem);
+  text-align: center;
+}
+.section-head h2 {
+  margin-top: 0.5rem;
+  font-size: clamp(2rem, 1.5rem + 2.2vw, 3.2rem);
+}
+
+.reasons-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(1.6rem, 3vw, 2.8rem);
+}
+.reason-card {
+  text-align: left;
+}
+.reason-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 3.1rem;
+  height: 3.1rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 2px solid var(--green-deep);
+  color: var(--green-deep);
+  margin-bottom: 1.1rem;
+  box-shadow: 3px 3px 0 var(--green-deep);
+}
+.reason-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.reason-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+}
+.reason-card p {
+  color: rgba(8, 43, 36, 0.78);
+}
+
+/* ---------- How it works: coral numbers on a hand-drawn track -------- */
+
+.steps-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(1.6rem, 3vw, 2.6rem);
+}
+.step-card {
+  position: relative;
+  text-align: center;
+  padding-top: 1rem;
+}
+.step-number {
+  display: inline-grid;
+  place-items: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  border: 3px solid var(--paper);
+  box-shadow: 0 0 0 1.5px rgba(160, 45, 20, 0.5), 0 8px 16px rgba(8, 43, 36, 0.18);
+  margin-bottom: 1rem;
+}
+.step-icon {
+  display: block;
+  color: var(--green);
+  margin: 0 auto 0.6rem;
+}
+.step-icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  margin: 0 auto;
+}
+.step-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.45rem;
+}
+.step-card p {
+  color: rgba(8, 43, 36, 0.76);
+  max-width: 32ch;
+  margin: 0 auto;
+}
+
+/* ---------- Flexibility: green panel with splat ---------------------- */
+
+.flexibility-section {
+  overflow: hidden;
+}
+.flexibility-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: clamp(1.8rem, 4vw, 3.5rem);
+  align-items: center;
+}
+.flexibility-copy h2 {
+  font-size: clamp(2rem, 1.5rem + 2.2vw, 3rem);
+  margin-bottom: 1rem;
+}
+.flexibility-copy > p {
+  color: rgba(240, 239, 255, 0.85);
+  max-width: 42ch;
+  margin-bottom: 1.4rem;
+}
+.flexibility-rules {
+  display: grid;
+  gap: 0.9rem;
+}
+.flexibility-rule {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(240, 239, 255, 0.16);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.3rem;
+}
+.flexibility-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 12px;
+  background: var(--lavender);
+  color: var(--green-deep);
+}
+.flexibility-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+.flexibility-rule h3 {
+  font-size: 1.08rem;
+  color: var(--paper);
+  margin-bottom: 0.2rem;
+}
+.flexibility-rule p {
+  color: rgba(240, 239, 255, 0.78);
+  font-size: 0.96rem;
+}
+
+/* ---------- Pricing: cards, featured green with stamp ---------------- */
 
 .pricing-intro {
   position: relative;
-  max-width: 46ch;
-  margin-bottom: 2.5rem;
+  max-width: 48ch;
+  margin: 0 auto clamp(2.2rem, 4vw, 3rem);
+  text-align: center;
 }
-
-.section-kicker {
-  font-family: var(--font-display);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.78rem;
-  color: var(--coral);
-  margin-bottom: 0.7rem;
-}
-
 .pricing-intro h2 {
-  font-size: clamp(1.9rem, 1.5rem + 1.8vw, 2.9rem);
-  font-weight: 800;
+  font-size: clamp(2rem, 1.5rem + 2.2vw, 3.2rem);
 }
-
 .pricing-intro > p {
   margin-top: 0.8rem;
   color: rgba(8, 43, 36, 0.75);
   font-size: 1.1rem;
 }
 
-.pricing-corner-mark {
-  position: absolute;
-  top: -0.5rem;
-  right: 0;
-  width: 66px;
-  height: 66px;
-  color: var(--lavender);
-  opacity: 0.8;
-}
-
 .pricing-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.3rem;
+  gap: 1.4rem;
+  align-items: stretch;
 }
-
 .pricing-card {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  padding: 1.7rem 1.6rem 1.5rem;
+  padding: 1.8rem 1.7rem 1.6rem;
   background: #fff;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  overflow: hidden;
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease,
     background-color 0.22s ease;
 }
-
 .pricing-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-5px) rotate(-0.6deg);
   box-shadow: var(--shadow-md);
 }
-
-/* Lilac colour animation on the standard (non-featured) lesson cards */
 .pricing-card:not(.is-featured):hover {
   background: var(--lavender-light);
   border-color: var(--lavender);
 }
-
 .pricing-card:not(.is-featured):hover .price span {
   color: var(--azulejo);
 }
-
 .pricing-card.is-featured {
   background: var(--green-deep);
   border-color: var(--green-deep);
+  color: var(--paper);
+  overflow: visible;
 }
-
 .pricing-card.is-featured h3,
 .pricing-card.is-featured .price span {
-  color: var(--lavender-light);
+  color: var(--paper);
 }
-
 .pricing-card.is-featured .card-duration,
 .pricing-card.is-featured .card-note {
-  color: rgba(240, 239, 255, 0.78);
+  color: rgba(240, 239, 255, 0.8);
+}
+.pricing-card-stamp {
+  position: absolute;
+  top: -22px;
+  right: -16px;
+  width: 104px;
+  opacity: 0.96;
+  filter: drop-shadow(0 6px 12px rgba(8, 43, 36, 0.25));
+}
+.pricing-card-stamp .porto-stamp-ring {
+  stroke: var(--lavender);
+}
+.pricing-card-stamp .porto-stamp-text,
+.pricing-card-stamp .porto-stamp-word,
+.pricing-card-stamp .porto-stamp-sub {
+  fill: var(--lavender);
 }
 
 .pricing-flag {
@@ -563,39 +873,33 @@ svg {
   margin-bottom: 0.6rem;
   color: #fff;
 }
-
 .pricing-card h3 {
   font-size: 1.3rem;
-  font-weight: 700;
 }
-
 .price {
   display: flex;
   align-items: baseline;
 }
-
 .price span {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 2.9rem;
+  font-size: 3rem;
   color: var(--green-deep);
   line-height: 1;
 }
-
 .card-duration {
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 700;
   color: rgba(8, 43, 36, 0.7);
 }
-
 .card-note {
   margin-top: 0.35rem;
   color: rgba(8, 43, 36, 0.66);
   font-size: 0.95rem;
 }
-
 .pricing-card-action {
   margin-top: auto;
-  padding-top: 1.1rem;
+  padding-top: 1.2rem;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -603,506 +907,155 @@ svg {
   font-weight: 700;
   color: var(--coral);
 }
-
+.pricing-card.is-featured .pricing-card-action {
+  color: var(--coral);
+}
 .pricing-card-action svg {
   width: 1rem;
   height: 1rem;
   transition: transform 0.15s ease;
 }
-
 .pricing-card:hover .pricing-card-action svg {
   transform: translateX(3px);
 }
 
-/* ---------- Section heads (shared) ------------------------------------- */
-
-.section-head {
-  max-width: 48ch;
-  margin: 0 auto clamp(2rem, 4vw, 2.8rem);
-  text-align: center;
-}
-
-.section-head h2 {
-  margin-top: 0.6rem;
-  font-size: clamp(1.9rem, 1.5rem + 1.8vw, 2.9rem);
-  font-weight: 800;
-}
-
-/* ---------- About Inês -------------------------------------------------- */
-
-.about-section {
-  display: grid;
-  grid-template-columns: 1.25fr 0.75fr;
-  gap: clamp(1.8rem, 4vw, 3.5rem);
-  align-items: center;
-  padding: clamp(3rem, 6vw, 5rem) clamp(0.5rem, 2vw, 1.5rem);
-}
-
-.about-copy h2 {
-  font-size: clamp(1.9rem, 1.5rem + 1.8vw, 2.9rem);
-  font-weight: 800;
-  margin-bottom: 1.1rem;
-}
-
-.about-copy > p {
-  color: rgba(8, 43, 36, 0.8);
-  margin-bottom: 1rem;
-  max-width: 58ch;
-  font-size: 1.05rem;
-}
-
-.credential-list {
-  list-style: none;
-  margin: 1.5rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem 1.5rem;
-}
-
-.credential-list li {
-  position: relative;
-  padding-left: 1.1rem;
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--green-deep);
-}
-
-.credential-list li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.55em;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--coral);
-}
-
-.about-medallion {
-  position: relative;
-  margin: 0;
-  aspect-ratio: 1 / 1;
-  border-radius: var(--radius-lg);
-  background: var(--green-deep);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-}
-
-.about-medallion .hero-radial-mark {
-  color: var(--lavender);
-  background: repeating-conic-gradient(from 0deg, currentColor 0deg 1.6deg, transparent 1.6deg 4.6deg);
-}
-
-.about-stamp {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: clamp(128px, 48%, 168px);
-  aspect-ratio: 1 / 1;
-  border: 3px solid var(--coral);
-  border-radius: 50%;
-  color: var(--coral);
-  text-align: center;
-  background: var(--paper);
-  box-shadow: 0 10px 28px rgba(8, 43, 36, 0.2);
-}
-
-.about-stamp::after {
-  content: "";
-  position: absolute;
-  inset: 7px;
-  border: 1px solid rgba(255, 107, 53, 0.45);
-  border-radius: 50%;
-}
-
-.about-stamp span {
-  font-family: var(--font-display);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
-  font-size: 0.74rem;
-  max-width: 8ch;
-  line-height: 1.4;
-}
-
-/* ---------- Why / reasons ---------------------------------------------- */
-
-.reasons-section {
-  padding: clamp(3rem, 6vw, 4.5rem) clamp(1.4rem, 3vw, 2.6rem);
-  background: var(--mint);
-  border-radius: var(--radius-lg);
-  margin: 1rem 0;
-}
-
-.reasons-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: clamp(1.5rem, 3vw, 2.4rem);
-}
-
-.reason-card {
-  display: flex;
-  flex-direction: column;
-}
-
-.reason-icon {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 14px;
-  background: var(--lavender-light);
-  color: var(--azulejo);
-  margin-bottom: 1.1rem;
-}
-
-.reason-icon svg {
-  width: 1.55rem;
-  height: 1.55rem;
-}
-
-.reason-card h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.reason-card p {
-  color: rgba(8, 43, 36, 0.74);
-  font-size: 1rem;
-}
-
-/* ---------- How it works ----------------------------------------------- */
-
-.steps-section {
-  padding: clamp(3rem, 6vw, 5rem) clamp(0.5rem, 2vw, 1.5rem);
-}
-
-.steps-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: clamp(1.6rem, 3vw, 2.6rem);
-}
-
-.step-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.step-number {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: var(--coral);
-  color: #fff;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.15rem;
-  box-shadow: 0 6px 14px rgba(255, 107, 53, 0.3);
-}
-
-.step-icon {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--lavender-light);
-  color: var(--green-deep);
-  margin: 1rem 0 0.9rem;
-}
-
-.step-icon svg {
-  width: 1.3rem;
-  height: 1.3rem;
-}
-
-.step-card h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.step-card p {
-  color: rgba(8, 43, 36, 0.74);
-}
-
-/* ---------- Flexible booking ------------------------------------------- */
-
-.flexibility-section {
-  position: relative;
-  overflow: hidden;
-  display: grid;
-  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
-  gap: clamp(1.5rem, 4vw, 3rem);
-  align-items: center;
-  padding: clamp(2rem, 5vw, 3.6rem);
-  background: var(--lavender-light);
-  border: 1px solid rgba(166, 165, 218, 0.42);
-  border-radius: var(--radius-lg);
-  margin: 1rem 0;
-}
-
-.flexibility-section::after {
-  content: "";
-  position: absolute;
-  left: -80px;
-  bottom: -105px;
-  width: 230px;
-  height: 230px;
-  border-radius: 50%;
-  background: repeating-conic-gradient(from 0deg, rgba(166, 165, 218, 0.36) 0deg 1.5deg, transparent 1.5deg 5deg);
-  pointer-events: none;
-}
-
-.flexibility-copy,
-.flexibility-rules {
-  position: relative;
-  z-index: 1;
-}
-
-.flexibility-copy h2 {
-  margin-top: 0.65rem;
-  font-size: clamp(2rem, 1.55rem + 1.8vw, 3rem);
-  font-weight: 800;
-}
-
-.flexibility-copy > p:not(.section-kicker) {
-  margin-top: 1rem;
-  max-width: 42ch;
-  color: rgba(8, 43, 36, 0.76);
-}
-
-.flexibility-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-top: 1.35rem;
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--green-deep);
-}
-
-.flexibility-link svg {
-  width: 1rem;
-  transition: transform 0.15s ease;
-}
-
-.flexibility-link:hover svg {
-  transform: translateX(3px);
-}
-
-.flexibility-rules {
-  padding: 0.55rem 1.35rem;
-  background: var(--green-deep);
-  color: var(--lavender-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-}
-
-.flexibility-rule {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 1rem;
-  align-items: center;
-  padding: 1.15rem 0;
-  border-bottom: 1px solid rgba(240, 239, 255, 0.16);
-}
-
-.flexibility-rule:last-child {
-  border-bottom: 0;
-}
-
-.flexibility-icon {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: var(--mint);
-  color: var(--green-deep);
-}
-
-.flexibility-icon svg {
-  width: 1.35rem;
-}
-
-.flexibility-rule h3 {
-  color: var(--lavender-light);
-  font-size: 1.08rem;
-}
-
-.flexibility-rule p {
-  margin-top: 0.25rem;
-  color: rgba(240, 239, 255, 0.78);
-  font-size: 0.94rem;
-  line-height: 1.5;
-}
-
-/* ---------- Closing CTA ------------------------------------------------- */
+/* ---------- Closing CTA: green band, splat, sticker ------------------ */
 
 .closing-cta {
   position: relative;
   overflow: hidden;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.6rem;
-  margin: 1rem 0 0;
-  padding: clamp(2.2rem, 5vw, 3.4rem);
-  background: var(--lavender-light);
-  border: 1px solid rgba(166, 165, 218, 0.45);
-  border-radius: var(--radius-lg);
 }
-
-.closing-radial {
+.closing-cta .splat {
   position: absolute;
-  top: -70px;
-  right: -40px;
-  width: 210px;
-  height: 210px;
-  color: rgba(166, 165, 218, 0.55);
-  pointer-events: none;
+  top: -30%;
+  left: -12%;
+  width: min(620px, 70vw);
+  aspect-ratio: 1500 / 995;
+  color: var(--green);
+  opacity: 0.35;
 }
-
-.closing-copy {
+.closing-inner {
   position: relative;
   z-index: 1;
-  max-width: 42ch;
+  display: grid;
+  grid-template-columns: 1.3fr auto;
+  gap: clamp(1.6rem, 4vw, 3rem);
+  align-items: center;
 }
-
 .closing-copy h2 {
-  font-size: clamp(1.7rem, 1.4rem + 1.4vw, 2.4rem);
-  font-weight: 800;
+  font-size: clamp(2rem, 1.5rem + 2.4vw, 3.3rem);
+  max-width: 18ch;
 }
-
 .closing-copy p {
-  margin-top: 0.6rem;
-  color: rgba(8, 43, 36, 0.78);
-  font-size: 1.05rem;
+  margin-top: 0.9rem;
+  color: rgba(240, 239, 255, 0.85);
+  max-width: 44ch;
+  font-size: 1.08rem;
 }
-
 .closing-action {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.6rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
 }
-
 .closing-note {
-  font-size: 0.85rem;
-  color: rgba(8, 43, 36, 0.6);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: rgba(240, 239, 255, 0.7);
 }
 
-/* ---------- Footer ------------------------------------------------------ */
+/* ---------- Footer ---------------------------------------------------- */
 
 .home-footer {
   position: relative;
   overflow: hidden;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin: 3rem 0 2rem;
-  padding: clamp(1.9rem, 4vw, 2.8rem);
-  background-color: var(--green-deep);
-  background-image:
-    radial-gradient(78% 130% at 92% -18%, rgba(45, 183, 59, 0.5), transparent 56%),
-    radial-gradient(60% 120% at 4% 120%, rgba(166, 165, 218, 0.22), transparent 60%),
-    linear-gradient(158deg, rgba(255, 255, 255, 0.06), transparent 38%);
-  border-radius: var(--radius-lg);
-  color: var(--lavender-light);
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  background: var(--green-deep);
+  color: var(--paper);
+  padding-block: clamp(2.8rem, 5vw, 4rem);
 }
-
-.footer-radial-mark {
+.footer-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.2fr auto;
+  gap: clamp(1.6rem, 4vw, 3rem);
+  align-items: center;
+}
+.footer-splat {
   position: absolute;
-  top: -60px;
-  right: -40px;
-  width: 220px;
-  height: 220px;
-  color: rgba(166, 165, 218, 0.4);
+  bottom: -40%;
+  right: -8%;
+  width: min(520px, 60vw);
+  aspect-ratio: 1500 / 995;
+  color: var(--lavender);
+  opacity: 0.16;
   pointer-events: none;
 }
-
 .footer-brand {
   position: relative;
   z-index: 1;
 }
-
 .footer-brand p {
-  margin-top: 0.6rem;
+  margin-top: 1rem;
+  font-family: var(--font-display);
   font-weight: 600;
-  color: rgba(240, 239, 255, 0.92);
+  color: rgba(240, 239, 255, 0.85);
+  line-height: 1.4;
 }
-
 .footer-brand p span {
   display: block;
-  font-weight: 400;
-  color: rgba(240, 239, 255, 0.7);
+  color: rgba(240, 239, 255, 0.6);
+  font-weight: 500;
 }
-
+.footer-tagline {
+  margin-top: 1.2rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lavender);
+}
 .footer-side {
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem 1.2rem;
+  display: grid;
+  justify-items: end;
+  gap: 1rem;
 }
-
 .footer-nav {
   display: flex;
-  gap: 1.1rem;
-}
-
-.footer-nav a {
+  gap: 1.2rem;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 0.95rem;
-  color: rgba(240, 239, 255, 0.82);
-  transition: color 0.15s ease;
 }
-
+.footer-nav a {
+  color: rgba(240, 239, 255, 0.82);
+}
 .footer-nav a:hover {
   color: #fff;
 }
-
 .footer-social {
   display: flex;
-  gap: 0.6rem;
+  gap: 0.7rem;
 }
-
 .footer-social a {
-  display: grid;
+  display: inline-grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
-  border: 1px solid rgba(240, 239, 255, 0.35);
-  color: var(--lavender-light);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  border: 1.5px solid rgba(240, 239, 255, 0.3);
+  color: rgba(240, 239, 255, 0.9);
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
 }
-
 .footer-social a:hover {
-  background: var(--lavender-light);
+  background: var(--lavender);
   color: var(--green-deep);
+  border-color: var(--lavender);
 }
-
 .footer-social svg {
   width: 1.2rem;
   height: 1.2rem;
@@ -1931,80 +1884,73 @@ svg {
 /* ======================================================================= */
 
 @media (max-width: 900px) {
-  .home-hero {
+  .hero-inner {
     grid-template-columns: 1fr;
   }
-
   .hero-visual {
-    order: -1;
-    aspect-ratio: auto;
-    min-height: 160px;
-    justify-content: flex-start;
+    display: none;
   }
-
-  .hero-radial-mark {
-    width: 200px;
-    height: 200px;
-    inset: auto;
-    right: -40px;
-    top: -40px;
+  .hero {
+    padding-block: clamp(2.5rem, 6vw, 4rem) clamp(3rem, 8vw, 5rem);
   }
-
-  .pricing-grid {
+  .hero-splat {
+    top: -6%;
+    right: -32%;
+    width: min(560px, 96vw);
+    opacity: 0.7;
+  }
+  .about-grid,
+  .flexibility-grid,
+  .closing-inner {
     grid-template-columns: 1fr;
   }
-
-  .about-section {
-    grid-template-columns: 1fr;
-  }
-
-  .about-medallion {
+  .about-card {
     order: -1;
-    max-width: 300px;
-    margin: 0 auto;
+    max-width: 420px;
   }
-
   .reasons-grid,
   .steps-grid {
     grid-template-columns: 1fr;
-    gap: 1.8rem;
+    gap: 1.9rem;
   }
-
-  .flexibility-section {
+  .pricing-grid {
     grid-template-columns: 1fr;
   }
+  .closing-action {
+    justify-items: start;
+  }
+  .footer-inner {
+    grid-template-columns: 1fr;
+  }
+  .footer-side {
+    justify-items: start;
+  }
 
+  /* Booking + FAQ (preserved) */
   .booking-shell {
     grid-template-columns: 1fr;
   }
-
   .custom-booking-calendar {
     grid-template-columns: 1fr;
   }
-
   .faq-hero-inner {
     grid-template-columns: 1fr;
   }
-
   .faq-hero-scene {
     display: none;
   }
-
   .faq-content-shell {
     grid-template-columns: 1fr;
   }
-
   .faq-tabs {
     position: static;
     flex-direction: row;
     flex-wrap: wrap;
   }
-
   .faq-tabs a {
     border-left: none;
     border-bottom: 3px solid transparent;
   }
-
   .faq-tabs a.is-active {
     border-left: none;
     border-bottom-color: var(--coral);
@@ -2013,57 +1959,34 @@ svg {
 
 @media (max-width: 640px) {
   .site-header {
-    padding: 0.7rem 0.75rem 0.7rem 1rem;
+    padding: 0.8rem 1rem 0.9rem;
     gap: 0.6rem;
   }
-
   .header-wordmark {
     height: 2rem;
   }
-
   .nav-actions {
     gap: 0.75rem;
   }
-
   .book-lesson-button {
-    padding: 0.55rem 0.9rem;
-    font-size: 0.85rem;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+  }
+  .hero-copy h1 {
+    font-size: clamp(2.5rem, 2rem + 6vw, 3.4rem);
+  }
+  .hero-points li {
+    font-size: 0.82rem;
   }
 
-  .home-hero {
-    padding: 1.4rem 0.4rem;
-  }
-
+  /* Booking (preserved) */
   .booking-policy-banner {
     grid-template-columns: auto minmax(0, 1fr);
   }
-
   .booking-policy-action {
     grid-column: 1 / -1;
   }
-
-  .hero-stamp {
-    display: none;
-  }
-
-  .hero-visual {
-    min-height: 120px;
-  }
-
-  .hero-radial-mark {
-    width: 170px;
-    height: 170px;
-    right: -30px;
-    top: -30px;
-  }
-
   .faq-stack-contact {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .home-footer,
-  .closing-cta {
     flex-direction: column;
     align-items: flex-start;
   }
