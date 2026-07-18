@@ -1,4 +1,0 @@
-interface:
-  display_name: "Parallel Goal Agents"
-  short_description: "Split goals into parallel agent work"
-  default_prompt: "Use $parallel-goal-agents to split this task into independent agent goals and synthesize the results."
