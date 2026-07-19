@@ -23,6 +23,10 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+Use the smallest relevant check while iterating. The GitHub Pages workflow
+builds non-documentation changes on `main`; Markdown and `docs/**`-only changes
+intentionally trigger neither a build nor a deployment.
+
 ## Configure Booking
 
 Create `.env.local`:
