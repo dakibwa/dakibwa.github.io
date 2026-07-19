@@ -27,6 +27,9 @@ Use the smallest relevant check while iterating. The GitHub Pages workflow
 builds non-documentation changes on `main`; Markdown and `docs/**`-only changes
 intentionally trigger neither a build nor a deployment.
 
+The repository's Pages build type is `workflow`, not legacy branch building, so
+the custom workflow is the single production deployment path.
+
 ## Configure Booking
 
 Create `.env.local`:
