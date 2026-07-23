@@ -1,98 +1,95 @@
-# Portuguese with Inês
+# Português com a Inês
 
-A simple, friendly site for Inês Dias Baía, a Portuguese teacher in Porto. The home page introduces her teaching style, then points students to either booking or the FAQ.
+The production website for Inês Dias Baía’s one-to-one European Portuguese
+lessons, online or in Porto.
 
-The current implementation keeps Square as the booking source of truth, but the preferred booking surface is a custom calendar-style screen inside `/book` backed by a separate Cloudflare Worker/Square API adapter. The hosted Square page remains the fallback and manage-booking route.
+The approved editorial direction is implemented as five responsive routes:
 
-For the project history and design/product decisions from the Codex conversation, see [conversation-brief.md](./conversation-brief.md). For the latest design reset and future rebuild brief, start with [docs-design-reset-audit-2026-07-07.md](./docs-design-reset-audit-2026-07-07.md), [docs-future-perfect-site-brief.md](./docs-future-perfect-site-brief.md), and [design/README.md](./design/README.md).
+- `/` — Home
+- `/approach` — teaching approach and confirmed credentials
+- `/lessons` — lesson formats and prices
+- `/faq` — booking, lesson, location, payment, rescheduling, and level answers
+- `/book` — live Square-hosted booking with a direct secure fallback
 
-## What is included
+The canonical reference images, editable Figma link, and full implementation
+plan live in
+[design/canonical-site-direction](./design/canonical-site-direction/README.md).
+The PNGs define visual intent; the production interface is code-native.
 
-- Public landing page with a short teacher intro, teaching style notes, and one clear book/manage CTA.
-- `/faq` page with the practical questions students need before booking.
-- `/book` page with a custom calendar booking flow, hosted Square fallback, and account/change guidance in one integrated flow.
-- Friendly booking fallback if the real scheduler link has not been added yet.
-- Playwright smoke test for the landing, FAQ, and booking surfaces.
+## Sources of truth
 
-## Run locally
+- Git owns the website, route behaviour, release history, and production assets.
+- Square owns live availability, appointment confirmation, checkout, and
+  booking-management state.
+- The approved product display is trial lesson €25 / 45 minutes, single lesson
+  €45 / 60 minutes, and five lessons €210 / 60 minutes each. Square shows the
+  final appointment details and total before confirmation.
+- The current rescheduling rule is free before the lesson day, with a €5 fee for
+  a change made on the lesson day in Porto time. Production uses manual
+  enforcement until a provider-backed exact rule exists.
+
+## Run and verify
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
 Open `http://localhost:3000`.
 
-Use the smallest relevant check while iterating. The GitHub Pages workflow
-builds non-documentation changes on `main`; Markdown and `docs/**`-only changes
-intentionally trigger neither a build nor a deployment.
-
-The repository's Pages build type is `workflow`, not legacy branch building, so
-the custom workflow is the single production deployment path.
-
-## Configure Booking
-
-Create `.env.local`:
+Smallest relevant checks:
 
 ```bash
-NEXT_PUBLIC_BOOKING_MODE=custom-square
-NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-api.dakibwa.workers.dev
-NEXT_PUBLIC_SQUARE_BOOKING_URL=https://squareup.com/appointments/book/...
-LESSON_PRICE_CENTS=1500
+npm run typecheck
+npm run lint
+npm run check:booking
+npm run test:flow
+npm run build
+```
+
+`test:flow` expects a running static or development server. Set
+`QA_BASE_URL` when it is not `http://localhost:3000`.
+
+## Booking configuration
+
+Copy `.env.example` to `.env.local` and provide the production Square URL:
+
+```bash
+NEXT_PUBLIC_BOOKING_MODE=square-hosted
+NEXT_PUBLIC_SQUARE_BOOKING_URL=https://book.squareup.com/appointments/...
+LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=45
 NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
-NEXT_PUBLIC_RESCHEDULE_FEE_MODE=policy-only
+NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual
 ```
 
-Then restart the dev server.
+Hosted mode renders the Square booking route inside `/book` and always exposes
+an “Open secure booking” link so students can recover if third-party embedding
+or cookie controls prevent the calendar from appearing.
 
-`NEXT_PUBLIC_BOOKING_MODE=custom-square` turns on the custom calendar. `NEXT_PUBLIC_BOOKING_API_BASE_URL` points to the separate Square adapter; if it is blank, the calendar renders preview slots and the confirm button stays disabled. `NEXT_PUBLIC_SQUARE_BOOKING_URL` remains the safe hosted fallback and manage-booking link.
+The dormant custom calendar remains in the repository for a future
+secret-backed Worker. Do not set `custom-square` in production until the Worker
+is deployed, its `/health` endpoint returns `ok: true`, and booking completion
+has been tested against Square. Never put Square access tokens in this static
+site. See [docs-square-custom-booking.md](./docs-square-custom-booking.md).
 
-For local layout preview before the Worker is live, use `ALLOW_BOOKING_PREVIEW=1 npm run check:booking`. Production checks intentionally fail if the custom Square API URL is missing or unhealthy.
+## Publication
 
-Use `NEXT_PUBLIC_BOOKING_MODE=square-hosted` only if you want to temporarily return `/book` to the hosted Square iframe while the adapter is not ready.
+The repository’s GitHub Pages workflow publishes `main` to
+`https://dakibwa.github.io/`.
 
-## Flexible rescheduling policy
-
-The student-facing rule is deliberately precise:
-
-- Students can book any live available time.
-- They can move a lesson to any other available time.
-- Changes made before the calendar day of the lesson are free.
-- A EUR 5 fee applies when the change is made on the lesson day itself, using `Europe/Lisbon` (Porto) time.
-
-The homepage, booking page, and FAQ now use that same wording. The quickest route is the reschedule link in the student’s Square confirmation email. `/book` also links to the Square page, where an existing student can open the menu and sign in.
-
-Before production, choose one operational mode:
-
-- `NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual`: Inês checks the original lesson date in Porto time and collects the EUR 5 fee in Square for a same-day change. This preserves the exact calendar-day rule without silently adding a subscription.
-- `NEXT_PUBLIC_RESCHEDULE_FEE_MODE=square-policy`: configure Square Appointments Plus or Premium with a card-on-file cancellation policy and flat EUR 5 fee. Square's native policy is cutoff-based and enforcement remains discretionary, so Inês must still apply the fee only to same-calendar-day reschedules.
-
-`policy-only` is a local design/QA mode and intentionally fails the production booking check. Square does not currently provide an exact automatic “same Porto calendar day” reschedule charge in this static-site flow. Fully automatic enforcement would require an authenticated student change flow, payment completion verification, and then a Bookings API update.
-
-In Square, go to **Appointments > Online booking > Channels > Add your booking flow to an existing site > Get Started**, then copy either the booking flow URL or the one-line embed/button code. Paste it into `NEXT_PUBLIC_SQUARE_BOOKING_URL`.
-
-For the custom Square API adapter, see [docs-square-custom-booking.md](./docs-square-custom-booking.md). Do not add Square access tokens or Stripe secret keys to this static site. In-site prepayment would need a separate Square Web Payments SDK phase.
-
-If staying with Acuity instead, set:
+The branded public route `https://akibwa.com/portugal/` is a base-path build
+copied into the Akibwa website repository at `public/portugal/`:
 
 ```bash
-NEXT_PUBLIC_ACUITY_SCHEDULER_URL=https://portuguese-with-ines.as.me/first-portuguese-lesson
+NEXT_PUBLIC_SITE_BASE_PATH=portugal \
+SITE_BASE_PATH=portugal \
+NEXT_PUBLIC_BOOKING_MODE=square-hosted \
+npm run build
 ```
 
-In Acuity, configure the appointment type with:
-
-- 75-minute first Portuguese lesson.
-- Current payment price set to EUR 15, charged on booking.
-- Location copy for Epoca Cafe, without implying an official partnership unless confirmed.
-- Calendar connected for conflict checking and event creation.
-- Stripe connected through Acuity payment settings and required for payment before booking.
-- Client accounts enabled if students should log in to review upcoming and past lessons.
-- Intake questions for level, lesson focus, phone/WhatsApp, and any meeting notes.
-- Scheduling limits set so students can reschedule/cancel only inside the intended window.
-- Confirmation/reminder emails that include the right account, reschedule, and cancel links.
-
-The site accepts Square `squareup.com` or `square.site` links, plus Acuity `acuityscheduling.com`, `squarespacescheduling.com`, and `as.me` links. It can extract a URL from `src="..."` or `href="..."` if you paste a one-line embed/button snippet.
-
-For a safe pre-production pass with throwaway/test accounts, see [docs-integration-test-setup.md](./docs-integration-test-setup.md).
+Sync the resulting `out/` directory into a clean Akibwa worktree, run the
+Akibwa publication checks, publish that repository, and verify all five nested
+routes on the real custom domain. GitHub and the live destinations, not a local
+build, are the publication proof.

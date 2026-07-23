@@ -172,8 +172,8 @@ function normalizeSquareBookingUrl(value) {
 }
 
 function normalizeBookingMode(value) {
-  if (value === "auto" || value === "square-hosted") return value;
-  return "custom-square";
+  if (value === "auto" || value === "custom-square") return value;
+  return "square-hosted";
 }
 
 function normalizeRescheduleFeeMode(value) {

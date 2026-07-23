@@ -1,41 +1,42 @@
 import Link from "next/link";
 import { BrandWordmark } from "@/components/BrandWordmark";
 
-type SiteHeaderPage = "home" | "faq" | "book";
+export type SitePage = "home" | "approach" | "lessons" | "faq" | "book";
 
 type SiteHeaderProps = {
-  currentPage?: SiteHeaderPage;
+  currentPage?: SitePage;
 };
+
+const navigation: Array<{ href: string; id: SitePage; label: string }> = [
+  { href: "/approach", id: "approach", label: "Approach" },
+  { href: "/lessons", id: "lessons", label: "Lessons" },
+  { href: "/faq", id: "faq", label: "FAQ" },
+  { href: "/book", id: "book", label: "Booking" }
+];
 
 export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
   return (
-    <header className="site-header torn-bottom">
-      <div className="wrap">
+    <header className="site-header">
+      <div className="site-header__inner">
         <Link
           href="/"
-          className="brand"
+          className="site-header__brand"
           aria-current={currentPage === "home" ? "page" : undefined}
-          aria-label="Português com a Inês home"
+          aria-label="Português com a Inês — home"
         >
           <BrandWordmark priority className="header-wordmark" />
         </Link>
-        <nav className="nav-actions" aria-label="Main navigation">
-          <Link
-            href="/faq"
-            className="nav-text-link nav-faq-link"
-            aria-current={currentPage === "faq" ? "page" : undefined}
-            aria-label="Frequently asked questions"
-          >
-            <span>FAQ</span>
-          </Link>
-          <Link
-            className="book-lesson-button"
-            href="/book"
-            aria-current={currentPage === "book" ? "page" : undefined}
-            aria-label="Book a Portuguese lesson"
-          >
-            <span>Book a lesson</span>
-          </Link>
+        <nav className="site-nav" aria-label="Main navigation">
+          {navigation.map((item) => (
+            <Link
+              href={item.href}
+              className="site-nav__link"
+              aria-current={currentPage === item.id ? "page" : undefined}
+              key={item.id}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
       </div>
     </header>

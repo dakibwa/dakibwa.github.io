@@ -1,4 +1,8 @@
-# Square Custom Booking
+# Square Custom Booking — Future Architecture
+
+This flow is not deployed and is not the production booking route. Production
+uses `square-hosted`. Do not enable this design until the Worker is deployed,
+healthy, and tested against Square.
 
 The custom Square booking flow keeps this Next.js site as a static GitHub Pages frontend and uses a separate Square API adapter for live availability and booking creation.
 
@@ -27,11 +31,11 @@ Set these in `.env.local` for development and GitHub Pages repository variables 
 NEXT_PUBLIC_BOOKING_MODE=custom-square
 NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-api.dakibwa.workers.dev
 NEXT_PUBLIC_SQUARE_BOOKING_URL=https://book.squareup.com/appointments/...
-LESSON_PRICE_CENTS=1500
+LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=45
 NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
-NEXT_PUBLIC_RESCHEDULE_FEE_MODE=policy-only
+NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual
 ```
 
 If `NEXT_PUBLIC_BOOKING_API_BASE_URL` is blank, the custom calendar renders sample slots and disables confirmation. Students can still use the Square hosted link when `NEXT_PUBLIC_SQUARE_BOOKING_URL` is set.
@@ -43,7 +47,7 @@ Use `workers/square-booking-worker.mjs` as the Cloudflare Worker entrypoint. `wo
 Set non-secret vars:
 
 ```bash
-ALLOWED_ORIGIN=http://localhost:3000,https://dakibwa.github.io
+ALLOWED_ORIGIN=http://localhost:3000,https://dakibwa.github.io,https://akibwa.com
 SQUARE_ENVIRONMENT=production
 SQUARE_API_VERSION=2026-05-20
 SQUARE_LOCATION_ID=LM9S606EKRB6D

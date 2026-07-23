@@ -3,96 +3,122 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 const outDir = path.join(process.cwd(), "tmp/qa");
-const base = process.env.QA_BASE_URL ?? "http://localhost:3000";
+const base = (process.env.QA_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 const expectedBookingMode = normalizeBookingMode(process.env.NEXT_PUBLIC_BOOKING_MODE ?? "");
 const expectCustomBooking = expectedBookingMode === "custom-square";
+const routes = [
+  { id: "home", path: "/", heading: "Português" },
+  { id: "approach", path: "/approach", heading: "A calm," },
+  { id: "lessons", path: "/lessons", heading: "Private lessons" },
+  { id: "faq", path: "/faq", heading: "Questions" },
+  { id: "booking", path: "/book", heading: "Book your" }
+];
 
 await mkdir(outDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 864, height: 1200 } });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const logs = [];
+const results = [];
 
 page.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
 page.on("console", (message) => {
   if (message.type() === "error") logs.push(`console:${message.text()}`);
 });
 
-await page.goto(base, { waitUntil: "networkidle" });
-await page.screenshot({ path: path.join(outDir, "landing-desktop.png"), fullPage: true });
-const heroText = await page.locator("h1").first().textContent();
-const homeNavText = await page.locator(".site-header").innerText();
-const homeText = await page.locator(".home-page").innerText();
+for (const route of routes) {
+  for (const viewport of [
+    { id: "desktop", width: 1440, height: 1000 },
+    { id: "mobile", width: 390, height: 844 }
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto(`${base}${route.path}`, { waitUntil: "domcontentloaded" });
+    await page.locator("h1").waitFor({ timeout: 10_000 });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(500);
 
-await page.setViewportSize({ width: 390, height: 900 });
-await page.goto(base, { waitUntil: "networkidle" });
-await page.screenshot({ path: path.join(outDir, "landing-mobile.png"), fullPage: true });
+    const heading = (await page.locator("h1").first().innerText()).replace(/\s+/g, " ").trim();
+    assertIncludes(heading, route.heading, `${route.id} heading`);
 
-await page.setViewportSize({ width: 864, height: 950 });
-await page.goto(`${base}/faq`, { waitUntil: "networkidle" });
-await page.waitForSelector(".faq-content-shell", { timeout: 10_000 });
-await page.screenshot({ path: path.join(outDir, "faq-desktop.png"), fullPage: true });
-const faqHeading = await page.locator("h1").first().textContent();
-const faqText = await page.locator(".faq-content-shell").innerText();
+    const headingCount = await page.locator("h1").count();
+    if (headingCount !== 1) {
+      throw new Error(`${route.id} should have exactly one h1; found ${headingCount}.`);
+    }
 
-await page.setViewportSize({ width: 390, height: 900 });
-await page.goto(`${base}/faq`, { waitUntil: "networkidle" });
-await page.waitForSelector(".faq-content-shell", { timeout: 10_000 });
-await page.screenshot({ path: path.join(outDir, "faq-mobile.png"), fullPage: true });
+    const overflow = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    if (overflow.scrollWidth > overflow.clientWidth + 1) {
+      throw new Error(
+        `${route.id} ${viewport.id} has horizontal overflow: ${overflow.scrollWidth}px > ${overflow.clientWidth}px.`
+      );
+    }
 
-await page.setViewportSize({ width: 864, height: 650 });
-await page.goto(`${base}/book`, { waitUntil: "domcontentloaded" });
-await page.waitForSelector(".booking-calendar-panel", { timeout: 10_000 });
-await page.waitForSelector(".custom-booking-calendar, .booking-embed-frame iframe, .booking-placeholder", { timeout: 10_000 });
-if ((await page.locator(".custom-booking-calendar").count()) > 0) {
-  const firstSlot = page.locator(".slot-grid button").first();
-  if ((await firstSlot.count()) > 0) {
-    await firstSlot.click();
-    await page.waitForSelector(".slot-grid button.is-selected", { timeout: 5_000 });
+    await page.screenshot({
+      path: path.join(outDir, `${route.id}-${viewport.id}.png`),
+      fullPage: true
+    });
+
+    results.push({
+      route: route.id,
+      viewport: viewport.id,
+      heading,
+      overflow
+    });
   }
 }
-await page.waitForTimeout(2_000);
-await page.screenshot({ path: path.join(outDir, "booking-desktop.png"), fullPage: true });
-const bookingHeading = await page.locator("h1").first().textContent();
-const bookingEmbedConfigured = (await page.locator(".booking-embed-frame").count()) > 0;
-const customBookingConfigured = (await page.locator(".custom-booking-calendar").count()) > 0;
-const bookingText = await page.locator(".booking-shell").innerText();
 
-assertIncludes(homeText, "Plans change. Your lesson can too.", "homepage flexibility message");
-assertIncludes(homeText, "€5 fee", "homepage same-day fee");
-assertIncludes(faqText, "same calendar day", "FAQ same-day definition");
-assertIncludes(bookingText, "Move to any available time", "booking flexibility policy");
-assertIncludes(bookingText, "€5 fee", "booking same-day fee");
-assertIncludes(bookingText, "Open Square to sign in", "booking management route");
+await page.setViewportSize({ width: 1440, height: 1000 });
+await page.goto(`${base}/faq`, { waitUntil: "domcontentloaded" });
+const firstFaq = page.locator(".faq-row").first();
+if (!(await firstFaq.evaluate((element) => element.hasAttribute("open")))) {
+  throw new Error("The first booking question should be open by default.");
+}
+await firstFaq.locator("summary").click();
+if (await firstFaq.evaluate((element) => element.hasAttribute("open"))) {
+  throw new Error("The FAQ disclosure did not close.");
+}
+
+await page.goto(`${base}/book`, { waitUntil: "domcontentloaded" });
+await page.waitForSelector(".booking-provider", { timeout: 10_000 });
+const customBookingConfigured = (await page.locator(".custom-booking-calendar").count()) > 0;
+const bookingEmbedConfigured = (await page.locator(".booking-embed-frame iframe").count()) > 0;
+const directBookingHref = await page.locator(".booking-provider__direct").getAttribute("href").catch(() => null);
+const bookingText = await page.locator(".booking-composition").innerText();
+
+assertIncludes(bookingText.toLowerCase(), "live availability", "booking live-availability label");
+assertIncludes(bookingText.toLowerCase(), "square", "booking provider");
+
+if (!directBookingHref?.includes("book.squareup.com")) {
+  throw new Error("The public Square fallback link is missing or invalid.");
+}
 
 if (expectCustomBooking && !customBookingConfigured) {
   throw new Error("Expected the custom Square booking calendar in custom-square mode.");
 }
 
-await page.setViewportSize({ width: 390, height: 900 });
-await page.goto(`${base}/book`, { waitUntil: "domcontentloaded" });
-await page.waitForSelector(".booking-calendar-panel", { timeout: 10_000 });
-await page.waitForSelector(".custom-booking-calendar, .booking-embed-frame iframe, .booking-placeholder", { timeout: 10_000 });
-if (expectCustomBooking && (await page.locator(".custom-booking-calendar").count()) === 0) {
-  throw new Error("Expected the custom Square booking calendar on mobile in custom-square mode.");
+if (!expectCustomBooking && !bookingEmbedConfigured) {
+  throw new Error("Expected the hosted booking embed in square-hosted mode.");
 }
-await page.waitForTimeout(2_000);
-await page.screenshot({ path: path.join(outDir, "booking-mobile.png"), fullPage: true });
 
 await browser.close();
+
+const fatalLogs = logs.filter((entry) => !entry.includes("Failed to load resource"));
+
+if (fatalLogs.length) {
+  throw new Error(`Browser errors were recorded:\n${fatalLogs.join("\n")}`);
+}
 
 console.log(
   JSON.stringify(
     {
-      heroText,
-      homeNavText,
-      faqHeading,
-      faqText: faqText.slice(0, 180),
-      bookingHeading,
+      base,
+      results,
       bookingEmbedConfigured,
       customBookingConfigured,
-      bookingText: bookingText.slice(0, 180),
-      logs,
+      directBookingHref,
+      externalResourceWarnings: logs.filter((entry) => entry.includes("Failed to load resource")),
       screenshots: outDir
     },
     null,
@@ -101,8 +127,8 @@ console.log(
 );
 
 function normalizeBookingMode(value) {
-  if (value === "auto" || value === "square-hosted") return value;
-  return "custom-square";
+  if (value === "auto" || value === "custom-square") return value;
+  return "square-hosted";
 }
 
 function assertIncludes(value, expected, label) {
