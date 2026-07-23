@@ -25,8 +25,8 @@ The PNGs define visual intent; the production interface is code-native.
   appointment services. Reconfirm that policy when the Portuguese Square
   account replaces it.
 - The approved product display is trial lesson €20 / 45 minutes, single lesson
-  €25 / 45 minutes, and five lessons €110 / 45 minutes each. Square shows the
-  final appointment details and total before confirmation.
+  €25 / 1 hour 15 minutes, and five lessons €110 / 45 minutes each. Square
+  shows the final appointment details and total before confirmation.
 - The current rescheduling rule is free before the lesson day, with a €5 fee for
   a change made on the lesson day in Porto time. Production uses manual
   enforcement until a provider-backed exact rule exists.

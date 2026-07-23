@@ -24,7 +24,7 @@ export const lessonProducts: LessonProduct[] = [
     id: "single",
     title: "Single lesson",
     price: "€25",
-    duration: "45 minutes",
+    duration: "1 hour 15 minutes",
     description: "A focused one-to-one lesson shaped around the Portuguese you want to use in real life."
   },
   {
