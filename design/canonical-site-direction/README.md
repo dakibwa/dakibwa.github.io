@@ -62,9 +62,9 @@ navigation item.
 Create a cultural-programme-style lesson and pricing page rather than ecommerce
 cards. Typeset the current lesson formats in three ruled columns:
 
-- Trial lesson — €25 — 45 minutes
-- Single lesson — €45 — 60 minutes
-- 5 lessons — €210 — 60 minutes each
+- Trial lesson — €20 — 45 minutes
+- Single lesson — €25 — 45 minutes
+- 5 lessons — €110 — 45 minutes each
 
 End with an **Online or in Porto** band and one coral **Book a lesson** action.
 Keep Lessons as the only active navigation item.
