@@ -25,8 +25,8 @@ The PNGs define visual intent; the production interface is code-native.
   appointment services. Reconfirm that policy when the Portuguese Square
   account replaces it.
 - The approved product display is trial lesson €20 / 45 minutes, single lesson
-  €25 / 1 hour 15 minutes, and five lessons €110 / 45 minutes each. Square
-  shows the final appointment details and total before confirmation.
+  €25 / 1 hour 15 minutes, and five lessons €110 / 1 hour 15 minutes each.
+  Square shows the final appointment details and total before confirmation.
 - The current rescheduling rule is free before the lesson day, with a €5 fee for
   a change made on the lesson day in Porto time. Production uses manual
   enforcement until a provider-backed exact rule exists.
@@ -62,7 +62,7 @@ NEXT_PUBLIC_BOOKING_MODE=square-hosted
 NEXT_PUBLIC_SQUARE_BOOKING_URL=https://book.squareup.com/appointments/...
 LESSON_PRICE_CENTS=2000
 LESSON_CURRENCY=eur
-NEXT_PUBLIC_LESSON_DURATION_MINUTES=45
+NEXT_PUBLIC_LESSON_DURATION_MINUTES=75
 NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
 NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual
 ```

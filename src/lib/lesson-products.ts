@@ -31,7 +31,7 @@ export const lessonProducts: LessonProduct[] = [
     id: "five",
     title: "5 lessons",
     price: "€110",
-    duration: "45 minutes each",
+    duration: "1 hour 15 minutes each",
     description: "A steady rhythm for building confidence, with each lesson continuing naturally from the last.",
     note: "Save €15"
   }
