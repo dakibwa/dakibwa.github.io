@@ -1,11 +1,15 @@
 # Booking Launch Plan
 
-Use Square as the source of truth for booking, client records, calendar sync, and student changes. The site can render a custom calendar UI, but all private Square API work must run through a separate backend adapter.
+Use Square as the source of truth for live availability, booking, client
+records, calendar sync, checkout, and student changes. Production currently
+uses Square’s hosted route, embedded with a visible direct fallback.
 
 ## Provider Order
 
-1. Custom Square calendar: set `NEXT_PUBLIC_BOOKING_MODE=custom-square` and `NEXT_PUBLIC_BOOKING_API_BASE_URL`.
-2. Hosted Square fallback/manage link: set `NEXT_PUBLIC_SQUARE_BOOKING_URL`.
+1. Hosted Square booking: set `NEXT_PUBLIC_BOOKING_MODE=square-hosted` and
+   `NEXT_PUBLIC_SQUARE_BOOKING_URL`.
+2. Future custom Square calendar: only after a deployed, healthy Worker is
+   configured with `NEXT_PUBLIC_BOOKING_API_BASE_URL`.
 3. Acuity fallback: set `NEXT_PUBLIC_ACUITY_SCHEDULER_URL`.
 4. Cal.com fallback: set `NEXT_PUBLIC_CALCOM_LINK`.
 
@@ -20,21 +24,23 @@ Square takes precedence when more than one provider is configured.
 5. Set the copied URL or one-line snippet as:
 
 ```bash
-NEXT_PUBLIC_BOOKING_MODE=custom-square
-NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-api.dakibwa.workers.dev
+NEXT_PUBLIC_BOOKING_MODE=square-hosted
+NEXT_PUBLIC_BOOKING_API_BASE_URL=
 NEXT_PUBLIC_SQUARE_BOOKING_URL=https://squareup.com/appointments/book/...
-LESSON_PRICE_CENTS=1500
+LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=45
 NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
-NEXT_PUBLIC_RESCHEDULE_FEE_MODE=policy-only
+NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual
 ```
 
 ## Flexible Rescheduling Contract
 
 Use `Europe/Lisbon` as the policy clock. A change is free when it is requested on any calendar day before the lesson date. A EUR 5 fee applies only when the request date and original lesson date are the same in Porto time. This is not the same as a rolling 24-hour cutoff.
 
-The website now exposes the rule consistently on `/`, `/book`, and `/faq`. Existing students use the reschedule link in their Square confirmation email; the site also sends them to the Square page, where the menu exposes sign-in. Before launch, replace `policy-only` with one of these reviewed operating modes:
+The website exposes the rule consistently on `/book` and `/faq`. Existing
+students use the change link in their Square confirmation email; the site also
+links directly to Square. Use one of these reviewed operating modes:
 
 - `manual`: Inês validates the date and collects the EUR 5 fee in Square for same-day changes.
 - `square-policy`: Square Appointments Plus or Premium has card-on-file cancellation protection and a flat EUR 5 fee configured. Native enforcement is cutoff-based and discretionary, so only apply it when the exact Porto calendar-day rule is met.
@@ -45,7 +51,11 @@ Do not approximate the promise with a 24-hour cutoff. Exact automatic self-servi
 
 Keep this Next app as a static export for GitHub Pages. Do not add `src/app/api` routes for Square while `next.config.ts` uses `output: "export"`.
 
-Deploy `workers/square-booking-worker.mjs` as a separate Cloudflare Worker. Store `SQUARE_ACCESS_TOKEN` as a Worker secret, and keep location, service variation, and optional team member IDs in Worker config. See [docs-square-custom-booking.md](./docs-square-custom-booking.md).
+The Worker is not part of the current production path. If the custom calendar
+is resumed, deploy `workers/square-booking-worker.mjs` separately, store
+`SQUARE_ACCESS_TOKEN` as a Worker secret, and test `/health`, availability, and
+real booking creation before changing the public mode. See
+[docs-square-custom-booking.md](./docs-square-custom-booking.md).
 
 ## Account Connection Boundary
 

@@ -28,8 +28,8 @@ function normalizePublicHttpUrl(value: string) {
 }
 
 function normalizeBookingMode(value: string): BookingMode {
-  if (value === "auto" || value === "square-hosted") return value;
-  return "custom-square";
+  if (value === "auto" || value === "custom-square") return value;
+  return "square-hosted";
 }
 
 function normalizeRescheduleFeeMode(value: string): RescheduleFeeMode {

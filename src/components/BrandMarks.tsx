@@ -1,87 +1,54 @@
-/**
- * Hand-cut brand marks, rebuilt as code-native SVG from the business-card and
- * sticker language on design/primary-brand-direction.png:
- *  - PortoStamp: the round rubber-stamp badge ("PORTO · PESSOAL · PRÁTICO").
- *  - VamosSticker: the die-cut spiky starburst sticker ("Vamos lá!").
- *  - Splat: the organic paint-burst, painted via the extracted mask so it can
- *    be recoloured per surface.
- */
-
 type MarkProps = {
   className?: string;
 };
 
-const STAMP_ARC_RADIUS = 74;
-const STAMP_ARC_D = `M100,100 m-${STAMP_ARC_RADIUS},0 a${STAMP_ARC_RADIUS},${STAMP_ARC_RADIUS} 0 1,1 ${STAMP_ARC_RADIUS * 2},0 a${STAMP_ARC_RADIUS},${STAMP_ARC_RADIUS} 0 1,1 -${STAMP_ARC_RADIUS * 2},0`;
+function markClass(name: string, className?: string) {
+  return className ? `${name} ${className}` : name;
+}
 
-/** Rendered once (in the layout) so every stamp shares one arc path. */
-export function BrandMarkSprite() {
+export function PlantMark({ className }: MarkProps) {
   return (
-    <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true" focusable="false">
-      <defs>
-        <path id="porto-stamp-arc" d={STAMP_ARC_D} />
-      </defs>
-    </svg>
+    <span className={markClass("plant-mark", className)} aria-hidden="true">
+      <svg viewBox="0 0 120 150" role="presentation">
+        <path className="mark-stroke" d="M60 111V33" />
+        <path className="mark-fill" d="M57 56C30 56 15 40 12 16c27 1 43 15 45 40Z" />
+        <path className="mark-fill" d="M63 56c27 0 42-16 45-40-27 1-43 15-45 40Z" />
+        <path className="mark-fill" d="M57 89C32 89 18 75 16 54c25 1 39 14 41 35Z" />
+        <path className="mark-fill" d="M63 89c25 0 39-14 41-35-25 1-39 14-41 35Z" />
+        <circle className="mark-accent" cx="60" cy="124" r="20" />
+      </svg>
+    </span>
   );
 }
 
-export function PortoStamp({ className }: MarkProps) {
-  const ring = "PORTO · PESSOAL · PRÁTICO · PORTO · PESSOAL · PRÁTICO · ";
-  const circumference = 2 * Math.PI * STAMP_ARC_RADIUS; // fit one full pass, no seam overlap
+export function WaveMark({ className }: MarkProps) {
   return (
-    <span className={className ? `porto-stamp ${className}` : "porto-stamp"} aria-hidden="true">
-      <svg viewBox="0 0 200 200" role="presentation">
-        <circle className="porto-stamp-ring" cx="100" cy="100" r="92" />
-        <circle className="porto-stamp-ring is-inner" cx="100" cy="100" r="54" />
-        <text className="porto-stamp-text">
-          <textPath href="#porto-stamp-arc" startOffset="0" textLength={circumference} lengthAdjust="spacingAndGlyphs">
-            {ring}
-          </textPath>
-        </text>
-        <g className="porto-stamp-core">
-          <text x="100" y="94" textAnchor="middle" className="porto-stamp-word">
-            PORTO
-          </text>
-          <text x="100" y="118" textAnchor="middle" className="porto-stamp-sub">
-            PESSOAL
-          </text>
+    <span className={markClass("wave-mark", className)} aria-hidden="true">
+      <svg viewBox="0 0 150 110" role="presentation">
+        <path className="mark-stroke" d="M10 24c23-20 42 20 65 0s42 20 65 0" />
+        <path className="mark-stroke mark-accent-stroke" d="M10 55c23-20 42 20 65 0s42 20 65 0" />
+        <path className="mark-stroke" d="M10 86c23-20 42 20 65 0s42 20 65 0" />
+      </svg>
+    </span>
+  );
+}
+
+export function SunMark({ className }: MarkProps) {
+  return (
+    <span className={markClass("sun-mark", className)} aria-hidden="true">
+      <svg viewBox="0 0 140 140" role="presentation">
+        <g className="mark-stroke sun-rays">
+          <path d="M70 8v22M70 110v22M8 70h22M110 70h22" />
+          <path d="m26 26 16 16M98 98l16 16M114 26 98 42M42 98l-16 16" />
+          <path d="m46 13 8 20M86 107l8 20M13 46l20 8M107 86l20 8" />
+          <path d="m94 13-8 20M54 107l-8 20M127 46l-20 8M33 86l-20 8" />
         </g>
+        <circle className="mark-accent" cx="70" cy="70" r="22" />
       </svg>
     </span>
   );
 }
 
-export function VamosSticker({ className }: MarkProps) {
-  // 24-point hand-cut starburst outline.
-  const points = 24;
-  const cx = 100;
-  const cy = 100;
-  const outer = 96;
-  const inner = 80;
-  const path = Array.from({ length: points * 2 }, (_, i) => {
-    const r = i % 2 === 0 ? outer : inner;
-    const wobble = i % 3 === 0 ? 3 : 0;
-    const angle = (Math.PI * i) / points - Math.PI / 2;
-    const x = cx + Math.cos(angle) * (r - wobble);
-    const y = cy + Math.sin(angle) * (r - wobble);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
-
-  return (
-    <span className={className ? `vamos-sticker ${className}` : "vamos-sticker"} aria-hidden="true">
-      <svg viewBox="0 0 200 200" role="presentation">
-        <polygon className="vamos-sticker-burst" points={path} />
-        <text x="100" y="90" textAnchor="middle" className="vamos-sticker-top">
-          Pronto para
-        </text>
-        <text x="100" y="112" textAnchor="middle" className="vamos-sticker-script">
-          Vamos lá!
-        </text>
-      </svg>
-    </span>
-  );
-}
-
-export function Splat({ className }: MarkProps) {
-  return <span className={className ? `splat ${className}` : "splat"} aria-hidden="true" />;
+export function ConversationBurst({ className }: MarkProps) {
+  return <span className={markClass("conversation-burst", className)} aria-hidden="true" />;
 }

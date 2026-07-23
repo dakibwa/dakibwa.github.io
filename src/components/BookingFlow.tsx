@@ -2,8 +2,7 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, ExternalLink, RefreshCcw } from "lucide-react";
-import { BrandWordmark } from "@/components/BrandWordmark";
+import { ConversationBurst, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
 import { CustomSquareBookingFlow } from "@/components/CustomSquareBookingFlow";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -11,11 +10,13 @@ import {
   BOOKING_DIRECT_URL,
   BOOKING_EMBED_URL,
   BOOKING_PROVIDER,
+  BOOKING_PROVIDER_NAME,
   CALCOM_LINK,
   SAME_DAY_RESCHEDULE_FEE_CENTS,
   USE_CUSTOM_SQUARE_BOOKING,
   formatMoney
 } from "@/lib/config";
+import { trialLesson } from "@/lib/lesson-products";
 
 type CalCommandArgs = unknown[];
 type CalApi = ((command: string, ...args: CalCommandArgs) => void) & {
@@ -30,18 +31,13 @@ declare global {
   }
 }
 
-const calComLink = CALCOM_LINK;
 const calScriptSrc = "https://app.cal.com/embed/embed.js";
 const acuityScriptSrc = "https://embed.acuityscheduling.com/js/embed.js";
-const bookingProvider = BOOKING_PROVIDER;
 const bookingDirectUrl = BOOKING_DIRECT_URL;
 const bookingEmbedUrl = BOOKING_EMBED_URL;
-const isSquare = bookingProvider === "square";
-const isAcuity = bookingProvider === "acuity";
-const isCalCom = bookingProvider === "calcom";
-const isAccountScheduler = isSquare || isAcuity;
-const isHostedSquare = isSquare && !USE_CUSTOM_SQUARE_BOOKING;
-const showTopExternalLink = Boolean(bookingDirectUrl && !isSquare);
+const isSquare = BOOKING_PROVIDER === "square";
+const isAcuity = BOOKING_PROVIDER === "acuity";
+const isCalCom = BOOKING_PROVIDER === "calcom";
 const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 
 function loadCalEmbed() {
@@ -73,7 +69,7 @@ export function BookingFlow() {
   const [embedReady, setEmbedReady] = useState(false);
 
   useEffect(() => {
-    if (!isCalCom || !calComLink || !widgetRef.current) return;
+    if (!isCalCom || !CALCOM_LINK || !widgetRef.current) return;
 
     const parentElement = widgetRef.current;
     parentElement.innerHTML = "";
@@ -82,7 +78,7 @@ export function BookingFlow() {
     cal("init", { origin: "https://app.cal.com" });
     cal("inline", {
       elementOrSelector: parentElement,
-      calLink: calComLink
+      calLink: CALCOM_LINK
     });
     setEmbedReady(true);
 
@@ -95,71 +91,74 @@ export function BookingFlow() {
     <main className="book-page">
       <SiteHeader currentPage="book" />
 
-      <section className="booking-shell" aria-label="Book a Portuguese lesson">
-        <aside className="booking-brand-panel" aria-label="Português com a Inês lesson style">
-          <BrandWordmark className="booking-brand-wordmark" />
-          <span className="booking-brand-still" aria-hidden="true" />
-          <p>Pick a time that works for you. If plans change, move your lesson to another available time with one clear, simple policy.</p>
-          <ul className="booking-brand-points">
-            <li>One-to-one, tailored to your goals</li>
-            <li>Online or in person in Porto</li>
-            <li>Flexible changes to any open time</li>
+      <section className="booking-composition" aria-labelledby="booking-title">
+        <aside className="booking-intro">
+          <h1 id="booking-title">Book your<br />Portuguese<br />lesson</h1>
+          <div className="editorial-rule" aria-hidden="true" />
+          <p>Choose a live time in the secure booking calendar, then confirm your details.</p>
+          <ul className="booking-intro__points">
+            <li><PlantMark /><span>One to one</span></li>
+            <li><WaveMark /><span>Online or in Porto</span></li>
+            <li><SunMark /><span>Porto time</span></li>
           </ul>
+          <ConversationBurst className="booking-intro__burst" />
         </aside>
-        <section className="booking-calendar-panel" aria-label="Embedded lesson booking">
-          <div className="booking-panel-top">
-            <div className="booking-story">
-              <h1>{USE_CUSTOM_SQUARE_BOOKING ? "Book your Portuguese lesson" : isHostedSquare ? "Book inside this page" : isAccountScheduler ? "Book or manage a lesson" : "Book your first Portuguese lesson"}</h1>
-              <p>
-                {USE_CUSTOM_SQUARE_BOOKING
-                  ? "Choose an available day, pick a time, and enter your details. All times are shown in Porto time."
-                  : isHostedSquare
-                    ? "Choose a time below. Square handles the secure confirmation while the flow stays embedded here where possible."
-                  : isAccountScheduler
-                    ? "Use the scheduler below to book, sign up, or log in."
-                    : "Choose a time and pay securely below."}
+
+        <section className="booking-provider" aria-label={`${BOOKING_PROVIDER_NAME} lesson booking`}>
+          <header className="booking-provider__header">
+            <div>
+              <p className="eyebrow">
+                {USE_CUSTOM_SQUARE_BOOKING ? "Choose a day and time" : "Live availability"}
               </p>
-            </div>
-            {showTopExternalLink ? (
-              <a className="booking-top-link" href={bookingDirectUrl} target="_blank" rel="noreferrer">
-                Open in new tab
-              </a>
-            ) : null}
-          </div>
-          <div className="booking-policy-banner" id="change-booking">
-            <span className="booking-policy-icon" aria-hidden="true">
-              <RefreshCcw />
-            </span>
-            <div className="booking-policy-copy">
-              <p className="booking-policy-kicker">Flexible rescheduling</p>
-              <strong>Move to any available time</strong>
+              <h2>
+                {BOOKING_PROVIDER === "none"
+                  ? "Booking is being prepared."
+                  : `Book securely with ${BOOKING_PROVIDER_NAME}.`}
+              </h2>
               <p>
-                Use the link in your confirmation email to choose another time. Changes are free before the lesson day;
-                a {sameDayFee} fee applies on the day itself.
+                Live appointment details, availability, and confirmation are owned by {BOOKING_PROVIDER_NAME}.
               </p>
             </div>
             {bookingDirectUrl ? (
-              <a className="booking-policy-action" href={bookingDirectUrl} target="_blank" rel="noreferrer">
-                Open Square to sign in
-                <ExternalLink size={15} aria-hidden="true" />
+              <a className="button button--coral booking-provider__direct" href={bookingDirectUrl} target="_blank" rel="noreferrer">
+                Open secure booking
               </a>
             ) : null}
+          </header>
+
+          <div className="booking-trial-summary" aria-label="Trial lesson summary">
+            <SunMark />
+            <div>
+              <span>{trialLesson.title}</span>
+              <strong>{trialLesson.duration} · {trialLesson.price}</strong>
+            </div>
+            <p>Square confirms the final appointment details.</p>
           </div>
+
           {USE_CUSTOM_SQUARE_BOOKING ? (
             <CustomSquareBookingFlow />
           ) : isSquare && bookingEmbedUrl ? (
             <div className="booking-widget-stack">
-              <div className="booking-embed-frame" aria-busy={!embedReady} aria-label="Square booking widget">
+              <div
+                className="booking-embed-frame"
+                aria-busy={!embedReady}
+                aria-label="Square booking widget"
+              >
+                {!embedReady ? <p className="booking-loading">Loading live availability…</p> : null}
                 <iframe
                   src={bookingEmbedUrl}
-                  title="Schedule a Portuguese lesson"
+                  title="Schedule a Portuguese lesson with Square"
                   width="100%"
                   height="980"
                   allow="payment"
+                  loading="eager"
                   referrerPolicy="strict-origin-when-cross-origin"
                   onLoad={() => setEmbedReady(true)}
                 />
               </div>
+              <p className="booking-fallback-note">
+                If the embedded calendar does not appear, use “Open secure booking” above.
+              </p>
             </div>
           ) : isAcuity && bookingEmbedUrl ? (
             <div className="booking-widget-stack">
@@ -169,27 +168,43 @@ export function BookingFlow() {
                   src={bookingEmbedUrl}
                   title="Schedule a Portuguese lesson"
                   width="100%"
-                  height="800"
+                  height="900"
+                  loading="eager"
                   referrerPolicy="strict-origin-when-cross-origin"
                   onLoad={() => setEmbedReady(true)}
                 />
               </div>
             </div>
-          ) : isCalCom && calComLink ? (
+          ) : isCalCom && CALCOM_LINK ? (
             <div className="booking-widget-stack">
-              <div ref={widgetRef} className="booking-embed-frame" aria-busy={!embedReady} aria-label="Cal.com booking widget" />
+              <div
+                ref={widgetRef}
+                className="booking-embed-frame"
+                aria-busy={!embedReady}
+                aria-label="Cal.com booking widget"
+              />
             </div>
           ) : (
             <div className="booking-placeholder" aria-label="Booking setup placeholder">
-              <span className="placeholder-icon" aria-hidden="true">
-                <CalendarDays size={34} />
-              </span>
-              <h2>Booking will open here.</h2>
-              <p>Once Inês connects the booking system, available times, payment, and student login will appear here.</p>
-              <span className="placeholder-status">Calendar coming soon</span>
+              <p className="eyebrow">Not yet available</p>
+              <h3>Booking will open here.</h3>
+              <p>Available times and the secure confirmation route will appear once the provider is connected.</p>
             </div>
           )}
         </section>
+      </section>
+
+      <section className="booking-policy" id="change-booking">
+        <WaveMark />
+        <div>
+          <p className="eyebrow">Flexible rescheduling</p>
+          <p>
+            Move to any available time. Changes are free before the lesson day; a {sameDayFee} fee applies on the day itself.
+          </p>
+        </div>
+        {bookingDirectUrl ? (
+          <a href={bookingDirectUrl} target="_blank" rel="noreferrer">Manage in {BOOKING_PROVIDER_NAME}</a>
+        ) : null}
       </section>
 
       <SiteFooter />

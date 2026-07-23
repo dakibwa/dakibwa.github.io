@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { BrandMarkSprite } from "@/components/BrandMarks";
 import { publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
 
@@ -20,8 +19,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       {/* The recolourable splat mask (extracted from the green business card)
           is exposed as a CSS var here so it resolves through the site base
           path and every surface can paint the motif in any brand colour. */}
-      <body style={{ ["--splat-mask" as string]: publicAssetUrl("/visuals/splat-mask.png") }}>
-        <BrandMarkSprite />
+      <body
+        style={{
+          ["--paper-texture" as string]: publicAssetUrl("/visuals/paper-grain.svg"),
+          ["--splat-mask" as string]: publicAssetUrl("/visuals/splat-mask.png")
+        }}
+      >
         {children}
       </body>
     </html>
