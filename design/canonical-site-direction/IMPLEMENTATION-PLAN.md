@@ -3,8 +3,10 @@
 > Status, 23 July 2026: the five routes and shared responsive design system are
 > implemented in the repository. Square-hosted booking remains the production
 > route. The linked Figma file contains the foundations created before the
-> account’s monthly MCP quota was reached; code and the canonical PNGs are the
-> active implementation references until that quota resets.
+> account’s monthly MCP quota was reached. No further meaningful visual
+> redesign should bypass Figma without an explicit temporary exception. When
+> access resumes, the first design task is to reconcile the current live site,
+> including the compact responsive footer, into the editable Figma system.
 
 ## Outcome
 
@@ -28,15 +30,19 @@ The implementation is complete only when:
 
 Use the sources in this order:
 
-1. The five PNGs in this folder define the approved visual direction.
-2. `design/primary-brand-direction.png` and the original business cards define
-   the wordmark, palette, and authentic brand marks.
+1. Dan’s current approved direction defines the intended outcome.
+2. Approved frames and components in the canonical Figma file define the
+   editable visual specification.
 3. The repository defines implementation and deployment behaviour.
-4. Square and its API adapter define live lesson availability, booking state,
+4. `design/primary-brand-direction.png` and the original business cards define
+   the wordmark, palette, and authentic brand marks.
+5. Square and its API adapter define live lesson availability, booking state,
    student details, and booking-management behaviour.
 
-The canonical PNGs are references, not production page backgrounds. Do not
-ship them as the interface.
+The five canonical PNGs remain historical references for the approved launch
+direction, especially where the Figma system is not yet complete. They are not
+production page backgrounds and must not become a competing current design
+specification once an approved Figma frame exists.
 
 ## Recommended editable design route
 
@@ -63,6 +69,31 @@ Build frames with Auto Layout and reusable components. Use Figma variables for
 colour, spacing, and responsive modes, then mark approved frames ready for
 development. The repository remains the code source of truth; Figma owns the
 editable visual specification.
+
+## Design change workflow after launch
+
+Use this sequence for every meaningful website design improvement:
+
+1. **Design in Figma** — update the relevant component and desktop/mobile
+   frames, including interaction, error, loading, or expanded states when the
+   change affects them.
+2. **Review** — share the frame with Dan and treat the approved frame as the
+   implementation brief.
+3. **Implement** — translate the approved Figma design into the existing
+   responsive components and tokens without replacing real content or
+   provider-backed behaviour with mock data.
+4. **Verify** — run the proportionate checks and compare the real site against
+   the approved frame at the relevant breakpoints.
+5. **Reconcile** — if browser constraints or accessibility requirements lead
+   to a visible implementation adjustment, update Figma to match the accepted
+   production result before closing the task.
+
+Copy-only edits, urgent fixes, accessibility corrections, provider changes,
+and genuinely minor pixel adjustments can begin in code. Any visible result
+must still be reflected in Figma during the same task. If Figma access or quota
+is unavailable, report it rather than silently treating code as the new visual
+specification; pause or obtain an explicit temporary exception and record
+Figma reconciliation as the next action.
 
 ## Asset production manifest
 

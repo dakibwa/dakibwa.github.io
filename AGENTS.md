@@ -5,6 +5,15 @@
 - During implementation, run the smallest relevant check. Use the booking check when booking configuration or routing changes, the focused Playwright smoke test for affected customer journeys, and the production build for release or cross-cutting work.
 - Markdown and `docs/**`-only changes do not require a build or deployment; the Pages workflow intentionally ignores them.
 
+## Figma-first design workflow
+
+- The canonical editable website design is the [Português com a Inês Figma file](https://www.figma.com/design/c4AYW94iWzVqfRkCjyJs0Y). Figma owns intended visual design; Git owns production implementation and delivery; Square owns live booking and payment truth.
+- Start meaningful visual changes in Figma before editing production code. This includes new pages or sections, layout changes, component redesigns, typography or colour-system changes, new interaction patterns, and material desktop/mobile composition changes.
+- In the same task, prepare the relevant desktop and mobile frames plus important states, obtain Dan’s approval, implement the approved design, verify the real site, and reconcile any implementation-led visual adjustments back into Figma before calling the work complete.
+- Copy-only edits, urgent production fixes, accessibility corrections, provider/configuration changes, and truly minor pixel adjustments may start in code. If they visibly change the interface, sync the resulting design back to Figma in the same task.
+- If Figma access, authentication, or tool quota prevents a required design update, do not silently bypass the workflow. Report the limitation and either pause the visual implementation or obtain an explicit temporary code-first exception, with Figma reconciliation kept as the next action.
+- Keep the canonical PNGs and business-card material as historical brand references. Once an approved Figma frame exists for a surface, use that frame as the visual implementation specification rather than creating a competing mock-up elsewhere.
+
 ## Documentation and Notion handoff
 
 - Git owns website implementation and deployment history; Square and other providers own live booking and payment truth. Update `README.md` or the relevant focused documentation in the same commit whenever a material change alters customer behaviour, booking/payment flow, architecture, providers, publication workflow, or the next milestone.
