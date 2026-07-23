@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ApproachPathwayMark, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
+import { ApproachCornerSplat, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -42,7 +42,7 @@ export default function ApproachPage() {
           </h1>
           <div className="editorial-rule editorial-rule--green" aria-hidden="true" />
           <p>One-to-one lessons shaped around your goals, level and pace.</p>
-          <PlantMark className="approach-intro__plant" />
+          <ApproachCornerSplat className="approach-intro__splat" />
         </div>
 
         <div className="approach-list">
@@ -58,7 +58,6 @@ export default function ApproachPage() {
               </article>
             );
           })}
-          <ApproachPathwayMark className="approach-list__pathway" />
         </div>
       </section>
 

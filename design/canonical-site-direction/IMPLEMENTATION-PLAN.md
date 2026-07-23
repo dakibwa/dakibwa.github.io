@@ -88,7 +88,9 @@ The canonical Figma file now contains:
   action-colour tokens plus responsive and motion notes;
 - `01 Components` — the exact cream wordmark, `Text Action` variants for
   Default/On Brand × Default/Hover/Focus, the responsive `Site Footer`
-  component set, and four token-bound page-specific brand-mark components;
+  component set, the four original page-specific brand marks, and the
+  token-bound `Brand Mark/Approach Corner Splat` and
+  `Brand Mark/Lessons Corner Splat` components;
 - `02 Desktop` — the homepage closing actions and footer at 1536 px;
 - `03 Tablet` — the same composition at 1024 px;
 - `04 Mobile` — the stacked closing actions and footer at 390 px.
@@ -98,6 +100,11 @@ approach** and **View lessons**. Their proposed hover behaviour is a 2 px lift,
 coral underline sweep on paper, lavender underline sweep on green, and a
 160 ms ease-out transition. Reduced-motion implementation must keep the colour
 change while removing the movement and sweep.
+
+The Approach and Lessons compositions use the two corner-splat components as
+deliberately cropped decorative SVGs. The Approach list itself remains clear of
+overlay artwork so its headings and copy keep their full column width. Trial
+lesson notes are text-only; no icon is paired with **Start here**.
 
 ## Design change workflow after launch
 

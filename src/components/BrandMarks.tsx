@@ -13,12 +13,12 @@ type BookingTimeWindowStyle = CSSProperties & {
   "--booking-time-window-image": string;
 };
 
-type ApproachPathwayStyle = CSSProperties & {
-  "--approach-pathway-image": string;
+type ApproachCornerSplatStyle = CSSProperties & {
+  "--approach-corner-splat-image": string;
 };
 
-type LessonsRhythmStyle = CSSProperties & {
-  "--lessons-rhythm-image": string;
+type LessonsCornerSplatStyle = CSSProperties & {
+  "--lessons-corner-splat-image": string;
 };
 
 type FAQAnswerIndexStyle = CSSProperties & {
@@ -90,29 +90,29 @@ export function QuestionEchoMark({ className }: MarkProps) {
   );
 }
 
-export function ApproachPathwayMark({ className }: MarkProps) {
+export function ApproachCornerSplat({ className }: MarkProps) {
   return (
     <span
-      className={markClass("approach-pathway-mark", className)}
+      className={markClass("approach-corner-splat", className)}
       aria-hidden="true"
       style={
         {
-          "--approach-pathway-image": publicAssetUrl("/visuals/approach-pathway.svg")
-        } as ApproachPathwayStyle
+          "--approach-corner-splat-image": publicAssetUrl("/visuals/approach-corner-splat.svg")
+        } as ApproachCornerSplatStyle
       }
     />
   );
 }
 
-export function LessonsRhythmMark({ className }: MarkProps) {
+export function LessonsCornerSplat({ className }: MarkProps) {
   return (
     <span
-      className={markClass("lessons-rhythm-mark", className)}
+      className={markClass("lessons-corner-splat", className)}
       aria-hidden="true"
       style={
         {
-          "--lessons-rhythm-image": publicAssetUrl("/visuals/lessons-rhythm.svg")
-        } as LessonsRhythmStyle
+          "--lessons-corner-splat-image": publicAssetUrl("/visuals/lessons-corner-splat.svg")
+        } as LessonsCornerSplatStyle
       }
     />
   );
