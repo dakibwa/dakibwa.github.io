@@ -7,7 +7,6 @@ export function SiteFooter() {
     <footer className="site-footer">
       <div className="site-footer__brand">
         <BrandWordmark tone="cream" className="footer-wordmark" />
-        <p>European Portuguese, taught with warmth and purpose.</p>
       </div>
       <nav className="site-footer__nav" aria-label="Footer navigation">
         <Link href="/approach">Approach</Link>
@@ -16,7 +15,6 @@ export function SiteFooter() {
         <Link href="/book">Booking</Link>
       </nav>
       <div className="site-footer__contact">
-        <p>Online or in Porto</p>
         <a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">
           Message Inês
         </a>

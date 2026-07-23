@@ -1,5 +1,28 @@
+import type { CSSProperties } from "react";
+import { publicAssetUrl } from "@/lib/paths";
+
 type MarkProps = {
   className?: string;
+};
+
+type QuestionEchoStyle = CSSProperties & {
+  "--question-echo-image": string;
+};
+
+type BookingTimeWindowStyle = CSSProperties & {
+  "--booking-time-window-image": string;
+};
+
+type ApproachPathwayStyle = CSSProperties & {
+  "--approach-pathway-image": string;
+};
+
+type LessonsRhythmStyle = CSSProperties & {
+  "--lessons-rhythm-image": string;
+};
+
+type FAQAnswerIndexStyle = CSSProperties & {
+  "--faq-answer-index-image": string;
 };
 
 function markClass(name: string, className?: string) {
@@ -51,4 +74,74 @@ export function SunMark({ className }: MarkProps) {
 
 export function ConversationBurst({ className }: MarkProps) {
   return <span className={markClass("conversation-burst", className)} aria-hidden="true" />;
+}
+
+export function QuestionEchoMark({ className }: MarkProps) {
+  return (
+    <span
+      className={markClass("question-echo-mark", className)}
+      aria-hidden="true"
+      style={
+        {
+          "--question-echo-image": publicAssetUrl("/visuals/faq-question-echo.svg")
+        } as QuestionEchoStyle
+      }
+    />
+  );
+}
+
+export function ApproachPathwayMark({ className }: MarkProps) {
+  return (
+    <span
+      className={markClass("approach-pathway-mark", className)}
+      aria-hidden="true"
+      style={
+        {
+          "--approach-pathway-image": publicAssetUrl("/visuals/approach-pathway.svg")
+        } as ApproachPathwayStyle
+      }
+    />
+  );
+}
+
+export function LessonsRhythmMark({ className }: MarkProps) {
+  return (
+    <span
+      className={markClass("lessons-rhythm-mark", className)}
+      aria-hidden="true"
+      style={
+        {
+          "--lessons-rhythm-image": publicAssetUrl("/visuals/lessons-rhythm.svg")
+        } as LessonsRhythmStyle
+      }
+    />
+  );
+}
+
+export function FAQAnswerIndexMark({ className }: MarkProps) {
+  return (
+    <span
+      className={markClass("faq-answer-index-mark", className)}
+      aria-hidden="true"
+      style={
+        {
+          "--faq-answer-index-image": publicAssetUrl("/visuals/faq-answer-index.svg")
+        } as FAQAnswerIndexStyle
+      }
+    />
+  );
+}
+
+export function BookingTimeWindowMark({ className }: MarkProps) {
+  return (
+    <span
+      className={markClass("booking-time-window-mark", className)}
+      aria-hidden="true"
+      style={
+        {
+          "--booking-time-window-image": publicAssetUrl("/visuals/booking-time-window.svg")
+        } as BookingTimeWindowStyle
+      }
+    />
+  );
 }

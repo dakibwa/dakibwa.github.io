@@ -1,0 +1,36 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="480"
+  height="420"
+  viewBox="0 0 480 420"
+  fill="none"
+>
+  <title>Three-stage learning pathway</title>
+  <path
+    d="M70 336C126 330 145 282 188 259C236 233 272 239 309 198C345 158 349 112 408 82"
+    stroke="#0B5139"
+    stroke-width="18"
+    stroke-linecap="round"
+  />
+  <path
+    d="M78 286C131 278 151 235 194 213C238 190 277 194 314 153"
+    stroke="#AAA4E6"
+    stroke-width="10"
+    stroke-linecap="round"
+  />
+  <circle cx="70" cy="336" r="28" fill="#AAA4E6" />
+  <circle cx="236" cy="229" r="25" fill="#F5ECD9" stroke="#0B5139" stroke-width="12" />
+  <circle cx="408" cy="82" r="28" fill="#EF5D3C" />
+  <path
+    d="M387 122C398 129 408 137 418 148"
+    stroke="#0B5139"
+    stroke-width="10"
+    stroke-linecap="round"
+  />
+  <path
+    d="M420 104C431 110 441 117 451 126"
+    stroke="#AAA4E6"
+    stroke-width="10"
+    stroke-linecap="round"
+  />
+</svg>

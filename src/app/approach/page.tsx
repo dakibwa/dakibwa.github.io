@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ConversationBurst, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
+import { ApproachPathwayMark, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -58,7 +58,7 @@ export default function ApproachPage() {
               </article>
             );
           })}
-          <ConversationBurst className="approach-list__burst" />
+          <ApproachPathwayMark className="approach-list__pathway" />
         </div>
       </section>
 

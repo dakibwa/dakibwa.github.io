@@ -44,10 +44,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="principles-strip" aria-labelledby="principles-title">
-        <div className="principles-strip__label">
-          <p className="eyebrow" id="principles-title">Approach</p>
-        </div>
+      <section className="principles-strip" aria-label="How lessons work">
         {principles.map((principle) => {
           const Icon = principle.icon;
           return (
@@ -63,8 +60,7 @@ export default function Home() {
         })}
       </section>
 
-      <section className="home-closing" aria-label="Explore lessons">
-        <p>Private European Portuguese, shaped around you.</p>
+      <section className="home-closing" aria-label="Explore the approach and lessons">
         <div>
           <Link className="text-action" href="/approach">See the approach</Link>
           <Link className="text-action" href="/lessons">View lessons</Link>

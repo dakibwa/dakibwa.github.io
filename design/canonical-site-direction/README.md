@@ -31,10 +31,17 @@ architecture. See `IMPLEMENTATION-PLAN.md`.
 - Use forest green, business-card lavender, parchment, and coral.
 - Preserve uncoated-paper texture, a hard editorial grid, fine lavender rules,
   oversized serif type, compact uppercase labels, and square corners.
-- Reuse the radial conversation burst with different crops rather than making
-  it a full-size hero on every page.
+- Reserve the radial conversation burst for the homepage hero. Other routes use
+  crop-safe, page-specific marks: **Approach Pathway**, **Lessons Rhythm**,
+  **Question Echo** with **FAQ Answer Index**, and **Open Time Window** for
+  Booking.
 - Keep live availability and booking state under the booking provider's
   control.
+- Keep the homepage principle band to the three substantive ideas only. Do not
+  add a separate **Approach** label cell; use three equal, compact columns.
+- Keep the closing homepage rail focused on the two navigation actions. The
+  removed “Private European Portuguese, shaped around you.” sentence repeated
+  the principle content above.
 
 ## Page-generation record
 
@@ -67,7 +74,8 @@ Keep Lessons as the only active navigation item.
 Create a printed reference-index treatment. Use the title “Questions before
 booking?”, a left category index for Booking, Lessons, Location, Payment,
 Rescheduling, and Levels, and a ruled accordion on the right. Show the first
-booking question open. Keep FAQ as the only active navigation item.
+booking question open. Use the green-and-coral **Question Echo** asset in the
+lavender hero. Keep FAQ as the only active navigation item.
 
 ### Booking
 
@@ -75,8 +83,28 @@ Create a practical appointment-sheet layout. Use a dark-green introduction
 panel and a warm-paper calendar panel with no highlighted or claimed available
 times. Include **Choose a day**, **Available times**, the instruction to choose
 a live available day, and the current trial-lesson summary. Show Continue as
-inactive until a time is selected. Keep Booking as the only active navigation
-item.
+inactive until a time is selected. Use the fully contained lavender, paper, and
+coral **Open Time Window** asset in the green introduction panel. Keep Booking
+as the only active navigation item.
+
+## Page-specific production marks
+
+The editable components live in the Figma `01 Components` page under
+**Page-specific brand marks**. Their exact production SVGs live in
+`public/visuals/`.
+
+- **Approach Pathway** — a three-stage rising path for the final approach
+  principle; hidden on narrow phones where it would compete with the copy.
+- **Lessons Rhythm** — five contained learning beats, designed for the
+  dark-green hero surface.
+- **FAQ Answer Index** — a quiet six-line reference mark at the end of the
+  desktop FAQ rail; the separate Question Echo remains the hero asset.
+- **Open Time Window** — a fully bounded booking mark that preserves its
+  baseline and all four lower dots at every breakpoint.
+
+All four use an 8:7 view box, `contain` sizing, and semantic brand colours.
+They must never be enlarged with `cover` or positioned outside their owning
+section.
 
 ## Constraints used throughout
 

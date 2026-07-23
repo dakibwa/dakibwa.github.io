@@ -1,0 +1,25 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="480"
+  height="420"
+  viewBox="0 0 480 420"
+  fill="none"
+>
+  <title>Five learning beats</title>
+  <path
+    d="M58 329C133 301 185 349 246 319C307 289 358 326 426 286"
+    stroke="#AAA4E6"
+    stroke-width="16"
+    stroke-linecap="round"
+  />
+  <path d="M88 303C75 253 76 210 96 171" stroke="#AAA4E6" stroke-width="20" stroke-linecap="round" />
+  <path d="M169 317C151 245 158 171 190 111" stroke="#F5ECD9" stroke-width="20" stroke-linecap="round" />
+  <path d="M250 313C239 252 248 201 271 161" stroke="#AAA4E6" stroke-width="20" stroke-linecap="round" />
+  <path d="M332 305C322 225 331 156 359 92" stroke="#F5ECD9" stroke-width="20" stroke-linecap="round" />
+  <path d="M411 285C405 224 410 180 431 145" stroke="#AAA4E6" stroke-width="20" stroke-linecap="round" />
+  <circle cx="96" cy="151" r="19" fill="#AAA4E6" />
+  <circle cx="190" cy="91" r="19" fill="#AAA4E6" />
+  <circle cx="271" cy="141" r="19" fill="#AAA4E6" />
+  <circle cx="359" cy="72" r="19" fill="#AAA4E6" />
+  <circle cx="431" cy="125" r="25" fill="#EF5D3C" />
+</svg>

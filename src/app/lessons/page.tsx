@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ConversationBurst, PlantMark, WaveMark } from "@/components/BrandMarks";
+import { LessonsRhythmMark, PlantMark, WaveMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { lessonProducts } from "@/lib/lesson-products";
@@ -23,7 +23,7 @@ export default function LessonsPage() {
           </h1>
         </div>
         <div className="lessons-hero__art">
-          <ConversationBurst />
+          <LessonsRhythmMark />
         </div>
       </section>
 

@@ -1,0 +1,46 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="480"
+  height="420"
+  viewBox="0 0 480 420"
+  fill="none"
+>
+  <title>Open booking time window</title>
+  <g
+    stroke="#AAA4E6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path
+      d="M66 352V188C66 90 143 28 240 28C337 28 414 90 414 188V352"
+      stroke-width="34"
+    />
+    <path
+      d="M121 352V198C121 127 173 80 240 80C307 80 359 127 359 198V352"
+      stroke-width="23"
+    />
+    <path
+      d="M174 352V207C174 162 202 133 240 133C278 133 306 162 306 207V352"
+      stroke-width="14"
+    />
+  </g>
+  <path
+    d="M48 352H432"
+    stroke="#F5ECD9"
+    stroke-width="12"
+    stroke-linecap="round"
+  />
+  <circle cx="240" cy="254" r="31" fill="#EF5D3C" />
+  <path
+    d="M220 254H260M240 234V274"
+    stroke="#F5ECD9"
+    stroke-width="8"
+    stroke-linecap="round"
+  />
+  <g fill="#AAA4E6">
+    <circle cx="108" cy="390" r="10" />
+    <circle cx="152" cy="390" r="10" />
+    <circle cx="328" cy="390" r="10" />
+    <circle cx="372" cy="390" r="10" />
+  </g>
+</svg>

@@ -2,11 +2,21 @@
 
 > Status, 23 July 2026: the five routes and shared responsive design system are
 > implemented in the repository. Square-hosted booking remains the production
-> route. The linked Figma file contains the foundations created before the
-> account’s monthly MCP quota was reached. No further meaningful visual
-> redesign should bypass Figma without an explicit temporary exception. When
-> access resumes, the first design task is to reconcile the current live site,
-> including the compact responsive footer, into the editable Figma system.
+> route. Figma access is active and the compact production footer has now been
+> reconciled into the editable system as Desktop (1536 × 124), Tablet
+> (1024 × 158), and Mobile (390 × 290) component variants, using only the
+> wordmark, navigation, and Message Inês action. The homepage closing
+> actions also have approved-candidate Default, Hover, and Focus states for
+> light and on-brand surfaces, using a 160 ms ease-out lift and underline
+> sweep. A full route audit has also replaced repeated, cropped burst artwork
+> with token-bound, crop-safe Approach Pathway, Lessons Rhythm, FAQ Answer
+> Index, and Booking Open Time Window components in Figma and exact matching
+> production SVGs. The homepage principles band is now three equal compact
+> columns with no redundant Approach label cell, and its closing rail retains
+> only the two navigation actions. The production footer already matches its
+> specification. The approved Text Action motion is implemented in production
+> CSS: a 160 ms ease-out 2 px lift and underline sweep, with colour-only
+> feedback under reduced-motion preferences.
 
 ## Outcome
 
@@ -70,6 +80,25 @@ colour, spacing, and responsive modes, then mark approved frames ready for
 development. The repository remains the code source of truth; Figma owns the
 editable visual specification.
 
+### Current Figma handoff
+
+The canonical Figma file now contains:
+
+- `00 Foundations` — production-aligned paper, deep green, lavender, coral, and
+  action-colour tokens plus responsive and motion notes;
+- `01 Components` — the exact cream wordmark, `Text Action` variants for
+  Default/On Brand × Default/Hover/Focus, the responsive `Site Footer`
+  component set, and four token-bound page-specific brand-mark components;
+- `02 Desktop` — the homepage closing actions and footer at 1536 px;
+- `03 Tablet` — the same composition at 1024 px;
+- `04 Mobile` — the stacked closing actions and footer at 390 px.
+
+The closing actions retain their current production labels, **See the
+approach** and **View lessons**. Their proposed hover behaviour is a 2 px lift,
+coral underline sweep on paper, lavender underline sweep on green, and a
+160 ms ease-out transition. Reduced-motion implementation must keep the colour
+change while removing the movement and sweep.
+
 ## Design change workflow after launch
 
 Use this sequence for every meaningful website design improvement:
@@ -102,6 +131,7 @@ Figma reconciliation as the next action.
 | Green wordmark | Original green business-card front | Transparent PNG initially; verified SVG only if an accurate trace is approved | Extract at high resolution, remove the flat lavender field cleanly, preserve both accents and the original lettering |
 | Light wordmark | Existing original-wordmark extraction | Transparent PNG | Retain only for dark-green surfaces; verify edge quality and colour against the brand board |
 | Conversation burst | Original green business-card back and current `splat-mask.png` | CSS mask using optimized alpha PNG/WebP | Compare the current mask with the source, normalize its crop, and verify clean scaling from mobile to wide desktop |
+| Page-specific marks | Canonical Figma `01 Components` page | Crop-safe 8:7 SVGs | Keep Approach Pathway, Lessons Rhythm, FAQ Answer Index, and Booking Open Time Window fully contained; reserve the conversation burst for Home |
 | Plant mark | Canonical Home/Approach images | Code-native SVG React component | Draw a simple reusable mark with green leaves and a lavender dot; decorative by default |
 | Wave mark | Canonical pages | Code-native SVG React component | Draw the three-line green/lavender variant with consistent stroke and spacing |
 | Sun/conversation mark | Canonical pages | Code-native SVG React component | Draw the radial small mark with a lavender centre; provide compact and large variants |

@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { ConversationBurst, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
+import { BookingTimeWindowMark, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
 import { CustomSquareBookingFlow } from "@/components/CustomSquareBookingFlow";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -101,7 +101,7 @@ export function BookingFlow() {
             <li><WaveMark /><span>Online or in Porto</span></li>
             <li><SunMark /><span>Porto time</span></li>
           </ul>
-          <ConversationBurst className="booking-intro__burst" />
+          <BookingTimeWindowMark className="booking-intro__time-window" />
         </aside>
 
         <section className="booking-provider" aria-label={`${BOOKING_PROVIDER_NAME} lesson booking`}>
