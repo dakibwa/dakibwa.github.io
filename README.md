@@ -21,6 +21,9 @@ The PNGs define visual intent; the production interface is code-native.
 - Git owns the website, route behaviour, release history, and production assets.
 - Square owns live availability, appointment confirmation, checkout, and
   booking-management state.
+- The current Akibwa Square account requires full prepayment for fixed-price
+  appointment services. Reconfirm that policy when the Portuguese Square
+  account replaces it.
 - The approved product display is trial lesson €20 / 45 minutes, single lesson
   €25 / 45 minutes, and five lessons €110 / 45 minutes each. Square shows the
   final appointment details and total before confirmation.

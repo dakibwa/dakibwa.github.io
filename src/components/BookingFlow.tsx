@@ -16,7 +16,6 @@ import {
   USE_CUSTOM_SQUARE_BOOKING,
   formatMoney
 } from "@/lib/config";
-import { trialLesson } from "@/lib/lesson-products";
 
 type CalCommandArgs = unknown[];
 type CalApi = ((command: string, ...args: CalCommandArgs) => void) & {
@@ -116,7 +115,9 @@ export function BookingFlow() {
                   : `Book securely with ${BOOKING_PROVIDER_NAME}.`}
               </h2>
               <p>
-                Live appointment details, availability, and confirmation are owned by {BOOKING_PROVIDER_NAME}.
+                {BOOKING_PROVIDER === "none"
+                  ? "Live appointment details and secure confirmation will appear here."
+                  : `Choose a live time, then pay securely in ${BOOKING_PROVIDER_NAME} to confirm your appointment.`}
               </p>
             </div>
             {bookingDirectUrl ? (
@@ -125,15 +126,6 @@ export function BookingFlow() {
               </a>
             ) : null}
           </header>
-
-          <div className="booking-trial-summary" aria-label="Trial lesson summary">
-            <SunMark />
-            <div>
-              <span>{trialLesson.title}</span>
-              <strong>{trialLesson.duration} · {trialLesson.price}</strong>
-            </div>
-            <p>Square confirms the final appointment details.</p>
-          </div>
 
           {USE_CUSTOM_SQUARE_BOOKING ? (
             <CustomSquareBookingFlow />

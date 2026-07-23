@@ -1106,7 +1106,7 @@ p {
 
 .booking-provider {
   min-width: 0;
-  padding: 2.5rem var(--page-pad) 3.5rem;
+  padding: 2rem var(--page-pad) 3rem;
   background-color: var(--paper);
   background-image: var(--paper-texture);
 }
@@ -1116,12 +1116,12 @@ p {
   align-items: flex-start;
   justify-content: space-between;
   border-bottom: 1px solid var(--rule);
-  padding-bottom: 1.8rem;
-  gap: 2rem;
+  padding-bottom: 1.25rem;
+  gap: 1.5rem;
 }
 
 .booking-provider__header h2 {
-  max-width: 630px;
+  max-width: 780px;
   margin-bottom: 0.4rem;
   font-family: var(--display);
   font-size: clamp(2.2rem, 4vw, 3.8rem);
@@ -1139,42 +1139,8 @@ p {
   flex: 0 0 auto;
 }
 
-.booking-trial-summary {
-  display: grid;
-  grid-template-columns: 70px auto 1fr;
-  align-items: center;
-  border-bottom: 1px solid var(--rule);
-  padding: 1.2rem 0;
-  gap: 1.2rem;
-}
-
-.booking-trial-summary .sun-mark {
-  width: 56px;
-  height: 56px;
-}
-
-.booking-trial-summary div {
-  display: flex;
-  flex-direction: column;
-  font-family: var(--ui);
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.booking-trial-summary strong {
-  font-weight: 700;
-}
-
-.booking-trial-summary > p {
-  justify-self: end;
-  margin: 0;
-  font-size: 0.9rem;
-}
-
 .booking-widget-stack {
-  margin-top: 1.5rem;
+  margin-top: 1rem;
 }
 
 .booking-embed-frame {
@@ -1595,15 +1561,6 @@ p {
     margin-top: 1.3rem;
   }
 
-  .booking-trial-summary {
-    grid-template-columns: 60px 1fr;
-  }
-
-  .booking-trial-summary > p {
-    grid-column: 2;
-    justify-self: start;
-  }
-
   .site-footer {
     grid-template-areas:
       "brand nav"
@@ -2012,14 +1969,6 @@ p {
 
   .booking-provider__direct {
     width: 100%;
-  }
-
-  .booking-trial-summary {
-    grid-template-columns: 52px 1fr;
-  }
-
-  .booking-trial-summary > p {
-    grid-column: 1 / -1;
   }
 
   .booking-embed-frame {

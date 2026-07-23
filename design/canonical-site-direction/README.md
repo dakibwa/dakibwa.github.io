@@ -82,10 +82,11 @@ lavender hero. Keep FAQ as the only active navigation item.
 Create a practical appointment-sheet layout. Use a dark-green introduction
 panel and a warm-paper calendar panel with no highlighted or claimed available
 times. Include **Choose a day**, **Available times**, the instruction to choose
-a live available day, and the current trial-lesson summary. Show Continue as
-inactive until a time is selected. Use the fully contained lavender, paper, and
-coral **Open Time Window** asset in the green introduction panel. Keep Booking
-as the only active navigation item.
+a live available day, and a compact provider handoff. Do not repeat a
+trial-lesson product summary above the live provider embed. Show Continue as
+inactive until a time is selected. Use the fully contained lavender, paper,
+and coral **Open Time Window** asset in the green introduction panel. Keep
+Booking as the only active navigation item.
 
 ## Page-specific production marks
 

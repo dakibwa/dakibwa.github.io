@@ -296,6 +296,10 @@ keyboard-only navigation and JavaScript-enabled production behaviour.
   availability loading, hosted fallback, booking submission, and policy
   behaviour.
 - Restyle the existing controls into the canonical appointment-sheet layout.
+- Keep the provider handoff compact and do not duplicate a trial-lesson summary
+  above the live embed.
+- Let the configured provider own full prepayment and confirmation; customer
+  copy should state that payment happens securely during booking.
 - Never hardcode example availability into production.
 - Design loading, empty, error, selected, submitting, success, and hosted
   fallback states in Figma before touching the logic.

@@ -86,8 +86,7 @@ const faqSections = [
     questions: [
       {
         question: "How do I pay?",
-        answer:
-          "Square handles any appointment payment securely. The checkout shows the final amount and timing before you confirm."
+        answer: `${BOOKING_PROVIDER_NAME} takes the full lesson payment securely when you book. Your appointment is confirmed after checkout is complete.`
       },
       {
         question: "How much does a lesson cost?",
