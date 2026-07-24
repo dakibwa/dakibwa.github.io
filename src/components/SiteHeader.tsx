@@ -17,6 +17,9 @@ const navigation: Array<{ href: string; id: SitePage; label: string }> = [
 export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
   return (
     <header className="site-header">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <div className="site-header__inner">
         <Link
           href="/"

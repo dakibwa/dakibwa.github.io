@@ -23,55 +23,60 @@ const principles = [
 
 export default function Home() {
   return (
-    <main className="home-page">
+    <>
       <SiteHeader currentPage="home" />
 
-      <section className="home-hero" aria-labelledby="home-title">
-        <div className="home-hero__copy">
-          <h1 id="home-title">
-            <span>Português</span>
-            <span className="home-title__script">com a</span>
-            <span>Inês</span>
-          </h1>
-          <div className="editorial-rule" aria-hidden="true" />
-          <p>European Portuguese in Porto —<br />or wherever you are.</p>
+      <main className="home-page" id="main-content">
+        <section className="home-hero" aria-labelledby="home-title">
+          <div className="home-hero__copy">
+            <h1 id="home-title">
+              <span>Português</span>
+              <span className="home-title__script">com a</span>
+              <span>Inês</span>
+            </h1>
+            <div className="editorial-rule" aria-hidden="true" />
+            <p>European Portuguese in Porto —<br />or wherever you are.</p>
+            <Link className="button button--coral" href="/book">
+              Book a lesson
+            </Link>
+          </div>
+          <div className="home-hero__art">
+            <AssetMark
+              asset="/visuals/generated-splats/business-card-splat-generated-v2.webp"
+              className="home-hero__burst"
+              mobileAsset="/visuals/generated-splats/business-card-splat-generated-v2-mobile.webp"
+              priority
+            />
+          </div>
+        </section>
+
+        <section className="principles-strip" aria-label="How lessons work">
+          {principles.map((principle) => {
+            return (
+              <article className="principle" key={principle.title}>
+                <AssetMark asset={principle.asset} />
+                <div>
+                  <h2>{principle.title}</h2>
+                  <span className="short-rule" aria-hidden="true" />
+                  <p>{principle.body}</p>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+
+        <section className="home-closing" aria-label="Read more or book a lesson">
+          <div className="home-closing__links">
+            <Link className="text-action" href="/approach">See the approach</Link>
+            <Link className="text-action" href="/lessons">View lessons</Link>
+          </div>
           <Link className="button button--coral" href="/book">
             Book a lesson
           </Link>
-        </div>
-        <div className="home-hero__art">
-          <AssetMark
-            asset="/visuals/generated-splats/business-card-splat-generated-v2.webp"
-            className="home-hero__burst"
-            mobileAsset="/visuals/generated-splats/business-card-splat-generated-v2-mobile.webp"
-            priority
-          />
-        </div>
-      </section>
-
-      <section className="principles-strip" aria-label="How lessons work">
-        {principles.map((principle) => {
-          return (
-            <article className="principle" key={principle.title}>
-              <AssetMark asset={principle.asset} />
-              <div>
-                <h2>{principle.title}</h2>
-                <span className="short-rule" aria-hidden="true" />
-                <p>{principle.body}</p>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-
-      <section className="home-closing" aria-label="Explore the approach and lessons">
-        <div>
-          <Link className="text-action" href="/approach">See the approach</Link>
-          <Link className="text-action" href="/lessons">View lessons</Link>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <SiteFooter />
-    </main>
+    </>
   );
 }

@@ -103,126 +103,130 @@ export function BookingFlow() {
   }, []);
 
   return (
-    <main className="book-page">
+    <>
       <SiteHeader currentPage="book" />
 
-      <section className="booking-composition" aria-labelledby="booking-title">
-        <aside className="booking-intro">
-          <h1 id="booking-title">Book your<br />Portuguese<br />lesson</h1>
-          <div className="editorial-rule" aria-hidden="true" />
-          <p>Choose a live time in the secure booking calendar, then confirm your details.</p>
-          <ul className="booking-intro__points">
-            <li><AssetMark asset="/visuals/v2-splats/one-to-one-splat-v2.svg" /><span>One to one</span></li>
-            <li><AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" /><span>In Porto or online</span></li>
-            <li><AssetMark asset="/visuals/v2-splats/lesson-format-splat-v2.svg" /><span>Porto time</span></li>
-          </ul>
-          <AssetMark
-            asset="/visuals/v2-splats/booking-availability-splat-v2.svg"
-            className="booking-intro__time-window"
-          />
-        </aside>
+      <main className="book-page" id="main-content">
+        <section className="booking-composition" aria-labelledby="booking-title">
+          <aside className="booking-intro">
+            <h1 id="booking-title">Book your<br />Portuguese<br />lesson</h1>
+            <div className="editorial-rule" aria-hidden="true" />
+            <p>Choose a live time in the secure booking calendar, then confirm your details.</p>
+            <ul className="booking-intro__points">
+              <li><AssetMark asset="/visuals/v2-splats/one-to-one-splat-v2.svg" /><span>One to one</span></li>
+              <li><AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" /><span>In Porto or online</span></li>
+              <li><AssetMark asset="/visuals/v2-splats/lesson-format-splat-v2.svg" /><span>Porto time</span></li>
+            </ul>
+            <AssetMark
+              asset="/visuals/v2-splats/booking-availability-splat-v2.svg"
+              className="booking-intro__time-window"
+            />
+          </aside>
 
-        <section className="booking-provider" aria-label={`${BOOKING_PROVIDER_NAME} lesson booking`}>
-          <header className="booking-provider__header">
-            <div>
-              <p className="eyebrow">
-                {USE_CUSTOM_SQUARE_BOOKING ? "Choose a day and time" : "Live availability"}
-              </p>
-              <h2>
-                {BOOKING_PROVIDER === "none"
-                  ? "Booking is being prepared."
-                  : `Book securely with ${BOOKING_PROVIDER_NAME}.`}
-              </h2>
-              <p>
-                {BOOKING_PROVIDER === "none"
-                  ? "Live appointment details and secure confirmation will appear here."
-                  : `Choose a live time, then pay securely in ${BOOKING_PROVIDER_NAME} to confirm your appointment.`}
-              </p>
-            </div>
-            {bookingDirectUrl ? (
-              <a className="button button--coral booking-provider__direct" href={bookingDirectUrl} target="_blank" rel="noreferrer">
-                Open secure booking
-              </a>
-            ) : null}
-          </header>
+          <section className="booking-provider" aria-label={`${BOOKING_PROVIDER_NAME} lesson booking`}>
+            <header className="booking-provider__header">
+              <div>
+                <p className="eyebrow">
+                  {USE_CUSTOM_SQUARE_BOOKING ? "Choose a day and time" : "Live availability"}
+                </p>
+                <h2>
+                  {BOOKING_PROVIDER === "none"
+                    ? "Booking is being prepared."
+                    : `Book securely with ${BOOKING_PROVIDER_NAME}.`}
+                </h2>
+                <p>
+                  {BOOKING_PROVIDER === "none"
+                    ? "Live appointment details and secure confirmation will appear here."
+                    : `Choose a live time, then pay securely in ${BOOKING_PROVIDER_NAME} to confirm your appointment.`}
+                </p>
+              </div>
+              {bookingDirectUrl ? (
+                <a className="button button--coral booking-provider__direct" href={bookingDirectUrl} target="_blank" rel="noreferrer">
+                  Open secure booking
+                </a>
+              ) : null}
+            </header>
 
-          {USE_CUSTOM_SQUARE_BOOKING ? (
-            CustomBookingFlow ? (
-              <CustomBookingFlow />
+            {USE_CUSTOM_SQUARE_BOOKING ? (
+              CustomBookingFlow ? (
+                <CustomBookingFlow />
+              ) : (
+                <p className="booking-loading">Loading the booking calendar…</p>
+              )
+            ) : isSquare && bookingEmbedUrl ? (
+              <div className="booking-widget-stack">
+                <div
+                  className="booking-embed-frame"
+                  aria-busy={!embedReady}
+                  aria-label="Square booking widget"
+                >
+                  {!embedReady ? <p className="booking-loading">Loading live availability…</p> : null}
+                  <iframe
+                    src={bookingEmbedUrl}
+                    title="Schedule a Portuguese lesson with Square"
+                    width="100%"
+                    height="980"
+                    allow="payment"
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    onLoad={() => setEmbedReady(true)}
+                  />
+                </div>
+                <p className="booking-fallback-note">
+                  If the embedded calendar does not appear, use{" "}
+                  <a href={bookingDirectUrl} target="_blank" rel="noreferrer">open secure booking</a> to
+                  finish in {BOOKING_PROVIDER_NAME}.
+                </p>
+              </div>
+            ) : isAcuity && bookingEmbedUrl ? (
+              <div className="booking-widget-stack">
+                <Script src={acuityScriptSrc} strategy="afterInteractive" />
+                <div className="booking-embed-frame" aria-busy={!embedReady} aria-label="Acuity booking widget">
+                  <iframe
+                    src={bookingEmbedUrl}
+                    title="Schedule a Portuguese lesson"
+                    width="100%"
+                    height="900"
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    onLoad={() => setEmbedReady(true)}
+                  />
+                </div>
+              </div>
+            ) : isCalCom && CALCOM_LINK ? (
+              <div className="booking-widget-stack">
+                <div
+                  ref={widgetRef}
+                  className="booking-embed-frame"
+                  aria-busy={!embedReady}
+                  aria-label="Cal.com booking widget"
+                />
+              </div>
             ) : (
-              <p className="booking-loading">Loading the booking calendar…</p>
-            )
-          ) : isSquare && bookingEmbedUrl ? (
-            <div className="booking-widget-stack">
-              <div
-                className="booking-embed-frame"
-                aria-busy={!embedReady}
-                aria-label="Square booking widget"
-              >
-                {!embedReady ? <p className="booking-loading">Loading live availability…</p> : null}
-                <iframe
-                  src={bookingEmbedUrl}
-                  title="Schedule a Portuguese lesson with Square"
-                  width="100%"
-                  height="980"
-                  allow="payment"
-                  loading="lazy"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  onLoad={() => setEmbedReady(true)}
-                />
+              <div className="booking-placeholder" aria-label="Booking setup placeholder">
+                <p className="eyebrow">Not yet available</p>
+                <h3>Booking will open here.</h3>
+                <p>Available times and the secure confirmation route will appear once the provider is connected.</p>
               </div>
-              <p className="booking-fallback-note">
-                If the embedded calendar does not appear, use “Open secure booking” above.
-              </p>
-            </div>
-          ) : isAcuity && bookingEmbedUrl ? (
-            <div className="booking-widget-stack">
-              <Script src={acuityScriptSrc} strategy="afterInteractive" />
-              <div className="booking-embed-frame" aria-busy={!embedReady} aria-label="Acuity booking widget">
-                <iframe
-                  src={bookingEmbedUrl}
-                  title="Schedule a Portuguese lesson"
-                  width="100%"
-                  height="900"
-                  loading="lazy"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  onLoad={() => setEmbedReady(true)}
-                />
-              </div>
-            </div>
-          ) : isCalCom && CALCOM_LINK ? (
-            <div className="booking-widget-stack">
-              <div
-                ref={widgetRef}
-                className="booking-embed-frame"
-                aria-busy={!embedReady}
-                aria-label="Cal.com booking widget"
-              />
-            </div>
-          ) : (
-            <div className="booking-placeholder" aria-label="Booking setup placeholder">
-              <p className="eyebrow">Not yet available</p>
-              <h3>Booking will open here.</h3>
-              <p>Available times and the secure confirmation route will appear once the provider is connected.</p>
-            </div>
-          )}
+            )}
+          </section>
         </section>
-      </section>
 
-      <section className="booking-policy" id="change-booking">
-        <AssetMark asset="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg" />
-        <div>
-          <p className="eyebrow">Flexible rescheduling</p>
-          <p>
-            Move to any available time. Changes are free before the lesson day; a {sameDayFee} fee applies on the day itself.
-          </p>
-        </div>
-        {bookingDirectUrl ? (
-          <a href={bookingDirectUrl} target="_blank" rel="noreferrer">Manage in {BOOKING_PROVIDER_NAME}</a>
-        ) : null}
-      </section>
+        <section className="booking-policy" id="change-booking">
+          <AssetMark asset="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg" />
+          <div>
+            <p className="eyebrow">Flexible rescheduling</p>
+            <p>
+              Move to any available time. Changes are free before the lesson day; a {sameDayFee} fee applies on the day itself.
+            </p>
+          </div>
+          {bookingDirectUrl ? (
+            <a href={bookingDirectUrl} target="_blank" rel="noreferrer">Manage in {BOOKING_PROVIDER_NAME}</a>
+          ) : null}
+        </section>
+      </main>
 
       <SiteFooter />
-    </main>
+    </>
   );
 }

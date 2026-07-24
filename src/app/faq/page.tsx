@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AssetMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -140,70 +141,75 @@ const faqSections = [
 
 export default function FAQPage() {
   return (
-    <main className="faq-page">
+    <>
       <SiteHeader currentPage="faq" />
 
-      <section className="faq-hero" aria-labelledby="faq-title">
-        <div>
-          <p className="eyebrow">Good to know</p>
-          <h1 id="faq-title">Questions<br />before booking?</h1>
-          <p>Lessons, payment, location and what to expect.</p>
-        </div>
-        <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-hero__mark" priority />
-      </section>
+      <main className="faq-page" id="main-content">
+        <section className="faq-hero" aria-labelledby="faq-title">
+          <div>
+            <p className="eyebrow">Good to know</p>
+            <h1 id="faq-title">Questions<br />before booking?</h1>
+            <p>Lessons, payment, location and what to expect.</p>
+          </div>
+          <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-hero__mark" priority />
+        </section>
 
-      <section className="faq-reference" aria-label="Frequently asked questions">
-        <nav className="faq-index" aria-label="FAQ categories">
-          <p className="eyebrow">Index</p>
-          <ol>
-            {faqSections.map((section, index) => (
-              <li key={section.id}>
-                <a href={`#faq-${section.id}`}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  {section.title}
-                </a>
-              </li>
-            ))}
-          </ol>
-          <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-index__answer-index" />
-        </nav>
-
-        <div className="faq-groups">
-          {faqSections.map((section, sectionIndex) => (
-            <section className="faq-group" id={`faq-${section.id}`} key={section.id}>
-              <header className="faq-group__header">
-                <span>{String(sectionIndex + 1).padStart(2, "0")}</span>
-                <h2>{section.title}</h2>
-              </header>
-              {section.questions.map((item, questionIndex) => (
-                <details
-                  className="faq-row"
-                  key={item.question}
-                  open={sectionIndex === 0 && questionIndex === 0}
-                >
-                  <summary>
-                    <span>{item.question}</span>
-                    <span className="faq-row__symbol" aria-hidden="true" />
-                  </summary>
-                  <div className="faq-row__answer">
-                    <p>{item.answer}</p>
-                  </div>
-                </details>
+        <section className="faq-reference" aria-label="Frequently asked questions">
+          <nav className="faq-index" aria-label="FAQ categories">
+            <p className="eyebrow">Index</p>
+            <ol>
+              {faqSections.map((section, index) => (
+                <li key={section.id}>
+                  <a href={`#faq-${section.id}`}>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    {section.title}
+                  </a>
+                </li>
               ))}
-            </section>
-          ))}
-        </div>
-      </section>
+            </ol>
+            <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-index__answer-index" />
+          </nav>
 
-      <section className="faq-contact">
-        <p className="eyebrow">Still unsure?</p>
-        <h2>Ask Inês before you book.</h2>
-        <a className="button button--coral" href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">
-          Message on WhatsApp
-        </a>
-      </section>
+          <div className="faq-groups">
+            {faqSections.map((section, sectionIndex) => (
+              <section className="faq-group" id={`faq-${section.id}`} key={section.id}>
+                <header className="faq-group__header">
+                  <span>{String(sectionIndex + 1).padStart(2, "0")}</span>
+                  <h2>{section.title}</h2>
+                </header>
+                {section.questions.map((item, questionIndex) => (
+                  <details
+                    className="faq-row"
+                    key={item.question}
+                    open={sectionIndex === 0 && questionIndex === 0}
+                  >
+                    <summary>
+                      <span>{item.question}</span>
+                      <span className="faq-row__symbol" aria-hidden="true" />
+                    </summary>
+                    <div className="faq-row__answer">
+                      <p>{item.answer}</p>
+                    </div>
+                  </details>
+                ))}
+              </section>
+            ))}
+          </div>
+        </section>
+
+        <section className="faq-contact">
+          <p className="eyebrow">Still unsure?</p>
+          <h2>Ask Inês before you book.</h2>
+          <a className="button button--coral" href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">
+            Message on WhatsApp
+          </a>
+          <Link className="text-action faq-contact__book" href="/book">
+            Go to booking
+          </Link>
+        </section>
+      </main>
 
       <SiteFooter />
-    </main>
+    </>
   );
 }

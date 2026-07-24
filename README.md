@@ -12,6 +12,10 @@ five responsive routes:
 - `/faq` — booking, lesson, location, payment, rescheduling, and level answers
 - `/book` — live Square-hosted booking with a direct secure fallback
 
+Every route carries a booking action within reach of its closing content, not
+only in the header: the home page closes on one, and the FAQ ends with a route
+to booking alongside the WhatsApp option.
+
 The canonical editable design is the
 [Português com a Inês Figma file](https://www.figma.com/design/c4AYW94iWzVqfRkCjyJs0Y).
 [design/README.md](./design/README.md) records the current visual rules,
@@ -57,14 +61,30 @@ npm run build
 `test:flow` expects a running static or development server. Set
 `QA_BASE_URL` when it is not `http://localhost:3000`.
 
+## Accessibility
+
+Every route renders the site header and footer outside `<main>`, so `banner`,
+`main`, and `contentinfo` are real landmarks, and each header opens with a
+`Skip to content` link targeting `#main-content`.
+
+The focus ring is a cream, deep-blue, and coral stack rather than a single
+coral outline. A coral-only ring measures 2.2:1 on the blue hero and 1.5:1 on
+the lavender panels; the layered ring keeps at least one band above 3:1 on
+every surface colour the site uses.
+
+Text colours are held to WCAG AA at 390, 768, and 1440 px. `--ink` is a shade
+deeper than the `--blue-deep` fill because the fill colour measured 4.42:1 as
+body text on lavender.
+
 ## Motion and loading
 
 Internal route changes use opacity only: an 80 ms exit and 170 ms entrance on
 mobile, or a 110 ms exit and 220 ms entrance on wider screens. There is no
 overlay, movement, scale, or staggered hero animation. Base-path deployments
 strip their prefix before handing a route to Next.js so navigation never
-duplicates `/portugal`. `prefers-reduced-motion: reduce` removes the delay and
-animation entirely.
+duplicates `/portugal`. `prefers-reduced-motion: reduce` removes the route
+animation, smooth scrolling, and the button and navigation hover transforms,
+keeping colour changes so states stay distinguishable.
 
 Hero artwork is served as compressed WebP and fetched eagerly, with dedicated
 800 px sources for screens up to 720 px; non-critical marks load lazily. On the

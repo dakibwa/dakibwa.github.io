@@ -16,6 +16,24 @@ The current direction is:
 - generous spacing and strong contrast, with no horizontal lines baked into
   the artwork.
 
+## Contrast corrections pending Figma reconciliation
+
+Three visible colour values were corrected in code on 2026-07-24 as
+accessibility fixes and still need reconciling into the canonical Figma file:
+
+- the second half of the Approach page heading (`way to learn.`) moved from
+  cream to `--blue` on the lavender panel. Cream measured 1.95:1 there, so half
+  the heading was barely readable; blue on lavender holds 3.2:1, the same tonal
+  relationship the home hero already uses for lilac on blue;
+- body ink deepened from `#203e82` to `#1a3169`, and the eyebrow lilac from
+  `#6a63aa` to `#665fa6`, so small text clears AA on the lavender and cream
+  panels. Both are imperceptible on cream and neither changes a fill colour;
+- the booking reassurance labels lightened from `#c8c3ef` to `#dcd8f5` to clear
+  AA on the blue booking panel.
+
+The `--blue`, `--blue-deep`, `--lavender`, `--paper`, and `--coral` fill
+colours are unchanged.
+
 ## References retained in this repository
 
 `design/business-cards/` contains the original business-card exports. They are

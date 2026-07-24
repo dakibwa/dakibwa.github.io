@@ -4,13 +4,20 @@
   --green: var(--blue);
   --green-deep: var(--blue-deep);
   --lavender: #aaa4e6;
-  --lavender-soft: #c8c3ef;
-  --lavender-ink: #6a63aa;
+  /* Light enough to clear 4.5:1 against the blue booking panel. */
+  --lavender-soft: #dcd8f5;
+  /* A touch deeper than #6a63aa so the 12.5px eyebrow labels clear AA on cream. */
+  --lavender-ink: #665fa6;
   --paper: #f5ecd9;
   --paper-light: #fbf4e5;
   --coral: #ef5d3c;
   --coral-action: #b43a26;
-  --ink: #203e82;
+  /*
+   * Text ink is a shade deeper than the --blue-deep fill: #203e82 body copy on
+   * the lavender panels measured 4.42:1, just under AA. This clears it at
+   * 5.4:1 and is indistinguishable on cream.
+   */
+  --ink: #1a3169;
   --rule: rgba(139, 130, 211, 0.72);
   --rule-soft: rgba(139, 130, 211, 0.38);
   --display: var(--font-beth-ellen), cursive;
@@ -78,9 +85,48 @@ p {
   margin-top: 0;
 }
 
+/*
+ * The coral ring alone drops to 2.2:1 on the blue hero and 1.5:1 on the
+ * lavender panels. The cream and deep-blue halos keep at least one ring above
+ * 3:1 on every surface colour the site uses, while coral stays the identity.
+ */
 :focus-visible {
-  outline: 3px solid var(--coral);
-  outline-offset: 4px;
+  outline: 2px solid var(--coral);
+  outline-offset: 5px;
+  box-shadow:
+    0 0 0 2px var(--paper-light),
+    0 0 0 5px var(--blue-deep);
+}
+
+.skip-link {
+  position: absolute;
+  top: 0.75rem;
+  left: var(--page-pad);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.6rem 1.4rem;
+  background: var(--blue-deep);
+  color: var(--paper-light);
+  font-family: var(--ui);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  transform: translateY(-160%);
+  transition: transform 140ms ease-out;
+}
+
+/* A skip link is only ever reached by keyboard, so :focus is the right hook. */
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
+  }
 }
 
 .route-fade {
@@ -462,13 +508,16 @@ html.route-is-leaving .route-fade {
 .home-closing {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 1.1rem var(--page-pad);
+  justify-content: space-between;
+  padding: 1.6rem var(--page-pad);
   border-bottom: 1px solid var(--rule-soft);
+  gap: 2rem;
 }
 
-.home-closing div {
+.home-closing__links {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 2rem;
 }
 
@@ -500,8 +549,13 @@ html.route-is-leaving .route-fade {
   word-spacing: 0.08em;
 }
 
+/*
+ * Cream on lavender measured 1.95:1, so half the page heading was barely
+ * readable. Blue on lavender keeps the two-tone display device at 3.2:1 —
+ * the same tonal relationship the home hero already uses for lilac on blue.
+ */
 .approach-intro h1 em {
-  color: var(--paper);
+  color: var(--blue);
   font-style: normal;
 }
 
@@ -681,6 +735,24 @@ html.route-is-leaving .route-fade {
   grid-template-columns: repeat(2, 1fr);
 }
 
+/*
+ * Trial has one price and Single has two, so the rules and descriptions used to
+ * sit at different heights and could not be compared across the columns.
+ * Subgrid pins title / prices / rule / description / note to shared rows.
+ */
+@media (min-width: 821px) {
+  .lesson-programme__grid {
+    grid-template-rows: auto auto auto auto auto;
+  }
+
+  .lesson-product {
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+    align-content: start;
+  }
+}
+
 .lesson-product {
   position: relative;
   min-height: 330px;
@@ -825,7 +897,7 @@ html.route-is-leaving .route-fade {
 }
 
 .faq-hero .eyebrow {
-  color: var(--green-deep);
+  color: var(--ink);
 }
 
 .faq-hero > .faq-hero__mark {
@@ -877,7 +949,7 @@ html.route-is-leaving .route-fade {
 }
 
 .faq-index a:hover {
-  color: var(--coral);
+  color: var(--coral-action);
 }
 
 .faq-index a span {
@@ -960,7 +1032,7 @@ html.route-is-leaving .route-fade {
   left: 0;
   width: 24px;
   height: 2px;
-  background: var(--coral);
+  background: var(--coral-action);
   content: "";
 }
 
@@ -996,6 +1068,12 @@ html.route-is-leaving .route-fade {
   letter-spacing: -0.04em;
 }
 
+.faq-contact__book {
+  display: flex;
+  width: fit-content;
+  margin: 1.6rem auto 0;
+}
+
 /* Booking */
 
 .booking-composition {
@@ -1010,9 +1088,8 @@ html.route-is-leaving .route-fade {
 .booking-intro {
   position: sticky;
   top: 0;
-  min-height: 870px;
   overflow: hidden;
-  padding: 2.8rem var(--page-pad);
+  padding: 2.8rem var(--page-pad) 3.2rem;
   background-color: var(--green);
   background-image: var(--paper-texture);
   color: var(--paper);
@@ -1059,11 +1136,14 @@ html.route-is-leaving .route-fade {
   height: 62px;
 }
 
+/*
+ * Previously pinned to the panel bottom, which only cleared the reassurance
+ * list while the panel kept a hand-tuned min-height. Letting it flow after the
+ * list keeps the panel content-sized and cannot overlap at any width.
+ */
 .booking-intro__time-window {
-  position: absolute;
-  right: max(1.5rem, 6%);
-  bottom: 1.5rem;
   width: min(42%, 280px);
+  margin: 2.4rem 0 0 auto;
   aspect-ratio: 8 / 7;
   opacity: 0.92;
 }
@@ -1140,6 +1220,17 @@ html.route-is-leaving .route-fade {
   font-size: 0.92rem;
 }
 
+/* The recovery route has to be actionable where the failure is noticed. */
+.booking-fallback-note a {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.booking-fallback-note a:hover {
+  color: var(--coral-action);
+}
+
 .booking-placeholder {
   min-height: 360px;
   margin-top: 1.5rem;
@@ -1174,7 +1265,7 @@ html.route-is-leaving .route-fade {
 }
 
 .booking-policy .eyebrow {
-  color: var(--green);
+  color: var(--ink);
 }
 
 .booking-policy a {
@@ -1583,7 +1674,7 @@ html.route-is-leaving .route-fade {
   }
 
   .home-hero__copy {
-    min-height: 580px;
+    min-height: 470px;
   }
 
   .home-hero__art {
@@ -1696,7 +1787,6 @@ html.route-is-leaving .route-fade {
 
   .booking-intro {
     position: relative;
-    min-height: 700px;
   }
 
   .booking-provider {
@@ -1776,9 +1866,9 @@ html.route-is-leaving .route-fade {
   }
 
   .home-hero__copy {
-    min-height: 520px;
-    padding-top: 3.5rem;
-    padding-bottom: 3.5rem;
+    min-height: 420px;
+    padding-top: 3rem;
+    padding-bottom: 3rem;
   }
 
   .home-hero__copy h1 {
@@ -1798,9 +1888,14 @@ html.route-is-leaving .route-fade {
     gap: 1.2rem;
   }
 
-  .home-closing div {
-    align-items: center;
-    flex-direction: row;
+  .home-closing {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .home-closing__links {
+    justify-content: space-between;
     gap: 1.25rem;
   }
 
@@ -1892,15 +1987,9 @@ html.route-is-leaving .route-fade {
     font-size: 1.05rem;
   }
 
-  .booking-intro {
-    min-height: 610px;
-  }
-
   .booking-intro__time-window {
-    right: 1.1rem;
-    bottom: 1.25rem;
-    width: min(30%, 124px);
-    opacity: 0.88;
+    width: min(38%, 190px);
+    margin-top: 1.8rem;
   }
 
   .booking-intro h1 {
@@ -1970,5 +2059,26 @@ html.route-is-leaving .route-fade {
 
   .text-action::after {
     display: none;
+  }
+
+  /*
+   * The lift and slide affordances were still animating under reduced motion.
+   * Colour changes are kept so the states remain distinguishable.
+   */
+  .button,
+  .button:hover {
+    transform: none;
+    transition: background 160ms ease, color 160ms ease;
+  }
+
+  .site-nav__link::after,
+  .site-nav__link:hover::after,
+  .site-nav__link[aria-current="page"]::after {
+    transform: none;
+    transition: none;
+  }
+
+  .faq-row__symbol::after {
+    transition: none;
   }
 }
