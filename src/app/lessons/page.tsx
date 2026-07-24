@@ -23,7 +23,11 @@ export default function LessonsPage() {
           </h1>
         </div>
         <div className="lessons-hero__art">
-          <AssetMark asset="/visuals/generated-splats/open-centre-lavender-splat.png" className="lessons-hero__field" />
+          <AssetMark
+            asset="/visuals/generated-splats/open-centre-lavender-splat.webp"
+            className="lessons-hero__field"
+            priority
+          />
         </div>
       </section>
 

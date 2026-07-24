@@ -149,7 +149,7 @@ export default function FAQPage() {
           <h1 id="faq-title">Questions<br />before booking?</h1>
           <p>Lessons, payment, location and what to expect.</p>
         </div>
-        <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-hero__mark" />
+        <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-hero__mark" priority />
       </section>
 
       <section className="faq-reference" aria-label="Frequently asked questions">

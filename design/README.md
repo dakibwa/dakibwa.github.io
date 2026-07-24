@@ -42,6 +42,15 @@ the current site:
 Do not keep contact sheets, rejected generations, alternate raster exports,
 mockups, or unused candidates under `public/`.
 
+## Motion direction
+
+The editable route-motion contract is on `05 QA / 2026-07-24` in the canonical
+Figma file, in the frame named
+`Motion & loading QA / Desktop + mobile / 2026-07-24`. It specifies a calm
+transform-and-opacity sequence with no ambient looping. Reduced-motion users
+navigate immediately without the wash, route transform, or decorative hero
+entrance.
+
 ## Superseded work
 
 Old green/editorial website directions, generated concept boards, mockup

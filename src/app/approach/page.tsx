@@ -42,7 +42,11 @@ export default function ApproachPage() {
           </h1>
           <div className="editorial-rule editorial-rule--green" aria-hidden="true" />
           <p>One-to-one lessons shaped around your goals, level and pace.</p>
-          <AssetMark asset="/visuals/generated-splats/cream-blue-fan-splat.png" className="approach-intro__splat" />
+          <AssetMark
+            asset="/visuals/generated-splats/cream-blue-fan-splat.webp"
+            className="approach-intro__splat"
+            priority
+          />
         </div>
 
         <div className="approach-list">

@@ -1,9 +1,9 @@
 "use client";
 
 import Script from "next/script";
+import type { ComponentType } from "react";
 import { useEffect, useRef, useState } from "react";
 import { AssetMark } from "@/components/BrandMarks";
-import { CustomSquareBookingFlow } from "@/components/CustomSquareBookingFlow";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import {
@@ -65,7 +65,23 @@ function loadCalEmbed() {
 
 export function BookingFlow() {
   const widgetRef = useRef<HTMLDivElement>(null);
+  const [CustomBookingFlow, setCustomBookingFlow] = useState<ComponentType | null>(null);
   const [embedReady, setEmbedReady] = useState(false);
+
+  useEffect(() => {
+    if (!USE_CUSTOM_SQUARE_BOOKING) return;
+
+    let isCurrent = true;
+    import("@/components/CustomSquareBookingFlow").then((module) => {
+      if (isCurrent) {
+        setCustomBookingFlow(() => module.CustomSquareBookingFlow);
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isCalCom || !CALCOM_LINK || !widgetRef.current) return;
@@ -131,7 +147,11 @@ export function BookingFlow() {
           </header>
 
           {USE_CUSTOM_SQUARE_BOOKING ? (
-            <CustomSquareBookingFlow />
+            CustomBookingFlow ? (
+              <CustomBookingFlow />
+            ) : (
+              <p className="booking-loading">Loading the booking calendar…</p>
+            )
           ) : isSquare && bookingEmbedUrl ? (
             <div className="booking-widget-stack">
               <div
@@ -146,7 +166,7 @@ export function BookingFlow() {
                   width="100%"
                   height="980"
                   allow="payment"
-                  loading="eager"
+                  loading="lazy"
                   referrerPolicy="strict-origin-when-cross-origin"
                   onLoad={() => setEmbedReady(true)}
                 />
@@ -164,7 +184,7 @@ export function BookingFlow() {
                   title="Schedule a Portuguese lesson"
                   width="100%"
                   height="900"
-                  loading="eager"
+                  loading="lazy"
                   referrerPolicy="strict-origin-when-cross-origin"
                   onLoad={() => setEmbedReady(true)}
                 />

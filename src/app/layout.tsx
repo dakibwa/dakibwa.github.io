@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Beth_Ellen, Montserrat } from "next/font/google";
+import { RouteMotion } from "@/components/RouteMotion";
 import { publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
 
@@ -11,8 +12,8 @@ const bethEllen = Beth_Ellen({
 });
 
 const montserrat = Montserrat({
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  weight: ["400", "600", "700"],
+  style: "normal",
   subsets: ["latin"],
   display: "swap",
   variable: "--font-montserrat"
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         }}
       >
         {children}
+        <RouteMotion />
       </body>
     </html>
   );

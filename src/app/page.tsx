@@ -41,8 +41,9 @@ export default function Home() {
         </div>
         <div className="home-hero__art">
           <AssetMark
-            asset="/visuals/generated-splats/business-card-splat-generated-v2.png"
+            asset="/visuals/generated-splats/business-card-splat-generated-v2.webp"
             className="home-hero__burst"
+            priority
           />
         </div>
       </section>

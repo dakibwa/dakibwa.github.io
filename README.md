@@ -57,6 +57,18 @@ npm run build
 `test:flow` expects a running static or development server. Set
 `QA_BASE_URL` when it is not `http://localhost:3000`.
 
+## Motion and loading
+
+Internal route changes use one short CSS-led transition: a 160 ms exit, an
+organic dark-blue/lilac wash, a 440 ms page entrance, and a slightly delayed
+hero-mark settle. `prefers-reduced-motion: reduce` removes the delay and all
+decorative movement.
+
+Hero artwork is served as compressed WebP and fetched eagerly; non-critical
+marks load lazily. On the booking page, the third-party hosted calendar is
+lazy on narrow screens and the dormant custom Square calendar is fetched only
+when `custom-square` mode is actually enabled.
+
 ## Booking configuration
 
 Copy `.env.example` to `.env.local` and provide the production Square URL:
