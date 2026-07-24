@@ -3,7 +3,8 @@
 The production website for Inês Dias Baía’s one-to-one European Portuguese
 lessons, online or in Porto.
 
-The approved editorial direction is implemented as five responsive routes:
+The approved dark-blue, lilac, cream, and splatty direction is implemented as
+five responsive routes:
 
 - `/` — Home
 - `/approach` — teaching approach and confirmed credentials
@@ -11,10 +12,11 @@ The approved editorial direction is implemented as five responsive routes:
 - `/faq` — booking, lesson, location, payment, rescheduling, and level answers
 - `/book` — live Square-hosted booking with a direct secure fallback
 
-The canonical reference images, editable Figma link, and full implementation
-plan live in
-[design/canonical-site-direction](./design/canonical-site-direction/README.md).
-The PNGs define visual intent; the production interface is code-native.
+The canonical editable design is the
+[Português com a Inês Figma file](https://www.figma.com/design/c4AYW94iWzVqfRkCjyJs0Y).
+[design/README.md](./design/README.md) records the current visual rules,
+retained business-card references, production-asset boundary, and location of
+superseded work. The production interface is code-native.
 
 ## Sources of truth
 

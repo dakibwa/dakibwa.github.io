@@ -36,13 +36,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="en"
       data-scroll-behavior="smooth"
     >
-      {/* The recolourable splat mask (extracted from the green business card)
-          is exposed as a CSS var here so it resolves through the site base
-          path and every surface can paint the motif in any brand colour. */}
       <body
         style={{
-          ["--paper-texture" as string]: publicAssetUrl("/visuals/paper-grain.svg"),
-          ["--splat-mask" as string]: publicAssetUrl("/visuals/splat-mask.png")
+          ["--paper-texture" as string]: publicAssetUrl("/visuals/paper-grain.svg")
         }}
       >
         {children}

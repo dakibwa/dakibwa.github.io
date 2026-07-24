@@ -300,26 +300,6 @@ p {
   background: var(--lavender);
 }
 
-.conversation-burst {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: currentColor;
-  -webkit-mask-image: var(--splat-mask);
-  -webkit-mask-position: center;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: cover;
-  mask-image: var(--splat-mask);
-  mask-position: center;
-  mask-repeat: no-repeat;
-  mask-size: cover;
-}
-
-.question-echo-mark,
-.approach-corner-splat,
-.lessons-corner-splat,
-.faq-answer-index-mark,
-.booking-time-window-mark,
 .asset-mark {
   display: block;
   background-position: center;
@@ -329,64 +309,6 @@ p {
 
 .asset-mark {
   background-image: var(--asset-mark-image);
-}
-
-.question-echo-mark {
-  background-image: var(--question-echo-image);
-}
-
-.approach-corner-splat {
-  background-image: var(--approach-corner-splat-image);
-}
-
-.lessons-corner-splat {
-  background-image: var(--lessons-corner-splat-image);
-}
-
-.faq-answer-index-mark {
-  background-image: var(--faq-answer-index-image);
-}
-
-.booking-time-window-mark {
-  background-image: var(--booking-time-window-image);
-}
-
-.plant-mark,
-.wave-mark,
-.sun-mark {
-  display: inline-block;
-  color: var(--green);
-}
-
-.plant-mark svg,
-.wave-mark svg,
-.sun-mark svg {
-  width: 100%;
-  height: 100%;
-}
-
-.mark-fill {
-  fill: currentColor;
-}
-
-.mark-stroke {
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 10;
-}
-
-.mark-accent {
-  fill: var(--lavender);
-}
-
-.mark-accent-stroke {
-  stroke: var(--lavender);
-}
-
-.sun-rays {
-  stroke-width: 6;
 }
 
 /* Home */
@@ -487,9 +409,6 @@ p {
   gap: 1.5rem;
 }
 
-.principle .plant-mark,
-.principle .wave-mark,
-.principle .sun-mark,
 .principle .asset-mark {
   width: 68px;
   height: 80px;
@@ -1107,9 +1026,6 @@ p {
   text-transform: uppercase;
 }
 
-.booking-intro__points .plant-mark,
-.booking-intro__points .wave-mark,
-.booking-intro__points .sun-mark,
 .booking-intro__points .asset-mark {
   width: 58px;
   height: 62px;
@@ -1545,13 +1461,6 @@ p {
     grid-template-columns: 68px 1fr;
   }
 
-  .principle .plant-mark,
-  .principle .wave-mark,
-  .principle .sun-mark {
-    width: 58px;
-    height: 65px;
-  }
-
   .approach-composition {
     grid-template-columns: 44% 56%;
   }
@@ -1725,14 +1634,6 @@ p {
     grid-template-columns: 1fr;
   }
 
-  .faq-hero > .question-echo-mark {
-    position: absolute;
-    right: -7%;
-    bottom: -18%;
-    width: 42%;
-    opacity: 0.48;
-  }
-
   .faq-reference {
     grid-template-columns: 1fr;
   }
@@ -1867,13 +1768,6 @@ p {
   .principle {
     grid-template-columns: 62px 1fr;
     gap: 1.2rem;
-  }
-
-  .principle .plant-mark,
-  .principle .wave-mark,
-  .principle .sun-mark {
-    width: 54px;
-    height: 60px;
   }
 
   .home-closing div {
