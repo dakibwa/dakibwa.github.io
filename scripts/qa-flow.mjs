@@ -69,6 +69,27 @@ for (const route of routes) {
   }
 }
 
+await page.setViewportSize({ width: 390, height: 844 });
+await page.goto(`${base}/`, { waitUntil: "domcontentloaded" });
+const expectedApproachUrl = new URL(`${base}/approach/`).href;
+await page.getByRole("link", { name: "Approach" }).first().click();
+await page.waitForURL(expectedApproachUrl, { timeout: 10_000 });
+const mobileNavigation = await page.evaluate(() => ({
+  overlayCount: document.querySelectorAll(".route-transition-wash").length,
+  transform: getComputedStyle(document.querySelector(".route-fade")).transform,
+  url: window.location.href
+}));
+
+if (mobileNavigation.url !== expectedApproachUrl) {
+  throw new Error(
+    `Mobile route navigation changed destination: expected ${expectedApproachUrl}, received ${mobileNavigation.url}.`
+  );
+}
+
+if (mobileNavigation.overlayCount !== 0 || mobileNavigation.transform !== "none") {
+  throw new Error("Mobile route navigation should use opacity only, with no overlay or transform.");
+}
+
 await page.setViewportSize({ width: 1440, height: 1000 });
 await page.goto(`${base}/faq`, { waitUntil: "domcontentloaded" });
 const firstFaq = page.locator(".faq-row").first();
@@ -118,6 +139,7 @@ console.log(
       bookingEmbedConfigured,
       customBookingConfigured,
       directBookingHref,
+      mobileNavigation,
       externalResourceWarnings: logs.filter((entry) => entry.includes("Failed to load resource")),
       screenshots: outDir
     },

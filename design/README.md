@@ -46,10 +46,10 @@ mockups, or unused candidates under `public/`.
 
 The editable route-motion contract is on `05 QA / 2026-07-24` in the canonical
 Figma file, in the frame named
-`Motion & loading QA / Desktop + mobile / 2026-07-24`. It specifies a calm
-transform-and-opacity sequence with no ambient looping. Reduced-motion users
-navigate immediately without the wash, route transform, or decorative hero
-entrance.
+`Motion & loading QA / Fade only / Desktop + mobile / 2026-07-24`. It
+specifies a short opacity-only transition, with faster mobile timings and no
+overlay, transform, ambient loop, or decorative hero entrance. Reduced-motion
+users navigate immediately without delay or animation.
 
 ## Superseded work
 

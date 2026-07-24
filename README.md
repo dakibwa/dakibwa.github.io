@@ -59,15 +59,18 @@ npm run build
 
 ## Motion and loading
 
-Internal route changes use one short CSS-led transition: a 160 ms exit, an
-organic dark-blue/lilac wash, a 440 ms page entrance, and a slightly delayed
-hero-mark settle. `prefers-reduced-motion: reduce` removes the delay and all
-decorative movement.
+Internal route changes use opacity only: an 80 ms exit and 170 ms entrance on
+mobile, or a 110 ms exit and 220 ms entrance on wider screens. There is no
+overlay, movement, scale, or staggered hero animation. Base-path deployments
+strip their prefix before handing a route to Next.js so navigation never
+duplicates `/portugal`. `prefers-reduced-motion: reduce` removes the delay and
+animation entirely.
 
-Hero artwork is served as compressed WebP and fetched eagerly; non-critical
-marks load lazily. On the booking page, the third-party hosted calendar is
-lazy on narrow screens and the dormant custom Square calendar is fetched only
-when `custom-square` mode is actually enabled.
+Hero artwork is served as compressed WebP and fetched eagerly, with dedicated
+800 px sources for screens up to 720 px; non-critical marks load lazily. On the
+booking page, the third-party hosted calendar is lazy on narrow screens and
+the dormant custom Square calendar is fetched only when `custom-square` mode
+is actually enabled.
 
 ## Booking configuration
 

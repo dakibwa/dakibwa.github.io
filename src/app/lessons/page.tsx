@@ -26,6 +26,7 @@ export default function LessonsPage() {
           <AssetMark
             asset="/visuals/generated-splats/open-centre-lavender-splat.webp"
             className="lessons-hero__field"
+            mobileAsset="/visuals/generated-splats/open-centre-lavender-splat-mobile.webp"
             priority
           />
         </div>

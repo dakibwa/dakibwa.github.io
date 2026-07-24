@@ -2,9 +2,21 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { SITE_BASE_PATH } from "@/lib/paths";
 
-const EXIT_DURATION_MS = 160;
-const SAFETY_RESET_MS = 900;
+const DESKTOP_EXIT_DURATION_MS = 110;
+const MOBILE_EXIT_DURATION_MS = 80;
+const SAFETY_RESET_MS = 700;
+
+function routePathForRouter(pathname: string) {
+  if (!SITE_BASE_PATH) return pathname;
+  if (pathname === SITE_BASE_PATH) return "/";
+  if (pathname.startsWith(`${SITE_BASE_PATH}/`)) {
+    return pathname.slice(SITE_BASE_PATH.length);
+  }
+
+  return pathname;
+}
 
 function isPlainInternalNavigation(event: MouseEvent, anchor: HTMLAnchorElement) {
   if (
@@ -40,6 +52,7 @@ export function RouteMotion() {
     let navigationTimer: ReturnType<typeof setTimeout> | undefined;
     let safetyTimer: ReturnType<typeof setTimeout> | undefined;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mobileViewport = window.matchMedia("(max-width: 720px)");
 
     const clearTransition = () => {
       document.documentElement.classList.remove("route-is-leaving");
@@ -70,10 +83,15 @@ export function RouteMotion() {
       if (navigationTimer) clearTimeout(navigationTimer);
       if (safetyTimer) clearTimeout(safetyTimer);
 
+      const exitDuration = mobileViewport.matches
+        ? MOBILE_EXIT_DURATION_MS
+        : DESKTOP_EXIT_DURATION_MS;
+
       navigationTimer = setTimeout(() => {
-        router.push(`${destination.pathname}${destination.search}${destination.hash}`);
+        const routePath = routePathForRouter(destination.pathname);
+        router.push(`${routePath}${destination.search}${destination.hash}`);
         safetyTimer = setTimeout(clearTransition, SAFETY_RESET_MS);
-      }, EXIT_DURATION_MS);
+      }, exitDuration);
     };
 
     document.addEventListener("click", handleClick, true);
@@ -86,5 +104,5 @@ export function RouteMotion() {
     };
   }, [router]);
 
-  return <span className="route-transition-wash" aria-hidden="true" />;
+  return null;
 }
