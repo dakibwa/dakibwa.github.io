@@ -1,8 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,ital,wght@6..96,400;6..96,500&family=Inter:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap");
-
 :root {
-  --green: #0b5139;
-  --green-deep: #073e2e;
+  --blue: #2c54aa;
+  --blue-deep: #203e82;
+  --green: var(--blue);
+  --green-deep: var(--blue-deep);
   --lavender: #aaa4e6;
   --lavender-soft: #c8c3ef;
   --lavender-ink: #6a63aa;
@@ -10,12 +10,12 @@
   --paper-light: #fbf4e5;
   --coral: #ef5d3c;
   --coral-action: #b43a26;
-  --ink: #0a382c;
+  --ink: #203e82;
   --rule: rgba(139, 130, 211, 0.72);
   --rule-soft: rgba(139, 130, 211, 0.38);
-  --display: "Bodoni Moda", "Bodoni 72", Didot, Georgia, serif;
-  --body: "Source Serif 4", Georgia, serif;
-  --ui: "Inter", Arial, sans-serif;
+  --display: var(--font-beth-ellen), cursive;
+  --body: var(--font-montserrat), Arial, sans-serif;
+  --ui: var(--font-montserrat), Arial, sans-serif;
   --page-pad: clamp(1.5rem, 4.4vw, 5rem);
   --header-height: 108px;
 }
@@ -319,11 +319,16 @@ p {
 .approach-corner-splat,
 .lessons-corner-splat,
 .faq-answer-index-mark,
-.booking-time-window-mark {
+.booking-time-window-mark,
+.asset-mark {
   display: block;
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
+}
+
+.asset-mark {
+  background-image: var(--asset-mark-image);
 }
 
 .question-echo-mark {
@@ -406,19 +411,24 @@ p {
 
 .home-hero__copy h1 {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.12em;
   width: 100%;
   max-width: 660px;
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(5rem, 8.2vw, 9rem);
+  font-size: clamp(2.6rem, 5vw, 6.5rem);
   font-weight: 400;
-  letter-spacing: -0.065em;
-  line-height: 0.82;
+  letter-spacing: -0.035em;
+  line-height: 0.96;
 }
 
 .home-hero__copy h1 > span:first-child {
   grid-column: 1 / -1;
+}
+
+.home-hero__copy h1 > span {
+  white-space: nowrap;
 }
 
 .home-title__script {
@@ -430,7 +440,7 @@ p {
 
 .home-hero__copy h1 > span:last-child {
   align-self: end;
-  margin-left: 0.08em;
+  margin-left: 0;
 }
 
 .home-hero__copy > p {
@@ -442,16 +452,16 @@ p {
 .home-hero__art {
   position: relative;
   overflow: hidden;
-  background-color: var(--lavender);
+  background-color: var(--green-deep);
   background-image: var(--paper-texture);
 }
 
-.home-hero__art .conversation-burst {
+.home-hero__burst {
   position: absolute;
-  inset: -13% -9% -10% -4%;
-  width: 116%;
-  height: 124%;
-  color: var(--green);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
 }
 
 .principles-strip {
@@ -479,7 +489,8 @@ p {
 
 .principle .plant-mark,
 .principle .wave-mark,
-.principle .sun-mark {
+.principle .sun-mark,
+.principle .asset-mark {
   width: 68px;
   height: 80px;
 }
@@ -487,11 +498,11 @@ p {
 .principle h2 {
   margin: 0;
   color: var(--lavender-ink);
-  font-family: var(--ui);
-  font-size: 0.84rem;
-  letter-spacing: 0.12em;
-  line-height: 1.3;
-  text-transform: uppercase;
+  font-family: var(--display);
+  font-size: clamp(1.35rem, 1.8vw, 1.75rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.4;
 }
 
 .principle p {
@@ -535,10 +546,10 @@ p {
   z-index: 2;
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(4.4rem, 7.4vw, 8.2rem);
+  font-size: clamp(3rem, 5.6vw, 6.2rem);
   font-weight: 400;
   letter-spacing: -0.045em;
-  line-height: 0.88;
+  line-height: 1;
   word-spacing: 0.08em;
 }
 
@@ -558,11 +569,12 @@ p {
 
 .approach-intro__splat {
   position: absolute;
-  right: -5%;
-  bottom: -9%;
+  right: -22%;
+  bottom: -8%;
   z-index: 1;
-  width: min(62%, 360px);
-  aspect-ratio: 8 / 7;
+  width: min(78%, 440px);
+  aspect-ratio: 1;
+  background-size: contain;
 }
 
 .approach-list {
@@ -586,11 +598,9 @@ p {
   border-bottom: 0;
 }
 
-.approach-item .plant-mark,
-.approach-item .wave-mark,
-.approach-item .sun-mark {
-  width: 105px;
-  height: 115px;
+.approach-item .asset-mark {
+  width: 126px;
+  height: 132px;
 }
 
 .approach-item h2 {
@@ -630,10 +640,9 @@ p {
   margin: 0;
   border-right: 2px solid var(--lavender);
   font-family: var(--display);
-  font-size: clamp(2.4rem, 4vw, 4rem);
+  font-size: clamp(2rem, 3vw, 3rem);
   font-weight: 400;
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
   word-spacing: 0.12em;
 }
 
@@ -653,10 +662,10 @@ p {
 .editorial-callout h2 {
   margin-bottom: 1rem;
   font-family: var(--display);
-  font-size: clamp(3rem, 6vw, 5.6rem);
+  font-size: clamp(2.4rem, 4.6vw, 4.4rem);
   font-weight: 400;
   letter-spacing: -0.045em;
-  line-height: 0.98;
+  line-height: 1.08;
 }
 
 .editorial-callout > p:not(.eyebrow) {
@@ -684,10 +693,10 @@ p {
 .lessons-hero h1 {
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(4rem, 7vw, 7.5rem);
+  font-size: clamp(3rem, 5.3vw, 5.6rem);
   font-weight: 400;
-  letter-spacing: -0.06em;
-  line-height: 0.92;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
 }
 
 .lessons-hero h1 em {
@@ -701,14 +710,14 @@ p {
   background-image: var(--paper-texture);
 }
 
-.lessons-hero__art .lessons-corner-splat {
+.lessons-hero__art .lessons-hero__field {
   position: absolute;
-  right: -1%;
-  bottom: -12%;
-  width: 104%;
-  height: 104%;
-  background-position: center bottom;
-  background-size: cover;
+  right: -6%;
+  bottom: -7%;
+  width: 112%;
+  height: 112%;
+  background-position: center;
+  background-size: contain;
 }
 
 .lesson-programme {
@@ -722,7 +731,7 @@ p {
 
 .lesson-programme__grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .lesson-product {
@@ -744,21 +753,33 @@ p {
 .lesson-product__price {
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(4rem, 7vw, 7rem);
-  letter-spacing: -0.06em;
-  line-height: 1;
+  font-size: clamp(3.5rem, 5.6vw, 5.6rem);
+  letter-spacing: -0.035em;
+  line-height: 1.05;
 }
 
 .lesson-product__duration {
-  margin: 0;
+  margin: 0.35rem 0 0;
   font-size: clamp(1.15rem, 1.75vw, 1.45rem);
+  line-height: 1.25;
+}
+
+.lesson-product__options {
+  display: grid;
+  margin-top: 0.35rem;
+  gap: 0.8rem;
+}
+
+.lesson-product__option + .lesson-product__option {
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 0.8rem;
 }
 
 .lesson-product__rule {
   display: block;
   width: 100%;
   height: 1px;
-  margin: 1rem 0;
+  margin: 0.8rem 0 1rem;
   background: var(--rule);
 }
 
@@ -798,10 +819,9 @@ p {
   gap: 1.8rem;
 }
 
-.lesson-location-band .wave-mark {
-  width: 76px;
-  height: 60px;
-  color: var(--lavender);
+.lesson-location-band__mark {
+  width: 96px;
+  height: 76px;
 }
 
 .lesson-location-band p {
@@ -843,12 +863,12 @@ p {
 }
 
 .faq-hero h1 {
-  margin: 0 0 1rem;
+  margin: 0 0 2rem;
   font-family: var(--display);
-  font-size: clamp(4rem, 7.4vw, 7.5rem);
+  font-size: clamp(3rem, 5.6vw, 5.8rem);
   font-weight: 400;
-  letter-spacing: -0.06em;
-  line-height: 0.9;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
 }
 
 .faq-hero > div > p:last-child {
@@ -861,11 +881,11 @@ p {
   color: var(--green-deep);
 }
 
-.faq-hero > .question-echo-mark {
+.faq-hero > .faq-hero__mark {
   align-self: center;
-  width: min(100%, 520px);
-  aspect-ratio: 8 / 7;
-  transform: translate(8%, 1%);
+  width: min(70%, 360px);
+  aspect-ratio: 1;
+  transform: none;
 }
 
 .faq-reference {
@@ -922,9 +942,9 @@ p {
   position: absolute;
   right: 12%;
   bottom: 2rem;
-  width: min(72%, 260px);
-  aspect-ratio: 8 / 7;
-  opacity: 0.78;
+  width: min(68%, 220px);
+  aspect-ratio: 1;
+  opacity: 0.9;
 }
 
 .faq-groups {
@@ -953,7 +973,7 @@ p {
 .faq-group__header h2 {
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(2.3rem, 4vw, 4rem);
+  font-size: clamp(2rem, 3vw, 3.2rem);
   font-weight: 400;
   letter-spacing: -0.035em;
 }
@@ -1024,7 +1044,7 @@ p {
 .faq-contact h2 {
   margin-bottom: 1.8rem;
   font-family: var(--display);
-  font-size: clamp(2.8rem, 5vw, 5rem);
+  font-size: clamp(2.2rem, 3.8vw, 3.8rem);
   font-weight: 400;
   letter-spacing: -0.04em;
 }
@@ -1054,10 +1074,10 @@ p {
 .booking-intro h1 {
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(4.2rem, 7.3vw, 7.6rem);
+  font-size: clamp(3.2rem, 5.4vw, 5.8rem);
   font-weight: 400;
-  letter-spacing: -0.065em;
-  line-height: 0.88;
+  letter-spacing: -0.035em;
+  line-height: 1;
 }
 
 .booking-intro > p {
@@ -1075,7 +1095,7 @@ p {
 
 .booking-intro__points li {
   display: grid;
-  grid-template-columns: 62px 1fr;
+  grid-template-columns: 72px 1fr;
   align-items: center;
   min-height: 76px;
   border-bottom: 1px solid rgba(170, 164, 230, 0.65);
@@ -1089,10 +1109,10 @@ p {
 
 .booking-intro__points .plant-mark,
 .booking-intro__points .wave-mark,
-.booking-intro__points .sun-mark {
-  width: 46px;
-  height: 52px;
-  color: var(--paper);
+.booking-intro__points .sun-mark,
+.booking-intro__points .asset-mark {
+  width: 58px;
+  height: 62px;
 }
 
 .booking-intro__time-window {
@@ -1122,12 +1142,12 @@ p {
 
 .booking-provider__header h2 {
   max-width: 780px;
-  margin-bottom: 0.4rem;
+  margin-bottom: 1rem;
   font-family: var(--display);
   font-size: clamp(2.2rem, 4vw, 3.8rem);
   font-weight: 400;
   letter-spacing: -0.035em;
-  line-height: 1;
+  line-height: 1.12;
 }
 
 .booking-provider__header p:last-child {
@@ -1200,9 +1220,9 @@ p {
   gap: 1.5rem;
 }
 
-.booking-policy .wave-mark {
+.booking-policy .asset-mark {
   width: 72px;
-  height: 58px;
+  height: 72px;
 }
 
 .booking-policy p {
@@ -1514,7 +1534,7 @@ p {
   }
 
   .home-hero__copy h1 {
-    font-size: clamp(4.3rem, 8.5vw, 7.4rem);
+    font-size: clamp(2.6rem, 5vw, 4.8rem);
   }
 
   .principles-strip {
@@ -1550,7 +1570,7 @@ p {
   }
 
   .booking-intro h1 {
-    font-size: clamp(3.6rem, 6vw, 5.3rem);
+    font-size: clamp(3rem, 5vw, 4.5rem);
   }
 
   .booking-provider__header {
@@ -1694,7 +1714,7 @@ p {
     min-height: auto;
     border-right: 0;
     border-bottom: 1px solid var(--rule);
-    padding: 2rem 0;
+    padding: 1.5rem 0;
   }
 
   .lesson-product:last-child {
@@ -1833,7 +1853,7 @@ p {
   }
 
   .home-hero__copy h1 {
-    font-size: clamp(3.9rem, 20vw, 5.2rem);
+    font-size: clamp(2.1rem, 11vw, 4.2rem);
   }
 
   .home-hero__copy > p {
@@ -1867,7 +1887,7 @@ p {
   }
 
   .approach-intro h1 {
-    font-size: clamp(4rem, 20vw, 5.4rem);
+    font-size: clamp(2.6rem, 12vw, 4.4rem);
   }
 
   .approach-intro__splat {
@@ -1886,11 +1906,9 @@ p {
     gap: 1rem;
   }
 
-  .approach-item .plant-mark,
-  .approach-item .wave-mark,
-  .approach-item .sun-mark {
-    width: 64px;
-    height: 70px;
+  .approach-item .asset-mark {
+    width: 72px;
+    height: 76px;
   }
 
   .approach-item p {
@@ -1907,7 +1925,7 @@ p {
   }
 
   .lessons-hero h1 {
-    font-size: clamp(3.5rem, 16vw, 5rem);
+    font-size: clamp(2.1rem, 10vw, 4rem);
   }
 
   .lesson-location-band {
@@ -1922,7 +1940,7 @@ p {
   }
 
   .faq-hero h1 {
-    font-size: clamp(3.5rem, 17vw, 4.8rem);
+    font-size: clamp(2.4rem, 11vw, 4rem);
   }
 
   .faq-index ol {
@@ -1964,7 +1982,7 @@ p {
   }
 
   .booking-intro h1 {
-    font-size: clamp(3.8rem, 18vw, 5.2rem);
+    font-size: clamp(2.5rem, 11vw, 4.2rem);
   }
 
   .booking-provider__direct {
@@ -1981,8 +1999,9 @@ p {
     padding-bottom: 1.5rem;
   }
 
-  .booking-policy .wave-mark {
+  .booking-policy .asset-mark {
     width: 52px;
+    height: 52px;
   }
 
   .booking-summary-grid {

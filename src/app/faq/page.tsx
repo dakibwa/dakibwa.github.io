@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { FAQAnswerIndexMark, QuestionEchoMark } from "@/components/BrandMarks";
+import { AssetMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import {
@@ -149,7 +149,7 @@ export default function FAQPage() {
           <h1 id="faq-title">Questions<br />before booking?</h1>
           <p>Lessons, payment, location and what to expect.</p>
         </div>
-        <QuestionEchoMark />
+        <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-hero__mark" />
       </section>
 
       <section className="faq-reference" aria-label="Frequently asked questions">
@@ -165,7 +165,7 @@ export default function FAQPage() {
               </li>
             ))}
           </ol>
-          <FAQAnswerIndexMark className="faq-index__answer-index" />
+          <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-index__answer-index" />
         </nav>
 
         <div className="faq-groups">

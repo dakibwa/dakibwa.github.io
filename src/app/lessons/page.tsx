@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LessonsCornerSplat, WaveMark } from "@/components/BrandMarks";
+import { AssetMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { lessonProducts } from "@/lib/lesson-products";
@@ -23,7 +23,7 @@ export default function LessonsPage() {
           </h1>
         </div>
         <div className="lessons-hero__art">
-          <LessonsCornerSplat />
+          <AssetMark asset="/visuals/generated-splats/open-centre-lavender-splat.png" className="lessons-hero__field" />
         </div>
       </section>
 
@@ -35,8 +35,21 @@ export default function LessonsPage() {
           {lessonProducts.map((product) => (
             <article className="lesson-product" key={product.id}>
               <p className="eyebrow">{product.title}</p>
-              <p className="lesson-product__price">{product.price}</p>
-              <p className="lesson-product__duration">{product.duration}</p>
+              {product.options ? (
+                <div className="lesson-product__options">
+                  {product.options.map((option) => (
+                    <div className="lesson-product__option" key={option.duration}>
+                      <p className="lesson-product__price">{option.price}</p>
+                      <p className="lesson-product__duration">{option.duration}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <p className="lesson-product__price">{product.price}</p>
+                  <p className="lesson-product__duration">{product.duration}</p>
+                </>
+              )}
               <span className="lesson-product__rule" aria-hidden="true" />
               <p className="lesson-product__description">{product.description}</p>
               {product.note ? (
@@ -51,8 +64,8 @@ export default function LessonsPage() {
 
       <section className="lesson-location-band">
         <div>
-          <WaveMark />
-          <p>Online or in Porto</p>
+          <AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" className="lesson-location-band__mark" />
+          <p>In Porto or online</p>
         </div>
         <Link className="button button--coral" href="/book">Book a lesson</Link>
       </section>

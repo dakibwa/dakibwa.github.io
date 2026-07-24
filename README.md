@@ -24,8 +24,10 @@ The PNGs define visual intent; the production interface is code-native.
 - The current Akibwa Square account requires full prepayment for fixed-price
   appointment services. Reconfirm that policy when the Portuguese Square
   account replaces it.
-- The approved product display is trial lesson €20 / 45 minutes, single lesson
-  €25 / 1 hour 15 minutes, and five lessons €110 / 1 hour 15 minutes each.
+- The approved product display is trial lesson €20 / 60 minutes, single lessons
+  at €25 / 60 minutes or €35 / 1 hour 30 minutes. Bundles are not part of the
+  public launch offer. Existing students retain their individually agreed
+  legacy €20 / €30 pricing, which is not advertised publicly.
   Square shows the final appointment details and total before confirmation.
 - The current rescheduling rule is free before the lesson day, with a €5 fee for
   a change made on the lesson day in Porto time. Production uses manual
@@ -60,9 +62,9 @@ Copy `.env.example` to `.env.local` and provide the production Square URL:
 ```bash
 NEXT_PUBLIC_BOOKING_MODE=square-hosted
 NEXT_PUBLIC_SQUARE_BOOKING_URL=https://book.squareup.com/appointments/...
-LESSON_PRICE_CENTS=2000
+LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
-NEXT_PUBLIC_LESSON_DURATION_MINUTES=75
+NEXT_PUBLIC_LESSON_DURATION_MINUTES=60
 NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
 NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual
 ```

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ApproachCornerSplat, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
+import { AssetMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -13,17 +13,17 @@ const approachItems = [
   {
     title: "Real European Portuguese",
     body: "Pronunciation, rhythm and everyday expressions — the language you will actually hear in Portugal.",
-    icon: PlantMark
+    asset: "/visuals/v2-splats/european-portuguese-splat-v2.svg"
   },
   {
     title: "Built around you",
     body: "Travel, daily life, work, exams or moving to Portugal. Your goals set the direction.",
-    icon: WaveMark
+    asset: "/visuals/v2-splats/built-around-you-splat-v2.svg"
   },
   {
     title: "Relaxed and practical",
     body: "Conversation-led practice with gentle correction, clear explanations and space to build confidence.",
-    icon: SunMark
+    asset: "/visuals/v2-splats/relaxed-practical-splat-v2.svg"
   }
 ];
 
@@ -42,22 +42,19 @@ export default function ApproachPage() {
           </h1>
           <div className="editorial-rule editorial-rule--green" aria-hidden="true" />
           <p>One-to-one lessons shaped around your goals, level and pace.</p>
-          <ApproachCornerSplat className="approach-intro__splat" />
+          <AssetMark asset="/visuals/generated-splats/cream-blue-fan-splat.png" className="approach-intro__splat" />
         </div>
 
         <div className="approach-list">
-          {approachItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <article className="approach-item" key={item.title}>
-                <Icon />
-                <div>
-                  <h2>{item.title}</h2>
-                  <p>{item.body}</p>
-                </div>
-              </article>
-            );
-          })}
+          {approachItems.map((item) => (
+            <article className="approach-item" key={item.title}>
+              <AssetMark asset={item.asset} />
+              <div>
+                <h2>{item.title}</h2>
+                <p>{item.body}</p>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 

@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { BookingTimeWindowMark, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
+import { AssetMark } from "@/components/BrandMarks";
 import { CustomSquareBookingFlow } from "@/components/CustomSquareBookingFlow";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -96,11 +96,14 @@ export function BookingFlow() {
           <div className="editorial-rule" aria-hidden="true" />
           <p>Choose a live time in the secure booking calendar, then confirm your details.</p>
           <ul className="booking-intro__points">
-            <li><PlantMark /><span>One to one</span></li>
-            <li><WaveMark /><span>Online or in Porto</span></li>
-            <li><SunMark /><span>Porto time</span></li>
+            <li><AssetMark asset="/visuals/v2-splats/one-to-one-splat-v2.svg" /><span>One to one</span></li>
+            <li><AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" /><span>In Porto or online</span></li>
+            <li><AssetMark asset="/visuals/v2-splats/lesson-format-splat-v2.svg" /><span>Porto time</span></li>
           </ul>
-          <BookingTimeWindowMark className="booking-intro__time-window" />
+          <AssetMark
+            asset="/visuals/v2-splats/booking-availability-splat-v2.svg"
+            className="booking-intro__time-window"
+          />
         </aside>
 
         <section className="booking-provider" aria-label={`${BOOKING_PROVIDER_NAME} lesson booking`}>
@@ -187,7 +190,7 @@ export function BookingFlow() {
       </section>
 
       <section className="booking-policy" id="change-booking">
-        <WaveMark />
+        <AssetMark asset="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg" />
         <div>
           <p className="eyebrow">Flexible rescheduling</p>
           <p>

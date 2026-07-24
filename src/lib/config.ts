@@ -1,8 +1,8 @@
 export const LESSON_PRICE_CENTS = Number(
-  process.env.NEXT_PUBLIC_LESSON_PRICE_CENTS ?? process.env.LESSON_PRICE_CENTS ?? 2000
+  process.env.NEXT_PUBLIC_LESSON_PRICE_CENTS ?? process.env.LESSON_PRICE_CENTS ?? 2500
 );
 export const LESSON_CURRENCY = process.env.LESSON_CURRENCY ?? "eur";
-export const LESSON_DURATION_MINUTES = Number(process.env.NEXT_PUBLIC_LESSON_DURATION_MINUTES ?? 75);
+export const LESSON_DURATION_MINUTES = Number(process.env.NEXT_PUBLIC_LESSON_DURATION_MINUTES ?? 60);
 export const SAME_DAY_RESCHEDULE_FEE_CENTS = Number(
   process.env.NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS ?? 500
 );

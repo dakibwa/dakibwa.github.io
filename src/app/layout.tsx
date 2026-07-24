@@ -1,6 +1,22 @@
 import type { Metadata } from "next";
+import { Beth_Ellen, Montserrat } from "next/font/google";
 import { publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
+
+const bethEllen = Beth_Ellen({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-beth-ellen"
+});
+
+const montserrat = Montserrat({
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-montserrat"
+});
 
 export const metadata: Metadata = {
   title: "Português com a Inês | Portuguese lessons in Porto",
@@ -15,7 +31,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html
+      className={`${bethEllen.variable} ${montserrat.variable}`}
+      lang="en"
+      data-scroll-behavior="smooth"
+    >
       {/* The recolourable splat mask (extracted from the green business card)
           is exposed as a CSS var here so it resolves through the site base
           path and every surface can paint the motif in any brand colour. */}

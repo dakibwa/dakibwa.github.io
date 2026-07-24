@@ -25,6 +25,10 @@ type FAQAnswerIndexStyle = CSSProperties & {
   "--faq-answer-index-image": string;
 };
 
+type AssetMarkStyle = CSSProperties & {
+  "--asset-mark-image": string;
+};
+
 function markClass(name: string, className?: string) {
   return className ? `${name} ${className}` : name;
 }
@@ -74,6 +78,16 @@ export function SunMark({ className }: MarkProps) {
 
 export function ConversationBurst({ className }: MarkProps) {
   return <span className={markClass("conversation-burst", className)} aria-hidden="true" />;
+}
+
+export function AssetMark({ asset, className }: MarkProps & { asset: string }) {
+  return (
+    <span
+      className={markClass("asset-mark", className)}
+      aria-hidden="true"
+      style={{ "--asset-mark-image": publicAssetUrl(asset) } as AssetMarkStyle}
+    />
+  );
 }
 
 export function QuestionEchoMark({ className }: MarkProps) {

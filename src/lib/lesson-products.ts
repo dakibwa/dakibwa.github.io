@@ -1,8 +1,12 @@
 export type LessonProduct = {
-  id: "trial" | "single" | "five";
+  id: "trial" | "single";
   title: string;
-  price: string;
-  duration: string;
+  price?: string;
+  duration?: string;
+  options?: {
+    price: string;
+    duration: string;
+  }[];
   description: string;
   note?: string;
 };
@@ -16,24 +20,24 @@ export const lessonProducts: LessonProduct[] = [
     id: "trial",
     title: "Trial lesson",
     price: "€20",
-    duration: "45 minutes",
-    description: "A relaxed first conversation to understand your level, goals, and the way you learn best.",
+    duration: "60 minutes",
+    description: "A relaxed full first lesson to experience the teaching style and understand your level, goals, and how you learn best.",
     note: "Start here"
   },
   {
     id: "single",
-    title: "Single lesson",
-    price: "€25",
-    duration: "1 hour 15 minutes",
+    title: "Single lessons",
+    options: [
+      {
+        price: "€25",
+        duration: "60 minutes"
+      },
+      {
+        price: "€35",
+        duration: "1 hour 30 minutes"
+      }
+    ],
     description: "A focused one-to-one lesson shaped around the Portuguese you want to use in real life."
-  },
-  {
-    id: "five",
-    title: "5 lessons",
-    price: "€110",
-    duration: "1 hour 15 minutes each",
-    description: "A steady rhythm for building confidence, with each lesson continuing naturally from the last.",
-    note: "Save €15"
   }
 ];
 

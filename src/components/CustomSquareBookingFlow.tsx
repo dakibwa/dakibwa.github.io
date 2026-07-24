@@ -353,7 +353,7 @@ export function CustomSquareBookingFlow() {
             </p>
             <p>
               <MapPin size={18} aria-hidden="true" />
-              Online or in Porto
+              In Porto or online
             </p>
             <strong>{formatMoney()}</strong>
           </div>

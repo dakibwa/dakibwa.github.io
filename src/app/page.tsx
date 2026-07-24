@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ConversationBurst, PlantMark, SunMark, WaveMark } from "@/components/BrandMarks";
+import { AssetMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -7,17 +7,17 @@ const principles = [
   {
     title: "One to one",
     body: "Personal attention to match your goals, level and interests.",
-    icon: PlantMark
+    asset: "/visuals/v2-splats/one-to-one-splat-v2.svg"
   },
   {
     title: "At your pace",
     body: "A calm, focused space to build confidence and communicate naturally.",
-    icon: WaveMark
+    asset: "/visuals/v2-splats/at-your-pace-splat-v2.svg"
   },
   {
     title: "For real life",
     body: "Practical Portuguese for everyday situations, travel or work.",
-    icon: SunMark
+    asset: "/visuals/v2-splats/real-life-splat-v2.svg"
   }
 ];
 
@@ -40,16 +40,18 @@ export default function Home() {
           </Link>
         </div>
         <div className="home-hero__art">
-          <ConversationBurst />
+          <AssetMark
+            asset="/visuals/generated-splats/business-card-splat-generated-v2.png"
+            className="home-hero__burst"
+          />
         </div>
       </section>
 
       <section className="principles-strip" aria-label="How lessons work">
         {principles.map((principle) => {
-          const Icon = principle.icon;
           return (
             <article className="principle" key={principle.title}>
-              <Icon />
+              <AssetMark asset={principle.asset} />
               <div>
                 <h2>{principle.title}</h2>
                 <span className="short-rule" aria-hidden="true" />
