@@ -128,6 +128,11 @@ const faqSections = [
           "Online, or in person in Porto. You choose the format when you book, and it’s confirmed before you pay."
       },
       {
+        question: "What do I need for an online lesson?",
+        answer:
+          "Not much. Lessons run on Google Meet: I’ll send you the link, it opens straight in your browser, and there’s nothing to install beforehand. Headphones help more than anything else."
+      },
+      {
         question: "Do online lessons work as well as in person?",
         answer:
           "For one-to-one talking, yes. You get the same hour and the same attention either way, wherever in the world you are."
