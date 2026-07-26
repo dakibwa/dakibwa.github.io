@@ -10,10 +10,12 @@ import {
   SAME_DAY_RESCHEDULE_FEE_CENTS,
   formatMoney
 } from "@/lib/config";
+import { trialLesson } from "@/lib/lesson-products";
 
 export const metadata: Metadata = {
   title: "FAQ | Português com a Inês",
-  description: "Answers about booking, payment, levels and changing a lesson."
+  description:
+    "Answers for anyone nervous about speaking, plus levels, booking, payment and changing a lesson."
 };
 
 const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
@@ -23,6 +25,115 @@ const changeBookingInstructions =
     : `Use the change-booking link in your confirmation email from ${BOOKING_PROVIDER_NAME}.`;
 
 const faqSections = [
+  {
+    id: "nerves",
+    title: "Feeling nervous",
+    questions: [
+      {
+        question: "I’m nervous about speaking. Is that normal?",
+        answer:
+          "It’s the single most common thing people tell me in a first lesson. Speaking out loud in a new language feels exposing, however much grammar you know. We go at whatever speed makes it easier."
+      },
+      {
+        question: "What if I freeze and can’t say anything?",
+        answer:
+          "Then I help you out and we carry on. Nobody is timing you, and there’s no class watching. Long pauses are part of learning to speak, not a sign it’s going badly."
+      },
+      {
+        question: "What if I make a lot of mistakes?",
+        answer:
+          "You will, and that’s useful. Your mistakes tell me exactly what to work on next. I correct you as we go, though not every single slip, because that stops a conversation dead."
+      },
+      {
+        question: "I’ve tried before and gave up. Will this be different?",
+        answer:
+          "I can’t promise that. What I can say is that most people who stall were learning alone, with an app or a book and nobody to answer back. An hour of talking to a real person is a different thing."
+      }
+    ]
+  },
+  {
+    id: "lessons",
+    title: "In the lesson",
+    questions: [
+      {
+        question: "What happens in a lesson?",
+        answer:
+          "We talk, mostly. You bring something you want to be able to say, or I bring something, and we work through it out loud. I correct you as we go, and explain the grammar when it’s the thing tripping you up."
+      },
+      {
+        question: "What if we run out of things to talk about?",
+        answer:
+          "That’s my job to solve, not yours. I’ll always have something ready. Turning up with nothing in mind is completely fine."
+      },
+      {
+        question: "Will you speak only Portuguese? I won’t understand.",
+        answer:
+          "Not at the start, no. We use as much English as you need, and less of it as you go. You will never be left sitting there with no idea what’s happening."
+      },
+      {
+        question: "Do I need to prepare anything?",
+        answer:
+          "No. Turn up with a question, a situation you’re dreading, or nothing at all."
+      },
+      {
+        question: "Is there homework?",
+        answer:
+          "Only if you want it. Ask and I’ll give you something to practise between lessons. If your week gets away from you, come anyway and we’ll use the hour."
+      }
+    ]
+  },
+  {
+    id: "levels",
+    title: "Level and language",
+    questions: [
+      {
+        question: "What level do I need to be?",
+        answer:
+          "Any. From never having said a word, to reading Portuguese fine but freezing when somebody answers back."
+      },
+      {
+        question: "Am I too old to start?",
+        answer:
+          "No. Adults are usually better than children at understanding how a language works. What you need is more practice saying things out loud, which is exactly what an hour of talking gives you."
+      },
+      {
+        question: "How long until I can hold a conversation?",
+        answer:
+          "That depends on where you start and how much you practise, so anyone who gives you a number is guessing. What I can tell you is that you’ll say something real in Portuguese in the first lesson."
+      },
+      {
+        question: "Is this European or Brazilian Portuguese?",
+        answer:
+          "European. The Portuguese you’ll hear on the street in Porto, including all the vowels we swallow."
+      },
+      {
+        question: "I learned Brazilian Portuguese. Is that a problem?",
+        answer:
+          "Not at all, and you’ll be understood here. We’d work on the differences in sound and vocabulary, and you keep whatever you like from it."
+      },
+      {
+        question: "Can explanations be in English?",
+        answer:
+          "Yes. English, Portuguese, or a mix. We find a balance that works and shift it as you improve."
+      }
+    ]
+  },
+  {
+    id: "location",
+    title: "Online or in Porto",
+    questions: [
+      {
+        question: "Where do lessons take place?",
+        answer:
+          "Online, or in person in Porto. You choose the format when you book, and it’s confirmed before you pay."
+      },
+      {
+        question: "Do online lessons work as well as in person?",
+        answer:
+          "For one-to-one talking, yes. You get the same hour and the same attention either way, wherever in the world you are."
+      }
+    ]
+  },
   {
     id: "booking",
     title: "Booking",
@@ -38,46 +149,9 @@ const faqSections = [
           "An email arrives with the lesson details and a link you can use to change or cancel it."
       },
       {
-        question: "Can I book more than one lesson?",
+        question: "Do I have to commit to a block of lessons?",
         answer:
-          "Yes, book as many as you like. If you’d rather have the same time every week, message me and we’ll set it up."
-      }
-    ]
-  },
-  {
-    id: "lessons",
-    title: "Lessons",
-    questions: [
-      {
-        question: "What are the lessons like?",
-        answer:
-          "We talk, mostly. I correct you as we go, and explain the grammar when it’s the thing tripping you up."
-      },
-      {
-        question: "Do I need to prepare anything?",
-        answer:
-          "No. Turn up with a question, a situation you’re dreading, or nothing at all."
-      },
-      {
-        question: "Is this European or Brazilian Portuguese?",
-        answer:
-          "European. The Portuguese you’ll hear on the street in Porto."
-      }
-    ]
-  },
-  {
-    id: "location",
-    title: "Location",
-    questions: [
-      {
-        question: "Where do lessons take place?",
-        answer:
-          "Online, or in person in Porto. You choose the format when you book, and it’s confirmed before you pay."
-      },
-      {
-        question: "Can I learn online if I’m not in Porto?",
-        answer:
-          "Yes. Online lessons run exactly the same way, wherever you are."
+          "No. There’s no package to buy and no minimum. Book one, see how it goes, book another if you want to. If you’d rather hold the same time every week, message me and we’ll set that up."
       }
     ]
   },
@@ -91,14 +165,17 @@ const faqSections = [
       },
       {
         question: "How much does a lesson cost?",
-        answer:
-          "The prices are all on the lessons page, and Square shows you the total before you pay."
+        answer: `The prices are all on the lessons page, and ${BOOKING_PROVIDER_NAME} shows you the total before you pay.`
+      },
+      {
+        question: "What if the trial lesson isn’t for me?",
+        answer: `Then you’ve spent ${trialLesson.price} on an hour of Portuguese and we leave it there. No follow-up and no pressure. A trial lesson is you deciding, not me selling.`
       }
     ]
   },
   {
     id: "rescheduling",
-    title: "Rescheduling",
+    title: "Changing a lesson",
     questions: [
       {
         question: "Can I reschedule?",
@@ -113,27 +190,11 @@ const faqSections = [
         question: "Can I cancel?",
         answer:
           "There’s a cancellation link in your confirmation email. If you’re not sure what to do, message me first."
-      }
-    ]
-  },
-  {
-    id: "levels",
-    title: "Levels",
-    questions: [
-      {
-        question: "What level do I need to be?",
-        answer:
-          "Any. From never having said a word, to reading Portuguese fine but freezing when somebody answers back."
       },
       {
-        question: "Can lessons match my goals?",
+        question: "What if I need to stop for a while?",
         answer:
-          "That’s the point of one to one. Tell me what you need Portuguese for and we’ll work on that."
-      },
-      {
-        question: "Can explanations be in English?",
-        answer:
-          "Yes. English, Portuguese, or a mix. We find a balance that works and shift it as you improve."
+          "Then you stop. There’s no subscription and nothing to cancel, so a gap costs you nothing. Book again whenever you’re ready."
       }
     ]
   }
@@ -147,9 +208,9 @@ export default function FAQPage() {
       <main className="faq-page" id="main-content">
         <section className="faq-hero" aria-labelledby="faq-title">
           <div>
-            <p className="eyebrow">Practical stuff</p>
+            <p className="eyebrow">Ask anything</p>
             <h1 id="faq-title">Questions<br />before booking?</h1>
-            <p>Booking, money, and what happens when life gets in the way.</p>
+            <p>The nervous ones first. Then booking, money, and what happens when life gets in the way.</p>
           </div>
           <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-hero__mark" priority />
         </section>
