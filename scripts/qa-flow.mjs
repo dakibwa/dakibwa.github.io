@@ -8,8 +8,8 @@ const expectedBookingMode = normalizeBookingMode(process.env.NEXT_PUBLIC_BOOKING
 const expectCustomBooking = expectedBookingMode === "custom-square";
 const routes = [
   { id: "home", path: "/", heading: "Português" },
-  { id: "approach", path: "/approach", heading: "A calm," },
-  { id: "lessons", path: "/lessons", heading: "Private lessons" },
+  { id: "approach", path: "/approach", heading: "No class." },
+  { id: "lessons", path: "/lessons", heading: "Lessons, and" },
   { id: "faq", path: "/faq", heading: "Questions" },
   { id: "booking", path: "/book", heading: "Book your" }
 ];
