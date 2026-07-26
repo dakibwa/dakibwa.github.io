@@ -22,10 +22,10 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "Português com a Inês | Portuguese lessons in Porto",
   description:
-    "One-to-one European Portuguese lessons in Porto and online with Inês. Practical, relaxed, and personal — with a native speaker.",
+    "One-to-one European Portuguese lessons in Porto and online, with a native speaker from Porto. Any level, no fixed syllabus.",
   openGraph: {
     title: "Português com a Inês | Portuguese lessons in Porto",
-    description: "One-to-one European Portuguese lessons in Porto and online. Practical. Personal.",
+    description: "One-to-one European Portuguese lessons in Porto and online. Any level.",
     type: "website"
   }
 };

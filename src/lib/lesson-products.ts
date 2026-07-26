@@ -21,7 +21,7 @@ export const lessonProducts: LessonProduct[] = [
     title: "Trial lesson",
     price: "€20",
     duration: "60 minutes",
-    description: "A relaxed full first lesson to experience the teaching style and understand your level, goals, and how you learn best.",
+    description: "A full hour, not a sales call. We find out where your Portuguese is and what you want to do with it.",
     note: "Start here"
   },
   {
@@ -37,7 +37,7 @@ export const lessonProducts: LessonProduct[] = [
         duration: "1 hour 30 minutes"
       }
     ],
-    description: "A focused one-to-one lesson shaped around the Portuguese you want to use in real life."
+    description: "Book one at a time, or keep the same slot each week. Take the longer one if you want more time to talk."
   }
 ];
 

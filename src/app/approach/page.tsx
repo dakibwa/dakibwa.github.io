@@ -6,23 +6,23 @@ import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata: Metadata = {
   title: "Approach | Português com a Inês",
-  description: "A calm, practical, one-to-one approach to learning European Portuguese."
+  description: "How the lessons work: one to one, no fixed syllabus, built around what you need Portuguese for."
 };
 
 const approachItems = [
   {
-    title: "Real European Portuguese",
-    body: "Pronunciation, rhythm and everyday expressions — the language you will actually hear in Portugal.",
+    title: "The Portuguese of Portugal",
+    body: "The way people speak here, including all the vowels we swallow.",
     asset: "/visuals/v2-splats/european-portuguese-splat-v2.svg"
   },
   {
-    title: "Built around you",
-    body: "Travel, daily life, work, exams or moving to Portugal. Your goals set the direction.",
+    title: "Whatever you’re here for",
+    body: "Moving over, work, an exam, or just talking to your neighbours. You set the target.",
     asset: "/visuals/v2-splats/built-around-you-splat-v2.svg"
   },
   {
-    title: "Relaxed and practical",
-    body: "Conversation-led practice with gentle correction, clear explanations and space to build confidence.",
+    title: "Talk first",
+    body: "We talk. I correct you as we go, and explain the grammar when it’s the thing tripping you up.",
     asset: "/visuals/v2-splats/relaxed-practical-splat-v2.svg"
   }
 ];
@@ -36,13 +36,13 @@ export default function ApproachPage() {
         <section className="approach-composition" aria-labelledby="approach-title">
           <div className="approach-intro">
             <h1 id="approach-title">
-              A calm,<br />
-              practical<br />
-              way <em>to</em><br />
-              <em>learn.</em>
+              No class.<br />
+              No rush.<br />
+              Just you<br />
+              <em>talking.</em>
             </h1>
             <div className="editorial-rule editorial-rule--green" aria-hidden="true" />
-            <p>One-to-one lessons shaped around your goals, level and pace.</p>
+            <p>We start from what you can already say. Where it goes after that is up to you.</p>
             <AssetMark
               asset="/visuals/generated-splats/cream-blue-fan-splat.webp"
               className="approach-intro__splat"
@@ -73,10 +73,11 @@ export default function ApproachPage() {
         </section>
 
         <section className="editorial-callout">
-          <p className="eyebrow">A lesson that meets you where you are</p>
-          <h2>Useful from the first conversation.</h2>
+          <p className="eyebrow">Any level</p>
+          <h2>Nervous beginners welcome.</h2>
           <p>
-            Complete beginner or confident speaker, each lesson gives you language you can carry into real life.
+            If you’ve never said a word of Portuguese, that’s a normal place to start. If you’ve been stuck at the
+            same level for years, that’s normal too.
           </p>
           <Link className="button button--coral" href="/book">Book a trial lesson</Link>
         </section>

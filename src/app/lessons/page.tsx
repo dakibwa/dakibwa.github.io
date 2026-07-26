@@ -7,7 +7,7 @@ import { lessonProducts } from "@/lib/lesson-products";
 
 export const metadata: Metadata = {
   title: "Lessons | Português com a Inês",
-  description: "One-to-one European Portuguese lessons online or in Porto."
+  description: "Prices for one-to-one European Portuguese lessons, online or in Porto."
 };
 
 export default function LessonsPage() {
@@ -19,8 +19,8 @@ export default function LessonsPage() {
         <section className="lessons-hero" aria-labelledby="lessons-title">
           <div className="lessons-hero__title">
             <h1 id="lessons-title">
-              Private lessons,<br />
-              built around <em>you.</em>
+              Lessons, and<br />
+              what they <em>cost.</em>
             </h1>
           </div>
           <div className="lessons-hero__art">
@@ -35,7 +35,7 @@ export default function LessonsPage() {
 
         <section className="lesson-programme" aria-labelledby="programme-title">
           <p className="lesson-programme__intro" id="programme-title">
-            One-to-one European Portuguese, tailored to your goals and pace.
+            One to one, in Porto or online. An hour, or an hour and a half if you want longer.
           </p>
           <div className="lesson-programme__grid">
             {lessonProducts.map((product) => {
@@ -76,9 +76,9 @@ export default function LessonsPage() {
 
         <section className="lessons-note">
           <p>
-            Square shows the current appointment details and final total before you confirm.
+            Square handles the booking and takes the payment. You see the total before you confirm anything.
           </p>
-          <Link className="text-action" href="/faq#faq-payment">Read payment answers</Link>
+          <Link className="text-action" href="/faq#faq-payment">Payment questions</Link>
         </section>
       </main>
 

@@ -5,18 +5,18 @@ import { SiteHeader } from "@/components/SiteHeader";
 
 const principles = [
   {
-    title: "One to one",
-    body: "Personal attention to match your goals, level and interests.",
+    title: "Just you",
+    body: "No class to keep up with. We spend the hour on whatever you need most.",
     asset: "/visuals/v2-splats/one-to-one-splat-v2.svg"
   },
   {
-    title: "At your pace",
-    body: "A calm, focused space to build confidence and communicate naturally.",
+    title: "Slow is fine",
+    body: "Repeat things. Ask the obvious question. Nobody is waiting.",
     asset: "/visuals/v2-splats/at-your-pace-splat-v2.svg"
   },
   {
-    title: "For real life",
-    body: "Practical Portuguese for everyday situations, travel or work.",
+    title: "Portuguese you’ll use",
+    body: "Ordering coffee, phone calls, small talk with the neighbours. Not textbook dialogues.",
     asset: "/visuals/v2-splats/real-life-splat-v2.svg"
   }
 ];
@@ -35,7 +35,7 @@ export default function Home() {
               <span>Inês</span>
             </h1>
             <div className="editorial-rule" aria-hidden="true" />
-            <p>European Portuguese in Porto —<br />or wherever you are.</p>
+            <p>European Portuguese lessons in Porto.<br />Or online, wherever you are.</p>
             <Link className="button button--coral" href="/book">
               Book a lesson
             </Link>
@@ -67,8 +67,8 @@ export default function Home() {
 
         <section className="home-closing" aria-label="Read more or book a lesson">
           <div className="home-closing__links">
-            <Link className="text-action" href="/approach">See the approach</Link>
-            <Link className="text-action" href="/lessons">View lessons</Link>
+            <Link className="text-action" href="/approach">How I teach</Link>
+            <Link className="text-action" href="/lessons">Lessons and prices</Link>
           </div>
           <Link className="button button--coral" href="/book">
             Book a lesson

@@ -111,7 +111,7 @@ export function BookingFlow() {
           <aside className="booking-intro">
             <h1 id="booking-title">Book your<br />Portuguese<br />lesson</h1>
             <div className="editorial-rule" aria-hidden="true" />
-            <p>Choose a live time in the secure booking calendar, then confirm your details.</p>
+            <p>Pick a time that works, add your details, and you’re booked.</p>
             <ul className="booking-intro__points">
               <li><AssetMark asset="/visuals/v2-splats/one-to-one-splat-v2.svg" /><span>One to one</span></li>
               <li><AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" /><span>In Porto or online</span></li>
@@ -131,18 +131,18 @@ export function BookingFlow() {
                 </p>
                 <h2>
                   {BOOKING_PROVIDER === "none"
-                    ? "Booking is being prepared."
-                    : `Book securely with ${BOOKING_PROVIDER_NAME}.`}
+                    ? "Booking is being set up."
+                    : `Book through ${BOOKING_PROVIDER_NAME}.`}
                 </h2>
                 <p>
                   {BOOKING_PROVIDER === "none"
-                    ? "Live appointment details and secure confirmation will appear here."
-                    : `Choose a live time, then pay securely in ${BOOKING_PROVIDER_NAME} to confirm your appointment.`}
+                    ? "Times and checkout will appear here shortly."
+                    : `Pick a time and pay by card. ${BOOKING_PROVIDER_NAME} confirms it straight away.`}
                 </p>
               </div>
               {bookingDirectUrl ? (
                 <a className="button button--coral booking-provider__direct" href={bookingDirectUrl} target="_blank" rel="noreferrer">
-                  Open secure booking
+                  Open booking in {BOOKING_PROVIDER_NAME}
                 </a>
               ) : null}
             </header>
@@ -173,9 +173,9 @@ export function BookingFlow() {
                   />
                 </div>
                 <p className="booking-fallback-note">
-                  If the embedded calendar does not appear, use{" "}
-                  <a href={bookingDirectUrl} target="_blank" rel="noreferrer">open secure booking</a> to
-                  finish in {BOOKING_PROVIDER_NAME}.
+                  If the calendar doesn’t load, you can{" "}
+                  <a href={bookingDirectUrl} target="_blank" rel="noreferrer">book in {BOOKING_PROVIDER_NAME} directly</a>{" "}
+                  instead.
                 </p>
               </div>
             ) : isAcuity && bookingEmbedUrl ? (
@@ -206,7 +206,7 @@ export function BookingFlow() {
               <div className="booking-placeholder" aria-label="Booking setup placeholder">
                 <p className="eyebrow">Not yet available</p>
                 <h3>Booking will open here.</h3>
-                <p>Available times and the secure confirmation route will appear once the provider is connected.</p>
+                <p>Times and checkout will appear once the booking provider is connected.</p>
               </div>
             )}
           </section>
@@ -215,9 +215,9 @@ export function BookingFlow() {
         <section className="booking-policy" id="change-booking">
           <AssetMark asset="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg" />
           <div>
-            <p className="eyebrow">Flexible rescheduling</p>
+            <p className="eyebrow">Changing a lesson</p>
             <p>
-              Move to any available time. Changes are free before the lesson day; a {sameDayFee} fee applies on the day itself.
+              Move to any time that’s free. It costs nothing the day before or earlier; on the day itself there’s a {sameDayFee} fee.
             </p>
           </div>
           {bookingDirectUrl ? (
