@@ -22,6 +22,19 @@ The canonical editable design is the
 retained business-card references, production-asset boundary, and location of
 superseded work. The production interface is code-native.
 
+## Asset weight
+
+`public/visuals/` assets are sized to the slot they render into, not to their
+source resolution. Two worth knowing about:
+
+- The wordmark is only ever a CSS `mask-image` over `currentColor`, so the
+  browser discards its RGB channels. It ships as an alpha-only WebP at 760px
+  (the header renders 380px) rather than a 900px RGBA PNG — 45KB to 22KB.
+- The hero splat renders 720x660 under `object-fit: cover`, so the desktop
+  source is 1100px wide rather than 1540px — 174KB to 95KB. Do not re-encode
+  the mobile variant: it is already at its floor and a second lossy pass makes
+  it larger.
+
 ## Sources of truth
 
 - Git owns the website, route behaviour, release history, and production assets.

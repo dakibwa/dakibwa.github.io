@@ -34,7 +34,7 @@ export function BrandWordmark({
       aria-label="Português com a Inês"
       className={classes}
       role="img"
-      style={{ "--wordmark-image": publicAssetUrl("/visuals/wordmark-cream.png") } as WordmarkStyle}
+      style={{ "--wordmark-image": publicAssetUrl("/visuals/wordmark-cream.webp") } as WordmarkStyle}
     />
   );
 }
