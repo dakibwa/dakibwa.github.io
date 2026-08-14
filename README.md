@@ -35,6 +35,27 @@ source resolution. Two worth knowing about:
   the mobile variant: it is already at its floor and a second lossy pass makes
   it larger.
 
+## Delivery
+
+Two settings look incidental and are not. Both were wrong at some point and
+cost real bytes:
+
+- `public/_headers` marks `/_next/static/*` immutable for a year. Without the
+  file Cloudflare Pages falls back to `max-age=14400, must-revalidate`, so the
+  fonts, stylesheet and JS chunks revalidate on any visit more than four hours
+  after the last one — round trips that can only return 304, since every one of
+  those filenames already carries a content hash.
+- The wordmark preload in `src/app/layout.tsx` must keep its `crossOrigin`.
+  Because the wordmark arrives as a CSS `mask-image`, and CSS fetches images in
+  CORS mode, a preload without it is discarded rather than reused and the file
+  downloads twice. Chrome reports this as "a preload ... is not used because the
+  request credentials mode does not match". Verify with a single `wordmark-cream`
+  entry in `performance.getEntriesByType('resource')`, initiated by `link`
+  rather than `css`.
+
+The paper grain is deliberately not preloaded: it is 480 bytes, so an early
+request only competes with the fonts for no gain.
+
 ## Sources of truth
 
 - Git owns the website, route behaviour, release history, and production assets.
