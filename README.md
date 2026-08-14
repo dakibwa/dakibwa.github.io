@@ -131,20 +131,22 @@ site. See [docs-square-custom-booking.md](./docs-square-custom-booking.md).
 
 ## Publication
 
-The repository’s GitHub Pages workflow publishes `main` to
-`https://dakibwa.github.io/`.
+The canonical production site is deployed to Cloudflare Pages at
+`https://portuguesewithines.com/`. The Portuguese-spelling domain
+`https://portuguescomaines.com/` redirects to the canonical domain while
+preserving the requested path and query string.
 
-The branded public route `https://akibwa.com/portugal/` is a base-path build
-copied into the Akibwa website repository at `public/portugal/`:
+Build and deploy the production export from this repository with:
 
 ```bash
-NEXT_PUBLIC_SITE_BASE_PATH=portugal \
-SITE_BASE_PATH=portugal \
-NEXT_PUBLIC_BOOKING_MODE=square-hosted \
-npm run build
+npm run deploy:cloudflare
 ```
 
-Sync the resulting `out/` directory into a clean Akibwa worktree, run the
-Akibwa publication checks, publish that repository, and verify all five nested
-routes on the real custom domain. GitHub and the live destinations, not a local
-build, are the publication proof.
+The alias is a separate Pages redirect project so it cannot accidentally serve
+a duplicate copy of the site. If its redirect configuration changes, deploy it
+with `npm run deploy:cloudflare:redirect`.
+
+The Akibwa website does not contain a copy of this build. Its Portuguese with
+Inês project card and former `/portugal/` route point to the canonical site.
+The GitHub Pages workflow remains a repository preview only; Cloudflare and the
+two live custom domains are the publication proof.
