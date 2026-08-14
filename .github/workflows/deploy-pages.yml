@@ -1,4 +1,14 @@
-name: Deploy site to GitHub Pages
+name: Build and publish site
+
+# Cloudflare Pages is the publication destination — it serves both live custom
+# domains. GitHub Pages is a preview of the same build at dakibwa.github.io and
+# is not what visitors see. Both deploy from one build so the preview cannot
+# drift from what actually shipped.
+#
+# Before this workflow existed, publishing meant remembering to run
+# `npm run deploy:cloudflare` by hand after merging. Pushing to main updated
+# only the preview, which is easy to mistake for a completed release: the
+# commit is on main, Actions is green, and the live site is still the old one.
 
 on:
   push:
@@ -51,12 +61,60 @@ jobs:
       - name: Build static site
         run: npm run build
 
+      # Two uploads of one build: the Pages-shaped tarball for the preview, and
+      # the plain directory the Cloudflare deploy needs. Hidden files are kept
+      # because the export carries dotfiles the deploy would otherwise lose;
+      # _headers is not one of them, but it does have to survive the round trip,
+      # since it is the whole cache policy.
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: out
 
-  deploy:
+      - name: Upload build for Cloudflare
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: out
+          include-hidden-files: true
+          retention-days: 1
+
+  publish-cloudflare:
+    name: Publish to Cloudflare Pages (live)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Check Cloudflare credentials are configured
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          [ -n "$TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$ACCOUNT" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo "The live domains are served by Cloudflare Pages, so without these"
+            echo "the site does not publish. Add them under Settings > Secrets and"
+            echo "variables > Actions, then re-run this workflow."
+            exit 1
+          fi
+
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: out
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy out --project-name=portuguese-with-ines --branch=main
+
+  deploy-preview:
+    name: Deploy preview to GitHub Pages
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
