@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Beth_Ellen, Montserrat } from "next/font/google";
+import { preload } from "react-dom";
 import { RouteMotion } from "@/components/RouteMotion";
-import { publicAssetUrl } from "@/lib/paths";
+import { publicAssetPath, publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
 
 const bethEllen = Beth_Ellen({
@@ -30,7 +31,21 @@ export const metadata: Metadata = {
   }
 };
 
+/**
+ * Both of these reach the browser through a CSS custom property — the wordmark
+ * as a mask-image, the grain as a background-image — so the preload scanner
+ * cannot see either until the stylesheet has downloaded and style resolution
+ * has run. The wordmark is the header logo on every route, which meant the
+ * masthead arrived a stylesheet later than the text beside it. Preloading makes
+ * both discoverable in the first pass over the HTML instead.
+ */
+const maskedBrandAssets = ["/visuals/wordmark-cream.webp", "/visuals/paper-grain.svg"];
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  for (const asset of maskedBrandAssets) {
+    preload(publicAssetPath(asset), { as: "image" });
+  }
+
   return (
     <html
       className={`${bethEllen.variable} ${montserrat.variable}`}
