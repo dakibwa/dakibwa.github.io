@@ -17,3 +17,20 @@
 
 /icon.svg
   Cache-Control: public, max-age=86400, must-revalidate
+
+# HTML pages: 10-minute browser cache with revalidation. Short enough to pick up
+# deploys within minutes, long enough to skip re-fetch on quick return visits.
+/
+  Cache-Control: public, max-age=600, must-revalidate
+
+/approach/
+  Cache-Control: public, max-age=600, must-revalidate
+
+/lessons/
+  Cache-Control: public, max-age=600, must-revalidate
+
+/faq/
+  Cache-Control: public, max-age=600, must-revalidate
+
+/book/
+  Cache-Control: public, max-age=600, must-revalidate

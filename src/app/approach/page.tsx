@@ -46,8 +46,10 @@ export default function ApproachPage() {
             <AssetMark
               asset="/visuals/generated-splats/cream-blue-fan-splat.webp"
               className="approach-intro__splat"
+              height={1254}
               mobileAsset="/visuals/generated-splats/cream-blue-fan-splat-mobile.webp"
               priority
+              width={1254}
             />
           </div>
 

@@ -3,15 +3,19 @@ import { publicAssetPath } from "@/lib/paths";
 type AssetMarkProps = {
   asset: string;
   className?: string;
+  height?: number;
   mobileAsset?: string;
   priority?: boolean;
+  width?: number;
 };
 
 export function AssetMark({
   asset,
   className,
+  height,
   mobileAsset,
-  priority = false
+  priority = false,
+  width
 }: AssetMarkProps) {
   return (
     <span
@@ -25,14 +29,15 @@ export function AssetMark({
             srcSet={publicAssetPath(mobileAsset)}
           />
         ) : null}
-        {/* These source assets are already compressed and served directly by the static export. */}
         <img
           alt=""
           className="asset-mark__image"
           decoding="async"
           fetchPriority={priority ? "high" : "auto"}
+          height={height}
           loading={priority ? "eager" : "lazy"}
           src={publicAssetPath(asset)}
+          width={width}
         />
       </picture>
     </span>
