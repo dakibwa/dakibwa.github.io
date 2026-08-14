@@ -172,27 +172,31 @@ html.route-is-leaving .route-fade {
   }
 }
 
+/*
+ * Brand wordmark is now an actual <img> for LCP eligibility. The original
+ * cream-coloured wordmark is recoloured via CSS filters. The filters were
+ * computed to shift #f5ecd9 (cream) to the target colours.
+ */
 .brand-wordmark {
   display: block;
   width: 100%;
-  aspect-ratio: 900 / 280;
-  background: currentColor;
-  -webkit-mask-image: var(--wordmark-image);
-  -webkit-mask-position: center;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: contain;
-  mask-image: var(--wordmark-image);
-  mask-position: center;
-  mask-repeat: no-repeat;
-  mask-size: contain;
+  height: auto;
+  object-fit: contain;
 }
 
+/*
+ * Filter to shift cream (#f5ecd9) to blue (#2c54aa). Computed via
+ * brightness/contrast/hue-rotate/saturate to approximate the target.
+ */
 .brand-wordmark--green {
-  color: var(--green);
+  filter: brightness(0.4) sepia(1) hue-rotate(185deg) saturate(3);
 }
 
+/*
+ * Cream tone: no filter needed as the source image is already cream.
+ */
 .brand-wordmark--cream {
-  color: var(--paper);
+  filter: none;
 }
 
 .site-header {
@@ -1218,6 +1222,39 @@ html.route-is-leaving .route-fade {
 .booking-fallback-note {
   margin: 0.9rem 0 0;
   font-size: 0.92rem;
+}
+
+.booking-facade {
+  min-height: 360px;
+  margin-top: 1.5rem;
+  border: 1px solid var(--rule);
+  padding: 3rem;
+  text-align: center;
+}
+
+.booking-facade__intro {
+  max-width: 400px;
+  margin: 0 auto 1.5rem;
+  font-size: 1.1rem;
+}
+
+.booking-facade__button {
+  margin: 0 auto;
+}
+
+.booking-facade__alt {
+  margin: 1.5rem 0 0;
+  font-size: 0.92rem;
+}
+
+.booking-facade__alt a {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.booking-facade__alt a:hover {
+  color: var(--coral-action);
 }
 
 /* The recovery route has to be actionable where the failure is noticed. */

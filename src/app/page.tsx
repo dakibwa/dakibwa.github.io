@@ -44,8 +44,10 @@ export default function Home() {
             <AssetMark
               asset="/visuals/generated-splats/business-card-splat-generated-v2.webp"
               className="home-hero__burst"
+              height={730}
               mobileAsset="/visuals/generated-splats/business-card-splat-generated-v2-mobile.webp"
               priority
+              width={1100}
             />
           </div>
         </section>
