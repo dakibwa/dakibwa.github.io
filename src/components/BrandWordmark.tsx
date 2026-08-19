@@ -1,5 +1,4 @@
-import type { CSSProperties } from "react";
-import { publicAssetUrl } from "@/lib/paths";
+import { publicAssetPath } from "@/lib/paths";
 
 type BrandWordmarkProps = {
   className?: string;
@@ -7,18 +6,15 @@ type BrandWordmarkProps = {
   tone?: "green" | "cream";
 };
 
-type WordmarkStyle = CSSProperties & {
-  "--wordmark-image": string;
-};
-
 /**
- * The hand-lettered business-card wordmark is used as an alpha mask so the
- * original lettering stays crisp while it can switch between green and cream.
- * The priority prop is retained for call-site compatibility; a CSS mask does
- * not participate in image loading priority.
+ * The brand wordmark rendered as an actual <img> element for LCP eligibility.
+ * CSS filters recolour the cream-on-transparent original to match the tone.
+ * Using a real image instead of a CSS mask enables the browser to recognise
+ * this as the Largest Contentful Paint candidate.
  */
 export function BrandWordmark({
   className,
+  priority = false,
   tone = "green"
 }: BrandWordmarkProps) {
   const classes = [
@@ -30,11 +26,16 @@ export function BrandWordmark({
     .join(" ");
 
   return (
-    <span
-      aria-label="Português com a Inês"
+    // eslint-disable-next-line @next/next/no-img-element -- Using <img> intentionally for LCP eligibility; CSS filters recolour the image which doesn't work with next/image optimization.
+    <img
+      alt="Português com a Inês"
       className={classes}
-      role="img"
-      style={{ "--wordmark-image": publicAssetUrl("/visuals/wordmark-cream.webp") } as WordmarkStyle}
+      decoding="async"
+      fetchPriority={priority ? "high" : "auto"}
+      height={236}
+      loading={priority ? "eager" : "lazy"}
+      src={publicAssetPath("/visuals/wordmark-cream.webp")}
+      width={760}
     />
   );
 }

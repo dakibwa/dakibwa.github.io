@@ -67,6 +67,7 @@ export function BookingFlow() {
   const widgetRef = useRef<HTMLDivElement>(null);
   const [CustomBookingFlow, setCustomBookingFlow] = useState<ComponentType | null>(null);
   const [embedReady, setEmbedReady] = useState(false);
+  const [squareEmbedActivated, setSquareEmbedActivated] = useState(false);
 
   useEffect(() => {
     if (!USE_CUSTOM_SQUARE_BOOKING) return;
@@ -111,7 +112,7 @@ export function BookingFlow() {
           <aside className="booking-intro">
             <h1 id="booking-title">Book your<br />Portuguese<br />lesson</h1>
             <div className="editorial-rule" aria-hidden="true" />
-            <p>Pick a time that works, add your details, and you’re booked.</p>
+            <p>Pick a time that works, add your details, and you&apos;re booked.</p>
             <ul className="booking-intro__points">
               <li><AssetMark asset="/visuals/v2-splats/one-to-one-splat-v2.svg" /><span>One to one</span></li>
               <li><AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" /><span>In Porto or online</span></li>
@@ -155,28 +156,50 @@ export function BookingFlow() {
               )
             ) : isSquare && bookingEmbedUrl ? (
               <div className="booking-widget-stack">
-                <div
-                  className="booking-embed-frame"
-                  aria-busy={!embedReady}
-                  aria-label="Square booking widget"
-                >
-                  {!embedReady ? <p className="booking-loading">Loading live availability…</p> : null}
-                  <iframe
-                    src={bookingEmbedUrl}
-                    title="Schedule a Portuguese lesson with Square"
-                    width="100%"
-                    height="980"
-                    allow="payment"
-                    loading="lazy"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    onLoad={() => setEmbedReady(true)}
-                  />
-                </div>
-                <p className="booking-fallback-note">
-                  If the calendar doesn’t load, you can{" "}
-                  <a href={bookingDirectUrl} target="_blank" rel="noreferrer">book in {BOOKING_PROVIDER_NAME} directly</a>{" "}
-                  instead.
-                </p>
+                {squareEmbedActivated ? (
+                  <>
+                    <div
+                      className="booking-embed-frame"
+                      aria-busy={!embedReady}
+                      aria-label="Square booking widget"
+                    >
+                      {!embedReady ? <p className="booking-loading">Loading live availability…</p> : null}
+                      <iframe
+                        src={bookingEmbedUrl}
+                        title="Schedule a Portuguese lesson with Square"
+                        width="100%"
+                        height="980"
+                        allow="payment"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        onLoad={() => setEmbedReady(true)}
+                      />
+                    </div>
+                    <p className="booking-fallback-note">
+                      If the calendar doesn&apos;t load, you can{" "}
+                      <a href={bookingDirectUrl} target="_blank" rel="noreferrer">book in {BOOKING_PROVIDER_NAME} directly</a>{" "}
+                      instead.
+                    </p>
+                  </>
+                ) : (
+                  <div className="booking-facade" aria-label="Load the booking calendar">
+                    <p className="booking-facade__intro">
+                      View available times and book directly through {BOOKING_PROVIDER_NAME}.
+                    </p>
+                    <button
+                      className="button button--coral booking-facade__button"
+                      onClick={() => setSquareEmbedActivated(true)}
+                      type="button"
+                    >
+                      Show available times
+                    </button>
+                    <p className="booking-facade__alt">
+                      Or{" "}
+                      <a href={bookingDirectUrl} target="_blank" rel="noreferrer">
+                        book in {BOOKING_PROVIDER_NAME} directly
+                      </a>
+                    </p>
+                  </div>
+                )}
               </div>
             ) : isAcuity && bookingEmbedUrl ? (
               <div className="booking-widget-stack">
@@ -217,7 +240,7 @@ export function BookingFlow() {
           <div>
             <p className="eyebrow">Changing a lesson</p>
             <p>
-              Move to any time that’s free. It costs nothing the day before or earlier; on the day itself there’s a {sameDayFee} fee.
+              Move to any time that&apos;s free. It costs nothing the day before or earlier; on the day itself there&apos;s a {sameDayFee} fee.
             </p>
           </div>
           {bookingDirectUrl ? (

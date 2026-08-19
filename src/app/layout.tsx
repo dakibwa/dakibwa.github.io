@@ -32,22 +32,15 @@ export const metadata: Metadata = {
 };
 
 /**
- * The header wordmark is the logo on every route, but it reaches the browser as
- * a mask-image behind a CSS custom property, so the preload scanner cannot see
- * it and nothing requests it until the stylesheet has downloaded and style
- * resolution has run. BrandWordmark already noted that its priority prop cannot
- * help, since a CSS mask does not participate in image loading priority.
- *
- * crossOrigin is required and not incidental: CSS fetches its images in CORS
- * mode, and a preload whose credentials mode does not match is discarded rather
- * than reused — which downloads the file twice instead of once. The paper grain
- * is deliberately not preloaded; at 480 bytes it arrives in a single packet and
- * is not worth an extra early request competing with the fonts.
+ * The header wordmark is now an actual <img> so the browser's preload scanner
+ * can discover it directly. We keep an explicit preload to ensure it starts
+ * before layout-dependent resources. Since it's now a standard image element
+ * (not a CSS mask), crossOrigin is not needed for same-origin assets.
  */
 const wordmarkAsset = "/visuals/wordmark-cream.webp";
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  preload(publicAssetPath(wordmarkAsset), { as: "image", crossOrigin: "anonymous" });
+  preload(publicAssetPath(wordmarkAsset), { as: "image", fetchPriority: "high" });
 
   return (
     <html
