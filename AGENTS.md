@@ -14,7 +14,7 @@
 - If Figma access, authentication, or tool quota prevents a required design update, do not silently bypass the workflow. Report the limitation and either pause the visual implementation or obtain an explicit temporary code-first exception, with Figma reconciliation kept as the next action.
 - The current production direction is dark blue, lilac, cream, and coral, with organic splatty marks, Beth Ellen display text, and Montserrat body/UI text. Keep `public/visuals/` production-only and retain only assets referenced by the current site.
 - Keep the original business-card material as historical brand reference. Once an approved Figma frame exists for a surface, use that frame as the visual implementation specification rather than creating a competing mock-up elsewhere.
-- Superseded visual work is stored outside the repository in `/Users/danatkinson/Documents/Creative Assets/Project Assets/Português com a Inês/Archive/2026-07-24 - Superseded visual directions`. It is provenance only: do not inspect or reuse it as design input unless Dan explicitly asks to revisit a named archived item.
+- Superseded visual work is stored outside the repository in `/Users/danatkinson/Documents/Work/Português com a Inês/Archive/2026-07-24 - Superseded visual directions`. It is provenance only: do not inspect or reuse it as design input unless Dan explicitly asks to revisit a named archived item.
 
 ## Documentation
 
