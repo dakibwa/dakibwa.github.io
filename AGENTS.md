@@ -16,9 +16,6 @@
 - Keep the original business-card material as historical brand reference. Once an approved Figma frame exists for a surface, use that frame as the visual implementation specification rather than creating a competing mock-up elsewhere.
 - Superseded visual work is stored outside the repository in `/Users/danatkinson/Documents/Creative Assets/Project Assets/Português com a Inês/Archive/2026-07-24 - Superseded visual directions`. It is provenance only: do not inspect or reuse it as design input unless Dan explicitly asks to revisit a named archived item.
 
-## Documentation and Notion handoff
+## Documentation
 
 - Git owns website implementation and deployment history; Square and other providers own live booking and payment truth. Update `README.md` or the relevant focused documentation in the same commit whenever a material change alters customer behaviour, booking/payment flow, architecture, providers, publication workflow, or the next milestone.
-- The existing Life & Work orientation record is **Portuguese with Inês**. Find it by that exact title; do not create another project tracker.
-- After a material change is committed, published, and verified on the real destination, update that row with only the corrected status, evidence date/source, and one next executable action.
-- Do not update Notion for trivial edits or paste customer data, booking details, payment data, repository history, test logs, credentials, or secrets there.
