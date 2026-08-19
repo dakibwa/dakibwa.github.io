@@ -59,6 +59,16 @@ request only competes with the fonts for no gain.
 ## Sources of truth
 
 - Git owns the website, route behaviour, release history, and production assets.
+- **Her print and business material is not in this repository.** Branding,
+  business cards, Square booking tiles, visual concepts and the superseded-work
+  archive live in `/Users/danatkinson/Documents/Work/Português com a Inês`,
+  which has a `README.md` pointing back here. That folder is backed up by
+  Google Drive; this repository is backed up by GitHub. The split exists
+  because a `.git` directory inside the Drive-synced `Documents` tree risks
+  corruption, not because the work is separate.
+- The canonical editable design is the Figma file linked from
+  [design/README.md](./design/README.md). Read that before changing anything
+  visual.
 - Square owns live availability, appointment confirmation, checkout, and
   booking-management state.
 - The current Akibwa Square account requires full prepayment for fixed-price
