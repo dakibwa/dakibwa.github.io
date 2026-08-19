@@ -75,7 +75,7 @@ Old green/editorial website directions, generated concept boards, mockup
 renders, superseded briefs, duplicate exports, and rejected splat experiments
 were moved on 2026-07-24 to:
 
-`/Users/danatkinson/Documents/Creative Assets/Project Assets/Português com a Inês/Archive/2026-07-24 - Superseded visual directions`
+`/Users/danatkinson/Documents/Work/Português com a Inês/Archive/2026-07-24 - Superseded visual directions`
 
 That folder is an archive for provenance only. Do not use anything in it as a
 design source unless Dan explicitly asks to revisit a named archived item.
