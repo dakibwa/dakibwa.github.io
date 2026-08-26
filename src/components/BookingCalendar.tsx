@@ -381,14 +381,9 @@ export function BookingCalendar() {
 
         {step === "details" ? (
           <>
-            <div className="booking-step-head">
-              <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-                {student ? "Confirm your lesson" : "Sign in to confirm"}
-              </h2>
-              <button className="booking-back" onClick={() => goTo("time")} type="button">
-                <ArrowLeft size={16} aria-hidden="true" /> Back
-              </button>
-            </div>
+            <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
+              {student ? "Confirm your lesson" : "Sign in to confirm"}
+            </h2>
 
             <div className="booking-final">
               <aside className="booking-recap">
@@ -419,7 +414,10 @@ export function BookingCalendar() {
                     one worth reaching for from here. */}
                 <div className="booking-recap__foot">
                   {lessonType ? <strong>{formatMoneyCents(lessonType.price_cents)}</strong> : null}
+                  {/* The only way back from this step now, so it reads as a
+                      control rather than as a footnote. */}
                   <button className="booking-recap__change" onClick={() => goTo("time")} type="button">
+                    <ArrowLeft size={14} aria-hidden="true" />
                     Change time
                   </button>
                 </div>
