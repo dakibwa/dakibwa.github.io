@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { candidateStartMinutes } from "./availability.mjs";
 import { verifyWebhook } from "./stripe.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
+import { hashPassword, verifyPassword, passwordProblem } from "./auth.mjs";
 import { buildCalendarInvite, calendarUid } from "./ics.mjs";
 import { createManageToken, readManageToken, safeEqual, bookingReference } from "./tokens.mjs";
 import {
@@ -318,6 +319,55 @@ await test("malformed signature headers are rejected", async () => {
   for (const header of ["", "nonsense", "t=123", "v1=abc", "t=abc,v1=abc", null, undefined]) {
     assert.equal(await verifyWebhook(payload, header, SECRET), false, `accepted: ${header}`);
   }
+});
+
+// --- Password hashing --------------------------------------------------------
+
+await test("a password round-trips, and a wrong one does not", async () => {
+  const stored = await hashPassword("correct horse battery");
+  assert.equal(await verifyPassword("correct horse battery", stored), true);
+  assert.equal(await verifyPassword("Correct horse battery", stored), false);
+  assert.equal(await verifyPassword("", stored), false);
+});
+
+await test("every hash is salted, so identical passwords do not collide", async () => {
+  const a = await hashPassword("same password");
+  const b = await hashPassword("same password");
+  assert.notEqual(a, b);
+  assert.equal(await verifyPassword("same password", a), true);
+  assert.equal(await verifyPassword("same password", b), true);
+});
+
+await test("no single PBKDF2 call exceeds the Workers cap of 100,000", async () => {
+  // The runtime refuses more than this per call, and Miniflare does not
+  // enforce it — which is why the deployed Worker was the first thing to fail.
+  const [, cost] = (await hashPassword("x")).split("$");
+  const [rounds, iterations] = cost.split("x").map(Number);
+  assert.ok(iterations <= 100000, `single-call iterations too high: ${iterations}`);
+  assert.ok(rounds * iterations >= 200000, `work factor too low: ${rounds * iterations}`);
+});
+
+await test("a stored hash carries its own cost, so it survives a change of cost", async () => {
+  // A single-round record from before chaining must still verify.
+  const legacy = await hashPassword("legacy");
+  const asSingleRound = legacy.replace(/\$\d+x(\d+)\$/, "$$$1$$");
+  assert.notEqual(asSingleRound, legacy);
+  // The rewritten record has a different work factor, so it must NOT verify —
+  // proving the cost is read from the record rather than assumed.
+  assert.equal(await verifyPassword("legacy", asSingleRound), false);
+  assert.equal(await verifyPassword("legacy", legacy), true);
+});
+
+await test("malformed hash records are rejected rather than throwing", async () => {
+  for (const stored of ["", "nonsense", "pbkdf2$$$", "bcrypt$10$abc$def", "pbkdf2$0x0$YQ$YQ", null, undefined]) {
+    assert.equal(await verifyPassword("anything", stored), false, `accepted: ${stored}`);
+  }
+});
+
+await test("password length is enforced", () => {
+  assert.ok(passwordProblem("short"));
+  assert.equal(passwordProblem("eight888"), null);
+  assert.ok(passwordProblem("x".repeat(500)));
 });
 
 // --- Google ID tokens --------------------------------------------------------

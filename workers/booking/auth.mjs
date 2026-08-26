@@ -9,7 +9,20 @@
  */
 
 const encoder = new TextEncoder();
-const PBKDF2_ITERATIONS = 210000;
+
+/**
+ * The Workers runtime refuses PBKDF2 above 100,000 iterations
+ * ("iteration counts above 100000 are not supported"), which is below the
+ * OWASP figure of 210,000 for PBKDF2-HMAC-SHA256. Miniflare does not enforce
+ * that cap, so this only surfaced against the deployed Worker.
+ *
+ * Rather than accept half the work factor, the derivation is chained: each
+ * round runs at the platform maximum and feeds the next, so N rounds cost N ×
+ * 100,000 iterations while every individual call stays legal. Two rounds
+ * exceeds the OWASP figure.
+ */
+const PBKDF2_ITERATIONS = 100000;
+const PBKDF2_ROUNDS = 2;
 const SESSION_DAYS = 90;
 
 function base64Url(bytes) {
@@ -31,28 +44,42 @@ function constantTimeEqual(a, b) {
   return mismatch === 0;
 }
 
-async function derive(password, salt, iterations) {
-  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
-    keyMaterial,
-    256
-  );
+async function deriveOnce(secretBytes, salt, iterations) {
+  const keyMaterial = await crypto.subtle.importKey("raw", secretBytes, "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations, hash: "SHA-256" }, keyMaterial, 256);
   return new Uint8Array(bits);
 }
 
-/** Returns "pbkdf2$<iterations>$<salt>$<hash>". */
+/** Chained PBKDF2: `rounds` derivations of `iterations` each. */
+async function derive(password, salt, iterations, rounds) {
+  let output = encoder.encode(password);
+  for (let round = 0; round < rounds; round += 1) {
+    output = await deriveOnce(output, salt, iterations);
+  }
+  return output;
+}
+
+/** Returns "pbkdf2$<rounds>x<iterations>$<salt>$<hash>". */
 export async function hashPassword(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hash = await derive(password, salt, PBKDF2_ITERATIONS);
-  return `pbkdf2$${PBKDF2_ITERATIONS}$${base64Url(salt)}$${base64Url(hash)}`;
+  const hash = await derive(password, salt, PBKDF2_ITERATIONS, PBKDF2_ROUNDS);
+  return `pbkdf2$${PBKDF2_ROUNDS}x${PBKDF2_ITERATIONS}$${base64Url(salt)}$${base64Url(hash)}`;
 }
 
 export async function verifyPassword(password, stored) {
-  const [scheme, iterations, salt, hash] = String(stored ?? "").split("$");
-  if (scheme !== "pbkdf2" || !iterations || !salt || !hash) return false;
+  const [scheme, cost, salt, hash] = String(stored ?? "").split("$");
+  if (scheme !== "pbkdf2" || !cost || !salt || !hash) return false;
 
-  const candidate = await derive(password, fromBase64Url(salt), Number(iterations));
+  // "<rounds>x<iterations>", or a bare iteration count from the single-round
+  // form. Reading the cost from the record is what lets it be raised later
+  // without invalidating anyone's existing password.
+  const [roundsPart, iterationsPart] = cost.includes("x") ? cost.split("x") : ["1", cost];
+  const rounds = Number(roundsPart);
+  const iterations = Number(iterationsPart);
+  if (!Number.isInteger(rounds) || !Number.isInteger(iterations)) return false;
+  if (rounds < 1 || rounds > 8 || iterations < 1 || iterations > PBKDF2_ITERATIONS) return false;
+
+  const candidate = await derive(password, fromBase64Url(salt), iterations, rounds);
   return constantTimeEqual(candidate, fromBase64Url(hash));
 }
 
