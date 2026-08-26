@@ -742,6 +742,20 @@ html.route-is-leaving .route-fade {
  * out of step with its neighbours.
  */
 @media (min-width: 821px) {
+  /*
+   * Reserve the height of the tallest step, so the panel is the same size on
+   * every step at every width rather than growing when a student reaches
+   * sign-in. Paired with the grid stretching, this is what makes the cream
+   * panel match the blue one instead of ending wherever the step happens to.
+   *
+   * It is a measured floor, not a guess: the confirm step is the tallest at
+   * roughly 800px. If a step ever grows past it the panel will resize again,
+   * which is the signal to re-measure rather than to nudge this number.
+   */
+  .booking-stage {
+    min-height: 840px;
+  }
+
   .lesson-programme__grid {
     grid-template-rows: auto auto auto auto auto auto;
   }
@@ -1205,6 +1219,10 @@ html.route-is-leaving .route-fade {
 
 /* With the step trail gone, this is how a student changes an earlier choice,
    so it has to read as a control rather than as a footnote. */
+.booking-stage {
+  display: flow-root;
+}
+
 .booking-back {
   display: inline-flex;
   align-items: center;
@@ -1346,11 +1364,31 @@ html.route-is-leaving .route-fade {
 }
 
 .calendar-weekdays,
-.calendar-grid {
+.calendar-week {
   display: grid;
-  /* minmax(0, 1fr), not 1fr: the default min-content floor let the month label
-     on the 1st push the whole grid wider than a phone screen. */
+  /* minmax(0, 1fr), not 1fr: the default min-content floor let cell contents
+     push the whole grid wider than a phone screen. */
   grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+/*
+ * The window rolls forward from this week rather than showing a calendar
+ * month, so each week is captioned where the month changes. A single small
+ * label on the 1st was too easy to miss, which made it genuinely hard to tell
+ * which month a date belonged to.
+ */
+.calendar-month {
+  margin: 1.1rem 0 0.4rem;
+  font-family: var(--ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lavender-ink);
+}
+
+.calendar-month:first-child {
+  margin-top: 0.2rem;
 }
 
 .calendar-weekdays span {
@@ -1364,7 +1402,7 @@ html.route-is-leaving .route-fade {
   opacity: 0.7;
 }
 
-.calendar-grid button {
+.calendar-week button {
   position: relative;
   display: grid;
   aspect-ratio: 1;
@@ -1379,15 +1417,15 @@ html.route-is-leaving .route-fade {
   transition: background 120ms ease, color 120ms ease;
 }
 
-.calendar-grid button:nth-child(7n) {
+.calendar-week button:nth-child(7n) {
   border-right: 1px solid var(--rule-soft);
 }
 
-.calendar-grid button:nth-last-child(-n + 7) {
+.calendar-week:last-of-type button {
   border-bottom: 1px solid var(--rule-soft);
 }
 
-.calendar-grid button:disabled {
+.calendar-week button:disabled {
   cursor: not-allowed;
   opacity: 0.38;
 }
@@ -1398,7 +1436,7 @@ html.route-is-leaving .route-fade {
  * carries its own surface, so the days you can actually pick read as the
  * foreground and the rest recede.
  */
-.calendar-grid button.has-availability {
+.calendar-week button.has-availability {
   background: rgba(170, 164, 230, 0.2);
   color: var(--green-deep);
   font-weight: 700;
@@ -1406,7 +1444,7 @@ html.route-is-leaving .route-fade {
 
 /* The grid rolls forward from this week rather than showing a calendar month,
    so the 1st is labelled to make the crossing into the next month legible. */
-.calendar-grid button em {
+.calendar-week button em {
   display: block;
   overflow: hidden;
   font-family: var(--ui);
@@ -1421,7 +1459,7 @@ html.route-is-leaving .route-fade {
 }
 
 /* Marked, but not as a selection — a ring read as "already chosen". */
-.calendar-grid button.is-today > span::after {
+.calendar-week button.is-today > span::after {
   display: block;
   margin-top: 0.1rem;
   color: var(--lavender-ink);
@@ -1433,19 +1471,19 @@ html.route-is-leaving .route-fade {
   text-transform: uppercase;
 }
 
-.calendar-grid button.is-selected,
-.calendar-grid button.is-selected.has-availability {
+.calendar-week button.is-selected,
+.calendar-week button.is-selected.has-availability {
   background: var(--green);
   color: var(--paper);
 }
 
-.calendar-grid button.is-selected i {
+.calendar-week button.is-selected i {
   background: var(--paper);
 }
 
 /* A dot rather than a border, so an available day still reads as available
    once it is hovered and the background inverts. */
-.calendar-grid button i {
+.calendar-week button i {
   position: absolute;
   bottom: 16%;
   width: 6px;
@@ -1454,20 +1492,20 @@ html.route-is-leaving .route-fade {
   background: var(--coral);
 }
 
-.calendar-grid button.has-availability:hover,
-.calendar-grid button.has-availability:focus-visible {
+.calendar-week button.has-availability:hover,
+.calendar-week button.has-availability:focus-visible {
   background: var(--green);
   color: var(--paper);
 }
 
-.calendar-grid button.has-availability:hover i,
-.calendar-grid button.has-availability:focus-visible i {
+.calendar-week button.has-availability:hover i,
+.calendar-week button.has-availability:focus-visible i {
   background: var(--paper);
 }
 
 /* Dates from the neighbouring month. They are real and bookable, but must not
    read as part of the month on screen. */
-.calendar-grid button .is-muted {
+.calendar-week button .is-muted {
   opacity: 0.45;
   font-weight: 400;
 }
@@ -1678,95 +1716,84 @@ html.route-is-leaving .route-fade {
 
 /* Accounts — sign in, register, reset */
 
+/*
+ * A bordered box with two underlined tabs read as a form dropped on a page
+ * rather than as part of her site. It now sits on its own tinted card, opens on
+ * one of her marks, and the tabs are a segmented control — a clearer affordance
+ * at small sizes than an underline, which made the two options look like a
+ * heading and a link.
+ */
 .auth-panel {
+  max-width: 460px;
+  margin: 0 auto;
   border: 1px solid var(--rule);
-  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border-radius: 18px;
+  /* Kept tight enough that the confirm step still fits the height the intro
+     panel sets, so the page does not grow when a student reaches sign-in. */
+  padding: clamp(1.4rem, 3.4vw, 2rem);
+  background: rgba(170, 164, 230, 0.14);
+  text-align: center;
+}
+
+/* .asset-mark is display:block with no intrinsic size, so without this the
+   splat expands to the full width of the card. */
+.auth-panel__mark {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 0.35rem;
 }
 
 .auth-panel h3 {
   font-family: var(--display);
-  font-size: 1.6rem;
+  font-size: clamp(1.9rem, 4.6vw, 2.4rem);
   font-weight: 400;
   line-height: 1.1;
 }
 
 .auth-panel__intro {
-  margin: 0.4rem 0 1.1rem;
-  font-size: 0.92rem;
+  max-width: 34ch;
+  margin: 0.45rem auto 1.2rem;
+  font-size: 0.93rem;
   line-height: 1.55;
   opacity: 0.82;
 }
 
-/* Google's button is rendered by their own script into this holder, so its
-   own styling wins; only the surrounding space is ours. */
-.google-signin {
-  margin-bottom: 0.5rem;
-}
-
-.google-signin.is-loading {
-  display: none;
-}
-
-.google-signin > div {
-  display: flex;
-  justify-content: center;
-}
-
-.google-signin__divider {
-  position: relative;
-  margin: 1.1rem 0 0.25rem;
-  text-align: center;
-}
-
-.google-signin__divider::before {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  border-top: 1px solid var(--rule-soft);
-  content: "";
-}
-
-.google-signin__divider span {
-  position: relative;
-  padding: 0 0.7rem;
-  background: var(--paper);
-  font-family: var(--ui);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.7;
-}
-
 .auth-tabs {
-  display: flex;
-  margin-bottom: 1.25rem;
-  border-bottom: 1px solid var(--rule);
-  gap: 0.25rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 1.2rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  gap: 4px;
 }
 
 .auth-tabs button {
   border: 0;
-  border-bottom: 2px solid transparent;
-  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  padding: 0.62rem 0.5rem;
   background: transparent;
-  color: inherit;
+  color: var(--ink);
   cursor: pointer;
   font-family: var(--ui);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  opacity: 0.6;
+  opacity: 0.72;
+  transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
 }
 
 .auth-tabs button.is-active {
-  border-bottom-color: var(--coral);
+  background: var(--green);
+  color: var(--paper);
   opacity: 1;
 }
 
 .auth-panel label {
   display: block;
   margin-bottom: 0.9rem;
+  text-align: left;
 }
 
 .auth-panel label > span {
@@ -1783,10 +1810,14 @@ html.route-is-leaving .route-fade {
 .auth-panel input {
   width: 100%;
   border: 1px solid var(--rule);
-  border-radius: 0;
-  padding: 0.8rem;
-  background: rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  padding: 0.85rem 0.9rem;
+  background: rgba(255, 255, 255, 0.75);
   font: inherit;
+}
+
+.auth-panel .booking-confirm-button {
+  border-radius: 999px;
 }
 
 .auth-panel label small {
@@ -2230,7 +2261,7 @@ html.route-is-leaving .route-fade {
   padding: 1.4rem;
 }
 
-.manage-booking__reschedule .calendar-grid {
+.manage-booking__reschedule .calendar-week:last-of-type {
   margin-bottom: 1.2rem;
 }
 

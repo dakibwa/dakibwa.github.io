@@ -175,6 +175,17 @@ export function formatLongDate(value: string | Date, timeZone = BOOKING_TIME_ZON
   }).format(typeof value === "string" ? new Date(value) : value);
 }
 
+/**
+ * Short month name for a cell that falls outside its week's month.
+ *
+ * The week of 31 August to 6 September is captioned September, so without this
+ * the 31 reads as though September had one.
+ */
+export function shortMonth(monthNumber: number, yearHint: string) {
+  const [year] = yearHint.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+}
+
 export function formatMoneyCents(cents: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(
     cents / 100
@@ -197,41 +208,51 @@ export function differingLocalTime(startAt: string, studentZone: string) {
 }
 
 export type DayCell = { key: string; day: number; month: number; isToday: boolean };
+export type BookingWeek = { key: string; month: string; monthNumber: number; showMonth: boolean; cells: DayCell[] };
 
 /**
- * A Monday-first grid running from the week containing `fromKey` to the end of
- * the bookable horizon, rounded out to whole weeks.
+ * The bookable window as whole Monday-first weeks, each tagged with the month
+ * it belongs to.
  *
  * Deliberately not a calendar month. Late in a month a month grid is mostly
- * dates that are already gone — on the 28th, four fifths of the grid is dead —
- * and it hides the start of the next month, which is exactly where the free
- * time is. This window only ever contains days worth looking at, and it needs
- * no month navigation because it already spans the whole horizon.
+ * dates already gone — on the 28th, four fifths of the grid — and it hides the
+ * start of the next month, which is exactly where the free time is.
+ *
+ * A week is attributed to the month containing its Thursday, the ISO
+ * convention: the week of 31 August to 6 September reads as September, which is
+ * where four of its days and all of its bookable ones sit. Labelling by the
+ * first day would have called it August and put the heading a week late.
  */
-export function buildBookingGrid(fromKey: string, horizonDays: number): DayCell[] {
+export function buildBookingWeeks(fromKey: string, horizonDays: number): BookingWeek[] {
   const [year, month, day] = fromKey.split("-").map(Number);
   const from = Date.UTC(year, month - 1, day);
   const leading = (new Date(from).getUTCDay() + 6) % 7; // Monday = 0
   const gridStart = from - leading * 86400000;
+  const weekCount = Math.ceil((leading + Math.max(horizonDays, 7) + 1) / 7);
 
-  // Whole weeks, enough to cover the horizon, and never a single week.
-  const spanDays = leading + Math.max(horizonDays, 7) + 1;
-  const cells = Math.ceil(spanDays / 7) * 7;
+  const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
+  const weeks: BookingWeek[] = [];
+  let previousMonth = "";
 
-  return Array.from({ length: cells }, (_, index) => {
-    const date = new Date(gridStart + index * 86400000);
-    const key = date.toISOString().slice(0, 10);
-    return {
-      key,
-      day: date.getUTCDate(),
-      month: date.getUTCMonth() + 1,
-      isToday: key === fromKey
-    };
-  });
-}
+  for (let week = 0; week < weekCount; week += 1) {
+    const cells: DayCell[] = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(gridStart + (week * 7 + index) * 86400000);
+      const key = date.toISOString().slice(0, 10);
+      return { key, day: date.getUTCDate(), month: date.getUTCMonth() + 1, isToday: key === fromKey };
+    });
 
-/** Month name for a cell, used to label where the grid crosses into a new one. */
-export function monthLabel(monthNumber: number, yearHint: string) {
-  const [year] = yearHint.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+    const thursday = new Date(gridStart + (week * 7 + 3) * 86400000);
+    const label = monthName.format(thursday);
+
+    weeks.push({
+      key: cells[0].key,
+      month: label,
+      monthNumber: thursday.getUTCMonth() + 1,
+      showMonth: label !== previousMonth,
+      cells
+    });
+    previousMonth = label;
+  }
+
+  return weeks;
 }

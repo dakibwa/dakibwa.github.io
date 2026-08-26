@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, Clock3, Globe2, MapPin } from "lucide-react";
 import {
   addDaysToKey,
   browserTimeZone,
-  buildBookingGrid,
+  buildBookingWeeks,
   cancelBooking,
   fetchAvailability,
   fetchBooking,
@@ -13,8 +13,8 @@ import {
   formatMoneyCents,
   differingLocalTime,
   formatSlotTime,
-  monthLabel,
   portoDateKey,
+  shortMonth,
   rescheduleBooking,
   type Booking,
   type Slot
@@ -96,8 +96,8 @@ export function ManageBooking() {
     return () => controller.abort();
   }, [loadSlots]);
 
-  const calendarDays = useMemo(
-    () => (todayKey ? buildBookingGrid(todayKey, horizonDays) : []),
+  const calendarWeeks = useMemo(
+    () => (todayKey ? buildBookingWeeks(todayKey, horizonDays) : []),
     [todayKey, horizonDays]
   );
 
@@ -283,31 +283,41 @@ export function ManageBooking() {
                 ))}
               </div>
 
-              <div className="calendar-grid">
-                {calendarDays.map((cell) => {
-                  const slots = slotsByDate[cell.key] ?? [];
-                  return (
-                    <button
-                      aria-pressed={selectedDate === cell.key}
-                      className={`${selectedDate === cell.key ? "is-selected" : slots.length ? "has-availability" : ""}${
-                        cell.isToday ? " is-today" : ""
-                      }`}
-                      disabled={!slots.length}
-                      key={cell.key}
-                      onClick={() => {
-                        setSelectedDate(cell.key);
-                        setSelectedSlot("");
-                      }}
-                      type="button"
-                    >
-                      <span>
-                        {cell.day}
-                        {cell.day === 1 ? <em>{monthLabel(cell.month, cell.key)}</em> : null}
-                      </span>
-                      {slots.length ? <i aria-hidden="true" /> : null}
-                    </button>
-                  );
-                })}
+              <div>
+                {calendarWeeks.map((week) => (
+                  <Fragment key={week.key}>
+                    {week.showMonth ? <p className="calendar-month">{week.month}</p> : null}
+                    <div className="calendar-week">
+                      {week.cells.map((cell) => {
+                        const slots = slotsByDate[cell.key] ?? [];
+                        return (
+                          <button
+                            aria-label={`${formatLongDate(`${cell.key}T12:00:00Z`)}${
+                              slots.length ? `, ${slots.length} times free` : ", no times free"
+                            }`}
+                            aria-pressed={selectedDate === cell.key}
+                            className={`${
+                              selectedDate === cell.key ? "is-selected" : slots.length ? "has-availability" : ""
+                            }${cell.isToday ? " is-today" : ""}`}
+                            disabled={!slots.length}
+                            key={cell.key}
+                            onClick={() => {
+                              setSelectedDate(cell.key);
+                              setSelectedSlot("");
+                            }}
+                            type="button"
+                          >
+                            <span>
+                              {cell.day}
+                              {cell.month !== week.monthNumber ? <em>{shortMonth(cell.month, cell.key)}</em> : null}
+                            </span>
+                            {slots.length ? <i aria-hidden="true" /> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Fragment>
+                ))}
               </div>
 
               {loadingSlots ? (

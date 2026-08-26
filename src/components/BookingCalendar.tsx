@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -18,8 +18,7 @@ import { clearSession, fetchMe, readSession, type Student } from "@/lib/auth-api
 import {
   addDaysToKey,
   browserTimeZone,
-  buildBookingGrid,
-  monthLabel,
+  buildBookingWeeks,
   createBooking,
   differingLocalTime,
   fetchAvailability,
@@ -28,6 +27,7 @@ import {
   formatSlotTime,
   listLessonTypes,
   portoDateKey,
+  shortMonth,
   type LessonType,
   type Slot
 } from "@/lib/booking-api";
@@ -135,8 +135,8 @@ export function BookingCalendar() {
     return () => controller.abort();
   }, [loadAvailability]);
 
-  const calendarDays = useMemo(
-    () => (todayKey ? buildBookingGrid(todayKey, horizonDays) : []),
+  const calendarWeeks = useMemo(
+    () => (todayKey ? buildBookingWeeks(todayKey, horizonDays) : []),
     [todayKey, horizonDays]
   );
   const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
@@ -291,32 +291,39 @@ export function BookingCalendar() {
                 ))}
               </div>
 
-              <div className="calendar-grid" aria-busy={loadingSlots}>
-                {calendarDays.map((cell) => {
-                  const slots = slotsByDate[cell.key] ?? [];
-                  return (
-                    <button
-                      aria-label={`${formatLongDate(`${cell.key}T12:00:00Z`)}${
-                        slots.length ? `, ${slots.length} times free` : ", no times free"
-                      }`}
-                      className={`${slots.length ? "has-availability" : ""}${cell.isToday ? " is-today" : ""}`}
-                      disabled={!slots.length}
-                      key={cell.key}
-                      onClick={() => {
-                        setSelectedDate(cell.key);
-                        setSelectedSlot("");
-                        goTo("time");
-                      }}
-                      type="button"
-                    >
-                      <span>
-                        {cell.day}
-                        {cell.day === 1 ? <em>{monthLabel(cell.month, cell.key)}</em> : null}
-                      </span>
-                      {slots.length ? <i aria-hidden="true" /> : null}
-                    </button>
-                  );
-                })}
+              <div aria-busy={loadingSlots}>
+                {calendarWeeks.map((week) => (
+                  <Fragment key={week.key}>
+                    {week.showMonth ? <p className="calendar-month">{week.month}</p> : null}
+                    <div className="calendar-week">
+                      {week.cells.map((cell) => {
+                        const slots = slotsByDate[cell.key] ?? [];
+                        return (
+                          <button
+                            aria-label={`${formatLongDate(`${cell.key}T12:00:00Z`)}${
+                              slots.length ? `, ${slots.length} times free` : ", no times free"
+                            }`}
+                            className={`${slots.length ? "has-availability" : ""}${cell.isToday ? " is-today" : ""}`}
+                            disabled={!slots.length}
+                            key={cell.key}
+                            onClick={() => {
+                              setSelectedDate(cell.key);
+                              setSelectedSlot("");
+                              goTo("time");
+                            }}
+                            type="button"
+                          >
+                            <span>
+                              {cell.day}
+                              {cell.month !== week.monthNumber ? <em>{shortMonth(cell.month, cell.key)}</em> : null}
+                            </span>
+                            {slots.length ? <i aria-hidden="true" /> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Fragment>
+                ))}
               </div>
               {loadingSlots ? <p className="booking-state-note">Checking what&rsquo;s free…</p> : null}
             </div>

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { AlertCircle, Lock, Mail, UserRound } from "lucide-react";
+import { AssetMark } from "@/components/BrandMarks";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { browserTimeZone } from "@/lib/booking-api";
 import { login, register, requestPasswordReset, storeSession, type Student } from "@/lib/auth-api";
@@ -71,6 +72,7 @@ export function AuthPanel({
 
   return (
     <div className="auth-panel">
+      <AssetMark asset="/visuals/v2-splats/built-around-you-splat-v2.svg" className="auth-panel__mark" />
       {heading ? <h3>{heading}</h3> : null}
       {intro ? <p className="auth-panel__intro">{intro}</p> : null}
 
