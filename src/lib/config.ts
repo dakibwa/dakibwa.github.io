@@ -38,6 +38,12 @@ export const BOOKING_CONFIGURED = Boolean(BOOKING_API_BASE_URL);
 /** Where a student manages an existing booking, with `?token=` from their email. */
 export const MANAGE_BOOKING_PATH = "/booking/";
 
+/**
+ * Google Sign-In client id. Public by design — it identifies the app, it is not
+ * a secret, and the Worker still verifies every token against it.
+ */
+export const GOOGLE_CLIENT_ID = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "").trim();
+
 export const CONTACT_WHATSAPP_NUMBER = "+351 963 161 134";
 export const CONTACT_WHATSAPP_URL = "https://wa.me/351963161134";
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "";

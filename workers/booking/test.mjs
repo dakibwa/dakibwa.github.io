@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { candidateStartMinutes } from "./availability.mjs";
 import { verifyWebhook } from "./stripe.mjs";
+import { verifyGoogleIdToken } from "./google.mjs";
 import { buildCalendarInvite, calendarUid } from "./ics.mjs";
 import { createManageToken, readManageToken, safeEqual, bookingReference } from "./tokens.mjs";
 import {
@@ -316,6 +317,103 @@ await test("malformed signature headers are rejected", async () => {
   const payload = "{}";
   for (const header of ["", "nonsense", "t=123", "v1=abc", "t=abc,v1=abc", null, undefined]) {
     assert.equal(await verifyWebhook(payload, header, SECRET), false, `accepted: ${header}`);
+  }
+});
+
+// --- Google ID tokens --------------------------------------------------------
+
+const CLIENT_ID = "1234.apps.googleusercontent.com";
+
+const b64url = (bytes) =>
+  btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const encodePart = (object) => b64url(new TextEncoder().encode(JSON.stringify(object)));
+
+const googleKeyPair = await crypto.subtle.generateKey(
+  { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+  true,
+  ["sign", "verify"]
+);
+const publicJwk = await crypto.subtle.exportKey("jwk", googleKeyPair.publicKey);
+
+// Stand in for Google's published keys, so no network is touched.
+globalThis.fetch = async () =>
+  new Response(JSON.stringify({ keys: [{ ...publicJwk, kid: "test-key", alg: "RS256", use: "sig" }] }), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "max-age=3600" }
+  });
+
+async function makeIdToken(overrides = {}, { signingKey = googleKeyPair.privateKey, kid = "test-key" } = {}) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = encodePart({ alg: "RS256", kid, typ: "JWT" });
+  const payload = encodePart({
+    iss: "https://accounts.google.com",
+    aud: CLIENT_ID,
+    sub: "10769150350006150715",
+    email: "joana@example.com",
+    email_verified: true,
+    name: "Joana Ferreira",
+    iat: now,
+    exp: now + 3600,
+    ...overrides
+  });
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    signingKey,
+    new TextEncoder().encode(`${header}.${payload}`)
+  );
+  return `${header}.${payload}.${b64url(signature)}`;
+}
+
+await test("a genuine Google ID token is accepted", async () => {
+  const profile = await verifyGoogleIdToken(await makeIdToken(), CLIENT_ID);
+  assert.equal(profile?.email, "joana@example.com");
+  assert.equal(profile?.name, "Joana Ferreira");
+});
+
+await test("a token minted for another app is rejected", async () => {
+  // Without the audience check, any Google app's token would sign a person in.
+  assert.equal(await verifyGoogleIdToken(await makeIdToken(), "9999.apps.googleusercontent.com"), null);
+  assert.equal(await verifyGoogleIdToken(await makeIdToken({ aud: "someone-else" }), CLIENT_ID), null);
+});
+
+await test("a token from the wrong issuer is rejected", async () => {
+  assert.equal(await verifyGoogleIdToken(await makeIdToken({ iss: "https://evil.example" }), CLIENT_ID), null);
+});
+
+await test("an expired token is rejected", async () => {
+  const past = Math.floor(Date.now() / 1000) - 7200;
+  assert.equal(await verifyGoogleIdToken(await makeIdToken({ iat: past, exp: past + 3600 }), CLIENT_ID), null);
+});
+
+await test("a token signed by someone else is rejected", async () => {
+  const impostor = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    true,
+    ["sign", "verify"]
+  );
+  const forged = await makeIdToken({}, { signingKey: impostor.privateKey });
+  assert.equal(await verifyGoogleIdToken(forged, CLIENT_ID), null);
+});
+
+await test("an unverified Google email is rejected", async () => {
+  // Otherwise someone could claim an account belonging to an address they do
+  // not control, simply by putting it on a Google profile.
+  assert.equal(await verifyGoogleIdToken(await makeIdToken({ email_verified: false }), CLIENT_ID), null);
+});
+
+await test("an unsigned token is rejected", async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const header = encodePart({ alg: "none", kid: "test-key" });
+  const payload = encodePart({ iss: "https://accounts.google.com", aud: CLIENT_ID, email: "a@b.com", exp: now + 60 });
+  assert.equal(await verifyGoogleIdToken(`${header}.${payload}.`, CLIENT_ID), null);
+});
+
+await test("a token referencing an unknown key is rejected", async () => {
+  assert.equal(await verifyGoogleIdToken(await makeIdToken({}, { kid: "not-a-real-key" }), CLIENT_ID), null);
+});
+
+await test("malformed tokens are rejected", async () => {
+  for (const token of ["", "a.b", "a.b.c", "not-a-token", null, undefined]) {
+    assert.equal(await verifyGoogleIdToken(token, CLIENT_ID), null, `accepted: ${token}`);
   }
 });
 

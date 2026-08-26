@@ -84,6 +84,10 @@ export function login(input: { email: string; password: string }) {
   return post<{ student: Student; session: string }>("/auth/login", input);
 }
 
+export function signInWithGoogle(credential: string, timezone: string) {
+  return post<{ student: Student; session: string }>("/auth/google", { credential, timezone });
+}
+
 export function requestPasswordReset(email: string) {
   return post<{ ok: true }>("/auth/forgot", { email });
 }

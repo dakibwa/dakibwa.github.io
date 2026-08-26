@@ -2,6 +2,7 @@ import { computeAvailability, isSlotBookable, listLessonTypes, loadLessonType, l
 import { buildCalendarInvite, calendarUid } from "./ics.mjs";
 import { deliver } from "./email.mjs";
 import { createCheckoutSession, isTestMode, stripeConfigured, verifyWebhook } from "./stripe.mjs";
+import { verifyGoogleIdToken } from "./google.mjs";
 import {
   createResetToken,
   createSession,
@@ -326,6 +327,7 @@ const worker = {
 
       if (request.method === "POST" && path === "/auth/register") return handleRegister(request, env);
       if (request.method === "POST" && path === "/auth/login") return handleLogin(request, env);
+      if (request.method === "POST" && path === "/auth/google") return handleGoogleSignIn(request, env);
       if (request.method === "POST" && path === "/auth/forgot") return handleForgot(request, env, ctx);
       if (request.method === "POST" && path === "/auth/reset") return handleReset(request, env);
       if (request.method === "GET" && path === "/me") return handleMe(request, env);
@@ -385,7 +387,8 @@ async function handleHealth(request, env) {
       lessonTypes,
       emailMode: env.RESEND_API_KEY && env.EMAIL_DRY_RUN !== "1" ? "live" : "dry-run",
       paymentMode,
-      stripe: stripeConfigured(env) ? (isTestMode(env) ? "test" : "live") : "not-configured"
+      stripe: stripeConfigured(env) ? (isTestMode(env) ? "test" : "live") : "not-configured",
+      googleSignIn: env.GOOGLE_CLIENT_ID ? "configured" : "not-configured"
     },
     200,
     request,
@@ -780,6 +783,55 @@ async function handleLogin(request, env) {
     env.DB.prepare("UPDATE students SET last_login_at = ? WHERE id = ?").bind(new Date().toISOString(), student.id),
     env.DB.prepare("DELETE FROM login_attempts WHERE email = ?").bind(email)
   ]);
+
+  return json(
+    { student: publicStudent(student), session: await createSession(student.id, env.BOOKING_TOKEN_SECRET) },
+    200,
+    request,
+    env
+  );
+}
+
+/**
+ * Signs in with a Google ID token, creating the account on first use.
+ *
+ * Matching is by verified email, so someone who registered with a password and
+ * later uses Google lands on the same account and sees the same lessons, rather
+ * than quietly acquiring a second one.
+ */
+async function handleGoogleSignIn(request, env) {
+  const clientId = env.GOOGLE_CLIENT_ID;
+  if (!clientId) return fail("Google sign-in is not configured.", 503, request, env);
+
+  const body = await readJson(request);
+  const profile = await verifyGoogleIdToken(body.credential, clientId);
+  if (!profile) return fail("That Google sign-in could not be verified. Please try again.", 401, request, env);
+
+  const now = new Date().toISOString();
+  let student = await env.DB.prepare("SELECT * FROM students WHERE email = ?").bind(profile.email).first();
+
+  if (student) {
+    await env.DB.prepare("UPDATE students SET google_sub = ?, last_login_at = ? WHERE id = ?")
+      .bind(profile.sub, now, student.id)
+      .run();
+  } else {
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO students (id, email, name, phone, timezone, password_hash, google_sub, created_at, last_login_at)
+       VALUES (?, ?, ?, '', ?, '', ?, ?, ?)`
+    )
+      .bind(
+        id,
+        profile.email,
+        profile.name || profile.email.split("@")[0],
+        isValidTimeZone(body.timezone) ? body.timezone : PORTO,
+        profile.sub,
+        now,
+        now
+      )
+      .run();
+    student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(id).first();
+  }
 
   return json(
     { student: publicStudent(student), session: await createSession(student.id, env.BOOKING_TOKEN_SECRET) },

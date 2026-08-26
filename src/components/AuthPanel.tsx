@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { AlertCircle, Lock, Mail, UserRound } from "lucide-react";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { browserTimeZone } from "@/lib/booking-api";
 import { login, register, requestPasswordReset, storeSession, type Student } from "@/lib/auth-api";
 
@@ -72,6 +73,10 @@ export function AuthPanel({
     <div className="auth-panel">
       {heading ? <h3>{heading}</h3> : null}
       {intro ? <p className="auth-panel__intro">{intro}</p> : null}
+
+      {mode !== "forgot" ? (
+        <GoogleSignInButton onError={setError} onSignedIn={onSignedIn} />
+      ) : null}
 
       {mode !== "forgot" ? (
         <div className="auth-tabs" role="tablist">

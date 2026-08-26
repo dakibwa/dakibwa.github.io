@@ -1713,6 +1713,47 @@ html.route-is-leaving .route-fade {
   opacity: 0.82;
 }
 
+/* Google's button is rendered by their own script into this holder, so its
+   own styling wins; only the surrounding space is ours. */
+.google-signin {
+  margin-bottom: 0.5rem;
+}
+
+.google-signin.is-loading {
+  display: none;
+}
+
+.google-signin > div {
+  display: flex;
+  justify-content: center;
+}
+
+.google-signin__divider {
+  position: relative;
+  margin: 1.1rem 0 0.25rem;
+  text-align: center;
+}
+
+.google-signin__divider::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  border-top: 1px solid var(--rule-soft);
+  content: "";
+}
+
+.google-signin__divider span {
+  position: relative;
+  padding: 0 0.7rem;
+  background: var(--paper);
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
 .auth-tabs {
   display: flex;
   margin-bottom: 1.25rem;

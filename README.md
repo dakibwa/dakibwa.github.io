@@ -11,8 +11,10 @@ five responsive routes:
 - `/lessons` — lesson formats and prices
 - `/faq` — booking, lesson, location, payment, rescheduling, and level answers
 - `/book` — the booking calendar
-- `/booking` — where a student moves or cancels their own lesson (noindex, reached
-  only from the link in their confirmation email)
+- `/booking` — where a student moves or cancels one lesson (noindex, reached from
+  the link in their confirmation email)
+- `/my-lessons` — every lesson a signed-in student has (noindex)
+- `/reset-password` — reached from a reset email (noindex)
 - `/schedule` — Inês's own view: teaching hours, days off, and what is booked
   (noindex, access key required)
 
@@ -157,6 +159,7 @@ Copy `.env.example` to `.env.local` and point the site at the deployed Worker:
 
 ```bash
 NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking.<subdomain>.workers.dev
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=          # optional; absent hides the Google button
 LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=60
