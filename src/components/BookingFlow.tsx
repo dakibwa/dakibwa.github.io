@@ -34,7 +34,6 @@ export function BookingFlow() {
               lesson
             </h1>
             <div className="editorial-rule" aria-hidden="true" />
-            <p>Pick a time that works, add your details, and you&rsquo;re booked.</p>
             <ul className="booking-intro__points">
               <li>
                 <AssetMark asset="/visuals/v2-splats/one-to-one-splat-v2.svg" />

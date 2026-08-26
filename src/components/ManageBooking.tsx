@@ -352,7 +352,7 @@ export function ManageBooking() {
                   {working ? "Moving…" : selectedSlot ? `Move to ${formatSlotTime(selectedSlot)}` : "Choose a time"}
                 </button>
                 <button className="booking-back" onClick={() => setMode("view")} type="button">
-                  <ArrowLeft size={17} aria-hidden="true" /> Never mind
+                  <ArrowLeft size={16} aria-hidden="true" /> Back
                 </button>
               </div>
             </div>

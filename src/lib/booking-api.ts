@@ -230,7 +230,9 @@ export function buildBookingWeeks(fromKey: string, horizonDays: number): Booking
   const gridStart = from - leading * 86400000;
   const weekCount = Math.ceil((leading + Math.max(horizonDays, 7) + 1) / 7);
 
-  const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
+  // No year: the window is 30 days, so it can only ever be this year or the
+  // turn of one, and the month alone is what tells you where you are.
+  const monthName = new Intl.DateTimeFormat("en-GB", { month: "long" });
   const weeks: BookingWeek[] = [];
   let previousMonth = "";
 

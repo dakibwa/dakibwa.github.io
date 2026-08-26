@@ -1304,7 +1304,6 @@ textarea,
 .booking-back {
   display: inline-flex;
   align-items: center;
-  margin-bottom: 1rem;
   border: 1px solid var(--rule);
   border-radius: 999px;
   padding: 0.6rem 1rem 0.6rem 0.8rem;
@@ -1322,6 +1321,20 @@ textarea,
   border-color: var(--coral);
   background: rgba(239, 93, 60, 0.08);
   color: var(--coral-action);
+}
+
+/* The control sits beside the heading rather than above it, which cost a whole
+   row of vertical space on every step after the first. */
+.booking-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-bottom: 0.2rem;
+  gap: 0.35rem 1rem;
+}
+
+.booking-step-head .booking-step-heading {
+  margin: 0;
 }
 
 .booking-step-heading {
@@ -1450,7 +1463,14 @@ textarea,
 
 /* Step 2 — day */
 
+.booking-step-head + .calendar-panel,
+.booking-step-note + .calendar-panel {
+  margin-top: 0.9rem;
+}
+
 .calendar-panel {
+  position: relative;
+  overflow: hidden;
   max-width: 640px;
   border-radius: 18px;
   border: 1px solid var(--rule);
@@ -1475,7 +1495,9 @@ textarea,
 .calendar-weekdays,
 .calendar-week {
   display: grid;
-  gap: 4px;
+  /* Within a row. Weeks are separate grids, so the space between rows has to be
+     added below — without it the tiles merged into vertical bars per column. */
+  gap: 7px;
   /* minmax(0, 1fr), not 1fr: the default min-content floor let cell contents
      push the whole grid wider than a phone screen. */
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1487,6 +1509,28 @@ textarea,
  * label on the 1st was too easy to miss, which made it genuinely hard to tell
  * which month a date belonged to.
  */
+/* Sits above the tiles rather than under them. */
+.calendar-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* A mark low in the panel, so a month of tiles is not a plain grey field. */
+.calendar-panel__mark {
+  position: absolute;
+  right: -84px;
+  bottom: -92px;
+  z-index: 0;
+  width: 240px;
+  height: 240px;
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.calendar-week + .calendar-week {
+  margin-top: 7px;
+}
+
 .calendar-month {
   margin: 1.1rem 0 0.4rem;
   font-family: var(--ui);
@@ -1512,15 +1556,15 @@ textarea,
   opacity: 0.7;
 }
 
-/* Rounded like the cards, rather than a hard grid of squares inside a rounded
-   panel. Each cell is its own tile, so the borders become gaps between them. */
+/* Tint alone marks a bookable day. Outlining every tile as well turned the
+   month into a wall of boxes competing with each other. */
 .calendar-week button {
   position: relative;
   display: grid;
-  aspect-ratio: 1;
+  min-height: 62px;
   place-items: center;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  border: 0;
+  border-radius: 12px;
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -1543,8 +1587,7 @@ textarea,
  * foreground and the rest recede.
  */
 .calendar-week button.has-availability {
-  border-color: rgba(139, 130, 211, 0.45);
-  background: rgba(170, 164, 230, 0.2);
+  background: rgba(170, 164, 230, 0.26);
   color: var(--green-deep);
   font-weight: 700;
 }
@@ -1580,7 +1623,6 @@ textarea,
 
 .calendar-week button.is-selected,
 .calendar-week button.is-selected.has-availability {
-  border-color: var(--green);
   background: var(--green);
   color: var(--paper);
 }
@@ -3302,8 +3344,10 @@ textarea,
     gap: 0.75rem;
   }
 
+  /* The Menu button reaches every page from here, so listing them all again
+     just made the footer a stack of links on a phone. */
   .site-footer__nav {
-    justify-content: start;
+    display: none;
   }
 
   .site-footer__contact {

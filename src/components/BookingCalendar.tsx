@@ -12,6 +12,7 @@ import {
   MapPin,
   MessageSquareText
 } from "lucide-react";
+import { AssetMark } from "@/components/BrandMarks";
 import { AuthPanel } from "@/components/AuthPanel";
 import { LessonMark } from "@/components/LessonMarks";
 import { clearSession, fetchMe, readSession, type Student } from "@/lib/auth-api";
@@ -270,21 +271,24 @@ export function BookingCalendar() {
             </div>
 
             <p className="booking-existing">
-              Already have a lesson booked? <a href="/my-lessons/">Move or cancel it</a>.
+              Already have a lesson booked? <a href="/my-lessons/">Sign in here</a>.
             </p>
           </>
         ) : null}
 
         {step === "day" ? (
           <>
-            <button className="booking-back" onClick={() => goTo("lesson")} type="button">
-              <ArrowLeft size={17} aria-hidden="true" /> {lessonType?.name ?? "Lesson"}
-            </button>
-            <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-              Pick a day
-            </h2>
+            <div className="booking-step-head">
+              <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
+                Pick a day
+              </h2>
+              <button className="booking-back" onClick={() => goTo("lesson")} type="button">
+                <ArrowLeft size={16} aria-hidden="true" /> Back
+              </button>
+            </div>
 
             <div className="calendar-panel">
+              <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
               <div className="calendar-weekdays" aria-hidden="true">
                 {weekdayLabels.map((label) => (
                   <span key={label}>{label}</span>
@@ -331,12 +335,14 @@ export function BookingCalendar() {
 
         {step === "time" ? (
           <>
-            <button className="booking-back" onClick={() => goTo("day")} type="button">
-              <ArrowLeft size={17} aria-hidden="true" /> Another day
-            </button>
-            <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-              {selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a time"}
-            </h2>
+            <div className="booking-step-head">
+              <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
+                {selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a time"}
+              </h2>
+              <button className="booking-back" onClick={() => goTo("day")} type="button">
+                <ArrowLeft size={16} aria-hidden="true" /> Back
+              </button>
+            </div>
             <p className="booking-step-note">
               {lessonType ? `${lessonType.name} · ${formatLessonDuration(lessonType.duration_minutes)}` : ""} · Porto time
             </p>
@@ -375,12 +381,14 @@ export function BookingCalendar() {
 
         {step === "details" ? (
           <>
-            <button className="booking-back" onClick={() => goTo("time")} type="button">
-              <ArrowLeft size={15} aria-hidden="true" /> Change time
-            </button>
-            <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-              {student ? "Confirm your lesson" : "Sign in to confirm"}
-            </h2>
+            <div className="booking-step-head">
+              <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
+                {student ? "Confirm your lesson" : "Sign in to confirm"}
+              </h2>
+              <button className="booking-back" onClick={() => goTo("time")} type="button">
+                <ArrowLeft size={16} aria-hidden="true" /> Back
+              </button>
+            </div>
 
             <div className="booking-final">
               <aside className="booking-recap">
