@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Globe2, MapPin } from "lucide-react";
+import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, Clock3, Globe2, MapPin } from "lucide-react";
 import {
   addDaysToKey,
   browserTimeZone,
-  buildMonthGrid,
+  buildBookingGrid,
   cancelBooking,
   fetchAvailability,
   fetchBooking,
@@ -13,14 +13,13 @@ import {
   formatMoneyCents,
   differingLocalTime,
   formatSlotTime,
+  monthLabel,
   portoDateKey,
   rescheduleBooking,
   type Booking,
   type Slot
 } from "@/lib/booking-api";
 import { BOOKING_TIME_ZONE, CONTACT_WHATSAPP_URL, formatLessonDuration } from "@/lib/config";
-
-const monthLabelFormatter = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
 
 type Mode = "view" | "reschedule" | "confirm-cancel";
 type Outcome = { kind: "rescheduled" | "cancelled"; sameDayFee: boolean } | null;
@@ -38,8 +37,8 @@ export function ManageBooking() {
   const [working, setWorking] = useState(false);
   const [studentZone, setStudentZone] = useState(BOOKING_TIME_ZONE);
 
-  const [monthKey, setMonthKey] = useState("");
   const [todayKey, setTodayKey] = useState("");
+  const [horizonDays, setHorizonDays] = useState(30);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -48,7 +47,6 @@ export function ManageBooking() {
   useEffect(() => {
     const key = portoDateKey(new Date());
     setTodayKey(key);
-    setMonthKey(key.slice(0, 7));
     setStudentZone(browserTimeZone());
 
     const params = new URLSearchParams(window.location.search);
@@ -72,14 +70,14 @@ export function ManageBooking() {
 
   const loadSlots = useCallback(
     (signal?: AbortSignal) => {
-      if (!booking || !monthKey || !todayKey || mode !== "reschedule") return;
+      if (!booking || !todayKey || mode !== "reschedule") return;
 
-      const monthStart = `${monthKey}-01`;
       setLoadingSlots(true);
 
-      fetchAvailability(booking.lessonType.id, monthStart < todayKey ? todayKey : monthStart, addDaysToKey(`${monthKey}-01`, 41), signal)
+      fetchAvailability(booking.lessonType.id, todayKey, addDaysToKey(todayKey, 62), signal)
         .then((data) => {
           setSlotsByDate(data.slotsByDate);
+          setHorizonDays(data.horizonDays || 30);
           setSelectedDate((current) =>
             current && data.slotsByDate[current]?.length ? current : Object.keys(data.slotsByDate).sort()[0] ?? ""
           );
@@ -89,7 +87,7 @@ export function ManageBooking() {
           if (!signal?.aborted) setLoadingSlots(false);
         });
     },
-    [booking, monthKey, todayKey, mode]
+    [booking, todayKey, mode]
   );
 
   useEffect(() => {
@@ -98,7 +96,10 @@ export function ManageBooking() {
     return () => controller.abort();
   }, [loadSlots]);
 
-  const calendarDays = useMemo(() => (monthKey ? buildMonthGrid(monthKey) : []), [monthKey]);
+  const calendarDays = useMemo(
+    () => (todayKey ? buildBookingGrid(todayKey, horizonDays) : []),
+    [todayKey, horizonDays]
+  );
 
   async function doReschedule() {
     if (!token || !selectedSlot) return;
@@ -276,33 +277,6 @@ export function ManageBooking() {
                 <p>All times are Porto time.</p>
               </div>
 
-              <div className="calendar-month-nav">
-                <button
-                  aria-label="Previous month"
-                  disabled={monthKey <= todayKey.slice(0, 7)}
-                  onClick={() => {
-                    const [year, month] = monthKey.split("-").map(Number);
-                    const previous = new Date(Date.UTC(year, month - 2, 1));
-                    setMonthKey(`${previous.getUTCFullYear()}-${String(previous.getUTCMonth() + 1).padStart(2, "0")}`);
-                  }}
-                  type="button"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <strong>{monthKey ? monthLabelFormatter.format(new Date(`${monthKey}-01T12:00:00Z`)) : ""}</strong>
-                <button
-                  aria-label="Next month"
-                  onClick={() => {
-                    const [year, month] = monthKey.split("-").map(Number);
-                    const next = new Date(Date.UTC(year, month, 1));
-                    setMonthKey(`${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`);
-                  }}
-                  type="button"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-
               <div className="calendar-weekdays" aria-hidden="true">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (
                   <span key={label}>{label}</span>
@@ -315,9 +289,9 @@ export function ManageBooking() {
                   return (
                     <button
                       aria-pressed={selectedDate === cell.key}
-                      className={
-                        selectedDate === cell.key ? "is-selected" : slots.length ? "has-availability" : ""
-                      }
+                      className={`${selectedDate === cell.key ? "is-selected" : slots.length ? "has-availability" : ""}${
+                        cell.isToday ? " is-today" : ""
+                      }`}
                       disabled={!slots.length}
                       key={cell.key}
                       onClick={() => {
@@ -326,7 +300,11 @@ export function ManageBooking() {
                       }}
                       type="button"
                     >
-                      <span className={cell.inMonth ? "" : "is-muted"}>{cell.day}</span>
+                      <span>
+                        {cell.day}
+                        {cell.day === 1 ? <em>{monthLabel(cell.month, cell.key)}</em> : null}
+                      </span>
+                      {slots.length ? <i aria-hidden="true" /> : null}
                     </button>
                   );
                 })}
@@ -364,8 +342,8 @@ export function ManageBooking() {
                 >
                   {working ? "Moving…" : selectedSlot ? `Move to ${formatSlotTime(selectedSlot)}` : "Choose a time"}
                 </button>
-                <button className="button button--quiet" onClick={() => setMode("view")} type="button">
-                  Never mind
+                <button className="booking-back" onClick={() => setMode("view")} type="button">
+                  <ArrowLeft size={17} aria-hidden="true" /> Never mind
                 </button>
               </div>
             </div>

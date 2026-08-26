@@ -140,7 +140,7 @@ export function AuthPanel({
               type="password"
               value={form.password}
             />
-            {mode === "register" ? <small>At least 8 characters. A short phrase works well.</small> : null}
+            {mode === "register" ? <small>At least 8 characters.</small> : null}
           </label>
         ) : null}
 

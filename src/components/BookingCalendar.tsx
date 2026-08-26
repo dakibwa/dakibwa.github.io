@@ -5,9 +5,7 @@ import {
   AlertCircle,
   ArrowLeft,
   CalendarDays,
-  Check,
   CheckCircle2,
-  ChevronLeft,
   ChevronRight,
   Clock3,
   Globe2,
@@ -15,12 +13,13 @@ import {
   MessageSquareText
 } from "lucide-react";
 import { AuthPanel } from "@/components/AuthPanel";
-import { LessonMark, SquiggleRule } from "@/components/LessonMarks";
+import { LessonMark } from "@/components/LessonMarks";
 import { clearSession, fetchMe, readSession, type Student } from "@/lib/auth-api";
 import {
   addDaysToKey,
   browserTimeZone,
-  buildMonthGrid,
+  buildBookingGrid,
+  monthLabel,
   createBooking,
   differingLocalTime,
   fetchAvailability,
@@ -35,11 +34,9 @@ import {
 import { BOOKING_TIME_ZONE, CONTACT_WHATSAPP_URL, SAME_DAY_RESCHEDULE_FEE_CENTS, formatLessonDuration } from "@/lib/config";
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const monthLabelFormatter = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
-const shortDateFormatter = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
+const spanFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" });
 
 type Step = "lesson" | "day" | "time" | "details";
-const stepOrder: Step[] = ["lesson", "day", "time", "details"];
 
 type FormState = { notes: string; location: "online" | "porto" };
 const emptyForm: FormState = { notes: "", location: "online" };
@@ -70,7 +67,7 @@ export function BookingCalendar() {
   const [lessonTypes, setLessonTypes] = useState<LessonType[]>([]);
   const [lessonTypeId, setLessonTypeId] = useState("");
   const [todayKey, setTodayKey] = useState("");
-  const [monthKey, setMonthKey] = useState("");
+  const [horizonDays, setHorizonDays] = useState(30);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -89,7 +86,6 @@ export function BookingCalendar() {
   useEffect(() => {
     const key = portoDateKey(new Date());
     setTodayKey(key);
-    setMonthKey(key.slice(0, 7));
     setStudentZone(browserTimeZone());
 
     listLessonTypes()
@@ -110,14 +106,18 @@ export function BookingCalendar() {
 
   const loadAvailability = useCallback(
     (signal?: AbortSignal) => {
-      if (!lessonTypeId || !monthKey || !todayKey) return;
+      if (!lessonTypeId || !todayKey) return;
 
-      const monthStart = `${monthKey}-01`;
       setLoadingSlots(true);
       setLoadError("");
 
-      fetchAvailability(lessonTypeId, monthStart < todayKey ? todayKey : monthStart, addDaysToKey(monthStart, 41), signal)
-        .then((data) => setSlotsByDate(data.slotsByDate))
+      // The whole bookable horizon in one request: it is 30 days, so there is
+      // nothing to page through and no month navigation to get wrong.
+      fetchAvailability(lessonTypeId, todayKey, addDaysToKey(todayKey, 62), signal)
+        .then((data) => {
+          setSlotsByDate(data.slotsByDate);
+          setHorizonDays(data.horizonDays || 30);
+        })
         .catch((error: Error) => {
           if (signal?.aborted) return;
           setSlotsByDate({});
@@ -127,7 +127,7 @@ export function BookingCalendar() {
           if (!signal?.aborted) setLoadingSlots(false);
         });
     },
-    [lessonTypeId, monthKey, todayKey]
+    [lessonTypeId, todayKey]
   );
 
   useEffect(() => {
@@ -136,7 +136,10 @@ export function BookingCalendar() {
     return () => controller.abort();
   }, [loadAvailability]);
 
-  const calendarDays = useMemo(() => (monthKey ? buildMonthGrid(monthKey) : []), [monthKey]);
+  const calendarDays = useMemo(
+    () => (todayKey ? buildBookingGrid(todayKey, horizonDays) : []),
+    [todayKey, horizonDays]
+  );
   const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
 
@@ -148,14 +151,6 @@ export function BookingCalendar() {
     // Moving focus to the heading is what makes a stepped flow usable with a
     // screen reader; without it the change is silent.
     requestAnimationFrame(() => document.getElementById("booking-step-heading")?.focus());
-  }
-
-  function changeMonth(offset: number) {
-    const [year, month] = monthKey.split("-").map(Number);
-    const next = new Date(Date.UTC(year, month - 1 + offset, 1));
-    const nextKey = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
-    if (offset < 0 && nextKey < todayKey.slice(0, 7)) return;
-    setMonthKey(nextKey);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -228,43 +223,14 @@ export function BookingCalendar() {
     );
   }
 
-  const stepIndex = stepOrder.indexOf(step);
-  const trail = [
-    { step: "lesson" as Step, label: "Lesson", value: lessonType?.name ?? "" },
-    { step: "day" as Step, label: "Day", value: selectedDate ? shortDateFormatter.format(new Date(`${selectedDate}T12:00:00Z`)) : "" },
-    { step: "time" as Step, label: "Time", value: chosen ? `${formatSlotTime(chosen.startAt)} Porto` : "" },
-    { step: "details" as Step, label: "Confirm", value: "" }
-  ];
+  const gridSpan = calendarDays.length
+    ? `${spanFormatter.format(new Date(`${calendarDays[0].key}T12:00:00Z`))} – ${spanFormatter.format(
+        new Date(`${calendarDays[calendarDays.length - 1].key}T12:00:00Z`)
+      )}`
+    : "";
 
   return (
     <section className="booking-steps" aria-label="Book a Portuguese lesson">
-      <ol className="booking-trail">
-        {trail.map((entry, index) => {
-          const done = index < stepIndex;
-          const current = index === stepIndex;
-          return (
-            <li className={current ? "is-current" : done ? "is-done" : ""} key={entry.step}>
-              <button
-                aria-current={current ? "step" : undefined}
-                disabled={!done}
-                onClick={() => goTo(entry.step)}
-                type="button"
-              >
-                <span className="booking-trail__index" aria-hidden="true">
-                  {done ? <Check size={13} strokeWidth={3} /> : index + 1}
-                </span>
-                <span className="booking-trail__label">
-                  {entry.label}
-                  {done && entry.value ? <em>{entry.value}</em> : null}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-
-      <SquiggleRule className="booking-squiggle" />
-
       {loadError ? (
         <div className="booking-alert" role="status">
           <AlertCircle size={18} aria-hidden="true" />
@@ -298,49 +264,37 @@ export function BookingCalendar() {
                   type="button"
                 >
                   <LessonMark className="lesson-card__mark" lessonTypeId={type.id} />
-                  <strong>{type.name}</strong>
-                  <span className="lesson-card__meta">
-                    {formatLessonDuration(type.duration_minutes)} · {formatMoneyCents(type.price_cents)}
+                  <span className="lesson-card__text">
+                    <strong>{type.name}</strong>
+                    <span className="lesson-card__meta">
+                      {formatLessonDuration(type.duration_minutes)} · {formatMoneyCents(type.price_cents)}
+                    </span>
                   </span>
-                  <span className="lesson-card__description">{type.description}</span>
-                  <span className="lesson-card__go" aria-hidden="true">
-                    Choose <ChevronRight size={15} />
-                  </span>
+                  <ChevronRight aria-hidden="true" size={20} />
                 </button>
               ))}
               {!lessonTypes.length && !loadError ? <p className="booking-state-note">Loading lessons…</p> : null}
             </div>
+
+            <p className="booking-existing">
+              Already have a lesson booked? <a href="/my-lessons/">Move or cancel it</a>.
+            </p>
           </>
         ) : null}
 
         {step === "day" ? (
           <>
             <button className="booking-back" onClick={() => goTo("lesson")} type="button">
-              <ArrowLeft size={15} aria-hidden="true" /> Change lesson
+              <ArrowLeft size={17} aria-hidden="true" /> {lessonType?.name ?? "Lesson"}
             </button>
             <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
               Pick a day
             </h2>
             <p className="booking-step-note">
-              Days with times free are outlined. All times are Porto time.
+              Days with times free are marked. {gridSpan ? `${gridSpan}, Porto time.` : "Porto time."}
             </p>
 
             <div className="calendar-panel">
-              <div className="calendar-month-nav">
-                <button
-                  aria-label="Previous month"
-                  disabled={monthKey <= todayKey.slice(0, 7)}
-                  onClick={() => changeMonth(-1)}
-                  type="button"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <strong>{monthKey ? monthLabelFormatter.format(new Date(`${monthKey}-01T12:00:00Z`)) : ""}</strong>
-                <button aria-label="Next month" onClick={() => changeMonth(1)} type="button">
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-
               <div className="calendar-weekdays" aria-hidden="true">
                 {weekdayLabels.map((label) => (
                   <span key={label}>{label}</span>
@@ -355,7 +309,7 @@ export function BookingCalendar() {
                       aria-label={`${formatLongDate(`${cell.key}T12:00:00Z`)}${
                         slots.length ? `, ${slots.length} times free` : ", no times free"
                       }`}
-                      className={slots.length ? "has-availability" : ""}
+                      className={`${slots.length ? "has-availability" : ""}${cell.isToday ? " is-today" : ""}`}
                       disabled={!slots.length}
                       key={cell.key}
                       onClick={() => {
@@ -365,7 +319,10 @@ export function BookingCalendar() {
                       }}
                       type="button"
                     >
-                      <span className={cell.inMonth ? "" : "is-muted"}>{cell.day}</span>
+                      <span>
+                        {cell.day}
+                        {cell.day === 1 ? <em>{monthLabel(cell.month, cell.key)}</em> : null}
+                      </span>
                       {slots.length ? <i aria-hidden="true" /> : null}
                     </button>
                   );
@@ -379,7 +336,7 @@ export function BookingCalendar() {
         {step === "time" ? (
           <>
             <button className="booking-back" onClick={() => goTo("day")} type="button">
-              <ArrowLeft size={15} aria-hidden="true" /> Pick another day
+              <ArrowLeft size={17} aria-hidden="true" /> Another day
             </button>
             <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
               {selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a time"}
@@ -432,14 +389,26 @@ export function BookingCalendar() {
             <div className="booking-final">
               <aside className="booking-recap">
                 <LessonMark className="booking-recap__mark" lessonTypeId={lessonType?.id ?? "single"} />
-                <h3>{lessonType?.name}</h3>
+                <h3>
+                  {lessonType?.name}
+                  {/* Each choice stays changeable here, rather than needing a
+                      separate progress bar to step back through. */}
+                  <button onClick={() => goTo("lesson")} type="button">
+                    Change
+                  </button>
+                </h3>
                 <p>
                   <Clock3 size={17} aria-hidden="true" />
                   {lessonType ? formatLessonDuration(lessonType.duration_minutes) : "—"}
                 </p>
                 <p>
                   <CalendarDays size={17} aria-hidden="true" />
-                  {chosen ? `${formatLongDate(chosen.startAt)}, ${formatSlotTime(chosen.startAt)}` : "—"}
+                  <span>
+                    {chosen ? `${formatLongDate(chosen.startAt)}, ${formatSlotTime(chosen.startAt)}` : "—"}
+                    <button onClick={() => goTo("time")} type="button">
+                      Change
+                    </button>
+                  </span>
                 </p>
                 {chosen && differingLocalTime(chosen.startAt, studentZone) ? (
                   <p>

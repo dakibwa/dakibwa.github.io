@@ -196,30 +196,42 @@ export function differingLocalTime(startAt: string, studentZone: string) {
   return local === formatSlotTime(startAt) ? null : local;
 }
 
-export type MonthCell = { key: string; day: number; inMonth: boolean };
+export type DayCell = { key: string; day: number; month: number; isToday: boolean };
 
 /**
- * A Monday-first grid of whole weeks covering `monthKey` ("2026-08").
+ * A Monday-first grid running from the week containing `fromKey` to the end of
+ * the bookable horizon, rounded out to whole weeks.
  *
- * Leading and trailing cells are the real adjacent-month dates rather than
- * blanks, so a student looking at late August can book the 1st of September
- * without paging forward. They carry `inMonth: false` so they can be shown as
- * belonging to the neighbouring month.
+ * Deliberately not a calendar month. Late in a month a month grid is mostly
+ * dates that are already gone — on the 28th, four fifths of the grid is dead —
+ * and it hides the start of the next month, which is exactly where the free
+ * time is. This window only ever contains days worth looking at, and it needs
+ * no month navigation because it already spans the whole horizon.
  */
-export function buildMonthGrid(monthKey: string): MonthCell[] {
-  const [year, month] = monthKey.split("-").map(Number);
-  const firstOfMonth = Date.UTC(year, month - 1, 1);
-  const leading = (new Date(firstOfMonth).getUTCDay() + 6) % 7; // Monday = 0
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const totalCells = Math.ceil((leading + daysInMonth) / 7) * 7;
+export function buildBookingGrid(fromKey: string, horizonDays: number): DayCell[] {
+  const [year, month, day] = fromKey.split("-").map(Number);
+  const from = Date.UTC(year, month - 1, day);
+  const leading = (new Date(from).getUTCDay() + 6) % 7; // Monday = 0
+  const gridStart = from - leading * 86400000;
 
-  return Array.from({ length: totalCells }, (_, index) => {
-    const dayOffset = index - leading; // 0 is the 1st of the month
-    const date = new Date(Date.UTC(year, month - 1, 1 + dayOffset));
+  // Whole weeks, enough to cover the horizon, and never a single week.
+  const spanDays = leading + Math.max(horizonDays, 7) + 1;
+  const cells = Math.ceil(spanDays / 7) * 7;
+
+  return Array.from({ length: cells }, (_, index) => {
+    const date = new Date(gridStart + index * 86400000);
+    const key = date.toISOString().slice(0, 10);
     return {
-      key: date.toISOString().slice(0, 10),
+      key,
       day: date.getUTCDate(),
-      inMonth: dayOffset >= 0 && dayOffset < daysInMonth
+      month: date.getUTCMonth() + 1,
+      isToday: key === fromKey
     };
   });
+}
+
+/** Month name for a cell, used to label where the grid crosses into a new one. */
+export function monthLabel(monthNumber: number, yearHint: string) {
+  const [year] = yearHint.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
 }

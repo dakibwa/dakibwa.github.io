@@ -1209,98 +1209,27 @@ html.route-is-leaving .route-fade {
 /* Stepped booking: lesson, then day, then time, then details. Each step gets
    the whole width, which is what stopped it feeling cramped. */
 
-.booking-trail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1.5rem;
-  list-style: none;
-}
-
-.booking-trail button {
-  display: flex;
-  align-items: center;
-  border: 0;
-  padding: 0.3rem 0;
-  background: transparent;
-  color: inherit;
-  gap: 0.5rem;
-  text-align: left;
-}
-
-.booking-trail button:not(:disabled) {
-  cursor: pointer;
-}
-
-.booking-trail li:not(.is-current):not(.is-done) button {
-  opacity: 0.42;
-}
-
-.booking-trail__index {
-  display: grid;
-  width: 25px;
-  height: 25px;
-  flex: none;
-  place-items: center;
-  border: 1.5px solid var(--rule);
-  border-radius: 50%;
-  font-family: var(--ui);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.booking-trail .is-current .booking-trail__index {
-  border-color: var(--green);
-  background: var(--green);
-  color: var(--paper);
-}
-
-.booking-trail .is-done .booking-trail__index {
-  border-color: var(--green);
-  color: var(--green);
-}
-
-.booking-trail__label {
-  display: flex;
-  flex-direction: column;
-  font-family: var(--ui);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  line-height: 1.3;
-  text-transform: uppercase;
-}
-
-.booking-trail__label em {
-  font-size: 0.78rem;
-  font-style: normal;
-  font-weight: 400;
-  letter-spacing: 0;
-  opacity: 0.72;
-  text-transform: none;
-}
-
-.booking-squiggle {
-  display: block;
-  width: 100%;
-  height: 11px;
-  margin: 1rem 0 1.75rem;
-  color: var(--rule);
-}
-
+/* With the step trail gone, this is how a student changes an earlier choice,
+   so it has to read as a control rather than as a footnote. */
 .booking-back {
   display: inline-flex;
   align-items: center;
-  border: 0;
-  padding: 0;
+  margin-bottom: 1rem;
+  border: 1px solid var(--rule);
+  padding: 0.6rem 1rem 0.6rem 0.8rem;
   background: transparent;
-  color: var(--lavender-ink);
+  color: var(--ink);
   cursor: pointer;
-  gap: 0.35rem;
+  gap: 0.45rem;
   font-family: var(--ui);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
-.booking-back:hover {
+.booking-back:hover,
+.booking-back:focus-visible {
+  border-color: var(--coral);
+  background: rgba(239, 93, 60, 0.08);
   color: var(--coral-action);
 }
 
@@ -1326,23 +1255,25 @@ html.route-is-leaving .route-fade {
 
 .lesson-choice {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: 1fr;
   margin-top: 1.25rem;
-  gap: 0.85rem;
+  gap: 0.7rem;
 }
 
+/* One per row rather than three abreast: the cards are scanned, not compared
+   in detail, and stacked they read identically on a phone and on a desktop. */
 .lesson-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
   border: 1px solid var(--rule);
-  padding: 1.6rem 1.5rem 1.4rem;
+  padding: 0.9rem 1.1rem;
   background: transparent;
   color: inherit;
   cursor: pointer;
-  gap: 0.45rem;
+  gap: 1rem;
   text-align: left;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  transition: background 140ms ease, border-color 140ms ease;
 }
 
 .lesson-card:hover,
@@ -1351,11 +1282,9 @@ html.route-is-leaving .route-fade {
   background: rgba(170, 164, 230, 0.16);
 }
 
-/* The brand emblems, used at their production colours. */
 .lesson-card__mark {
-  width: 64px;
-  height: 64px;
-  margin-bottom: 0.2rem;
+  width: 52px;
+  height: 52px;
 }
 
 .lesson-card__mark .asset-mark__image {
@@ -1364,11 +1293,17 @@ html.route-is-leaving .route-fade {
   object-fit: contain;
 }
 
+.lesson-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
 .lesson-card strong {
   font-family: var(--display);
-  font-size: 1.75rem;
+  font-size: 1.55rem;
   font-weight: 400;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .lesson-card__meta {
@@ -1377,31 +1312,26 @@ html.route-is-leaving .route-fade {
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
+  opacity: 0.75;
 }
 
-.lesson-card__description {
-  margin-top: 0.2rem;
+.lesson-card svg:last-child {
+  color: var(--lavender-ink);
+}
+
+.booking-existing {
+  margin-top: 1.4rem;
   font-size: 0.9rem;
-  line-height: 1.55;
-  opacity: 0.82;
 }
 
-.lesson-card__go {
-  display: inline-flex;
-  align-items: center;
-  margin-top: 0.9rem;
-  gap: 0.25rem;
-  font-family: var(--ui);
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.booking-existing a {
+  text-decoration: underline;
 }
 
 /* Step 2 — day */
 
 .calendar-panel {
-  max-width: 720px;
+  max-width: 640px;
   border: 1px solid var(--rule);
   padding: clamp(1rem, 2.4vw, 1.75rem);
 }
@@ -1421,39 +1351,12 @@ html.route-is-leaving .route-fade {
   font-size: 0.92rem;
 }
 
-.calendar-month-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 0 0.75rem;
-}
-
-.calendar-month-nav strong {
-  font-family: var(--display);
-  font-size: 1.5rem;
-  font-weight: 400;
-}
-
-.calendar-month-nav button {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.calendar-month-nav button:disabled {
-  cursor: not-allowed;
-  opacity: 0.28;
-}
-
 .calendar-weekdays,
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr), not 1fr: the default min-content floor let the month label
+     on the 1st push the whole grid wider than a phone screen. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .calendar-weekdays span {
@@ -1498,6 +1401,26 @@ html.route-is-leaving .route-fade {
 .calendar-grid button.has-availability {
   color: var(--green);
   font-weight: 700;
+}
+
+/* The grid rolls forward from this week rather than showing a calendar month,
+   so the 1st is labelled to make the crossing into the next month legible. */
+.calendar-grid button em {
+  display: block;
+  overflow: hidden;
+  font-family: var(--ui);
+  font-size: 0.5rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.calendar-grid button.is-today {
+  box-shadow: inset 0 0 0 1.5px var(--lavender-ink);
 }
 
 /* A dot rather than a border, so an available day still reads as available
@@ -1618,11 +1541,40 @@ html.route-is-leaving .route-fade {
 }
 
 .booking-recap h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   margin: 0.5rem 0 0.9rem;
+  gap: 0.6rem;
   font-family: var(--display);
   font-size: 1.7rem;
   font-weight: 400;
   line-height: 1.1;
+}
+
+.booking-recap button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--lavender-ink);
+  cursor: pointer;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-decoration: underline;
+  text-transform: uppercase;
+}
+
+.booking-recap button:hover {
+  color: var(--coral-action);
+}
+
+.booking-recap p > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
 }
 
 .booking-recap p {

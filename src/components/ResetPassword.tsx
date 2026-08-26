@@ -72,7 +72,7 @@ export function ResetPassword() {
             type="password"
             value={password}
           />
-          <small>At least 8 characters. A short phrase works well.</small>
+          <small>At least 8 characters.</small>
         </label>
 
         <label>
