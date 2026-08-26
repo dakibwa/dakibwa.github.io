@@ -80,7 +80,7 @@ export function AuthPanel({
         {mode === "forgot"
           ? "Give us the email you booked with and we'll send you a link to choose a new password. It works for one hour."
           : mode === "register"
-            ? "One account keeps every lesson you book in one place, so you can move or cancel any of them yourself."
+            ? "Keeps all your lessons in one place, so you can change them yourself."
             : intro}
       </p>
 
@@ -117,9 +117,14 @@ export function AuthPanel({
           <label>
             <span>
               <UserRound size={16} aria-hidden="true" />
-              Full name
+              First name
             </span>
-            <input autoComplete="name" onChange={(event) => update({ name: event.target.value })} required value={form.name} />
+            <input
+              autoComplete="given-name"
+              onChange={(event) => update({ name: event.target.value })}
+              required
+              value={form.name}
+            />
           </label>
         ) : null}
 

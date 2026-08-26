@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AccountHero } from "@/components/AccountHero";
 import { ManageBooking } from "@/components/ManageBooking";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -14,12 +15,12 @@ export default function ManageBookingPage() {
   return (
     <>
       <SiteHeader currentPage="book" />
+      <AccountHero
+        intro="Move it, or cancel it. Inês is updated automatically either way."
+        mark="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg"
+        title="Your lesson"
+      />
       <main className="manage-page" id="main-content">
-        <section className="manage-page__intro">
-          <h1>Your lesson</h1>
-          <div className="editorial-rule" aria-hidden="true" />
-          <p>Move it, or cancel it. Inês is updated automatically either way.</p>
-        </section>
         <ManageBooking />
       </main>
       <SiteFooter />

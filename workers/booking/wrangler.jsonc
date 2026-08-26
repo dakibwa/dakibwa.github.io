@@ -24,7 +24,12 @@
     // SPF MX and SPF TXT all confirmed), so mail sends for real. Setting this
     // back to "1" stops all sending and records to email_log instead, which is
     // what to do while testing rather than pointing it at a spare address.
-    "EMAIL_DRY_RUN": "0"
+    "EMAIL_DRY_RUN": "0",
+    // Google Sign-In. Public by design — it identifies the app, and the Worker
+    // verifies every ID token's signature and audience against it. The client
+    // *secret* is not needed: this is the ID-token flow, not the server-side
+    // code exchange.
+    "GOOGLE_CLIENT_ID": "174786285888-cq6vhf2jifpn5bdjutade6fe8an5i9ob.apps.googleusercontent.com"
   },
   "secrets": {
     // wrangler secret put <NAME> --config workers/booking/wrangler.jsonc
