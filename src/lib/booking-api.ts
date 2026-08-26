@@ -186,6 +186,40 @@ export function shortMonth(monthNumber: number, yearHint: string) {
   return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
 }
 
+/**
+ * A Porto wall-clock date and time to the UTC instant it names.
+ *
+ * Two passes, as the Worker does it: the first guesses using the offset at the
+ * naive timestamp, the second corrects using the offset actually in force at
+ * that guess. One correction covers every real transition, since offsets move
+ * by at most an hour.
+ */
+export function portoTimeToUtc(dateKey: string, time: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+  const naive = Date.UTC(year, month - 1, day, hours, minutes);
+
+  const offsetAt = (instant: number) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: BOOKING_TIME_ZONE,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    }).formatToParts(new Date(instant));
+    const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+    return (
+      Date.UTC(get("year"), get("month") - 1, get("day"), get("hour") % 24, get("minute"), get("second")) - instant
+    );
+  };
+
+  const firstPass = naive - offsetAt(naive);
+  return new Date(naive - offsetAt(firstPass)).toISOString();
+}
+
 export function formatMoneyCents(cents: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(
     cents / 100

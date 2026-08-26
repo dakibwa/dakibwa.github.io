@@ -2,7 +2,15 @@
 
 import { BOOKING_API_BASE_URL } from "@/lib/config";
 
-export type Student = { id: string; email: string; name: string; phone: string; timezone: string };
+export type Student = {
+  id: string;
+  email: string;
+  name: string;
+  phone: string;
+  timezone: string;
+  /** "teacher" unlocks the schedule page's admin tools. */
+  role: "student" | "teacher";
+};
 
 export type MyBooking = {
   reference: string;

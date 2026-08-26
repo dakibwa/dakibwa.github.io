@@ -66,9 +66,14 @@ CREATE TABLE IF NOT EXISTS students (
   phone         TEXT NOT NULL DEFAULT '',
   timezone      TEXT NOT NULL DEFAULT 'Europe/Lisbon',
   password_hash TEXT NOT NULL,
+  -- 'teacher' grants the admin endpoints. Inês signs in as herself rather than
+  -- pasting a shared token, though ADMIN_TOKEN remains as a way back in.
+  role          TEXT NOT NULL DEFAULT 'student',
   created_at    TEXT NOT NULL,
   last_login_at TEXT
 );
+
+CREATE INDEX IF NOT EXISTS idx_students_role ON students (role);
 
 -- Emails are matched case-insensitively; the column already stores them
 -- lower-cased, and this makes the lookup an index hit rather than a scan.

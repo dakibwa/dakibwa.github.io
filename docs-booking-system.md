@@ -30,10 +30,37 @@ Student on /my-lessons                (Bearer)       → every lesson they have
 Student on /booking/?token=…          (email link)
   → GET  /bookings/:token                            HMAC-signed, not guessable
   → POST /bookings/:token/reschedule | /cancel       → sequence++, updated ICS
-Inês on /schedule                     (admin token, noindex)
-  → GET/POST /admin/availability, /admin/exceptions, GET /admin/bookings
+Inês on /schedule                     (her own account, role=teacher)
+  → GET/POST /admin/availability, /admin/exceptions
+  → GET  /admin/bookings, /admin/students
+  → POST /admin/bookings                             add a lesson for someone
+  → POST /admin/bookings/:id/reschedule | /cancel
 Stripe → POST /stripe/webhook                        signature-verified
 ```
+
+## Who can do what
+
+Booking, and managing your own lessons, needs an ordinary account. The admin
+endpoints additionally need either `role = 'teacher'` on that account or the
+shared `ADMIN_TOKEN`.
+
+Inês signs in as herself — there is no second password to remember, and what she
+does is attributable rather than anonymous. The token stays as the way back in
+if she is ever locked out. Granting the role is a deliberate manual step:
+
+```sql
+UPDATE students SET role = 'teacher' WHERE email = '...';
+```
+
+Her own bookings are checked for clashes only, not against her published hours
+or the notice window. Those exist to shape what students may choose; she is the
+one deciding, and fitting a lesson in outside them is a normal thing for her to
+do. A double booking is never intended, so that is still refused.
+
+Adding a lesson for someone who booked another way creates their account if it
+does not exist, with no password — they set one through "forgot password" when
+they first want to manage the lesson themselves. They receive the same
+confirmation, calendar invitation and manage link as if they had booked it.
 
 ## Accounts
 
@@ -135,7 +162,7 @@ Secrets, each via `npx wrangler secret put <NAME> --config workers/booking/wrang
 | Secret | What it is |
 |---|---|
 | `BOOKING_TOKEN_SECRET` | Signs manage links. Any long random string. **Changing it invalidates every link already emailed.** |
-| `ADMIN_TOKEN` | What Inês pastes into `/schedule`. |
+| `ADMIN_TOKEN` | Fallback way into `/schedule` if she is locked out of her account. |
 | `RESEND_API_KEY` | Transactional email. |
 | `TEACHER_EMAIL` | Where her booking notifications go. |
 | `STRIPE_SECRET_KEY` | Optional. Only read when `payment_mode` is `prepay`. |

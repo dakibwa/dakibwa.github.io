@@ -1,9 +1,12 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, CalendarOff, Check, Plus, Trash2 } from "lucide-react";
+import { AuthPanel } from "@/components/AuthPanel";
 import {
   addException,
+  cancelBookingAs,
+  createBookingFor,
   fetchBookings,
   fetchSchedule,
   minutesToTime,
@@ -13,7 +16,8 @@ import {
   type AdminBooking,
   type AvailabilityException
 } from "@/lib/admin-api";
-import { formatLongDate, formatSlotTime } from "@/lib/booking-api";
+import { clearSession, fetchMe, readSession, type Student } from "@/lib/auth-api";
+import { formatLongDate, formatSlotTime, portoTimeToUtc } from "@/lib/booking-api";
 import { BOOKING_CONFIGURED } from "@/lib/config";
 
 /** 1=Monday .. 0=Sunday, matching the Worker's JavaScript weekday convention. */
@@ -30,11 +34,15 @@ const weekdays = [
 type Window = { start: string; lastStart: string };
 type WeekState = Record<number, Window[]>;
 
-const STORAGE_KEY = "ines-schedule-token";
+type NewLesson = { email: string; name: string; lessonType: string; date: string; time: string; notes: string };
+const emptyLesson: NewLesson = { email: "", name: "", lessonType: "single", date: "", time: "17:00", notes: "" };
 
 export function TeacherSchedule() {
   const [token, setToken] = useState("");
-  const [tokenInput, setTokenInput] = useState("");
+  const [me, setMe] = useState<Student | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [newLesson, setNewLesson] = useState<NewLesson>(emptyLesson);
+  const [adding, setAdding] = useState(false);
   const [week, setWeek] = useState<WeekState>({});
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
@@ -44,12 +52,22 @@ export function TeacherSchedule() {
   const [newDayOff, setNewDayOff] = useState({ date: "", note: "" });
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) setToken(stored);
-    } catch {
-      // Private browsing or blocked storage: she just signs in each visit.
+    const session = readSession();
+    if (!session) {
+      setChecking(false);
+      return;
     }
+
+    // Her ordinary account carries a teacher role, so there is no second
+    // password to remember and her actions are attributable rather than
+    // anonymous.
+    fetchMe(session)
+      .then((data) => {
+        setMe(data?.student ?? null);
+        if (data?.student.role === "teacher") setToken(session);
+      })
+      .catch(() => clearSession())
+      .finally(() => setChecking(false));
   }, []);
 
   const load = useCallback(
@@ -71,11 +89,6 @@ export function TeacherSchedule() {
         setWeek(next);
         setExceptions(schedule.exceptions);
         setBookings(bookingList.bookings.filter((booking) => booking.status === "confirmed"));
-        try {
-          window.localStorage.setItem(STORAGE_KEY, activeToken);
-        } catch {
-          // Not being able to remember the key is not a failure worth surfacing.
-        }
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Could not load your schedule.");
         setToken("");
@@ -89,11 +102,6 @@ export function TeacherSchedule() {
   useEffect(() => {
     if (token) load(token);
   }, [token, load]);
-
-  function signIn(event: FormEvent) {
-    event.preventDefault();
-    setToken(tokenInput.trim());
-  }
 
   async function persist(nextWeek: WeekState) {
     setStatus("");
@@ -131,29 +139,32 @@ export function TeacherSchedule() {
     return <p className="booking-state-note">The booking service is not connected yet.</p>;
   }
 
+  if (checking) return <p className="booking-state-note">One moment…</p>;
+
   if (!token) {
+    // Signed in, but not as her: say so plainly rather than showing an empty
+    // schedule or a bare "not authorised".
+    if (me) {
+      return (
+        <div className="booking-alert" role="status">
+          <AlertCircle size={18} aria-hidden="true" />
+          <p>
+            You&rsquo;re signed in as {me.name}, and this page is Inês&rsquo;s. If it should be yours,{" "}
+            <a href="/my-lessons/">switch account</a>.
+          </p>
+        </div>
+      );
+    }
+
     return (
-      <form className="schedule-signin" onSubmit={signIn}>
-        <label>
-          <span>Access key</span>
-          <input
-            autoComplete="off"
-            onChange={(event) => setTokenInput(event.target.value)}
-            placeholder="Paste the key Dan gave you"
-            type="password"
-            value={tokenInput}
-          />
-        </label>
-        <button className="button button--coral" type="submit">
-          Open my schedule
-        </button>
-        {error ? (
-          <div className="booking-alert" role="alert">
-            <AlertCircle size={18} aria-hidden="true" />
-            <p>{error}</p>
-          </div>
-        ) : null}
-      </form>
+      <AuthPanel
+        heading="Sign in"
+        intro="Your teaching hours, your days off, and everything that's booked."
+        onSignedIn={(student) => {
+          setMe(student);
+          if (student.role === "teacher") setToken(readSession());
+        }}
+      />
     );
   }
 
@@ -173,6 +184,90 @@ export function TeacherSchedule() {
           </div>
         </div>
       ) : null}
+
+      <section className="schedule-block">
+        <h2>Add a lesson</h2>
+        <p className="booking-state-note">
+          For someone who booked with you another way. They&rsquo;ll get the same confirmation and calendar
+          invitation, and can change it themselves afterwards.
+        </p>
+
+        <form
+          className="schedule-add-lesson"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (!newLesson.email || !newLesson.date) return;
+            setAdding(true);
+            setError("");
+            try {
+              await createBookingFor(token, {
+                email: newLesson.email.trim(),
+                name: newLesson.name.trim(),
+                lessonType: newLesson.lessonType,
+                startAt: portoTimeToUtc(newLesson.date, newLesson.time),
+                location: "online",
+                notes: newLesson.notes.trim()
+              });
+              setNewLesson(emptyLesson);
+              setStatus("Added. They've been emailed the details.");
+              load(token);
+            } catch (caught) {
+              setError(caught instanceof Error ? caught.message : "That lesson could not be added.");
+            } finally {
+              setAdding(false);
+            }
+          }}
+        >
+          <label>
+            <span>Their email</span>
+            <input
+              onChange={(event) => setNewLesson((c) => ({ ...c, email: event.target.value }))}
+              required
+              type="email"
+              value={newLesson.email}
+            />
+          </label>
+          <label>
+            <span>Their name</span>
+            <input
+              onChange={(event) => setNewLesson((c) => ({ ...c, name: event.target.value }))}
+              value={newLesson.name}
+            />
+          </label>
+          <label>
+            <span>Lesson</span>
+            <select
+              onChange={(event) => setNewLesson((c) => ({ ...c, lessonType: event.target.value }))}
+              value={newLesson.lessonType}
+            >
+              <option value="trial">Trial lesson</option>
+              <option value="single">Single lesson</option>
+              <option value="long">Longer lesson</option>
+            </select>
+          </label>
+          <label>
+            <span>Date</span>
+            <input
+              onChange={(event) => setNewLesson((c) => ({ ...c, date: event.target.value }))}
+              required
+              type="date"
+              value={newLesson.date}
+            />
+          </label>
+          <label>
+            <span>Time (Porto)</span>
+            <input
+              onChange={(event) => setNewLesson((c) => ({ ...c, time: event.target.value }))}
+              required
+              type="time"
+              value={newLesson.time}
+            />
+          </label>
+          <button className="button button--coral" disabled={adding} type="submit">
+            {adding ? "Adding…" : "Add lesson"}
+          </button>
+        </form>
+      </section>
 
       <section className="schedule-block">
         <h2>Next lessons</h2>
@@ -195,6 +290,24 @@ export function TeacherSchedule() {
                 <div className="schedule-bookings__meta">
                   <a href={`mailto:${booking.student_email}`}>{booking.student_email}</a>
                   {booking.same_day_change ? <span className="schedule-flag">€5 same-day fee due</span> : null}
+                  <button
+                    className="schedule-cancel"
+                    onClick={async () => {
+                      // Deliberate confirmation: this emails the student and
+                      // takes the lesson out of her calendar.
+                      if (!window.confirm(`Cancel ${booking.student_name}'s lesson? They will be emailed.`)) return;
+                      try {
+                        await cancelBookingAs(token, booking.id);
+                        setStatus("Cancelled. They've been emailed.");
+                        load(token);
+                      } catch (caught) {
+                        setError(caught instanceof Error ? caught.message : "That could not be cancelled.");
+                      }
+                    }}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </li>
             ))}

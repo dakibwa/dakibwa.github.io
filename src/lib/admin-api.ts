@@ -1,5 +1,7 @@
 import { BOOKING_API_BASE_URL } from "@/lib/config";
 
+export type AdminStudent = { id: string; name: string; email: string; phone: string };
+
 export type AvailabilityRule = { id: number; weekday: number; start_minute: number; last_start_minute: number };
 export type AvailabilityException = { id: number; date: string; kind: "blocked" | "extra"; note: string };
 export type AdminBooking = {
@@ -59,6 +61,42 @@ export function removeException(token: string, id: number) {
   return adminRequest<{ ok: true }>(token, "/admin/exceptions", {
     method: "POST",
     body: JSON.stringify({ remove: id })
+  });
+}
+
+export function fetchStudents(token: string) {
+  return adminRequest<{ students: AdminStudent[] }>(token, "/admin/students");
+}
+
+/** Creates the student's account too, if this is their first lesson. */
+export function createBookingFor(
+  token: string,
+  input: {
+    email: string;
+    name: string;
+    lessonType: string;
+    startAt: string;
+    location: "online" | "porto";
+    notes: string;
+  }
+) {
+  return adminRequest<{ booking: { reference: string } }>(token, "/admin/bookings", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function rescheduleBookingAs(token: string, bookingId: string, startAt: string) {
+  return adminRequest<{ booking: { reference: string } }>(token, `/admin/bookings/${bookingId}/reschedule`, {
+    method: "POST",
+    body: JSON.stringify({ startAt })
+  });
+}
+
+export function cancelBookingAs(token: string, bookingId: string) {
+  return adminRequest<{ booking: { reference: string } }>(token, `/admin/bookings/${bookingId}/cancel`, {
+    method: "POST",
+    body: "{}"
   });
 }
 

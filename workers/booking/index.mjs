@@ -302,7 +302,14 @@ async function currentStudent(request, env) {
 }
 
 function publicStudent(row) {
-  return { id: row.id, email: row.email, name: row.name, phone: row.phone, timezone: row.timezone };
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    phone: row.phone,
+    timezone: row.timezone,
+    role: row.role ?? "student"
+  };
 }
 
 /**
@@ -371,7 +378,7 @@ const worker = {
       const cancel = path.match(/^\/bookings\/([^/]+)\/cancel$/);
       if (cancel && request.method === "POST") return handleCancel(request, env, ctx, cancel[1]);
 
-      if (path.startsWith("/admin/")) return handleAdmin(request, env, url, path);
+      if (path.startsWith("/admin/")) return handleAdmin(request, env, ctx, url, path);
 
       return fail("Not found.", 404, request, env);
     } catch (error) {
@@ -1002,11 +1009,26 @@ async function handleUpdateMe(request, env) {
   return json({ student: publicStudent(updated) }, 200, request, env);
 }
 
-async function handleAdmin(request, env, url, path) {
+/**
+ * Either the shared token, or a signed-in teacher.
+ *
+ * The token stays as the way back in if she is ever locked out of her own
+ * account; day to day she signs in as herself, which also means her actions are
+ * attributable rather than anonymous.
+ */
+async function isAdmin(request, env) {
   const provided = (request.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!env.ADMIN_TOKEN || !safeEqual(provided, env.ADMIN_TOKEN)) {
-    return fail("Not authorised.", 401, request, env);
-  }
+  if (env.ADMIN_TOKEN && safeEqual(provided, env.ADMIN_TOKEN)) return { via: "token", student: null };
+
+  const student = await currentStudent(request, env);
+  if (student?.role === "teacher") return { via: "account", student };
+
+  return null;
+}
+
+async function handleAdmin(request, env, ctx, url, path) {
+  const admin = await isAdmin(request, env);
+  if (!admin) return fail("Not authorised.", 401, request, env);
 
   if (request.method === "GET" && path === "/admin/bookings") {
     const from = url.searchParams.get("from") ?? new Date(Date.now() - 7 * 86400000).toISOString();
@@ -1073,6 +1095,176 @@ async function handleAdmin(request, env, url, path) {
       )
       .run();
     return json({ ok: true }, 200, request, env);
+  }
+
+  // --- Bookings on a student's behalf --------------------------------------
+
+  if (request.method === "GET" && path === "/admin/students") {
+    const { results } = await env.DB.prepare(
+      "SELECT id, name, email, phone FROM students WHERE role = 'student' ORDER BY name"
+    ).all();
+    return json({ students: results ?? [] }, 200, request, env);
+  }
+
+  if (request.method === "POST" && path === "/admin/bookings") {
+    const body = await readJson(request);
+    const email = normaliseEmail(body.email);
+    const name = cleanText(body.name, 120);
+    if (!isEmail(email)) return fail("Please give the student's email address.", 400, request, env);
+
+    const lessonType = await loadLessonType(env, cleanText(body.lessonType, 40) || "single");
+    if (!lessonType) return fail("That lesson type is not available.", 400, request, env);
+
+    const start = new Date(body.startAt);
+    if (Number.isNaN(start.getTime())) return fail("That time could not be understood.", 400, request, env);
+    const endsAt = new Date(start.getTime() + lessonType.duration_minutes * 60000);
+
+    /*
+     * Her own bookings are checked for clashes only — not against her published
+     * hours or the notice window. Those exist to shape what students may choose;
+     * she is the one who decides, and squeezing in a lesson outside them is a
+     * normal thing for her to do. A double booking is never intended, so that
+     * is still refused.
+     */
+    const clash = await env.DB.prepare(
+      `SELECT reference FROM bookings
+       WHERE status IN ('confirmed', 'pending_payment') AND ends_at > ? AND starts_at < ?`
+    )
+      .bind(start.toISOString(), endsAt.toISOString())
+      .first();
+    if (clash) return fail(`That overlaps an existing lesson (${clash.reference}).`, 409, request, env);
+
+    let student = await env.DB.prepare("SELECT * FROM students WHERE email = ?").bind(email).first();
+    const now = new Date().toISOString();
+
+    if (!student) {
+      // No password: the student sets one with "forgot password" when they
+      // first want to manage the lesson themselves.
+      const id = crypto.randomUUID();
+      await env.DB.prepare(
+        `INSERT INTO students (id, email, name, phone, timezone, password_hash, created_at)
+         VALUES (?, ?, ?, '', ?, '', ?)`
+      )
+        .bind(id, email, name || email.split("@")[0], PORTO, now)
+        .run();
+      student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(id).first();
+    }
+
+    const id = crypto.randomUUID();
+    const reference = bookingReference();
+    await env.DB.prepare(
+      `INSERT INTO bookings (id, reference, lesson_type_id, student_id, student_name, student_email, student_phone,
+         student_timezone, location, notes, starts_at, ends_at, status, sequence, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 0, ?, ?)`
+    )
+      .bind(
+        id,
+        reference,
+        lessonType.id,
+        student.id,
+        student.name,
+        student.email,
+        student.phone,
+        student.timezone,
+        body.location === "porto" ? "porto" : "online",
+        cleanText(body.notes, 1000),
+        start.toISOString(),
+        endsAt.toISOString(),
+        now,
+        now
+      )
+      .run();
+
+    const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
+    const settings = await loadSettings(env);
+    const token = await createManageToken(id, env.BOOKING_TOKEN_SECRET);
+
+    // The student is told, exactly as if they had booked it themselves.
+    ctx.waitUntil(
+      notify(env, {
+        event: "booked",
+        row,
+        lessonType,
+        settings,
+        manageUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`)
+      })
+    );
+
+    return json({ booking: publicBooking(row, lessonType, settings) }, 201, request, env);
+  }
+
+  const adminReschedule = path.match(/^\/admin\/bookings\/([^/]+)\/reschedule$/);
+  if (adminReschedule && request.method === "POST") {
+    const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(adminReschedule[1]).first();
+    if (!row) return fail("That booking could not be found.", 404, request, env);
+
+    const body = await readJson(request);
+    const start = new Date(body.startAt);
+    if (Number.isNaN(start.getTime())) return fail("That time could not be understood.", 400, request, env);
+
+    const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+      .bind(row.lesson_type_id)
+      .first();
+    const endsAt = new Date(start.getTime() + lessonType.duration_minutes * 60000);
+
+    const clash = await env.DB.prepare(
+      `SELECT reference FROM bookings
+       WHERE id != ? AND status IN ('confirmed', 'pending_payment') AND ends_at > ? AND starts_at < ?`
+    )
+      .bind(row.id, start.toISOString(), endsAt.toISOString())
+      .first();
+    if (clash) return fail(`That overlaps an existing lesson (${clash.reference}).`, 409, request, env);
+
+    const now = new Date();
+    await env.DB.prepare(
+      `UPDATE bookings SET starts_at = ?, ends_at = ?, previous_starts_at = ?, sequence = sequence + 1,
+         reschedule_count = reschedule_count + 1, same_day_change = 0, updated_at = ? WHERE id = ?`
+    )
+      .bind(start.toISOString(), endsAt.toISOString(), row.starts_at, now.toISOString(), row.id)
+      .run();
+
+    const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
+    const settings = await loadSettings(env);
+    const token = await createManageToken(row.id, env.BOOKING_TOKEN_SECRET);
+
+    ctx.waitUntil(
+      notify(env, {
+        event: "rescheduled",
+        row: updated,
+        lessonType,
+        settings,
+        manageUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`),
+        previousStartsAt: row.starts_at
+      })
+    );
+
+    return json({ booking: publicBooking(updated, lessonType, settings) }, 200, request, env);
+  }
+
+  const adminCancel = path.match(/^\/admin\/bookings\/([^/]+)\/cancel$/);
+  if (adminCancel && request.method === "POST") {
+    const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(adminCancel[1]).first();
+    if (!row) return fail("That booking could not be found.", 404, request, env);
+    if (row.status === "cancelled") return fail("That lesson is already cancelled.", 409, request, env);
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      `UPDATE bookings SET status = 'cancelled', cancelled_at = ?, cancelled_by = 'teacher',
+         sequence = sequence + 1, same_day_change = 0, updated_at = ? WHERE id = ?`
+    )
+      .bind(now, now, row.id)
+      .run();
+
+    const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
+    const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+      .bind(row.lesson_type_id)
+      .first();
+    const settings = await loadSettings(env);
+
+    // No same-day fee when she is the one cancelling.
+    ctx.waitUntil(notify(env, { event: "cancelled", row: updated, lessonType, settings, manageUrl: "" }));
+
+    return json({ booking: publicBooking(updated, lessonType, settings) }, 200, request, env);
   }
 
   if (request.method === "POST" && path === "/admin/settings") {

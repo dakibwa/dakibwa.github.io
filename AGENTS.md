@@ -21,4 +21,5 @@
 ## Documentation
 
 - Git owns website implementation and deployment history; the booking Worker's D1 database owns live booking state. Update `README.md` or `docs-booking-system.md` in the same commit whenever a material change alters customer behaviour, booking flow, architecture, providers, publication workflow, or the next milestone.
+- The admin endpoints are reachable by any account with `role = 'teacher'`, not only by the shared token. Anything added under `/admin/` is therefore something Inês can do from a browser she is signed into — check the permission path, not just the token path, when changing them.
 - Booking touches money, a student's time and Inês's calendar. Never change the manage-link token scheme, the iCalendar `UID`/`SEQUENCE` handling, or the same-day fee detection without running `npm run test:booking` — each has a failure mode that is invisible until a real student is affected.
