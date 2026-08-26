@@ -34,7 +34,6 @@ import {
 import { BOOKING_TIME_ZONE, CONTACT_WHATSAPP_URL, SAME_DAY_RESCHEDULE_FEE_CENTS, formatLessonDuration } from "@/lib/config";
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const spanFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" });
 
 type Step = "lesson" | "day" | "time" | "details";
 
@@ -223,12 +222,6 @@ export function BookingCalendar() {
     );
   }
 
-  const gridSpan = calendarDays.length
-    ? `${spanFormatter.format(new Date(`${calendarDays[0].key}T12:00:00Z`))} – ${spanFormatter.format(
-        new Date(`${calendarDays[calendarDays.length - 1].key}T12:00:00Z`)
-      )}`
-    : "";
-
   return (
     <section className="booking-steps" aria-label="Book a Portuguese lesson">
       {loadError ? (
@@ -290,9 +283,6 @@ export function BookingCalendar() {
             <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
               Pick a day
             </h2>
-            <p className="booking-step-note">
-              Days with times free are marked. {gridSpan ? `${gridSpan}, Porto time.` : "Porto time."}
-            </p>
 
             <div className="calendar-panel">
               <div className="calendar-weekdays" aria-hidden="true">
