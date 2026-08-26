@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "ines-booking",
-      "database_id": "PLACEHOLDER_SET_AFTER_CREATE"
+      "database_id": "e61786c2-f195-4087-b276-5f20bf64c429"
     }
   ],
   "vars": {
