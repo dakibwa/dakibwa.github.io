@@ -40,31 +40,18 @@ export default function LessonsPage() {
             One to one, in Porto or online. An hour, or an hour and a half if you want longer.
           </p>
           <div className="lesson-programme__grid">
-            {lessonProducts.map((product) => {
-              const options =
-                product.options ?? [{ price: product.price ?? "", duration: product.duration ?? "" }];
-
-              return (
-                <article className="lesson-product" key={product.id}>
-                  <p className="eyebrow">{product.title}</p>
-                  <div className="lesson-product__options">
-                    {options.map((option) => (
-                      <div className="lesson-product__option" key={option.duration}>
-                        <p className="lesson-product__price">{option.price}</p>
-                        <p className="lesson-product__duration">{option.duration}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <span className="lesson-product__rule" aria-hidden="true" />
-                  <p className="lesson-product__description">{product.description}</p>
-                  {product.note ? (
-                    <div className="lesson-product__note">
-                      <span>{product.note}</span>
-                    </div>
-                  ) : null}
-                </article>
-              );
-            })}
+            {lessonProducts.map((product) => (
+              <article className="lesson-product" key={product.id}>
+                <p className="eyebrow">{product.title}</p>
+                <p className="lesson-product__price">{product.price}</p>
+                <p className="lesson-product__duration">{product.duration}</p>
+                <span className="lesson-product__rule" aria-hidden="true" />
+                <p className="lesson-product__description">{product.description}</p>
+                <div className="lesson-product__note">
+                  <span>{product.note ?? ""}</span>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
 

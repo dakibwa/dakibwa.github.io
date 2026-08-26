@@ -732,22 +732,23 @@ html.route-is-leaving .route-fade {
 
 .lesson-programme__grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
 }
 
 /*
- * Trial has one price and Single has two, so the rules and descriptions used to
- * sit at different heights and could not be compared across the columns.
- * Subgrid pins title / prices / rule / description / note to shared rows.
+ * Subgrid pins title / price / duration / rule / description / note to shared
+ * rows, so the three prices sit on one line and the descriptions start
+ * together — otherwise a longer title in one column pushes everything below it
+ * out of step with its neighbours.
  */
 @media (min-width: 821px) {
   .lesson-programme__grid {
-    grid-template-rows: auto auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto auto;
   }
 
   .lesson-product {
     display: grid;
-    grid-row: span 5;
+    grid-row: span 6;
     grid-template-rows: subgrid;
     align-content: start;
   }
@@ -757,7 +758,7 @@ html.route-is-leaving .route-fade {
   position: relative;
   min-height: 330px;
   border-right: 1px solid var(--rule);
-  padding: 0 clamp(1.8rem, 4vw, 4.2rem);
+  padding: 0 clamp(1.4rem, 3vw, 2.8rem);
 }
 
 .lesson-product:first-child {
@@ -770,9 +771,9 @@ html.route-is-leaving .route-fade {
 }
 
 .lesson-product__price {
-  margin: 0;
+  margin: 0.35rem 0 0;
   font-family: var(--display);
-  font-size: clamp(3.5rem, 5.6vw, 5.6rem);
+  font-size: clamp(3rem, 4.6vw, 4.6rem);
   letter-spacing: -0.035em;
   line-height: 1.05;
 }
@@ -781,17 +782,6 @@ html.route-is-leaving .route-fade {
   margin: 0.35rem 0 0;
   font-size: clamp(1.15rem, 1.75vw, 1.45rem);
   line-height: 1.25;
-}
-
-.lesson-product__options {
-  display: grid;
-  margin-top: 0.35rem;
-  gap: 0.8rem;
-}
-
-.lesson-product__option + .lesson-product__option {
-  border-top: 1px solid var(--rule-soft);
-  padding-top: 0.8rem;
 }
 
 .lesson-product__rule {
@@ -1399,11 +1389,18 @@ html.route-is-leaving .route-fade {
 
 .calendar-grid button:disabled {
   cursor: not-allowed;
-  opacity: 0.3;
+  opacity: 0.38;
 }
 
+/*
+ * A bookable day was distinguished only by the weight and colour of its
+ * number, which on a cream grid on a cream page is almost nothing. It now
+ * carries its own surface, so the days you can actually pick read as the
+ * foreground and the rest recede.
+ */
 .calendar-grid button.has-availability {
-  color: var(--green);
+  background: rgba(170, 164, 230, 0.2);
+  color: var(--green-deep);
   font-weight: 700;
 }
 
@@ -1423,17 +1420,36 @@ html.route-is-leaving .route-fade {
   opacity: 0.75;
 }
 
-.calendar-grid button.is-today {
-  box-shadow: inset 0 0 0 1.5px var(--lavender-ink);
+/* Marked, but not as a selection — a ring read as "already chosen". */
+.calendar-grid button.is-today > span::after {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--lavender-ink);
+  content: "today";
+  font-family: var(--ui);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.calendar-grid button.is-selected,
+.calendar-grid button.is-selected.has-availability {
+  background: var(--green);
+  color: var(--paper);
+}
+
+.calendar-grid button.is-selected i {
+  background: var(--paper);
 }
 
 /* A dot rather than a border, so an available day still reads as available
    once it is hovered and the background inverts. */
 .calendar-grid button i {
   position: absolute;
-  bottom: 18%;
-  width: 5px;
-  height: 5px;
+  bottom: 16%;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--coral);
 }
@@ -1481,14 +1497,21 @@ html.route-is-leaving .route-fade {
 }
 
 .slot-grid button {
-  min-height: 56px;
+  min-height: 58px;
   border: 1px solid var(--rule);
-  background: transparent;
-  color: inherit;
+  /* A fill, so each time reads as its own thing rather than as an outline
+     drawn on the page behind it. */
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--green-deep);
   cursor: pointer;
   font-family: var(--ui);
-  font-size: 1rem;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  font-size: 1.02rem;
+  font-weight: 700;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.slot-grid button:hover {
+  transform: translateY(-1px);
 }
 
 .slot-grid button:hover,
@@ -1644,8 +1667,11 @@ html.route-is-leaving .route-fade {
 }
 
 .booking-confirm-button:disabled {
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0.55;
 }
 
 /* Booking outcome, and self-service management */
@@ -2064,8 +2090,17 @@ html.route-is-leaving .route-fade {
 .manage-booking__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   margin-top: 1.4rem;
   gap: 0.7rem;
+}
+
+.manage-booking__actions .button:disabled {
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .button--quiet {
