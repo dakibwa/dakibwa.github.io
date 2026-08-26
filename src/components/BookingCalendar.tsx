@@ -385,22 +385,10 @@ export function BookingCalendar() {
             <div className="booking-final">
               <aside className="booking-recap">
                 <LessonMark className="booking-recap__mark" lessonTypeId={lessonType?.id ?? "single"} />
-                <h3>
-                  {lessonType?.name}
-                  {/* Each choice stays changeable here, rather than needing a
-                      separate progress bar to step back through. */}
-                  <button onClick={() => goTo("lesson")} type="button">
-                    Change
-                  </button>
-                </h3>
+                <h3>{lessonType?.name}</h3>
                 <p>
                   <CalendarDays size={17} aria-hidden="true" />
-                  <span>
-                    {chosen ? `${formatLongDate(chosen.startAt)}, ${formatSlotTime(chosen.startAt)}` : "—"}
-                    <button onClick={() => goTo("time")} type="button">
-                      Change
-                    </button>
-                  </span>
+                  <span>{chosen ? `${formatLongDate(chosen.startAt)}, ${formatSlotTime(chosen.startAt)}` : "—"}</span>
                 </p>
                 {chosen && differingLocalTime(chosen.startAt, studentZone) ? (
                   <p>
@@ -418,7 +406,15 @@ export function BookingCalendar() {
                     {form.location === "porto" ? "In Porto" : "Online"}
                   </p>
                 </div>
-                {lessonType ? <strong>{formatMoneyCents(lessonType.price_cents)}</strong> : null}
+                {/* One control rather than a Change beside each line: two sat at
+                    the top competing with the heading, and the time is the only
+                    one worth reaching for from here. */}
+                <div className="booking-recap__foot">
+                  {lessonType ? <strong>{formatMoneyCents(lessonType.price_cents)}</strong> : null}
+                  <button className="booking-recap__change" onClick={() => goTo("time")} type="button">
+                    Change time
+                  </button>
+                </div>
               </aside>
 
               {checkingSession ? (

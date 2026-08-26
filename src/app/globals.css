@@ -1198,6 +1198,29 @@ html.route-is-leaving .route-fade {
 
 /* The fee is the part people need to have registered, so it carries weight
    rather than trailing the sentence in the same voice as everything else. */
+/*
+ * The page reads as an interface rather than a document, so dragging across it
+ * should not paint a selection. Anything a student may genuinely need to copy —
+ * their booking reference, the manage link, an email address, and every form
+ * field — opts back in below.
+ */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+.booking-success__reference dd,
+.booking-success__note,
+.lesson-list__reference,
+.manage-booking__facts dd,
+.schedule-bookings__meta,
+.booking-identity {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .booking-policy strong {
   color: var(--coral-action);
   font-weight: 700;
@@ -1518,8 +1541,18 @@ html.route-is-leaving .route-fade {
   border-bottom: 1px solid var(--rule-soft);
 }
 
+/*
+ * Fade the contents, not the cell.
+ *
+ * opacity on the button faded its borders too, so any edge drawn by an
+ * unavailable day rendered at 38% against a full-strength neighbour — which is
+ * why the line down the side of the bookable block kept looking absent.
+ */
 .calendar-week button:disabled {
   cursor: not-allowed;
+}
+
+.calendar-week button:disabled > span {
   opacity: 0.38;
 }
 
@@ -1731,6 +1764,20 @@ html.route-is-leaving .route-fade {
   text-transform: uppercase;
 }
 
+/* Price left, the one control right, on the card's bottom line. */
+.booking-recap__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 1rem;
+  gap: 0.75rem;
+}
+
+.booking-recap__foot strong {
+  margin-top: 0;
+}
+
 .booking-recap p > span {
   display: flex;
   flex-wrap: wrap;
@@ -1766,7 +1813,6 @@ html.route-is-leaving .route-fade {
 
 .booking-recap strong {
   display: block;
-  margin-top: 0.9rem;
   font-family: var(--display);
   font-size: 2.1rem;
 }
@@ -2439,7 +2485,7 @@ html.route-is-leaving .route-fade {
 .account-hero {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   align-items: center;
   overflow: hidden;
   padding: clamp(2rem, 4.5vw, 3.2rem) var(--page-pad);
@@ -2465,10 +2511,24 @@ html.route-is-leaving .route-fade {
   font-size: clamp(1rem, 1.6vw, 1.2rem);
 }
 
+/* Bigger, and behind the words: at this size it would otherwise push the
+   heading around on narrow screens. */
 .account-hero__mark {
-  width: clamp(84px, 12vw, 148px);
+  position: absolute;
+  top: 50%;
+  right: clamp(-2rem, -1vw, 0rem);
+  z-index: 0;
+  width: clamp(150px, 22vw, 290px);
   flex: none;
   aspect-ratio: 1;
+  opacity: 0.55;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.account-hero > div {
+  position: relative;
+  z-index: 1;
 }
 
 .manage-page {
