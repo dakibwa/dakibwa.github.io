@@ -16,9 +16,20 @@ const BRAND = {
   paper: "#f5ecd9",
   paperLight: "#fbf4e5",
   lavender: "#aaa4e6",
+  lavenderInk: "#665fa6",
+  lavenderWash: "#eeecf9",
   coral: "#ef5d3c",
-  coralAction: "#b43a26"
+  coralWash: "#fdeae5",
+  coralAction: "#b43a26",
+  rule: "#ded8f0"
 };
+
+/**
+ * Absolute, and on her own domain: an email is read long after it was sent and
+ * far from the site, so nothing here can be a relative path. Rebuild it with
+ * `npm run build:email-banner`.
+ */
+const BANNER_URL = "https://portuguesewithines.com/email/banner.png";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -35,72 +46,159 @@ function base64(text) {
   return btoa(binary);
 }
 
-function layout({ heading, intro, rows, callout, action, footer }) {
-  const rowsHtml = rows
-    .map(
-      ({ label, value }) => `
+/**
+ * One email layout, built to the constraints that actually bite:
+ *
+ * - Tables and inline styles only. No flexbox, no grid, no <style> block.
+ * - Images are blocked by default in most clients, so the banner sits on a
+ *   `bgcolor` that carries the brand on its own and has real alt text.
+ * - A preheader controls the grey preview line in the inbox list. Without one,
+ *   clients scrape the first visible text, which is usually the greeting.
+ */
+function layout({ heading, preheader, intro, hero, heroNote, rows, callout, action, footer }) {
+  // The final row carries no rule: :last-child is unreliable across email
+  // clients, and the footer already draws one, which doubled the line.
+  const rowsHtml = rows.length
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${rows
+        .map(({ label, value }, index) => {
+          const rule = index === rows.length - 1 ? "none" : `1px solid ${BRAND.rule}`;
+          return `
         <tr>
-          <td style="padding:10px 0;border-bottom:1px solid rgba(139,130,211,.32);font:600 12px/1.4 Arial,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#665fa6;width:38%;vertical-align:top">${escapeHtml(
-            label
-          )}</td>
-          <td style="padding:10px 0;border-bottom:1px solid rgba(139,130,211,.32);font:400 16px/1.5 Arial,sans-serif;color:${
+          <td style="padding:11px 0;border-bottom:${rule};font:700 11px/1.4 Arial,Helvetica,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:${
+            BRAND.lavenderInk
+          };width:36%;vertical-align:top">${escapeHtml(label)}</td>
+          <td style="padding:11px 0;border-bottom:${rule};font:400 15px/1.5 Arial,Helvetica,sans-serif;color:${
             BRAND.ink
           }">${value}</td>
-        </tr>`
-    )
-    .join("");
+        </tr>`;
+        })
+        .join("")}</table>`
+    : "";
 
-  return `<!doctype html><html><body style="margin:0;padding:0;background:${BRAND.paper}">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.paper};padding:32px 16px">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:${
-        BRAND.paperLight
-      };border-radius:18px;overflow:hidden">
-        <tr><td style="background:${BRAND.blue};padding:28px 32px">
-          <p style="margin:0;font:600 12px/1.4 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:${
-            BRAND.lavender
-          }">Português com a Inês</p>
-          <h1 style="margin:8px 0 0;font:400 27px/1.25 Georgia,serif;color:${BRAND.paperLight}">${escapeHtml(
-            heading
-          )}</h1>
-        </td></tr>
-        <tr><td style="padding:28px 32px">
-          <p style="margin:0 0 20px;font:400 16px/1.6 Arial,sans-serif;color:${BRAND.ink}">${intro}</p>
-          ${
-            callout
-              ? `<p style="margin:0 0 20px;padding:14px 16px;border-left:4px solid ${BRAND.coral};background:rgba(239,93,60,.09);border-radius:0 10px 10px 0;font:400 15px/1.6 Arial,sans-serif;color:${BRAND.ink}">${callout}</p>`
-              : ""
-          }
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rowsHtml}</table>
-          ${
-            action
-              ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 6px"><tr><td style="border-radius:999px;background:${BRAND.coralAction}"><a href="${escapeHtml(
-                  action.url
-                )}" style="display:inline-block;padding:13px 26px;font:600 15px/1 Arial,sans-serif;color:#fff;text-decoration:none;border-radius:999px">${escapeHtml(
-                  action.label
-                )}</a></td></tr></table>
-                 <p style="margin:12px 0 0;font:400 13px/1.6 Arial,sans-serif;color:#665fa6;word-break:break-all">Or paste this into your browser:<br>${escapeHtml(
-                   action.url
-                 )}</p>`
-              : ""
-          }
-        </td></tr>
-        <tr><td style="padding:0 32px 30px">
-          <p style="margin:0;font:400 13px/1.6 Arial,sans-serif;color:#665fa6">${footer}</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
+  return `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>${escapeHtml(heading)}</title>
+</head>
+<body style="margin:0;padding:0;background:${BRAND.paper};-webkit-text-size-adjust:100%">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px">${escapeHtml(
+    preheader ?? ""
+  )}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${
+    BRAND.paper
+  };border-collapse:collapse">
+  <tr><td align="center" style="padding:28px 14px 40px">
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;border-collapse:collapse;background:${
+      BRAND.paperLight
+    };border-radius:16px;overflow:hidden">
+
+      <tr><td bgcolor="${BRAND.blue}" style="background:${BRAND.blue};line-height:0">
+        <img src="${BANNER_URL}" width="560" alt="Português com a Inês" style="display:block;width:100%;max-width:560px;height:auto;border:0">
+      </td></tr>
+
+      <tr><td style="padding:30px 32px 0">
+        <h1 style="margin:0;font:400 26px/1.2 Georgia,'Times New Roman',serif;color:${BRAND.ink}">${escapeHtml(
+          heading
+        )}</h1>
+        <p style="margin:12px 0 0;font:400 16px/1.65 Arial,Helvetica,sans-serif;color:${BRAND.ink}">${intro}</p>
+      </td></tr>
+
+      ${
+        hero
+          ? `<tr><td style="padding:22px 32px 0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:${
+          BRAND.lavenderWash
+        };border-radius:12px">
+          <tr><td style="padding:18px 22px">
+            <p style="margin:0;font:700 11px/1.4 Arial,Helvetica,sans-serif;letter-spacing:.11em;text-transform:uppercase;color:${
+              BRAND.lavenderInk
+            }">When</p>
+            <p style="margin:6px 0 0;font:400 21px/1.35 Georgia,'Times New Roman',serif;color:${
+              BRAND.blue
+            }">${escapeHtml(hero)}</p>
+            ${
+              heroNote
+                ? `<p style="margin:5px 0 0;font:400 14px/1.5 Arial,Helvetica,sans-serif;color:${BRAND.lavenderInk}">${escapeHtml(
+                    heroNote
+                  )}</p>`
+                : ""
+            }
+          </td></tr>
+        </table>
+      </td></tr>`
+          : ""
+      }
+
+      ${
+        callout
+          ? `<tr><td style="padding:20px 32px 0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:${
+          BRAND.coralWash
+        };border-radius:12px">
+          <tr>
+            <td width="4" bgcolor="${BRAND.coral}" style="background:${BRAND.coral};width:4px;line-height:0">&nbsp;</td>
+            <td style="padding:14px 18px;font:400 15px/1.6 Arial,Helvetica,sans-serif;color:${
+              BRAND.ink
+            }">${callout}</td>
+          </tr>
+        </table>
+      </td></tr>`
+          : ""
+      }
+
+      ${rowsHtml ? `<tr><td style="padding:22px 32px 0">${rowsHtml}</td></tr>` : ""}
+
+      ${
+        action
+          ? `<tr><td align="center" style="padding:26px 32px 0">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:separate">
+          <tr><td bgcolor="${BRAND.coralAction}" style="background:${
+            BRAND.coralAction
+          };border-radius:8px" align="center">
+            <a href="${escapeHtml(action.url)}" style="display:block;padding:16px 34px;font:700 16px/1 Arial,Helvetica,sans-serif;color:#ffffff;text-decoration:none;border-radius:8px">${escapeHtml(
+              action.label
+            )}</a>
+          </td></tr>
+        </table>
+        <p style="margin:14px 0 0;font:400 12px/1.6 Arial,Helvetica,sans-serif;color:${
+          BRAND.lavenderInk
+        };word-break:break-all">Or paste this into your browser:<br>${escapeHtml(action.url)}</p>
+      </td></tr>`
+          : ""
+      }
+
+      <tr><td style="padding:26px 32px 30px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+          <tr><td style="border-top:1px solid ${BRAND.rule};padding-top:18px">
+            <p style="margin:0;font:400 13px/1.65 Arial,Helvetica,sans-serif;color:${BRAND.lavenderInk}">${footer}</p>
+            <p style="margin:10px 0 0;font:400 13px/1.65 Arial,Helvetica,sans-serif;color:${BRAND.lavenderInk}">
+              <a href="https://portuguesewithines.com" style="color:${
+                BRAND.lavenderInk
+              };text-decoration:underline">portuguesewithines.com</a>
+            </p>
+          </td></tr>
+        </table>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
 </body></html>`;
 }
 
-function plainText({ heading, intro, rows, callout, action, footer }) {
+function plainText({ heading, intro, hero, heroNote, rows, callout, action, footer }) {
   const lines = [heading, "", stripTags(intro)];
+  // heroNote already reads "… — your time", so a bracket here nests badly.
+  if (hero) lines.push("", `When: ${hero}`, ...(heroNote ? [heroNote] : []));
   if (callout) lines.push("", stripTags(callout));
-  lines.push("");
-  for (const { label, value } of rows) lines.push(`${label}: ${stripTags(value)}`);
+  if (rows.length) {
+    lines.push("");
+    for (const { label, value } of rows) lines.push(`${label}: ${stripTags(value)}`);
+  }
   if (action) lines.push("", `${action.label}: ${action.url}`);
-  lines.push("", stripTags(footer));
+  lines.push("", stripTags(footer), "portuguesewithines.com");
   return lines.join("\n");
 }
 

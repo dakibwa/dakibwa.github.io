@@ -134,22 +134,19 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   // Null unless the student's clock genuinely reads differently from Porto's.
   const studentTime = differingZonedTime(start, studentZone);
 
-  const commonRows = [
+  // The date and time is the one thing the reader is looking for, so it is
+  // lifted out of the detail table into its own panel rather than being the
+  // second row of five.
+  const hero = portoTime;
+  // Porto time *is* Inês's time, so this note is the student's clock on her
+  // copy and their own on theirs. Labelling it "Your time" to her was wrong.
+  const studentHeroNote = studentTime ? `${studentTime} — your time` : "";
+  const teacherHeroNote = studentTime ? `${studentTime} — the student's time` : "";
+
+  const baseRows = [
     { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
-    { label: "Porto time", value: portoTime }
-  ];
-  const tailRows = [
     { label: "Where", value: locationLabel(row) },
     { label: "Reference", value: row.reference }
-  ];
-
-  // Porto time *is* Inês's time, so the second row is the student's on her copy
-  // and the student's own on theirs. Labelling it "Your time" to her was wrong.
-  const studentRows = [...commonRows, ...(studentTime ? [{ label: "Your time", value: studentTime }] : []), ...tailRows];
-  const teacherRows = [
-    ...commonRows,
-    ...(studentTime ? [{ label: "Student's time", value: studentTime }] : []),
-    ...tailRows
   ];
 
   const uid = calendarUid(row.id);
@@ -246,7 +243,10 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         heading: student.heading,
         intro: student.intro,
         callout: student.callout,
-        rows: studentRows,
+        hero,
+        heroNote: studentHeroNote,
+        preheader: `${lessonType.name} · ${portoTime} · ${row.reference}`,
+        rows: baseRows,
         action: manageUrl && event !== "cancelled" ? { label: "Change or cancel this lesson", url: manageUrl } : null,
         footer: student.footer
       }
@@ -267,8 +267,11 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           heading: teacher.heading,
           intro: teacher.intro,
           callout: teacher.callout,
+          hero,
+          heroNote: teacherHeroNote,
+          preheader: `${row.student_name} · ${lessonType.name} · ${portoTime}`,
           rows: [
-            ...teacherRows,
+            ...baseRows,
             { label: "Student", value: `${row.student_name}<br>${row.student_email}${row.student_phone ? `<br>${row.student_phone}` : ""}` },
             ...(row.notes ? [{ label: "Notes", value: row.notes }] : [])
           ],
@@ -886,6 +889,7 @@ async function handleForgot(request, env, ctx) {
         replyTo: settings.replyToEmail || undefined,
         content: {
           heading: "Reset your password",
+          preheader: "Choose a new password — the link works for one hour.",
           intro: `Olá ${student.name.split(" ")[0]}, use the button below to choose a new password. The link works for one hour, and only once.`,
           callout: "",
           rows: [],

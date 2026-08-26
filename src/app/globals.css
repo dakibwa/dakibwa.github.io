@@ -1812,8 +1812,20 @@ html.route-is-leaving .route-fade {
   text-decoration: underline;
 }
 
+/* Set apart from the four content links: it goes to the student's own area,
+   not to another page about the lessons. */
 .site-nav__link--account {
   color: var(--lavender-ink);
+}
+
+.site-nav__link--account::before {
+  display: inline-block;
+  width: 1px;
+  height: 0.85em;
+  margin-right: 1.15rem;
+  background: var(--rule);
+  content: "";
+  vertical-align: -0.05em;
 }
 
 .booking-identity {
