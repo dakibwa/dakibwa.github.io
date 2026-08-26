@@ -71,14 +71,18 @@ jobs:
 
       - name: Check customer journeys against the built site
         run: |
-          python3 -m http.server 3000 --directory out &
+          # localhost, not 127.0.0.1: the browser sends the host it was given as
+          # the Origin, and the Worker's allow-list carries localhost:3000. Using
+          # the raw IP meant every API call was refused by CORS, so the booking
+          # page rendered with no lesson types.
+          python3 -m http.server 3000 --bind 127.0.0.1 --directory out &
           SERVER_PID=$!
           trap 'kill $SERVER_PID' EXIT
           for _ in $(seq 1 20); do
-            curl -sf http://127.0.0.1:3000/ > /dev/null && break
+            curl -sf http://localhost:3000/ > /dev/null && break
             sleep 1
           done
-          QA_BASE_URL=http://127.0.0.1:3000 npm run test:flow
+          QA_BASE_URL=http://localhost:3000 npm run test:flow
 
       # Two uploads of one build: the Pages-shaped tarball for the preview, and
       # the plain directory the Cloudflare deploy needs. Hidden files are kept

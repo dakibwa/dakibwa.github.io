@@ -112,10 +112,14 @@ if (!bookingCalendar && !bookingPlaceholder) {
 }
 
 if (bookingCalendar) {
-  await page.waitForSelector(".lesson-card", { timeout: 10_000 });
-  const lessonTypeCount = await page.locator(".lesson-card").count();
-  if (lessonTypeCount < 1) {
-    throw new Error("The booking flow rendered no lesson types.");
+  try {
+    await page.waitForSelector(".lesson-card", { timeout: 10_000 });
+  } catch {
+    const alert = await page.locator(".booking-alert").innerText().catch(() => "");
+    throw new Error(
+      `The booking flow rendered no lesson types. This is usually the booking API refusing the origin ${base} ` +
+        `via CORS, or being unreachable.${alert ? ` The page said: ${alert.replace(/\s+/g, " ").trim()}` : ""}`
+    );
   }
 
   const bookingText = (await page.locator(".booking-composition").innerText()).toLowerCase();
