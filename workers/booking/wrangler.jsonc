@@ -20,9 +20,11 @@
     "SITE_URL": "https://portuguesewithines.com",
     "MAIL_FROM": "Português com a Inês <bookings@portuguesewithines.com>",
     "MAIL_SENDER_ADDRESS": "bookings@portuguesewithines.com",
-    // Flip to "0" once the Resend domain is verified. Until then every message
-    // is written to email_log and logged, and nothing is actually sent.
-    "EMAIL_DRY_RUN": "1"
+    // portuguesewithines.com was verified in Resend on 26 August 2026 (DKIM,
+    // SPF MX and SPF TXT all confirmed), so mail sends for real. Setting this
+    // back to "1" stops all sending and records to email_log instead, which is
+    // what to do while testing rather than pointing it at a spare address.
+    "EMAIL_DRY_RUN": "0"
   },
   "secrets": {
     // wrangler secret put <NAME> --config workers/booking/wrangler.jsonc
