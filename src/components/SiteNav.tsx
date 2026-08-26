@@ -25,6 +25,22 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
     setOpen(false);
   }, [pathname]);
 
+  // The footer's Menu button asks for this menu without either component
+  // needing to know about the other.
+  useEffect(() => {
+    function onRequest() {
+      setOpen(true);
+      window.scrollTo({
+        top: 0,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"
+      });
+      requestAnimationFrame(() => toggleRef.current?.focus());
+    }
+
+    window.addEventListener("ines:open-menu", onRequest);
+    return () => window.removeEventListener("ines:open-menu", onRequest);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
 

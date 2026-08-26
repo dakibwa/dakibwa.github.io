@@ -1196,6 +1196,14 @@ html.route-is-leaving .route-fade {
   margin: 0;
 }
 
+/* The fee is the part people need to have registered, so it carries weight
+   rather than trailing the sentence in the same voice as everything else. */
+.booking-policy strong {
+  color: var(--coral-action);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .booking-policy .eyebrow {
   color: var(--ink);
 }
@@ -1562,30 +1570,13 @@ html.route-is-leaving .route-fade {
   color: var(--paper);
 }
 
-.calendar-week button.is-selected i {
-  background: var(--paper);
-}
-
-/* A dot rather than a border, so an available day still reads as available
-   once it is hovered and the background inverts. */
-.calendar-week button i {
-  position: absolute;
-  bottom: 16%;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--coral);
-}
+/* No dot: a bookable day is already blue, bold and on its own surface, so a
+   marker beside it repeated what three other signals were saying. */
 
 .calendar-week button.has-availability:hover,
 .calendar-week button.has-availability:focus-visible {
   background: var(--green);
   color: var(--paper);
-}
-
-.calendar-week button.has-availability:hover i,
-.calendar-week button.has-availability:focus-visible i {
-  background: var(--paper);
 }
 
 /* Dates from the neighbouring month. They are real and bookable, but must not
@@ -1698,19 +1689,21 @@ html.route-is-leaving .route-fade {
   background: rgba(170, 164, 230, 0.14);
 }
 
-/* Corner, as on the sign-in card, rather than a band above the heading. */
+/* As on the sign-in card: behind the words, bleeding off the corner. */
 .booking-recap__mark {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 46px;
-  height: 46px;
-  opacity: 0.9;
+  top: -18px;
+  right: -22px;
+  z-index: 0;
+  width: 128px;
+  height: 128px;
+  opacity: 0.3;
   pointer-events: none;
 }
 
-.booking-recap h3 {
-  padding-right: 54px;
+.booking-recap > *:not(.booking-recap__mark) {
+  position: relative;
+  z-index: 1;
 }
 
 .booking-recap h3 {
@@ -1853,16 +1846,25 @@ html.route-is-leaving .route-fade {
 
 /* .asset-mark is display:block with no intrinsic size, so without this the
    splat expands to the full width of the card. */
-/* Tucked into the corner rather than stacked above the heading, which cost a
-   whole band of vertical space on a phone for a purely decorative mark. */
+/*
+ * Decoration, so it sits behind the words and bleeds off the corner rather
+ * than reserving space beside them. At 46px inside the padding it collided
+ * with a long heading; larger and behind, an overlap reads as intended.
+ */
 .auth-panel__mark {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 46px;
-  height: 46px;
-  opacity: 0.9;
+  top: -18px;
+  right: -22px;
+  z-index: 0;
+  width: 128px;
+  height: 128px;
+  opacity: 0.3;
   pointer-events: none;
+}
+
+.auth-panel > *:not(.auth-panel__mark) {
+  position: relative;
+  z-index: 1;
 }
 
 .auth-panel h3 {
@@ -2859,10 +2861,12 @@ html.route-is-leaving .route-fade {
 
 /* Quieter than "Message Inês", which is the one thing here worth acting on. */
 .site-footer__top {
+  position: relative;
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   border: 0;
+  padding: 0 0 2px;
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -2871,15 +2875,40 @@ html.route-is-leaving .route-fade {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  opacity: 0.72;
   text-transform: uppercase;
-  transition: opacity 160ms ease, color 160ms ease;
+  transition: color 160ms ease;
 }
 
-.site-footer__top:hover,
-.site-footer__top:focus-visible {
-  color: var(--lavender);
+/* The same coral underline the rest of the site's links grow on hover. */
+.site-footer__top::after {
+  position: absolute;
+  right: 0;
+  bottom: 8px;
+  left: 0;
+  height: 1.5px;
+  background: var(--coral);
+  content: "";
+  opacity: 0;
+  transform: scaleX(0.4);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.site-footer__top:hover::after,
+.site-footer__top:focus-visible::after {
   opacity: 1;
+  transform: scaleX(1);
+}
+
+/* Only where the header's links are behind a toggle; above that the footer
+   already lists every page across one row. */
+.site-footer__menu {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .site-footer__menu {
+    display: inline-flex;
+  }
 }
 
 .site-footer__contact a {

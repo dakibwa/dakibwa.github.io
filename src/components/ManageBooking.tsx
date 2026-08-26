@@ -311,7 +311,6 @@ export function ManageBooking() {
                               {cell.day}
                               {cell.month !== week.monthNumber ? <em>{shortMonth(cell.month, cell.key)}</em> : null}
                             </span>
-                            {slots.length ? <i aria-hidden="true" /> : null}
                           </button>
                         );
                       })}

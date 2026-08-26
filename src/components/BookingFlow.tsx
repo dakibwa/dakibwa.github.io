@@ -79,9 +79,8 @@ export function BookingFlow() {
           <div>
             <p className="eyebrow">Changing a lesson</p>
             <p>
-              Move to any time that&rsquo;s free, from the link in your confirmation email or your{" "}
-              <a href="/my-lessons/">lessons page</a>. It costs nothing the day before or earlier; on the day itself
-              there&rsquo;s a {sameDayFee} fee.
+              Move it from the link in your confirmation email, or your <a href="/my-lessons/">lessons page</a>. Free
+              the day before or earlier &mdash; <strong>{sameDayFee} on the day itself</strong>.
             </p>
           </div>
         </section>
