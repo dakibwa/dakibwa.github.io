@@ -1079,15 +1079,19 @@ html.route-is-leaving .route-fade {
 .booking-composition {
   display: grid;
   grid-template-columns: minmax(390px, 40%) 1fr;
-  align-items: start;
+  /* Stretch, not start: the two columns then share one height, so the cream
+     panel matches the blue one instead of ending wherever the current step
+     happens to finish. Each step used to change the panel height — 485px,
+     749px, 375px, 1074px — which read as the page jumping about. */
+  align-items: stretch;
   border-bottom: 1px solid var(--rule);
   background-color: var(--green);
   background-image: var(--paper-texture);
 }
 
 .booking-intro {
-  position: sticky;
-  top: 0;
+  /* Was sticky. A stretched grid item is already the full row height, so
+     sticky had nothing left to do and only made the rule harder to read. */
   overflow: hidden;
   padding: 2.8rem var(--page-pad) 3.2rem;
   background-color: var(--green);
@@ -1511,8 +1515,10 @@ html.route-is-leaving .route-fade {
   align-items: start;
 }
 
-/* Side by side only when the column is genuinely wide enough for both. */
-@container booking (min-width: 660px) {
+/* Side by side once the column can genuinely hold both. At 660px the confirm
+   step was still stacking at 1280px viewport — the one width where the panel
+   grew past the blue side — so this sits just under where that column lands. */
+@container booking (min-width: 560px) {
   .booking-final {
     grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.2fr);
   }
