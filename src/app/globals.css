@@ -1136,11 +1136,6 @@ html.route-is-leaving .route-fade {
   height: 62px;
 }
 
-/*
- * Previously pinned to the panel bottom, which only cleared the reassurance
- * list while the panel kept a hand-tuned min-height. Letting it flow after the
- * list keeps the panel content-sized and cannot overlap at any width.
- */
 .booking-intro__time-window {
   width: min(42%, 280px);
   margin: 2.4rem 0 0 auto;
@@ -1153,82 +1148,11 @@ html.route-is-leaving .route-fade {
   padding: 2rem var(--page-pad) 3rem;
   background-color: var(--paper);
   background-image: var(--paper-texture);
-}
-
-.booking-provider__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--rule);
-  padding-bottom: 1.25rem;
-  gap: 1.5rem;
-}
-
-.booking-provider__header h2 {
-  max-width: 780px;
-  margin-bottom: 1rem;
-  font-family: var(--display);
-  font-size: clamp(2.2rem, 4vw, 3.8rem);
-  font-weight: 400;
-  letter-spacing: -0.035em;
-  line-height: 1.12;
-}
-
-.booking-provider__header p:last-child {
-  max-width: 580px;
-  margin: 0;
-}
-
-.booking-provider__direct {
-  flex: 0 0 auto;
-}
-
-.booking-widget-stack {
-  margin-top: 1rem;
-}
-
-.booking-embed-frame {
-  position: relative;
-  min-height: 780px;
-  overflow: hidden;
-  border: 1px solid var(--rule);
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.booking-embed-frame iframe {
-  position: relative;
-  z-index: 2;
-  display: block;
-  width: 100%;
-  border: 0;
-  background: white;
-}
-
-.booking-loading {
-  position: absolute;
-  top: 2rem;
-  left: 2rem;
-  z-index: 1;
-  font-family: var(--ui);
-  font-size: 0.8rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.booking-fallback-note {
-  margin: 0.9rem 0 0;
-  font-size: 0.92rem;
-}
-
-/* The recovery route has to be actionable where the failure is noticed. */
-.booking-fallback-note a {
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.booking-fallback-note a:hover {
-  color: var(--coral-action);
+  /* The booking column is a fraction of the viewport, not the viewport, so its
+     contents have to respond to the column. A media query gets this wrong in
+     the middle sizes — at 900px the two-column confirm step overflowed. */
+  container-type: inline-size;
+  container-name: booking;
 }
 
 .booking-placeholder {
@@ -1282,24 +1206,207 @@ html.route-is-leaving .route-fade {
 
 /* Future custom Square calendar; dormant until the API is genuinely live. */
 
-.custom-booking-calendar {
+/* Stepped booking: lesson, then day, then time, then details. Each step gets
+   the whole width, which is what stopped it feeling cramped. */
+
+.booking-trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.5rem;
+  list-style: none;
+}
+
+.booking-trail button {
+  display: flex;
+  align-items: center;
+  border: 0;
+  padding: 0.3rem 0;
+  background: transparent;
+  color: inherit;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.booking-trail button:not(:disabled) {
+  cursor: pointer;
+}
+
+.booking-trail li:not(.is-current):not(.is-done) button {
+  opacity: 0.42;
+}
+
+.booking-trail__index {
   display: grid;
-  grid-template-columns: minmax(300px, 0.9fr) minmax(330px, 1.1fr);
-  margin-top: 1.5rem;
+  width: 25px;
+  height: 25px;
+  flex: none;
+  place-items: center;
+  border: 1.5px solid var(--rule);
+  border-radius: 50%;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.booking-trail .is-current .booking-trail__index {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--paper);
+}
+
+.booking-trail .is-done .booking-trail__index {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.booking-trail__label {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.booking-trail__label em {
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+  opacity: 0.72;
+  text-transform: none;
+}
+
+.booking-squiggle {
+  display: block;
+  width: 100%;
+  height: 11px;
+  margin: 1rem 0 1.75rem;
+  color: var(--rule);
+}
+
+.booking-back {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--lavender-ink);
+  cursor: pointer;
+  gap: 0.35rem;
+  font-family: var(--ui);
+  font-size: 0.78rem;
+}
+
+.booking-back:hover {
+  color: var(--coral-action);
+}
+
+.booking-step-heading {
+  margin: 0.5rem 0 0.3rem;
+  font-family: var(--display);
+  font-size: clamp(1.9rem, 4.2vw, 2.9rem);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.booking-step-heading:focus-visible {
+  outline-offset: 6px;
+}
+
+.booking-step-note {
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  opacity: 0.8;
+}
+
+/* Step 1 — lesson */
+
+.lesson-choice {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin-top: 1.25rem;
+  gap: 0.85rem;
+}
+
+.lesson-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   border: 1px solid var(--rule);
+  padding: 1.6rem 1.5rem 1.4rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  gap: 0.45rem;
+  text-align: left;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
-.calendar-column,
-.booking-detail-column {
-  padding: 1.5rem;
+.lesson-card:hover,
+.lesson-card:focus-visible {
+  border-color: var(--coral);
+  background: rgba(170, 164, 230, 0.16);
 }
 
-.calendar-column {
-  border-right: 1px solid var(--rule);
+/* The brand emblems, used at their production colours. */
+.lesson-card__mark {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 0.2rem;
+}
+
+.lesson-card__mark .asset-mark__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.lesson-card strong {
+  font-family: var(--display);
+  font-size: 1.75rem;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.lesson-card__meta {
+  font-family: var(--ui);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.lesson-card__description {
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  opacity: 0.82;
+}
+
+.lesson-card__go {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.9rem;
+  gap: 0.25rem;
+  font-family: var(--ui);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Step 2 — day */
+
+.calendar-panel {
+  max-width: 720px;
+  border: 1px solid var(--rule);
+  padding: clamp(1rem, 2.4vw, 1.75rem);
 }
 
 .calendar-section-heading h2,
-.lesson-summary h3,
 .student-details-form h3 {
   margin-bottom: 0.3rem;
   font-family: var(--ui);
@@ -1318,8 +1425,13 @@ html.route-is-leaving .route-fade {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid var(--rule);
-  padding: 0.75rem 0;
+  padding: 0 0 0.75rem;
+}
+
+.calendar-month-nav strong {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 400;
 }
 
 .calendar-month-nav button {
@@ -1329,7 +1441,13 @@ html.route-is-leaving .route-fade {
   place-items: center;
   border: 0;
   background: transparent;
+  color: inherit;
   cursor: pointer;
+}
+
+.calendar-month-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.28;
 }
 
 .calendar-weekdays,
@@ -1341,19 +1459,27 @@ html.route-is-leaving .route-fade {
 .calendar-weekdays span {
   padding: 0.55rem 0;
   font-family: var(--ui);
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   font-weight: 700;
+  letter-spacing: 0.06em;
   text-align: center;
   text-transform: uppercase;
+  opacity: 0.7;
 }
 
 .calendar-grid button {
+  position: relative;
+  display: grid;
   aspect-ratio: 1;
+  place-items: center;
   border: 0;
   border-top: 1px solid var(--rule-soft);
   border-left: 1px solid var(--rule-soft);
   background: transparent;
+  color: inherit;
   cursor: pointer;
+  font-size: clamp(0.9rem, 1.6vw, 1.05rem);
+  transition: background 120ms ease, color 120ms ease;
 }
 
 .calendar-grid button:nth-child(7n) {
@@ -1366,12 +1492,34 @@ html.route-is-leaving .route-fade {
 
 .calendar-grid button:disabled {
   cursor: not-allowed;
-  opacity: 0.32;
+  opacity: 0.3;
 }
 
 .calendar-grid button.has-availability {
   color: var(--green);
   font-weight: 700;
+}
+
+/* A dot rather than a border, so an available day still reads as available
+   once it is hovered and the background inverts. */
+.calendar-grid button i {
+  position: absolute;
+  bottom: 18%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+
+.calendar-grid button.has-availability:hover,
+.calendar-grid button.has-availability:focus-visible {
+  background: var(--green);
+  color: var(--paper);
+}
+
+.calendar-grid button.has-availability:hover i,
+.calendar-grid button.has-availability:focus-visible i {
+  background: var(--paper);
 }
 
 /* Dates from the neighbouring month. They are real and bookable, but must not
@@ -1381,87 +1529,136 @@ html.route-is-leaving .route-fade {
   font-weight: 400;
 }
 
-.calendar-grid button.is-selected,
-.slot-grid button.is-selected {
-  background: var(--green);
-  color: var(--paper);
+/* Step 3 — time */
+
+.time-groups {
+  display: grid;
+  margin-top: 1.25rem;
+  gap: 1.75rem;
 }
 
-.calendar-note {
-  display: flex;
-  align-items: center;
-  margin-top: 1rem;
-  gap: 0.7rem;
-}
-
-.calendar-note span {
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--green);
-}
-
-.calendar-note p {
-  margin: 0;
-  font-size: 0.8rem;
-}
-
-.time-panel {
-  border-bottom: 1px solid var(--rule);
-  padding-bottom: 1.3rem;
+.time-group h3 {
+  margin-bottom: 0.7rem;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.72;
 }
 
 .slot-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 0.6rem;
 }
 
 .slot-grid button {
-  min-height: 44px;
+  min-height: 56px;
   border: 1px solid var(--rule);
   background: transparent;
+  color: inherit;
   cursor: pointer;
+  font-family: var(--ui);
+  font-size: 1rem;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
-.booking-alert,
-.booking-form-status {
+.slot-grid button:hover,
+.slot-grid button:focus-visible,
+.slot-grid button.is-selected {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--paper);
+}
+
+.slot-grid button small {
+  display: block;
+  font-size: 0.66rem;
+  opacity: 0.72;
+}
+
+/* Step 4 — details */
+
+.booking-final {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-top: 1.5rem;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: start;
+}
+
+/* Side by side only when the column is genuinely wide enough for both. */
+@container booking (min-width: 660px) {
+  .booking-final {
+    grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.2fr);
+  }
+}
+
+@container booking (max-width: 430px) {
+  .lesson-choice {
+    grid-template-columns: 1fr;
+  }
+
+  .slot-grid {
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  }
+}
+
+.booking-recap {
+  border: 1px solid var(--rule);
+  padding: 1.5rem;
+  background: rgba(170, 164, 230, 0.14);
+}
+
+.booking-recap__mark {
+  width: 58px;
+  height: 36px;
+  color: var(--coral);
+}
+
+.booking-recap h3 {
+  margin: 0.5rem 0 0.9rem;
+  font-family: var(--display);
+  font-size: 1.7rem;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.booking-recap p {
   display: flex;
   align-items: flex-start;
+  margin-bottom: 0.6rem;
   gap: 0.5rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
-.booking-summary-grid {
-  display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
-  padding-top: 1.5rem;
-  gap: 1.5rem;
+.booking-recap p svg {
+  flex: none;
+  margin-top: 0.15rem;
 }
 
-.lesson-summary p {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.55rem;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.lesson-summary strong {
+.booking-recap strong {
+  display: block;
+  margin-top: 0.9rem;
   font-family: var(--display);
-  font-size: 2rem;
+  font-size: 2.1rem;
 }
 
 .student-details-form label {
   display: block;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.9rem;
 }
 
 .student-details-form label > span {
   display: flex;
   align-items: center;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
   gap: 0.35rem;
   font-family: var(--ui);
   font-size: 0.72rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -1470,75 +1667,244 @@ html.route-is-leaving .route-fade {
   width: 100%;
   border: 1px solid var(--rule);
   border-radius: 0;
-  padding: 0.7rem;
-  background: rgba(255, 255, 255, 0.45);
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.5);
+  font: inherit;
+}
+
+.student-details-form textarea {
+  resize: vertical;
 }
 
 .booking-confirm-button {
   width: 100%;
+  margin-top: 0.4rem;
   border: 0;
   background: var(--coral-action);
   color: white;
+  cursor: pointer;
 }
 
 .booking-confirm-button:disabled {
+  cursor: not-allowed;
   opacity: 0.45;
 }
 
-.booking-manage-link {
-  font-size: 0.88rem;
-}
+/* Booking outcome, and self-service management */
 
-.booking-manage-link a {
-  text-decoration: underline;
-}
+/* Accounts — sign in, register, reset */
 
-/* Lesson type, booking outcome, and self-service management */
-
-.lesson-type-picker {
-  display: grid;
-  margin-bottom: 1.4rem;
-  gap: 0.5rem;
-}
-
-.lesson-type-option {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+.auth-panel {
   border: 1px solid var(--rule);
-  padding: 0.7rem 0.85rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.auth-panel h3 {
+  font-family: var(--display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.auth-panel__intro {
+  margin: 0.4rem 0 1.1rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  opacity: 0.82;
+}
+
+.auth-tabs {
+  display: flex;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--rule);
+  gap: 0.25rem;
+}
+
+.auth-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0.55rem 0.85rem;
   background: transparent;
   color: inherit;
   cursor: pointer;
-  gap: 0.15rem;
-  text-align: left;
+  font-family: var(--ui);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
 }
 
-.lesson-type-option strong {
+.auth-tabs button.is-active {
+  border-bottom-color: var(--coral);
+  opacity: 1;
+}
+
+.auth-panel label {
+  display: block;
+  margin-bottom: 0.9rem;
+}
+
+.auth-panel label > span {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.3rem;
+  gap: 0.35rem;
   font-family: var(--ui);
-  font-size: 0.86rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-panel input {
+  width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.5);
+  font: inherit;
+}
+
+.auth-panel label small {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.76rem;
+  opacity: 0.68;
+}
+
+.auth-panel__aside {
+  margin-top: 0.9rem;
+  text-align: center;
+}
+
+.auth-panel__aside button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--lavender-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  text-decoration: underline;
+}
+
+.site-nav__link--account {
+  color: var(--lavender-ink);
+}
+
+.booking-identity {
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--lavender);
+  padding: 0.6rem 0.8rem;
+  background: rgba(170, 164, 230, 0.16);
+  font-size: 0.88rem;
+}
+
+.booking-identity button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--lavender-ink);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+/* /my-lessons */
+
+.my-lessons__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+  gap: 0.75rem;
+  font-size: 0.92rem;
+}
+
+.my-lessons__group {
+  margin-bottom: 2.5rem;
+}
+
+.my-lessons__group h2 {
+  margin-bottom: 0.9rem;
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 3.6vw, 2.1rem);
+  font-weight: 400;
+}
+
+.lesson-list {
+  list-style: none;
+}
+
+.lesson-list li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: start;
+  border: 1px solid var(--rule);
+  margin-bottom: 0.75rem;
+  padding: 1.15rem 1.25rem;
+  gap: 1rem;
+}
+
+.lesson-list__mark {
+  width: 48px;
+  height: 32px;
+  color: var(--coral);
+}
+
+.lesson-list__body h3 {
+  margin-bottom: 0.4rem;
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.lesson-list__body h3 em {
+  font-family: var(--ui);
+  font-size: 0.8rem;
+  font-style: normal;
+  opacity: 0.66;
+}
+
+.lesson-list__body p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.25rem;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.lesson-list__body p svg {
+  flex: none;
+}
+
+.lesson-list__fee {
+  margin-top: 0.5rem;
+  color: var(--coral-action);
   font-weight: 700;
 }
 
-.lesson-type-option span {
-  font-size: 0.82rem;
+.lesson-list__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+
+.lesson-list__reference {
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  opacity: 0.6;
+}
+
+.lesson-list--past li {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  border-color: var(--rule-soft);
   opacity: 0.78;
-}
-
-.lesson-type-option.is-selected {
-  border-color: var(--green);
-  background: var(--green);
-  color: var(--paper);
-}
-
-.lesson-type-option.is-selected span {
-  opacity: 0.92;
-}
-
-.slot-grid button small {
-  display: block;
-  font-size: 0.66rem;
-  opacity: 0.72;
 }
 
 .booking-location-choice {
@@ -2059,14 +2425,6 @@ html.route-is-leaving .route-fade {
     font-size: clamp(3rem, 5vw, 4.5rem);
   }
 
-  .booking-provider__header {
-    display: block;
-  }
-
-  .booking-provider__direct {
-    margin-top: 1.3rem;
-  }
-
   .site-footer {
     grid-template-areas:
       "brand nav"
@@ -2243,12 +2601,47 @@ html.route-is-leaving .route-fade {
     grid-template-columns: 1fr;
   }
 
+  /*
+   * Stacked, the intro is the whole first screen before a phone reaches any
+   * booking — and most students book on a phone. The panel stays, as it should,
+   * but tightened so the flow starts near the fold instead of below it.
+   */
   .booking-intro {
     position: relative;
+    padding-top: 1.9rem;
+    padding-bottom: 1.9rem;
+  }
+
+  .booking-intro h1 {
+    font-size: clamp(2.4rem, 9vw, 3.4rem);
+  }
+
+  .booking-intro > p {
+    font-size: 1.08rem;
+  }
+
+  .booking-intro__points {
+    margin-top: 1.4rem;
+  }
+
+  .booking-intro__points li {
+    min-height: 58px;
+    grid-template-columns: 54px 1fr;
+    font-size: 0.7rem;
+  }
+
+  .booking-intro__points .asset-mark {
+    width: 42px;
+    height: 46px;
+  }
+
+  /* Purely decorative, and it costs a third of a phone screen. */
+  .booking-intro__time-window {
+    display: none;
   }
 
   .booking-provider {
-    padding-top: 2rem;
+    padding-top: 1.75rem;
   }
 
   .booking-policy {
@@ -2258,10 +2651,6 @@ html.route-is-leaving .route-fade {
   .booking-policy a {
     grid-column: 2;
     justify-self: start;
-  }
-
-  .custom-booking-calendar {
-    grid-template-columns: 1fr;
   }
 
   .manage-booking__facts > div {
@@ -2283,9 +2672,23 @@ html.route-is-leaving .route-fade {
     text-align: left;
   }
 
-  .calendar-column {
-    border-right: 0;
-    border-bottom: 1px solid var(--rule);
+  .lesson-list li {
+    grid-template-columns: 1fr;
+  }
+
+  .lesson-list__actions {
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .lesson-list__actions .button {
+    flex: 1;
+    text-align: center;
+  }
+
+  .lesson-list__mark {
+    display: none;
   }
 
   .site-footer {
@@ -2473,14 +2876,6 @@ html.route-is-leaving .route-fade {
     font-size: clamp(2.5rem, 11vw, 4.2rem);
   }
 
-  .booking-provider__direct {
-    width: 100%;
-  }
-
-  .booking-embed-frame {
-    min-height: 700px;
-  }
-
   .booking-policy {
     grid-template-columns: 55px 1fr;
     padding-top: 1.5rem;
@@ -2490,10 +2885,6 @@ html.route-is-leaving .route-fade {
   .booking-policy .asset-mark {
     width: 52px;
     height: 52px;
-  }
-
-  .booking-summary-grid {
-    grid-template-columns: 1fr;
   }
 
   .slot-grid {

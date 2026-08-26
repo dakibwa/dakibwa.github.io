@@ -7,18 +7,17 @@ INSERT OR REPLACE INTO lesson_types (id, slug, name, description, duration_minut
   ('long',   'long-lesson',   'Longer lesson',  'An hour and a half, if you want more time to talk.',                                                    90, 3500, 3, 1);
 
 -- Her teaching hours, Porto time (confirmed by Dan, 26 August 2026).
---   Mon-Tue  10:00-20:00
---   Wed-Fri  17:00-20:00
--- The window end is when she finishes, not the last start. Slots are generated
--- while start + duration <= end, so a 60-minute lesson can begin at 19:00 and a
--- 90-minute one at 18:30 — nothing is ever booked past 20:00.
+--   Mon-Tue  first 10:00, last lesson starts 19:00
+--   Wed-Fri  first 17:00, last lesson starts 19:00
+-- These are start times. A 90-minute lesson beginning at 19:00 runs to 20:30,
+-- which is intended.
 DELETE FROM availability_rules;
-INSERT INTO availability_rules (weekday, start_minute, end_minute, active) VALUES
-  (1, 600, 1200, 1),
-  (2, 600, 1200, 1),
-  (3, 1020, 1200, 1),
-  (4, 1020, 1200, 1),
-  (5, 1020, 1200, 1);
+INSERT INTO availability_rules (weekday, start_minute, last_start_minute, active) VALUES
+  (1, 600, 1140, 1),
+  (2, 600, 1140, 1),
+  (3, 1020, 1140, 1),
+  (4, 1020, 1140, 1),
+  (5, 1020, 1140, 1);
 
 INSERT OR REPLACE INTO settings (key, value) VALUES
   ('minimum_notice_hours', '24'),

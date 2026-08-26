@@ -86,18 +86,27 @@ export function fetchAvailability(lessonType: string, from: string, to: string, 
   );
 }
 
-export function createBooking(payload: {
-  name: string;
-  email: string;
-  phone: string;
-  notes: string;
-  lessonType: string;
-  startAt: string;
-  location: "online" | "porto";
-  timezone: string;
-}) {
-  return request<{ booking: Booking; manageUrl: string; manageToken: string }>("/bookings", {
+/** Requires a signed-in student: identity comes from the session, not the form. */
+export function createBooking(
+  session: string,
+  payload: {
+    notes: string;
+    lessonType: string;
+    startAt: string;
+    location: "online" | "porto";
+    timezone: string;
+  }
+) {
+  return request<{
+    booking: Booking;
+    // Present only when prepayment is switched on: the student is sent to
+    // Stripe, and the booking is not confirmed until the webhook arrives.
+    checkoutUrl?: string;
+    manageUrl?: string;
+    manageToken?: string;
+  }>("/bookings", {
     method: "POST",
+    headers: { Authorization: `Bearer ${session}` },
     body: JSON.stringify(payload)
   });
 }

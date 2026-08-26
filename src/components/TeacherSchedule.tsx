@@ -27,7 +27,7 @@ const weekdays = [
   { value: 0, label: "Sunday" }
 ];
 
-type Window = { start: string; end: string };
+type Window = { start: string; lastStart: string };
 type WeekState = Record<number, Window[]>;
 
 const STORAGE_KEY = "ines-schedule-token";
@@ -64,7 +64,7 @@ export function TeacherSchedule() {
         for (const rule of schedule.rules) {
           next[rule.weekday] = [
             ...(next[rule.weekday] ?? []),
-            { start: minutesToTime(rule.start_minute), end: minutesToTime(rule.end_minute) }
+            { start: minutesToTime(rule.start_minute), lastStart: minutesToTime(rule.last_start_minute) }
           ];
         }
 
@@ -100,11 +100,13 @@ export function TeacherSchedule() {
     setError("");
     const rules = Object.entries(nextWeek).flatMap(([weekday, windows]) =>
       windows
-        .filter((window) => window.start && window.end && timeToMinutes(window.end) > timeToMinutes(window.start))
+        .filter(
+          (window) => window.start && window.lastStart && timeToMinutes(window.lastStart) >= timeToMinutes(window.start)
+        )
         .map((window) => ({
           weekday: Number(weekday),
           startMinute: timeToMinutes(window.start),
-          endMinute: timeToMinutes(window.end)
+          lastStartMinute: timeToMinutes(window.lastStart)
         }))
     );
 
@@ -205,7 +207,8 @@ export function TeacherSchedule() {
       <section className="schedule-block">
         <h2>When you teach</h2>
         <p className="booking-state-note">
-          Students can only book inside these hours, in Porto time. Leave a day empty to keep it free.
+          These are the first and last times a lesson can <em>start</em>, in Porto time — so a 90-minute lesson
+          booked at your last start time runs past it. Leave a day empty to keep it free.
         </p>
 
         <div className="schedule-week">
@@ -216,17 +219,17 @@ export function TeacherSchedule() {
                 {(week[day.value] ?? []).map((window, index) => (
                   <div className="schedule-window" key={index}>
                     <input
-                      aria-label={`${day.label} start time`}
+                      aria-label={`${day.label}: earliest a lesson can start`}
                       onChange={(event) => updateWindow(day.value, index, { start: event.target.value })}
                       type="time"
                       value={window.start}
                     />
                     <span aria-hidden="true">to</span>
                     <input
-                      aria-label={`${day.label} end time`}
-                      onChange={(event) => updateWindow(day.value, index, { end: event.target.value })}
+                      aria-label={`${day.label}: latest a lesson can start`}
+                      onChange={(event) => updateWindow(day.value, index, { lastStart: event.target.value })}
                       type="time"
-                      value={window.end}
+                      value={window.lastStart}
                     />
                     <button
                       aria-label={`Remove this ${day.label} window`}
@@ -247,7 +250,7 @@ export function TeacherSchedule() {
                   onClick={() =>
                     setWeek((current) => ({
                       ...current,
-                      [day.value]: [...(current[day.value] ?? []), { start: "10:00", end: "13:00" }]
+                      [day.value]: [...(current[day.value] ?? []), { start: "10:00", lastStart: "19:00" }]
                     }))
                   }
                   type="button"

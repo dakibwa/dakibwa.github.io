@@ -7,6 +7,8 @@
  */
 
 import assert from "node:assert/strict";
+import { candidateStartMinutes } from "./availability.mjs";
+import { verifyWebhook } from "./stripe.mjs";
 import { buildCalendarInvite, calendarUid } from "./ics.mjs";
 import { createManageToken, readManageToken, safeEqual, bookingReference } from "./tokens.mjs";
 import {
@@ -104,6 +106,71 @@ await test("invalid timezones are rejected", () => {
   assert.equal(isValidTimeZone(""), false);
 });
 
+// --- Slot generation --------------------------------------------------------
+
+const asTime = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+await test("lastStart is a start time, so lesson length does not shorten the day", () => {
+  // Her Wed-Fri rule: first start 17:00, last start 19:00.
+  const range = [{ start: 1020, lastStart: 1140 }];
+  const hour = candidateStartMinutes({ startRanges: range, duration: 60, interval: 30 });
+  const longer = candidateStartMinutes({ startRanges: range, duration: 90, interval: 30 });
+
+  // Both formats must still offer 19:00 — the 90-minute one simply runs to 20:30.
+  assert.equal(asTime(hour.at(-1)), "19:00");
+  assert.equal(asTime(longer.at(-1)), "19:00");
+  assert.deepEqual(hour, longer);
+});
+
+await test("a blocked span withholds every lesson that would overlap it", () => {
+  const range = [{ start: 600, lastStart: 1140 }];
+  // She is out 13:00-14:00.
+  const blockedSpans = [{ start: 780, end: 840 }];
+  const starts = candidateStartMinutes({ startRanges: range, blockedSpans, duration: 60, interval: 30 }).map(asTime);
+
+  // 12:30 would run into 13:00, so it goes too — not just the slots inside it.
+  assert.ok(!starts.includes("12:30"), "a lesson overlapping the block was still offered");
+  assert.ok(!starts.includes("13:00"));
+  assert.ok(!starts.includes("13:30"));
+  assert.ok(starts.includes("12:00"), "12:00 finishes exactly as the block starts and is fine");
+  assert.ok(starts.includes("14:00"), "14:00 begins exactly as the block ends and is fine");
+});
+
+await test("a longer lesson is withheld earlier than a shorter one", () => {
+  const range = [{ start: 600, lastStart: 1140 }];
+  const blockedSpans = [{ start: 780, end: 840 }];
+  const hour = candidateStartMinutes({ startRanges: range, blockedSpans, duration: 60, interval: 30 }).map(asTime);
+  const longer = candidateStartMinutes({ startRanges: range, blockedSpans, duration: 90, interval: 30 }).map(asTime);
+
+  assert.ok(hour.includes("12:00"));
+  assert.ok(!longer.includes("12:00"), "a 90-minute lesson at 12:00 would run into the block");
+  assert.ok(longer.includes("11:30"));
+});
+
+await test("overlapping rules merge instead of double-offering a time", () => {
+  const starts = candidateStartMinutes({
+    startRanges: [
+      { start: 600, lastStart: 720 },
+      { start: 660, lastStart: 780 }
+    ],
+    duration: 60,
+    interval: 30
+  });
+  assert.equal(new Set(starts).size, starts.length, "a time was offered twice");
+  assert.equal(asTime(starts[0]), "10:00");
+  assert.equal(asTime(starts.at(-1)), "13:00");
+});
+
+await test("a whole-day block leaves nothing bookable", () => {
+  const starts = candidateStartMinutes({
+    startRanges: [{ start: 600, lastStart: 1140 }],
+    blockedSpans: [{ start: 0, end: 1440 }],
+    duration: 60,
+    interval: 30
+  });
+  assert.equal(starts.length, 0);
+});
+
 // --- iCalendar --------------------------------------------------------------
 
 await test("TEXT values escape backslash, semicolon, comma and newline", () => {
@@ -196,6 +263,59 @@ await test("booking references avoid ambiguous glyphs", () => {
   for (let index = 0; index < 200; index += 1) {
     const reference = bookingReference();
     assert.match(reference, /^PT-[ACDEFGHJKLMNPQRSTUVWXYZ2345679]{6}$/);
+  }
+});
+
+// --- Stripe webhook signature ------------------------------------------------
+
+const SECRET = "whsec_test_secret";
+
+async function stripeSignature(payload, timestamp, secret = SECRET) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${timestamp}.${payload}`));
+  return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+await test("a correctly signed webhook is accepted", async () => {
+  const payload = JSON.stringify({ id: "evt_1", type: "checkout.session.completed" });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const header = `t=${timestamp},v1=${await stripeSignature(payload, timestamp)}`;
+  assert.equal(await verifyWebhook(payload, header, SECRET), true);
+});
+
+await test("a webhook signed with the wrong secret is rejected", async () => {
+  const payload = JSON.stringify({ id: "evt_1" });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const header = `t=${timestamp},v1=${await stripeSignature(payload, timestamp, "whsec_wrong")}`;
+  assert.equal(await verifyWebhook(payload, header, SECRET), false);
+});
+
+await test("a tampered payload is rejected even with a valid signature", async () => {
+  // The exact attack this guards: marking someone else's booking paid.
+  const original = JSON.stringify({ id: "evt_1", amount: 100 });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const header = `t=${timestamp},v1=${await stripeSignature(original, timestamp)}`;
+  const tampered = JSON.stringify({ id: "evt_1", amount: 999999 });
+  assert.equal(await verifyWebhook(tampered, header, SECRET), false);
+});
+
+await test("an old signature is rejected, so a captured request cannot be replayed", async () => {
+  const payload = JSON.stringify({ id: "evt_1" });
+  const stale = Math.floor(Date.now() / 1000) - 3600;
+  const header = `t=${stale},v1=${await stripeSignature(payload, stale)}`;
+  assert.equal(await verifyWebhook(payload, header, SECRET), false);
+});
+
+await test("malformed signature headers are rejected", async () => {
+  const payload = "{}";
+  for (const header of ["", "nonsense", "t=123", "v1=abc", "t=abc,v1=abc", null, undefined]) {
+    assert.equal(await verifyWebhook(payload, header, SECRET), false, `accepted: ${header}`);
   }
 });
 

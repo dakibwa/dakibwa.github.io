@@ -1,6 +1,17 @@
 import { computeAvailability, isSlotBookable, listLessonTypes, loadLessonType, loadSettings } from "./availability.mjs";
 import { buildCalendarInvite, calendarUid } from "./ics.mjs";
 import { deliver } from "./email.mjs";
+import { createCheckoutSession, isTestMode, stripeConfigured, verifyWebhook } from "./stripe.mjs";
+import {
+  createResetToken,
+  createSession,
+  hashPassword,
+  normaliseEmail,
+  passwordProblem,
+  readResetToken,
+  readSession,
+  verifyPassword
+} from "./auth.mjs";
 import { PORTO, addDaysToKey, dateKey, formatInZone, isValidTimeZone, parseDateKey, timeZoneAbbreviation } from "./time.mjs";
 import { bookingReference, createManageToken, readManageToken, safeEqual } from "./tokens.mjs";
 
@@ -251,6 +262,41 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   return Promise.allSettled(sends);
 }
 
+/** The signed-in student, or null. */
+async function currentStudent(request, env) {
+  const bearer = (request.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!bearer) return null;
+
+  const studentId = await readSession(bearer, env.BOOKING_TOKEN_SECRET);
+  if (!studentId) return null;
+
+  return env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(studentId).first();
+}
+
+function publicStudent(row) {
+  return { id: row.id, email: row.email, name: row.name, phone: row.phone, timezone: row.timezone };
+}
+
+/**
+ * Throttles guessing without letting an attacker lock a real student out: the
+ * window is short and keyed on recent failures only.
+ */
+async function tooManyFailures(env, email) {
+  const since = new Date(Date.now() - 15 * 60000).toISOString();
+  const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM login_attempts WHERE email = ? AND at > ?")
+    .bind(email, since)
+    .first();
+  return (row?.count ?? 0) >= 8;
+}
+
+async function recordFailure(env, email) {
+  const now = new Date().toISOString();
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO login_attempts (email, at) VALUES (?, ?)").bind(email, now),
+    env.DB.prepare("DELETE FROM login_attempts WHERE at < ?").bind(new Date(Date.now() - 86400000).toISOString())
+  ]);
+}
+
 async function getBookingByToken(env, token) {
   const bookingId = await readManageToken(token, env.BOOKING_TOKEN_SECRET);
   if (!bookingId) return null;
@@ -275,6 +321,16 @@ const worker = {
         return json({ lessonTypes: await listLessonTypes(env) }, 200, request, env);
       }
       if (request.method === "GET" && path === "/availability") return handleAvailability(request, env, url);
+
+      if (request.method === "POST" && path === "/stripe/webhook") return handleStripeWebhook(request, env, ctx);
+
+      if (request.method === "POST" && path === "/auth/register") return handleRegister(request, env);
+      if (request.method === "POST" && path === "/auth/login") return handleLogin(request, env);
+      if (request.method === "POST" && path === "/auth/forgot") return handleForgot(request, env, ctx);
+      if (request.method === "POST" && path === "/auth/reset") return handleReset(request, env);
+      if (request.method === "GET" && path === "/me") return handleMe(request, env);
+      if (request.method === "POST" && path === "/me") return handleUpdateMe(request, env);
+
       if (request.method === "POST" && path === "/bookings") return handleCreate(request, env, ctx);
 
       const manage = path.match(/^\/bookings\/([^/]+)$/);
@@ -315,12 +371,31 @@ async function handleHealth(request, env) {
 
   if (!teacherEmail) missing.push("TEACHER_EMAIL");
 
+  let paymentMode = "off";
+  try {
+    paymentMode = (await loadSettings(env)).paymentMode;
+  } catch {
+    // Already reported through `missing` above.
+  }
+
   return json(
-    { ok: missing.length === 0, missing, lessonTypes, emailMode: env.RESEND_API_KEY && env.EMAIL_DRY_RUN !== "1" ? "live" : "dry-run" },
+    {
+      ok: missing.length === 0,
+      missing,
+      lessonTypes,
+      emailMode: env.RESEND_API_KEY && env.EMAIL_DRY_RUN !== "1" ? "live" : "dry-run",
+      paymentMode,
+      stripe: stripeConfigured(env) ? (isTestMode(env) ? "test" : "live") : "not-configured"
+    },
     200,
     request,
     env
   );
+}
+
+/** Fire-and-forget: housekeeping must never delay or fail an availability read. */
+function ctx_releaseHolds(env) {
+  releaseExpiredHolds(env).catch((error) => console.error("release-holds", String(error?.message ?? error)));
 }
 
 async function handleAvailability(request, env, url) {
@@ -333,6 +408,7 @@ async function handleAvailability(request, env, url) {
   const toKey = url.searchParams.get("to") || addDaysToKey(fromKey, 34);
   if (!parseDateKey(fromKey) || !parseDateKey(toKey)) return fail("Invalid date range.", 400, request, env);
 
+  ctx_releaseHolds(env);
   const { slotsByDate, settings } = await computeAvailability(env, { fromKey, toKey, lessonType, now });
 
   return json(
@@ -355,28 +431,28 @@ async function handleAvailability(request, env, url) {
 }
 
 async function handleCreate(request, env, ctx) {
+  // Booking requires an account. Identity then comes from the signed-in
+  // student rather than from whatever was typed into a form, so a person's
+  // lessons stay together and /my-lessons can show all of them.
+  const student = await currentStudent(request, env);
+  if (!student) return fail("Please sign in to book a lesson.", 401, request, env);
+
   const body = await readJson(request);
   const now = new Date();
 
-  const name = cleanText(body.name, 120);
-  const email = cleanText(body.email, 200).toLowerCase();
-  const phone = cleanText(body.phone, 40);
   const notes = cleanText(body.notes, 1000);
   const location = body.location === "porto" ? "porto" : "online";
-  const timezone = isValidTimeZone(body.timezone) ? body.timezone : PORTO;
-
-  if (name.length < 2) return fail("Please give your name.", 400, request, env);
-  if (!isEmail(email)) return fail("Please give a valid email address.", 400, request, env);
+  const timezone = isValidTimeZone(body.timezone) ? body.timezone : student.timezone;
 
   const lessonType = await loadLessonType(env, cleanText(body.lessonType, 40) || "single");
   if (!lessonType) return fail("That lesson type is not available.", 400, request, env);
 
   // Cheap abuse guard: a real student does not book six lessons in a minute,
-  // and without this one script can fill her whole calendar.
+  // and without this one account can fill her whole calendar.
   const recent = await env.DB.prepare(
-    "SELECT COUNT(*) AS count FROM bookings WHERE student_email = ? AND created_at > ?"
+    "SELECT COUNT(*) AS count FROM bookings WHERE student_id = ? AND created_at > ?"
   )
-    .bind(email, new Date(now.getTime() - 3600000).toISOString())
+    .bind(student.id, new Date(now.getTime() - 3600000).toISOString())
     .first();
   if ((recent?.count ?? 0) >= 5) {
     return fail("That's several bookings in a short time. Please email Inês directly instead.", 429, request, env);
@@ -385,24 +461,77 @@ async function handleCreate(request, env, ctx) {
   const check = await isSlotBookable(env, { startAt: body.startAt, lessonType, now });
   if (!check.ok) return fail(check.reason, 409, request, env);
 
+  const settings = await loadSettings(env);
+  const prepay = settings.paymentMode === "prepay" && stripeConfigured(env);
+
   const id = crypto.randomUUID();
   const reference = bookingReference();
   const startsAt = new Date(body.startAt).toISOString();
-  const endsAt = check.endAt.toISOString();
   const timestamp = now.toISOString();
+  // A little longer than Stripe's own session expiry, so the hold outlives
+  // checkout rather than the other way round.
+  const holdExpiresAt = new Date(now.getTime() + 35 * 60000).toISOString();
 
   await env.DB.prepare(
-    `INSERT INTO bookings (id, reference, lesson_type_id, student_name, student_email, student_phone,
-       student_timezone, location, notes, starts_at, ends_at, status, sequence, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 0, ?, ?)`
+    `INSERT INTO bookings (id, reference, lesson_type_id, student_id, student_name, student_email, student_phone,
+       student_timezone, location, notes, starts_at, ends_at, status, sequence, created_at, updated_at,
+       payment_status, amount_cents, hold_expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`
   )
-    .bind(id, reference, lessonType.id, name, email, phone, timezone, location, notes, startsAt, endsAt, timestamp, timestamp)
+    .bind(
+      id,
+      reference,
+      lessonType.id,
+      student.id,
+      student.name,
+      student.email,
+      student.phone,
+      timezone,
+      location,
+      notes,
+      startsAt,
+      check.endAt.toISOString(),
+      prepay ? "pending_payment" : "confirmed",
+      timestamp,
+      timestamp,
+      prepay ? "pending" : "not_required",
+      prepay ? lessonType.price_cents : null,
+      prepay ? holdExpiresAt : null
+    )
     .run();
 
+  // Keep the account's timezone in step with the browser it was booked from.
+  if (timezone !== student.timezone) {
+    await env.DB.prepare("UPDATE students SET timezone = ? WHERE id = ?").bind(timezone, student.id).run();
+  }
+
   const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
-  const settings = await loadSettings(env);
   const token = await createManageToken(id, env.BOOKING_TOKEN_SECRET);
   const manageUrl = siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`);
+
+  // Prepay: the slot is held, not booked, and nothing is emailed until Stripe
+  // says the money arrived. Confirming first and reconciling later is how you
+  // end up telling a student they have a lesson they never paid for.
+  if (prepay) {
+    try {
+      const session = await createCheckoutSession(env, {
+        booking: row,
+        lessonType,
+        customerEmail: student.email,
+        successUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}&paid=1`),
+        cancelUrl: siteUrl(env, "/book/?cancelled=1")
+      });
+
+      await env.DB.prepare("UPDATE bookings SET stripe_session_id = ? WHERE id = ?").bind(session.id, id).run();
+
+      return json({ booking: publicBooking(row, lessonType, settings), checkoutUrl: session.url }, 201, request, env);
+    } catch (error) {
+      // Never leave a dead hold behind when checkout could not even be created.
+      await env.DB.prepare("DELETE FROM bookings WHERE id = ?").bind(id).run();
+      console.error("stripe-checkout", String(error?.message ?? error));
+      return fail("We couldn't start the payment. Please try again in a moment.", 502, request, env);
+    }
+  }
 
   ctx.waitUntil(notify(env, { event: "booked", row, lessonType, settings, manageUrl }));
 
@@ -499,6 +628,300 @@ async function handleCancel(request, env, ctx, token) {
   return json({ booking: publicBooking(updated, lessonType, settings), sameDayFeeApplied: Boolean(sameDay) }, 200, request, env);
 }
 
+
+// --- Stripe -----------------------------------------------------------------
+
+/**
+ * Confirms a booking once Stripe says the money arrived.
+ *
+ * Nothing here trusts the request until the signature verifies, and nothing
+ * runs twice: Stripe delivers at least once, so the event id is recorded first
+ * and a repeat stops there. A 200 is returned even for events we ignore, or
+ * Stripe retries them for 24 hours.
+ */
+async function handleStripeWebhook(request, env, ctx) {
+  if (!env.STRIPE_WEBHOOK_SECRET) return new Response("Not configured.", { status: 503 });
+
+  const payload = await request.text();
+  const verified = await verifyWebhook(payload, request.headers.get("Stripe-Signature"), env.STRIPE_WEBHOOK_SECRET);
+  if (!verified) return new Response("Bad signature.", { status: 400 });
+
+  let event;
+  try {
+    event = JSON.parse(payload);
+  } catch {
+    return new Response("Bad payload.", { status: 400 });
+  }
+
+  try {
+    await env.DB.prepare("INSERT INTO stripe_events (id, type, processed_at) VALUES (?, ?, ?)")
+      .bind(event.id, event.type, new Date().toISOString())
+      .run();
+  } catch {
+    return new Response("Already handled.", { status: 200 });
+  }
+
+  if (event.type !== "checkout.session.completed") {
+    return new Response("Ignored.", { status: 200 });
+  }
+
+  const session = event.data?.object ?? {};
+  const bookingId = session.client_reference_id;
+  if (!bookingId) return new Response("No booking reference.", { status: 200 });
+
+  const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(bookingId).first();
+  if (!row) return new Response("Unknown booking.", { status: 200 });
+  if (row.status === "confirmed") return new Response("Already confirmed.", { status: 200 });
+
+  await env.DB.prepare(
+    `UPDATE bookings SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?,
+       hold_expires_at = NULL, updated_at = ? WHERE id = ?`
+  )
+    .bind(session.payment_intent ?? null, new Date().toISOString(), bookingId)
+    .run();
+
+  const confirmed = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(bookingId).first();
+  const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+    .bind(confirmed.lesson_type_id)
+    .first();
+  const settings = await loadSettings(env);
+  const token = await createManageToken(bookingId, env.BOOKING_TOKEN_SECRET);
+
+  ctx.waitUntil(
+    notify(env, {
+      event: "booked",
+      row: confirmed,
+      lessonType,
+      settings,
+      manageUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`)
+    })
+  );
+
+  return new Response("ok", { status: 200 });
+}
+
+/**
+ * Releases slots whose checkout was abandoned.
+ *
+ * Called opportunistically rather than on a schedule: availability already
+ * ignores an expired hold, so this is only housekeeping to stop the table
+ * filling with dead rows.
+ */
+async function releaseExpiredHolds(env) {
+  await env.DB.prepare(
+    "DELETE FROM bookings WHERE status = 'pending_payment' AND hold_expires_at IS NOT NULL AND hold_expires_at < ?"
+  )
+    .bind(new Date().toISOString())
+    .run();
+}
+
+// --- Accounts ---------------------------------------------------------------
+
+async function handleRegister(request, env) {
+  const body = await readJson(request);
+  const email = normaliseEmail(body.email);
+  const name = cleanText(body.name, 120);
+  const phone = cleanText(body.phone, 40);
+  const timezone = isValidTimeZone(body.timezone) ? body.timezone : PORTO;
+
+  if (name.length < 2) return fail("Please give your name.", 400, request, env);
+  if (!isEmail(email)) return fail("Please give a valid email address.", 400, request, env);
+
+  const problem = passwordProblem(body.password);
+  if (problem) return fail(problem, 400, request, env);
+
+  const existing = await env.DB.prepare("SELECT id FROM students WHERE email = ?").bind(email).first();
+  if (existing) {
+    return fail("There is already an account with that email. Try signing in instead.", 409, request, env);
+  }
+
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  await env.DB.prepare(
+    "INSERT INTO students (id, email, name, phone, timezone, password_hash, created_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  )
+    .bind(id, email, name, phone, timezone, await hashPassword(body.password), now, now)
+    .run();
+
+  const student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(id).first();
+  return json(
+    { student: publicStudent(student), session: await createSession(id, env.BOOKING_TOKEN_SECRET) },
+    201,
+    request,
+    env
+  );
+}
+
+async function handleLogin(request, env) {
+  const body = await readJson(request);
+  const email = normaliseEmail(body.email);
+
+  if (!isEmail(email)) return fail("Please give a valid email address.", 400, request, env);
+
+  if (await tooManyFailures(env, email)) {
+    return fail("Too many attempts. Please wait a few minutes and try again.", 429, request, env);
+  }
+
+  const student = await env.DB.prepare("SELECT * FROM students WHERE email = ?").bind(email).first();
+
+  // One message for both cases, so this cannot be used to discover which
+  // addresses have accounts. The password is still verified against a dummy
+  // hash when there is no account, so the reply takes the same time either way.
+  const stored = student?.password_hash ?? "pbkdf2$210000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  const correct = await verifyPassword(String(body.password ?? ""), stored);
+
+  if (!student || !correct) {
+    await recordFailure(env, email);
+    return fail("That email and password do not match.", 401, request, env);
+  }
+
+  await env.DB.batch([
+    env.DB.prepare("UPDATE students SET last_login_at = ? WHERE id = ?").bind(new Date().toISOString(), student.id),
+    env.DB.prepare("DELETE FROM login_attempts WHERE email = ?").bind(email)
+  ]);
+
+  return json(
+    { student: publicStudent(student), session: await createSession(student.id, env.BOOKING_TOKEN_SECRET) },
+    200,
+    request,
+    env
+  );
+}
+
+async function handleForgot(request, env, ctx) {
+  const body = await readJson(request);
+  const email = normaliseEmail(body.email);
+  const student = isEmail(email)
+    ? await env.DB.prepare("SELECT * FROM students WHERE email = ?").bind(email).first()
+    : null;
+
+  if (student) {
+    const token = await createResetToken(student.id, env.BOOKING_TOKEN_SECRET);
+    const nonce = token.split(".")[2];
+    await env.DB.prepare("INSERT OR REPLACE INTO password_resets (nonce, student_id, created_at) VALUES (?, ?, ?)")
+      .bind(nonce, student.id, new Date().toISOString())
+      .run();
+
+    const settings = await loadSettings(env);
+    const resetUrl = siteUrl(env, `/reset-password/?token=${encodeURIComponent(token)}`);
+
+    ctx.waitUntil(
+      deliver(env, {
+        to: student.email,
+        subject: "Reset your password — Português com a Inês",
+        kind: "password_reset",
+        dedupeKey: `reset:${nonce}`,
+        replyTo: settings.replyToEmail || undefined,
+        content: {
+          heading: "Reset your password",
+          intro: `Olá ${student.name.split(" ")[0]}, use the button below to choose a new password. The link works for one hour, and only once.`,
+          callout: "",
+          rows: [],
+          action: { label: "Choose a new password", url: resetUrl },
+          footer: "If you didn't ask for this, you can ignore it — your password has not changed."
+        }
+      })
+    );
+  }
+
+  // Always the same answer, whether or not the address has an account.
+  return json({ ok: true }, 200, request, env);
+}
+
+async function handleReset(request, env) {
+  const body = await readJson(request);
+  const parsed = await readResetToken(body.token, env.BOOKING_TOKEN_SECRET);
+  if (!parsed) return fail("That reset link has expired. Please request a new one.", 400, request, env);
+
+  const problem = passwordProblem(body.password);
+  if (problem) return fail(problem, 400, request, env);
+
+  // Single use: the row is the record that this token has not been spent.
+  const record = await env.DB.prepare("SELECT * FROM password_resets WHERE nonce = ? AND student_id = ?")
+    .bind(parsed.nonce, parsed.studentId)
+    .first();
+  if (!record) return fail("That reset link has already been used. Please request a new one.", 400, request, env);
+
+  await env.DB.batch([
+    env.DB.prepare("UPDATE students SET password_hash = ? WHERE id = ?").bind(
+      await hashPassword(body.password),
+      parsed.studentId
+    ),
+    env.DB.prepare("DELETE FROM password_resets WHERE nonce = ?").bind(parsed.nonce),
+    env.DB.prepare("DELETE FROM login_attempts WHERE email = (SELECT email FROM students WHERE id = ?)").bind(
+      parsed.studentId
+    )
+  ]);
+
+  const student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(parsed.studentId).first();
+  return json(
+    { student: publicStudent(student), session: await createSession(student.id, env.BOOKING_TOKEN_SECRET) },
+    200,
+    request,
+    env
+  );
+}
+
+async function handleMe(request, env) {
+  const student = await currentStudent(request, env);
+  if (!student) return fail("Please sign in.", 401, request, env);
+
+  const settings = await loadSettings(env);
+  const { results } = await env.DB.prepare(
+    `SELECT b.*, l.name AS lesson_name, l.duration_minutes, l.price_cents
+     FROM bookings b JOIN lesson_types l ON l.id = b.lesson_type_id
+     WHERE b.student_id = ? ORDER BY b.starts_at DESC`
+  )
+    .bind(student.id)
+    .all();
+
+  const now = new Date();
+  const bookings = await Promise.all(
+    (results ?? []).map(async (row) => ({
+      reference: row.reference,
+      status: row.status,
+      startAt: row.starts_at,
+      endAt: row.ends_at,
+      location: row.location,
+      notes: row.notes,
+      lessonType: {
+        id: row.lesson_type_id,
+        name: row.lesson_name,
+        durationMinutes: row.duration_minutes,
+        priceCents: row.price_cents
+      },
+      isPast: new Date(row.starts_at) <= now,
+      sameDayFeeApplies: dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO),
+      manageToken: await createManageToken(row.id, env.BOOKING_TOKEN_SECRET)
+    }))
+  );
+
+  return json(
+    { student: publicStudent(student), bookings, sameDayFeeCents: settings.sameDayChangeFeeCents },
+    200,
+    request,
+    env
+  );
+}
+
+async function handleUpdateMe(request, env) {
+  const student = await currentStudent(request, env);
+  if (!student) return fail("Please sign in.", 401, request, env);
+
+  const body = await readJson(request);
+  const name = cleanText(body.name, 120) || student.name;
+  const phone = cleanText(body.phone, 40);
+  const timezone = isValidTimeZone(body.timezone) ? body.timezone : student.timezone;
+
+  await env.DB.prepare("UPDATE students SET name = ?, phone = ?, timezone = ? WHERE id = ?")
+    .bind(name, phone, timezone, student.id)
+    .run();
+
+  const updated = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(student.id).first();
+  return json({ student: publicStudent(updated) }, 200, request, env);
+}
+
 async function handleAdmin(request, env, url, path) {
   const provided = (request.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!env.ADMIN_TOKEN || !safeEqual(provided, env.ADMIN_TOKEN)) {
@@ -533,15 +956,15 @@ async function handleAdmin(request, env, url, path) {
     for (const rule of body.rules.slice(0, 100)) {
       const weekday = Number(rule.weekday);
       const start = Number(rule.startMinute);
-      const end = Number(rule.endMinute);
+      // The latest a lesson may begin, not when she finishes.
+      const lastStart = Number(rule.lastStartMinute);
       if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) continue;
-      if (!Number.isInteger(start) || !Number.isInteger(end) || end <= start || start < 0 || end > 1440) continue;
+      if (!Number.isInteger(start) || !Number.isInteger(lastStart)) continue;
+      if (lastStart < start || start < 0 || lastStart > 1440) continue;
       statements.push(
-        env.DB.prepare("INSERT INTO availability_rules (weekday, start_minute, end_minute, active) VALUES (?, ?, ?, 1)").bind(
-          weekday,
-          start,
-          end
-        )
+        env.DB.prepare(
+          "INSERT INTO availability_rules (weekday, start_minute, last_start_minute, active) VALUES (?, ?, ?, 1)"
+        ).bind(weekday, start, lastStart)
       );
     }
 

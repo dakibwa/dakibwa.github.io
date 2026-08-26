@@ -1,6 +1,6 @@
 import { BOOKING_API_BASE_URL } from "@/lib/config";
 
-export type AvailabilityRule = { id: number; weekday: number; start_minute: number; end_minute: number };
+export type AvailabilityRule = { id: number; weekday: number; start_minute: number; last_start_minute: number };
 export type AvailabilityException = { id: number; date: string; kind: "blocked" | "extra"; note: string };
 export type AdminBooking = {
   id: string;
@@ -41,7 +41,7 @@ export function fetchBookings(token: string) {
   return adminRequest<{ bookings: AdminBooking[] }>(token, "/admin/bookings");
 }
 
-export function saveRules(token: string, rules: { weekday: number; startMinute: number; endMinute: number }[]) {
+export function saveRules(token: string, rules: { weekday: number; startMinute: number; lastStartMinute: number }[]) {
   return adminRequest<{ ok: true; count: number }>(token, "/admin/availability", {
     method: "POST",
     body: JSON.stringify({ rules })

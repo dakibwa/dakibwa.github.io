@@ -13,6 +13,11 @@ import {
 
 const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 
+/**
+ * The intro is a short banner rather than a full-height column. The booking
+ * flow is the work of this page, and it was being squeezed into little more
+ * than half the viewport by a panel that only ever said three things.
+ */
 export function BookingFlow() {
   return (
     <>
@@ -74,8 +79,9 @@ export function BookingFlow() {
           <div>
             <p className="eyebrow">Changing a lesson</p>
             <p>
-              Move to any time that&rsquo;s free, from the link in your confirmation email. It costs nothing the day
-              before or earlier; on the day itself there&rsquo;s a {sameDayFee} fee.
+              Move to any time that&rsquo;s free, from the link in your confirmation email or your{" "}
+              <a href="/my-lessons/">lessons page</a>. It costs nothing the day before or earlier; on the day itself
+              there&rsquo;s a {sameDayFee} fee.
             </p>
           </div>
         </section>

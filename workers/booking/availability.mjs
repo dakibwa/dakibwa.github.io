@@ -23,39 +23,41 @@ function overlaps(startA, endA, startB, endB) {
   return startA < endB && startB < endA;
 }
 
-function mergeWindows(windows) {
-  const sorted = [...windows].sort((a, b) => a.start - b.start);
+function mergeStartRanges(ranges) {
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
   const merged = [];
 
-  for (const window of sorted) {
+  for (const range of sorted) {
     const last = merged[merged.length - 1];
-    if (last && window.start <= last.end) {
-      last.end = Math.max(last.end, window.end);
+    if (last && range.start <= last.lastStart) {
+      last.lastStart = Math.max(last.lastStart, range.lastStart);
     } else {
-      merged.push({ ...window });
+      merged.push({ ...range });
     }
   }
 
   return merged;
 }
 
-function subtractWindows(base, blocks) {
-  let remaining = [...base];
+/**
+ * Candidate start times (minutes from midnight, Porto) for one day.
+ *
+ * `startRanges` are {start, lastStart} — both are *start* times, so a lesson
+ * beginning at lastStart may legitimately finish after it. `blockedSpans` are
+ * real spans of time: a lesson is withheld when it would overlap one, not
+ * merely when it begins inside one.
+ */
+export function candidateStartMinutes({ startRanges, blockedSpans = [], duration, interval }) {
+  const starts = [];
 
-  for (const block of blocks) {
-    const next = [];
-    for (const window of remaining) {
-      if (!overlaps(window.start, window.end, block.start, block.end)) {
-        next.push(window);
-        continue;
-      }
-      if (block.start > window.start) next.push({ start: window.start, end: block.start });
-      if (block.end < window.end) next.push({ start: block.end, end: window.end });
+  for (const range of mergeStartRanges(startRanges)) {
+    for (let minute = range.start; minute <= range.lastStart; minute += interval) {
+      if (blockedSpans.some((span) => overlaps(minute, minute + duration, span.start, span.end))) continue;
+      starts.push(minute);
     }
-    remaining = next;
   }
 
-  return remaining.filter((window) => window.end > window.start);
+  return starts;
 }
 
 export async function loadSettings(env) {
@@ -67,6 +69,9 @@ export async function loadSettings(env) {
     bookingHorizonDays: Number(settings.booking_horizon_days ?? 60),
     slotIntervalMinutes: Number(settings.slot_interval_minutes ?? 30),
     sameDayChangeFeeCents: Number(settings.same_day_change_fee_cents ?? 500),
+    // 'off' keeps every booking confirmed on creation, as it was before
+    // payments existed. 'prepay' holds the slot until Stripe confirms.
+    paymentMode: settings.payment_mode === "prepay" ? "prepay" : "off",
     teacherName: settings.teacher_name || "Inês Dias Baía",
     teacherEmail: settings.teacher_email || "",
     replyToEmail: settings.reply_to_email || ""
@@ -105,23 +110,28 @@ export async function computeAvailability(env, { fromKey, toKey, lessonType, now
   const windowEnd = dayBounds(end).end.toISOString();
 
   const [rules, exceptions, booked] = await Promise.all([
-    env.DB.prepare("SELECT weekday, start_minute, end_minute FROM availability_rules WHERE active = 1").all(),
+    env.DB.prepare("SELECT weekday, start_minute, last_start_minute FROM availability_rules WHERE active = 1").all(),
     env.DB.prepare(
       "SELECT date, kind, start_minute, end_minute FROM availability_exceptions WHERE date BETWEEN ? AND ?"
     )
       .bind(start, end)
       .all(),
+    // A slot is busy when it is confirmed, and also while it is held for a
+    // checkout that has not been abandoned yet — otherwise two students could
+    // pay for the same time. An expired hold stops counting automatically.
     env.DB.prepare(
-      "SELECT id, starts_at, ends_at FROM bookings WHERE status = 'confirmed' AND ends_at > ? AND starts_at < ?"
+      `SELECT id, starts_at, ends_at FROM bookings
+       WHERE ends_at > ? AND starts_at < ?
+         AND (status = 'confirmed' OR (status = 'pending_payment' AND hold_expires_at > ?))`
     )
-      .bind(windowStart, windowEnd)
+      .bind(windowStart, windowEnd, now.toISOString())
       .all()
   ]);
 
   const rulesByWeekday = new Map();
   for (const rule of rules.results ?? []) {
     const list = rulesByWeekday.get(rule.weekday) ?? [];
-    list.push({ start: rule.start_minute, end: rule.end_minute });
+    list.push({ start: rule.start_minute, lastStart: rule.last_start_minute });
     rulesByWeekday.set(rule.weekday, list);
   }
 
@@ -140,32 +150,35 @@ export async function computeAvailability(env, { fromKey, toKey, lessonType, now
 
   for (const key of eachDateKey(start, end)) {
     const dayExceptions = exceptionsByDate.get(key) ?? [];
-    const openWindows = mergeWindows([
+
+    // Bookable *start* ranges: first start .. last start. The last start is a
+    // start time, not a finishing time, so "last lesson at 19:00" holds for a
+    // 90-minute lesson exactly as it does for a 60-minute one.
+    const startRanges = mergeStartRanges([
       ...(rulesByWeekday.get(weekdayOf(key)) ?? []),
       ...dayExceptions
         .filter((exception) => exception.kind === "extra")
-        .map((exception) => ({ start: exception.start_minute ?? 0, end: exception.end_minute ?? 1440 }))
+        .map((exception) => ({ start: exception.start_minute ?? 0, lastStart: exception.end_minute ?? 1440 }))
     ]);
 
-    const blockedWindows = dayExceptions
+    // Blocked exceptions are real spans of time, not start ranges: a lesson is
+    // withheld when it would *overlap* one, not merely when it starts inside it.
+    // A blocked row with no window means the whole day is off.
+    const blockedSpans = dayExceptions
       .filter((exception) => exception.kind === "blocked")
-      // A blocked row with no window means the whole day is off.
       .map((exception) => ({ start: exception.start_minute ?? 0, end: exception.end_minute ?? 1440 }));
 
-    const bookable = subtractWindows(openWindows, blockedWindows);
     const { year, month, day } = parseDateKey(key);
     const daySlots = [];
 
-    for (const window of bookable) {
-      for (let minute = window.start; minute + duration <= window.end; minute += interval) {
-        const slotStart = zonedToUtc(year, month, day, minute, PORTO);
-        const slotEnd = new Date(slotStart.getTime() + duration * 60000);
+    for (const minute of candidateStartMinutes({ startRanges, blockedSpans, duration, interval })) {
+      const slotStart = zonedToUtc(year, month, day, minute, PORTO);
+      const slotEnd = new Date(slotStart.getTime() + duration * 60000);
 
-        if (slotStart < earliest) continue;
-        if (busy.some((entry) => overlaps(slotStart.getTime(), slotEnd.getTime(), entry.start, entry.end))) continue;
+      if (slotStart < earliest) continue;
+      if (busy.some((entry) => overlaps(slotStart.getTime(), slotEnd.getTime(), entry.start, entry.end))) continue;
 
-        daySlots.push({ startAt: slotStart.toISOString(), endAt: slotEnd.toISOString() });
-      }
+      daySlots.push({ startAt: slotStart.toISOString(), endAt: slotEnd.toISOString() });
     }
 
     if (daySlots.length) slotsByDate[key] = daySlots;

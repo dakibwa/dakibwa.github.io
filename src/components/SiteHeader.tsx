@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { AccountNavLink } from "@/components/AccountNavLink";
 import { BrandWordmark } from "@/components/BrandWordmark";
 
-export type SitePage = "home" | "approach" | "lessons" | "faq" | "book";
+export type SitePage = "home" | "approach" | "lessons" | "faq" | "book" | "my-lessons";
 
 type SiteHeaderProps = {
   currentPage?: SitePage;
@@ -40,6 +41,7 @@ export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
               {item.label}
             </Link>
           ))}
+          <AccountNavLink currentPage={currentPage} />
         </nav>
       </div>
     </header>

@@ -1,0 +1,124 @@
+"use client";
+
+import { BOOKING_API_BASE_URL } from "@/lib/config";
+
+export type Student = { id: string; email: string; name: string; phone: string; timezone: string };
+
+export type MyBooking = {
+  reference: string;
+  status: "confirmed" | "cancelled";
+  startAt: string;
+  endAt: string;
+  location: "online" | "porto";
+  notes: string;
+  lessonType: { id: string; name: string; durationMinutes: number; priceCents: number };
+  isPast: boolean;
+  sameDayFeeApplies: boolean;
+  manageToken: string;
+};
+
+const SESSION_KEY = "ines-student-session";
+
+/**
+ * The session lives in localStorage rather than a cookie: the site and the
+ * booking API are on different origins, so a cookie would have to be
+ * SameSite=None and would be dropped by any browser blocking third-party
+ * cookies. A bearer token sent explicitly avoids that entirely.
+ */
+export function readSession() {
+  try {
+    return window.localStorage.getItem(SESSION_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function storeSession(token: string) {
+  try {
+    window.localStorage.setItem(SESSION_KEY, token);
+  } catch {
+    // A student in private browsing simply signs in again next visit.
+  }
+}
+
+export function clearSession() {
+  try {
+    window.localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+}
+
+async function post<T>(path: string, body: unknown, token?: string): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${BOOKING_API_BASE_URL}${path}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(body)
+    });
+  } catch {
+    throw new Error("We couldn't reach the booking system. Please check your connection and try again.");
+  }
+
+  const data = (await response.json().catch(() => ({}))) as T & { error?: string };
+  if (!response.ok) throw new Error(data.error || "Something went wrong. Please try again.");
+  return data;
+}
+
+export function register(input: {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  timezone?: string;
+}) {
+  return post<{ student: Student; session: string }>("/auth/register", input);
+}
+
+export function login(input: { email: string; password: string }) {
+  return post<{ student: Student; session: string }>("/auth/login", input);
+}
+
+export function requestPasswordReset(email: string) {
+  return post<{ ok: true }>("/auth/forgot", { email });
+}
+
+export function resetPassword(token: string, password: string) {
+  return post<{ student: Student; session: string }>("/auth/reset", { token, password });
+}
+
+export function updateProfile(token: string, input: { name?: string; phone?: string; timezone?: string }) {
+  return post<{ student: Student }>("/me", input, token);
+}
+
+export async function fetchMe(token: string) {
+  let response: Response;
+  try {
+    response = await fetch(`${BOOKING_API_BASE_URL}/me`, {
+      headers: { Accept: "application/json", Authorization: `Bearer ${token}` }
+    });
+  } catch {
+    throw new Error("We couldn't reach the booking system. Please check your connection and try again.");
+  }
+
+  const data = (await response.json().catch(() => ({}))) as {
+    student: Student;
+    bookings: MyBooking[];
+    sameDayFeeCents: number;
+    error?: string;
+  };
+
+  // An expired or tampered session is not an error to show — it just means
+  // signing in again.
+  if (response.status === 401) {
+    clearSession();
+    return null;
+  }
+  if (!response.ok) throw new Error(data.error || "Could not load your lessons.");
+  return data;
+}
