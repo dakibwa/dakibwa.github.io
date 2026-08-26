@@ -36,17 +36,25 @@ CREATE TABLE IF NOT EXISTS availability_rules (
 --   kind='blocked' with NULL minutes  -> whole day off
 --   kind='blocked' with minutes       -> that window only
 --   kind='extra'                      -> bookable outside the weekly rules
+-- One-off overrides on a specific Porto date, or — when `weekday` is set and
+-- `date` is null — a block that recurs every week, such as lunch.
+--   kind='blocked' with NULL minutes  -> whole day off
+--   kind='blocked' with minutes       -> that window only
+--   kind='extra'                      -> bookable outside the weekly rules
 CREATE TABLE IF NOT EXISTS availability_exceptions (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  date         TEXT NOT NULL,
+  date         TEXT,
+  weekday      INTEGER CHECK (weekday IS NULL OR weekday BETWEEN 0 AND 6),
   kind         TEXT NOT NULL CHECK (kind IN ('blocked', 'extra')),
   start_minute INTEGER,
   end_minute   INTEGER,
   note         TEXT NOT NULL DEFAULT '',
-  created_at   TEXT NOT NULL
+  created_at   TEXT NOT NULL,
+  CHECK (date IS NOT NULL OR weekday IS NOT NULL)
 );
 
 CREATE INDEX IF NOT EXISTS idx_exceptions_date ON availability_exceptions (date);
+CREATE INDEX IF NOT EXISTS idx_exceptions_weekday ON availability_exceptions (weekday);
 
 -- Student accounts. Booking requires one, so a student's lessons persist and
 -- they can see and change all of them in one place rather than depending on

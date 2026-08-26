@@ -1306,6 +1306,7 @@ textarea,
   align-items: center;
   margin-bottom: 1rem;
   border: 1px solid var(--rule);
+  border-radius: 999px;
   padding: 0.6rem 1rem 0.6rem 0.8rem;
   background: transparent;
   color: var(--ink);
@@ -1383,6 +1384,7 @@ textarea,
   grid-template-columns: 56px 1fr auto;
   align-items: center;
   border: 1px solid var(--rule);
+  border-radius: 14px;
   padding: 0.9rem 1.1rem;
   background: transparent;
   color: inherit;
@@ -1450,6 +1452,7 @@ textarea,
 
 .calendar-panel {
   max-width: 640px;
+  border-radius: 18px;
   border: 1px solid var(--rule);
   padding: clamp(1rem, 2.4vw, 1.75rem);
 }
@@ -1472,6 +1475,7 @@ textarea,
 .calendar-weekdays,
 .calendar-week {
   display: grid;
+  gap: 4px;
   /* minmax(0, 1fr), not 1fr: the default min-content floor let cell contents
      push the whole grid wider than a phone screen. */
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1508,14 +1512,15 @@ textarea,
   opacity: 0.7;
 }
 
+/* Rounded like the cards, rather than a hard grid of squares inside a rounded
+   panel. Each cell is its own tile, so the borders become gaps between them. */
 .calendar-week button {
   position: relative;
   display: grid;
   aspect-ratio: 1;
   place-items: center;
-  border: 0;
-  border-top: 1px solid var(--rule-soft);
-  border-left: 1px solid var(--rule-soft);
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -1523,31 +1528,6 @@ textarea,
   transition: background 120ms ease, color 120ms ease;
 }
 
-.calendar-week button:last-child {
-  border-right: 1px solid var(--rule-soft);
-}
-
-/*
- * Every week closes its own box.
- *
- * The grid used to be one continuous block, so a single bottom edge on the last
- * row was enough. Splitting it into per-month weeks broke that: a week that
- * ended a month had no bottom edge at all, and nth-child(7n) stopped landing on
- * the last cell once the weeks became separate grids — which is why the line
- * between Friday and Saturday went missing.
- */
-.calendar-week:last-of-type button,
-.calendar-week:has(+ .calendar-month) button {
-  border-bottom: 1px solid var(--rule-soft);
-}
-
-/*
- * Fade the contents, not the cell.
- *
- * opacity on the button faded its borders too, so any edge drawn by an
- * unavailable day rendered at 38% against a full-strength neighbour — which is
- * why the line down the side of the bookable block kept looking absent.
- */
 .calendar-week button:disabled {
   cursor: not-allowed;
 }
@@ -1563,6 +1543,7 @@ textarea,
  * foreground and the rest recede.
  */
 .calendar-week button.has-availability {
+  border-color: rgba(139, 130, 211, 0.45);
   background: rgba(170, 164, 230, 0.2);
   color: var(--green-deep);
   font-weight: 700;
@@ -1599,6 +1580,7 @@ textarea,
 
 .calendar-week button.is-selected,
 .calendar-week button.is-selected.has-availability {
+  border-color: var(--green);
   background: var(--green);
   color: var(--paper);
 }
@@ -1646,6 +1628,7 @@ textarea,
 .slot-grid button {
   min-height: 58px;
   border: 1px solid var(--rule);
+  border-radius: 12px;
   /* A fill, so each time reads as its own thing rather than as an outline
      drawn on the page behind it. */
   background: rgba(255, 255, 255, 0.55);
@@ -1837,7 +1820,7 @@ textarea,
 .student-details-form textarea {
   width: 100%;
   border: 1px solid var(--rule);
-  border-radius: 0;
+  border-radius: 10px;
   padding: 0.8rem;
   background: rgba(255, 255, 255, 0.5);
   font: inherit;
@@ -2269,6 +2252,7 @@ textarea,
 
 .booking-identity {
   margin-bottom: 1rem;
+  border-radius: 0 12px 12px 0;
   border-left: 3px solid var(--lavender);
   padding: 0.6rem 0.8rem;
   background: rgba(170, 164, 230, 0.16);
@@ -2415,12 +2399,28 @@ textarea,
 }
 
 .booking-form-note {
-  margin-top: 0.7rem;
-  font-size: 0.8rem;
-  opacity: 0.78;
+  margin-top: 0.8rem;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  opacity: 0.86;
+}
+
+.booking-form-note a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.booking-form-note a:hover {
+  color: var(--coral-action);
+}
+
+.booking-form-note strong {
+  color: var(--coral-action);
+  white-space: nowrap;
 }
 
 .booking-alert--warn {
+  border-radius: 0 12px 12px 0;
   border-left: 3px solid var(--coral);
   padding: 0.7rem 0.85rem;
   background: rgba(239, 93, 60, 0.09);

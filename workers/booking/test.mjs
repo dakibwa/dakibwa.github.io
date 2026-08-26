@@ -151,6 +151,26 @@ await test("a longer lesson is withheld earlier than a shorter one", () => {
   assert.ok(longer.includes("11:30"));
 });
 
+await test("a lunch block withholds a long lesson earlier than a short one", () => {
+  // Her Mon-Tue rule, with 12:30-13:30 blocked every weekday.
+  const startRanges = [{ start: 600, lastStart: 1140 }];
+  const blockedSpans = [{ start: 750, end: 810 }];
+  const hour = candidateStartMinutes({ startRanges, blockedSpans, duration: 60, interval: 30 }).map(asTime);
+  const longer = candidateStartMinutes({ startRanges, blockedSpans, duration: 90, interval: 30 }).map(asTime);
+
+  // An hour ending exactly as lunch begins is fine; the next one is not.
+  assert.ok(hour.includes("11:30"));
+  assert.ok(!hour.includes("12:00"));
+  assert.ok(hour.includes("13:30"));
+
+  // Ninety minutes from 11:30 would run to 13:00, straight through it. This is
+  // why lunch is a blocked span rather than a gap between two rules — splitting
+  // the rules could not have known the lesson's length.
+  assert.ok(!longer.includes("11:30"));
+  assert.ok(longer.includes("11:00"));
+  assert.ok(longer.includes("13:30"));
+});
+
 await test("overlapping rules merge instead of double-offering a time", () => {
   const starts = candidateStartMinutes({
     startRanges: [

@@ -480,7 +480,9 @@ export function BookingCalendar() {
                   </button>
 
                   <p className="booking-form-note">
-                    You don&rsquo;t pay now. Inês will arrange payment with you directly.
+                    You don&rsquo;t pay now &mdash; Inês will arrange payment with you directly. Change your booking
+                    any time from your <a href="/my-lessons/">lessons page</a>; changing on the same day is{" "}
+                    <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong>.
                   </p>
                 </form>
               )}

@@ -111,8 +111,10 @@ export async function computeAvailability(env, { fromKey, toKey, lessonType, now
 
   const [rules, exceptions, booked] = await Promise.all([
     env.DB.prepare("SELECT weekday, start_minute, last_start_minute FROM availability_rules WHERE active = 1").all(),
+    // One-off overrides in range, plus every recurring weekly block.
     env.DB.prepare(
-      "SELECT date, kind, start_minute, end_minute FROM availability_exceptions WHERE date BETWEEN ? AND ?"
+      `SELECT date, weekday, kind, start_minute, end_minute FROM availability_exceptions
+       WHERE (date BETWEEN ? AND ?) OR weekday IS NOT NULL`
     )
       .bind(start, end)
       .all(),
@@ -136,7 +138,16 @@ export async function computeAvailability(env, { fromKey, toKey, lessonType, now
   }
 
   const exceptionsByDate = new Map();
+  const recurringByWeekday = new Map();
+
   for (const exception of exceptions.results ?? []) {
+    if (exception.weekday !== null && exception.weekday !== undefined) {
+      const list = recurringByWeekday.get(exception.weekday) ?? [];
+      list.push(exception);
+      recurringByWeekday.set(exception.weekday, list);
+      continue;
+    }
+
     const list = exceptionsByDate.get(exception.date) ?? [];
     list.push(exception);
     exceptionsByDate.set(exception.date, list);
@@ -149,7 +160,10 @@ export async function computeAvailability(env, { fromKey, toKey, lessonType, now
   const slotsByDate = {};
 
   for (const key of eachDateKey(start, end)) {
-    const dayExceptions = exceptionsByDate.get(key) ?? [];
+    const dayExceptions = [
+      ...(recurringByWeekday.get(weekdayOf(key)) ?? []),
+      ...(exceptionsByDate.get(key) ?? [])
+    ];
 
     // Bookable *start* ranges: first start .. last start. The last start is a
     // start time, not a finishing time, so "last lesson at 19:00" holds for a
