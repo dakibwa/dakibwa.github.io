@@ -70,7 +70,13 @@ for (const route of routes) {
 await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(`${base}/`, { waitUntil: "domcontentloaded" });
 const expectedApproachUrl = new URL(`${base}/approach/`).href;
-await page.getByRole("link", { name: "Approach" }).first().click();
+
+// On a phone every link is behind the toggle — the header's are, and the
+// footer no longer repeats them. Opening the menu is now part of the journey
+// rather than a detail of it.
+await page.locator(".nav-toggle").click();
+await page.waitForTimeout(400);
+await page.locator("#site-nav-mobile a", { hasText: "Approach" }).first().click();
 await page.waitForURL(expectedApproachUrl, { timeout: 10_000 });
 const mobileNavigation = await page.evaluate(() => ({
   overlayCount: document.querySelectorAll(".route-transition-wash").length,
