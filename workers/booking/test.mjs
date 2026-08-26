@@ -18,6 +18,7 @@ import {
   dateKey,
   dayBounds,
   eachDateKey,
+  differingZonedTime,
   formatInZone,
   isValidTimeZone,
   offsetMinutes,
@@ -171,6 +172,22 @@ await test("a whole-day block leaves nothing bookable", () => {
     interval: 30
   });
   assert.equal(starts.length, 0);
+});
+
+await test("a second timezone is only offered when the clock actually differs", () => {
+  const summer = new Date("2026-09-25T18:00:00Z");
+  const winter = new Date("2026-12-15T10:00:00Z");
+
+  // Lisbon and London share an offset all year, so showing both is pure noise —
+  // "19:00 (WEST) / 19:00 (BST)" is what a UK student was being sent.
+  assert.equal(differingZonedTime(summer, "Europe/London"), null);
+  assert.equal(differingZonedTime(winter, "Europe/London"), null);
+  assert.equal(differingZonedTime(summer, "Europe/Lisbon"), null);
+  assert.equal(differingZonedTime(summer, ""), null);
+
+  // A genuinely different clock is still shown.
+  assert.match(differingZonedTime(summer, "America/New_York") ?? "", /14:00/);
+  assert.match(differingZonedTime(summer, "Europe/Berlin") ?? "", /20:00/);
 });
 
 // --- iCalendar --------------------------------------------------------------

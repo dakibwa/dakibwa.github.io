@@ -13,7 +13,16 @@ import {
   readSession,
   verifyPassword
 } from "./auth.mjs";
-import { PORTO, addDaysToKey, dateKey, formatInZone, isValidTimeZone, parseDateKey, timeZoneAbbreviation } from "./time.mjs";
+import {
+  PORTO,
+  addDaysToKey,
+  dateKey,
+  differingZonedTime,
+  formatInZone,
+  isValidTimeZone,
+  parseDateKey,
+  timeZoneAbbreviation
+} from "./time.mjs";
 import { bookingReference, createManageToken, readManageToken, safeEqual } from "./tokens.mjs";
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
@@ -122,15 +131,25 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
 
   const portoTime = `${formatInZone(start, PORTO)} (${timeZoneAbbreviation(start, PORTO)})`;
   const studentZone = isValidTimeZone(row.student_timezone) ? row.student_timezone : PORTO;
-  const studentTime = `${formatInZone(start, studentZone)} (${timeZoneAbbreviation(start, studentZone)})`;
-  const showBothZones = studentZone !== PORTO;
+  // Null unless the student's clock genuinely reads differently from Porto's.
+  const studentTime = differingZonedTime(start, studentZone);
 
-  const baseRows = [
+  const commonRows = [
     { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
-    { label: "Porto time", value: portoTime },
-    ...(showBothZones ? [{ label: "Your time", value: studentTime }] : []),
+    { label: "Porto time", value: portoTime }
+  ];
+  const tailRows = [
     { label: "Where", value: locationLabel(row) },
     { label: "Reference", value: row.reference }
+  ];
+
+  // Porto time *is* Inês's time, so the second row is the student's on her copy
+  // and the student's own on theirs. Labelling it "Your time" to her was wrong.
+  const studentRows = [...commonRows, ...(studentTime ? [{ label: "Your time", value: studentTime }] : []), ...tailRows];
+  const teacherRows = [
+    ...commonRows,
+    ...(studentTime ? [{ label: "Student's time", value: studentTime }] : []),
+    ...tailRows
   ];
 
   const uid = calendarUid(row.id);
@@ -227,7 +246,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         heading: student.heading,
         intro: student.intro,
         callout: student.callout,
-        rows: baseRows,
+        rows: studentRows,
         action: manageUrl && event !== "cancelled" ? { label: "Change or cancel this lesson", url: manageUrl } : null,
         footer: student.footer
       }
@@ -249,7 +268,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           intro: teacher.intro,
           callout: teacher.callout,
           rows: [
-            ...baseRows,
+            ...teacherRows,
             { label: "Student", value: `${row.student_name}<br>${row.student_email}${row.student_phone ? `<br>${row.student_phone}` : ""}` },
             ...(row.notes ? [{ label: "Notes", value: row.notes }] : [])
           ],

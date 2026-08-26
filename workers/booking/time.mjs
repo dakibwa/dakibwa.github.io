@@ -153,6 +153,21 @@ export function formatInZone(date, zone = PORTO, locale = "en-GB") {
   }).format(date);
 }
 
+/**
+ * The same instant in another zone, or null when it reads identically to Porto.
+ *
+ * Compared per instant rather than per zone name: Lisbon and London share an
+ * offset for most of the year, so a "zones differ" check prints
+ * "19:00 (WEST) / 19:00 (BST)" to every UK student, which is just noise.
+ */
+export function differingZonedTime(date, zone, locale = "en-GB") {
+  if (!zone || zone === PORTO) return null;
+
+  const here = formatInZone(date, PORTO, locale);
+  const there = formatInZone(date, zone, locale);
+  return here === there ? null : `${there} (${timeZoneAbbreviation(date, zone, locale)})`;
+}
+
 export function timeZoneAbbreviation(date, zone = PORTO, locale = "en-GB") {
   const parts = new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName: "short" }).formatToParts(date);
   return parts.find((part) => part.type === "timeZoneName")?.value ?? zone;
