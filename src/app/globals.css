@@ -1240,8 +1240,7 @@ textarea,
  * below it.
  */
 .booking-policy a,
-.booking-existing a,
-.booking-recap button {
+.booking-existing a {
   position: relative;
   display: inline;
   color: inherit;
@@ -1252,8 +1251,7 @@ textarea,
 }
 
 .booking-policy a::after,
-.booking-existing a::after,
-.booking-recap button::after {
+.booking-existing a::after {
   position: absolute;
   right: 0;
   bottom: -2px;
@@ -1269,18 +1267,14 @@ textarea,
 .booking-policy a:hover,
 .booking-policy a:focus-visible,
 .booking-existing a:hover,
-.booking-existing a:focus-visible,
-.booking-recap button:hover,
-.booking-recap button:focus-visible {
+.booking-existing a:focus-visible {
   color: var(--coral-action);
 }
 
 .booking-policy a:hover::after,
 .booking-policy a:focus-visible::after,
 .booking-existing a:hover::after,
-.booking-existing a:focus-visible::after,
-.booking-recap button:hover::after,
-.booking-recap button:focus-visible::after {
+.booking-existing a:focus-visible::after {
   opacity: 1;
 }
 
@@ -1303,24 +1297,28 @@ textarea,
 
 .booking-back {
   display: inline-flex;
+  flex-wrap: nowrap;
   align-items: center;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--coral);
   border-radius: 999px;
-  padding: 0.6rem 1rem 0.6rem 0.8rem;
+  padding: 0.55rem 1.1rem 0.55rem 0.9rem;
   background: transparent;
-  color: var(--ink);
+  color: var(--coral-action);
   cursor: pointer;
-  gap: 0.45rem;
+  gap: 0.4rem;
   font-family: var(--ui);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  text-transform: uppercase;
+  transition: background 160ms ease, color 160ms ease;
 }
 
 .booking-back:hover,
 .booking-back:focus-visible {
-  border-color: var(--coral);
-  background: rgba(239, 93, 60, 0.08);
-  color: var(--coral-action);
+  background: var(--coral-action);
+  color: #fff;
 }
 
 /* The control sits beside the heading rather than above it, which cost a whole
@@ -1349,6 +1347,20 @@ textarea,
   outline-offset: 6px;
 }
 
+/* The control sits on the note's line, not on the heading's: a long date wraps
+   to two lines and left it stranded beside the second. */
+.booking-step-note-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0.6rem 0 1.5rem;
+  gap: 0.75rem 1.75rem;
+}
+
+.booking-step-note-row .booking-step-note {
+  margin: 0;
+}
+
 .booking-step-note {
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
@@ -1369,7 +1381,7 @@ textarea,
   gap: 0.7rem;
 }
 
-@container booking (min-width: 560px) {
+@container booking (min-width: 520px) {
   .lesson-choice {
     grid-template-columns: repeat(3, 1fr);
     gap: 0.85rem;
@@ -1713,7 +1725,7 @@ textarea,
 /* Side by side once the column can genuinely hold both. At 660px the confirm
    step was still stacking at 1280px viewport — the one width where the panel
    grew past the blue side — so this sits just under where that column lands. */
-@container booking (min-width: 560px) {
+@container booking (min-width: 520px) {
   /*
    * minmax(0, …), not minmax(220px, …): a grid column will not shrink below its
    * content's minimum, and Google renders its sign-in button at a fixed 320px.
@@ -1776,33 +1788,38 @@ textarea,
   line-height: 1.1;
 }
 
-.booking-recap button {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: var(--lavender-ink);
-  cursor: pointer;
-  font-family: var(--ui);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-/* It is the only route back from the confirm step, so it is a button rather
-   than the quiet text link the other recap controls were. */
+/*
+ * One rule, not a generic `.booking-recap button` plus overrides.
+ *
+ * The recap's only control is this one now, and the two rules were fighting on
+ * specificity: `.booking-recap button` is (0,1,1) and beat the (0,1,0) class
+ * here, so its `display: inline` stacked the icon above the label and its
+ * `border: 0` erased the outline. Merging them removes the conflict rather than
+ * papering over it with !important.
+ *
+ * It carries the action colour permanently rather than waiting for a hover to
+ * reveal that it is one, since it is the only route back from this step.
+ */
 .booking-recap__change {
   display: inline-flex;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   min-height: 40px;
-  white-space: nowrap;
-  border: 1px solid var(--rule) !important;
+  border: 1px solid var(--coral);
   border-radius: 999px;
-  padding: 0 0.95rem !important;
+  padding: 0 0.95rem;
+  background: transparent;
+  color: var(--coral-action);
+  cursor: pointer;
   gap: 0.35rem;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  text-transform: uppercase;
+  transition: background 160ms ease, color 160ms ease;
 }
 
 .booking-recap__change::after {
@@ -1811,8 +1828,8 @@ textarea,
 
 .booking-recap__change:hover,
 .booking-recap__change:focus-visible {
-  border-color: var(--coral) !important;
-  background: rgba(239, 93, 60, 0.08);
+  background: var(--coral-action);
+  color: #fff;
 }
 
 /* Price left, the one control right, on the card's bottom line. */
@@ -2941,6 +2958,7 @@ textarea,
   border-radius: 999px;
 }
 
+.schedule-move,
 .schedule-cancel {
   display: block;
   margin-top: 0.35rem;
@@ -2956,6 +2974,48 @@ textarea,
   letter-spacing: 0.07em;
   text-decoration: underline;
   text-transform: uppercase;
+}
+
+.schedule-move {
+  color: var(--lavender-ink);
+}
+
+/* Revealed under the lesson it belongs to, so it is obvious which is moving. */
+.schedule-move-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: end;
+  width: 100%;
+  margin-top: 0.85rem;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 0.85rem;
+  gap: 0.7rem;
+}
+
+.schedule-move-form label span {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-family: var(--ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.schedule-move-form input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0 0.7rem;
+  background: rgba(255, 255, 255, 0.6);
+  font: inherit;
+}
+
+.schedule-move-form .button {
+  min-height: 46px;
+  border-radius: 999px;
 }
 
 .schedule-dayoff {

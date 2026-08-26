@@ -7,6 +7,7 @@ import {
   addException,
   cancelBookingAs,
   createBookingFor,
+  rescheduleBookingAs,
   fetchBookings,
   fetchSchedule,
   minutesToTime,
@@ -43,6 +44,8 @@ export function TeacherSchedule() {
   const [checking, setChecking] = useState(true);
   const [newLesson, setNewLesson] = useState<NewLesson>(emptyLesson);
   const [adding, setAdding] = useState(false);
+  // Which booking is being moved, and to when. One at a time.
+  const [moving, setMoving] = useState<{ id: string; date: string; time: string } | null>(null);
   const [week, setWeek] = useState<WeekState>({});
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
@@ -291,6 +294,23 @@ export function TeacherSchedule() {
                   <a href={`mailto:${booking.student_email}`}>{booking.student_email}</a>
                   {booking.same_day_change ? <span className="schedule-flag">€5 same-day fee due</span> : null}
                   <button
+                    className="schedule-move"
+                    onClick={() =>
+                      setMoving((current) =>
+                        current?.id === booking.id
+                          ? null
+                          : {
+                              id: booking.id,
+                              date: booking.starts_at.slice(0, 10),
+                              time: formatSlotTime(booking.starts_at)
+                            }
+                      )
+                    }
+                    type="button"
+                  >
+                    {moving?.id === booking.id ? "Never mind" : "Move"}
+                  </button>
+                  <button
                     className="schedule-cancel"
                     onClick={async () => {
                       // Deliberate confirmation: this emails the student and
@@ -309,6 +329,45 @@ export function TeacherSchedule() {
                     Cancel
                   </button>
                 </div>
+                {moving?.id === booking.id ? (
+                  <form
+                    className="schedule-move-form"
+                    onSubmit={async (event) => {
+                      event.preventDefault();
+                      setError("");
+                      try {
+                        await rescheduleBookingAs(token, booking.id, portoTimeToUtc(moving.date, moving.time));
+                        setMoving(null);
+                        setStatus("Moved. They've been emailed the new time.");
+                        load(token);
+                      } catch (caught) {
+                        setError(caught instanceof Error ? caught.message : "That could not be moved.");
+                      }
+                    }}
+                  >
+                    <label>
+                      <span>New date</span>
+                      <input
+                        onChange={(event) => setMoving((c) => (c ? { ...c, date: event.target.value } : c))}
+                        required
+                        type="date"
+                        value={moving.date}
+                      />
+                    </label>
+                    <label>
+                      <span>Time (Porto)</span>
+                      <input
+                        onChange={(event) => setMoving((c) => (c ? { ...c, time: event.target.value } : c))}
+                        required
+                        type="time"
+                        value={moving.time}
+                      />
+                    </label>
+                    <button className="button button--coral" type="submit">
+                      Move lesson
+                    </button>
+                  </form>
+                ) : null}
               </li>
             ))}
           </ul>

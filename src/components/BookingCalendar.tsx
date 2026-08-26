@@ -335,17 +335,18 @@ export function BookingCalendar() {
 
         {step === "time" ? (
           <>
-            <div className="booking-step-head">
-              <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-                {selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a time"}
-              </h2>
+            <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
+              {selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a time"}
+            </h2>
+            <div className="booking-step-note-row">
+              <p className="booking-step-note">
+                {lessonType ? `${lessonType.name} · ${formatLessonDuration(lessonType.duration_minutes)}` : ""} · Porto
+                time
+              </p>
               <button className="booking-back" onClick={() => goTo("day")} type="button">
                 <ArrowLeft size={16} aria-hidden="true" /> Back
               </button>
             </div>
-            <p className="booking-step-note">
-              {lessonType ? `${lessonType.name} · ${formatLessonDuration(lessonType.duration_minutes)}` : ""} · Porto time
-            </p>
 
             {daySlots.length ? (
               <div className="time-groups">
