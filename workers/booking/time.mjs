@@ -168,6 +168,25 @@ export function differingZonedTime(date, zone, locale = "en-GB") {
   return here === there ? null : `${there} (${timeZoneAbbreviation(date, zone, locale)})`;
 }
 
+/**
+ * "Fri 25 Sep, 19:00" — for subject lines, where a full date runs past what an
+ * inbox shows and a reference code says nothing to the person reading it.
+ */
+export function formatShort(date, zone = PORTO, locale = "en-GB") {
+  const parts = new Intl.DateTimeFormat(locale, {
+    timeZone: zone,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date);
+
+  const get = (type) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("weekday")} ${get("day")} ${get("month")}, ${get("hour")}:${get("minute")}`;
+}
+
 export function timeZoneAbbreviation(date, zone = PORTO, locale = "en-GB") {
   const parts = new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName: "short" }).formatToParts(date);
   return parts.find((part) => part.type === "timeZoneName")?.value ?? zone;

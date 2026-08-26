@@ -1,0 +1,116 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { readSession } from "@/lib/auth-api";
+import type { SitePage } from "@/components/SiteHeader";
+
+type NavItem = { href: string; id: SitePage; label: string };
+
+const navigation: NavItem[] = [
+  { href: "/approach", id: "approach", label: "Approach" },
+  { href: "/lessons", id: "lessons", label: "Lessons" },
+  { href: "/faq", id: "faq", label: "FAQ" },
+  { href: "/book", id: "book", label: "Booking" }
+];
+
+export function SiteNav({ currentPage }: { currentPage: SitePage }) {
+  const [open, setOpen] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setSignedIn(Boolean(readSession()));
+  }, []);
+
+  // Navigating away must close the panel, or it stays open over the new page.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      // Focus goes back to the control that opened it, not to the top of the
+      // document, or a keyboard user is dropped somewhere unrelated.
+      toggleRef.current?.focus();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  const accountLabel = signedIn ? "My lessons" : "Sign in";
+  const isAccountPage = currentPage === "my-lessons";
+
+  return (
+    <>
+      <nav className="site-nav" aria-label="Main navigation">
+        {navigation.map((item) => (
+          <Link
+            aria-current={currentPage === item.id ? "page" : undefined}
+            className="site-nav__link"
+            href={item.href}
+            key={item.id}
+          >
+            {item.label}
+          </Link>
+        ))}
+        <Link
+          aria-current={isAccountPage ? "page" : undefined}
+          className="site-nav__link site-nav__link--account"
+          href="/my-lessons"
+        >
+          {accountLabel}
+        </Link>
+      </nav>
+
+      <button
+        aria-controls="site-nav-mobile"
+        aria-expanded={open}
+        aria-label={open ? "Close menu" : "Open menu"}
+        className={`nav-toggle${open ? " is-open" : ""}`}
+        onClick={() => setOpen((value) => !value)}
+        ref={toggleRef}
+        type="button"
+      >
+        <span aria-hidden="true">
+          <span className="nav-toggle__line" />
+          <span className="nav-toggle__line" />
+          <span className="nav-toggle__line" />
+        </span>
+      </button>
+
+      {/* inert, not just hidden: a closed panel must be unreachable by tab and
+          invisible to a screen reader, and hiding it visually does neither. */}
+      <div className={`nav-mobile${open ? " is-open" : ""}`} id="site-nav-mobile" inert={!open || undefined}>
+        <div className="nav-mobile__inner">
+          {navigation.map((item) => (
+            <Link
+              aria-current={currentPage === item.id ? "page" : undefined}
+              className="nav-mobile__link"
+              href={item.href}
+              key={item.id}
+              onClick={() => setOpen(false)}
+            >
+              {item.label}
+            </Link>
+          ))}
+          <Link
+            aria-current={isAccountPage ? "page" : undefined}
+            className="nav-mobile__link nav-mobile__link--account"
+            href="/my-lessons"
+            onClick={() => setOpen(false)}
+          >
+            {accountLabel}
+          </Link>
+        </div>
+      </div>
+    </>
+  );
+}

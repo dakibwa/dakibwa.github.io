@@ -19,6 +19,7 @@ import {
   dateKey,
   differingZonedTime,
   formatInZone,
+  formatShort,
   isValidTimeZone,
   parseDateKey,
   timeZoneAbbreviation
@@ -173,9 +174,13 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
       )} same-day change fee applies.`
     : "";
 
+  // Subjects carry the date, not the reference: "PT-LS29CT" tells the reader
+  // nothing in an inbox list, and the date is what they are scanning for.
+  const shortWhen = formatShort(start, PORTO);
+
   const student = {
     booked: {
-      subject: `Your Portuguese lesson is booked — ${row.reference}`,
+      subject: `Your Portuguese lesson is booked — ${shortWhen}`,
       heading: "You're booked",
       intro: `Olá ${row.student_name.split(" ")[0]}, your lesson with Inês is confirmed. It's in your calendar attachment, and you can move or cancel it any time using the button below.`,
       callout: "",
@@ -184,14 +189,14 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
       ).toFixed(0)}; any earlier is free.`
     },
     rescheduled: {
-      subject: `Your lesson has moved — ${row.reference}`,
+      subject: `Your lesson has moved — ${shortWhen}`,
       heading: "Your lesson has moved",
       intro: `Olá ${row.student_name.split(" ")[0]}, that's done — your lesson is now at the time below and your calendar has been updated.`,
       callout: sameDayNotice,
       footer: "You can move or cancel it again from the same link."
     },
     cancelled: {
-      subject: `Your lesson is cancelled — ${row.reference}`,
+      subject: `Your lesson on ${shortWhen} is cancelled`,
       heading: "Your lesson is cancelled",
       intro: `Olá ${row.student_name.split(" ")[0]}, your lesson has been cancelled and removed from your calendar.`,
       callout: sameDayNotice,
@@ -201,13 +206,13 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
 
   const teacher = {
     booked: {
-      subject: `New booking — ${row.student_name}, ${formatInZone(start, PORTO)}`,
+      subject: `New booking — ${row.student_name}, ${shortWhen}`,
       heading: "New booking",
       intro: `${row.student_name} has booked a lesson. Accepting the attached invitation adds it to your calendar.`,
       callout: ""
     },
     rescheduled: {
-      subject: `${row.same_day_change ? "Same-day change" : "Lesson moved"} — ${row.student_name}`,
+      subject: `${row.same_day_change ? "Same-day change" : "Lesson moved"} — ${row.student_name}, ${shortWhen}`,
       heading: row.same_day_change ? "Changed on the lesson day" : "Lesson moved",
       intro: `${row.student_name} moved their lesson${
         previousStartsAt ? ` from ${formatInZone(new Date(previousStartsAt), PORTO)}` : ""
@@ -219,7 +224,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         : ""
     },
     cancelled: {
-      subject: `${row.same_day_change ? "Same-day cancellation" : "Cancellation"} — ${row.student_name}`,
+      subject: `${row.same_day_change ? "Same-day cancellation" : "Cancellation"} — ${row.student_name}, ${shortWhen}`,
       heading: row.same_day_change ? "Cancelled on the lesson day" : "Lesson cancelled",
       intro: `${row.student_name} cancelled their lesson on ${formatInZone(start, PORTO)}. It has been removed from your calendar.`,
       callout: row.same_day_change
@@ -245,7 +250,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         callout: student.callout,
         hero,
         heroNote: studentHeroNote,
-        preheader: `${lessonType.name} · ${portoTime} · ${row.reference}`,
+        preheader: `${lessonType.name} · ${portoTime}`,
         rows: baseRows,
         action: manageUrl && event !== "cancelled" ? { label: "Change or cancel this lesson", url: manageUrl } : null,
         footer: student.footer

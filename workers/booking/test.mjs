@@ -20,6 +20,7 @@ import {
   eachDateKey,
   differingZonedTime,
   formatInZone,
+  formatShort,
   isValidTimeZone,
   offsetMinutes,
   parseDateKey,
@@ -188,6 +189,18 @@ await test("a second timezone is only offered when the clock actually differs", 
   // A genuinely different clock is still shown.
   assert.match(differingZonedTime(summer, "America/New_York") ?? "", /14:00/);
   assert.match(differingZonedTime(summer, "Europe/Berlin") ?? "", /20:00/);
+});
+
+await test("the short form used in subject lines stays short and is Porto-based", () => {
+  const summer = new Date("2026-09-25T18:00:00Z");
+  assert.equal(formatShort(summer), "Fri 25 Sept, 19:00");
+
+  // Winter, when Porto is UTC — the same instant must not shift the label.
+  const winter = new Date("2026-12-15T10:00:00Z");
+  assert.equal(formatShort(winter), "Tue 15 Dec, 10:00");
+
+  // Short enough that an inbox does not truncate the sender's meaning away.
+  assert.ok(formatShort(summer).length <= 20, formatShort(summer));
 });
 
 // --- iCalendar --------------------------------------------------------------

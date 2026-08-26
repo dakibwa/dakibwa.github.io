@@ -101,7 +101,7 @@ if (await firstFaq.evaluate((element) => element.hasAttribute("open"))) {
 
 await page.goto(`${base}/book`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".booking-provider", { timeout: 10_000 });
-const bookingCalendar = (await page.locator(".custom-booking-calendar").count()) > 0;
+const bookingCalendar = (await page.locator(".booking-steps").count()) > 0;
 const bookingPlaceholder = (await page.locator(".booking-placeholder").count()) > 0;
 
 // The booking UI is served by this site against the ines-booking Worker. With
@@ -112,15 +112,27 @@ if (!bookingCalendar && !bookingPlaceholder) {
 }
 
 if (bookingCalendar) {
-  await page.waitForSelector(".lesson-type-option", { timeout: 10_000 });
-  const lessonTypeCount = await page.locator(".lesson-type-option").count();
+  await page.waitForSelector(".lesson-card", { timeout: 10_000 });
+  const lessonTypeCount = await page.locator(".lesson-card").count();
   if (lessonTypeCount < 1) {
-    throw new Error("The booking calendar rendered no lesson types.");
+    throw new Error("The booking flow rendered no lesson types.");
   }
 
   const bookingText = (await page.locator(".booking-composition").innerText()).toLowerCase();
-  assertIncludes(bookingText, "choose a lesson", "booking calendar heading");
+  assertIncludes(bookingText, "which lesson?", "booking first-step heading");
   assertIncludes(bookingText, "porto time", "booking timezone note");
+
+  // The mobile menu replaces the inline nav below 820px; both must work.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(300);
+  const toggle = page.locator(".nav-toggle");
+  if (!(await toggle.isVisible())) throw new Error("The mobile menu toggle is missing below 820px.");
+  if (await page.locator(".site-nav").isVisible()) throw new Error("The inline nav is still shown below 820px.");
+  await toggle.click();
+  await page.waitForTimeout(400);
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") throw new Error("The mobile menu did not open.");
+  if ((await page.locator("#site-nav-mobile a").count()) < 5) throw new Error("The mobile menu is missing links.");
+  await page.setViewportSize({ width: 1440, height: 1000 });
 }
 
 // The self-service management route must exist for the links in confirmation

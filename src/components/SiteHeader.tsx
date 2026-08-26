@@ -1,19 +1,12 @@
 import Link from "next/link";
-import { AccountNavLink } from "@/components/AccountNavLink";
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { SiteNav } from "@/components/SiteNav";
 
 export type SitePage = "home" | "approach" | "lessons" | "faq" | "book" | "my-lessons";
 
 type SiteHeaderProps = {
   currentPage?: SitePage;
 };
-
-const navigation: Array<{ href: string; id: SitePage; label: string }> = [
-  { href: "/approach", id: "approach", label: "Approach" },
-  { href: "/lessons", id: "lessons", label: "Lessons" },
-  { href: "/faq", id: "faq", label: "FAQ" },
-  { href: "/book", id: "book", label: "Booking" }
-];
 
 export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
   return (
@@ -30,19 +23,7 @@ export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
         >
           <BrandWordmark priority className="header-wordmark" />
         </Link>
-        <nav className="site-nav" aria-label="Main navigation">
-          {navigation.map((item) => (
-            <Link
-              href={item.href}
-              className="site-nav__link"
-              aria-current={currentPage === item.id ? "page" : undefined}
-              key={item.id}
-            >
-              {item.label}
-            </Link>
-          ))}
-          <AccountNavLink currentPage={currentPage} />
-        </nav>
+        <SiteNav currentPage={currentPage} />
       </div>
     </header>
   );
