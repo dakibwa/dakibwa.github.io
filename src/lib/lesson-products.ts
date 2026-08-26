@@ -12,8 +12,11 @@ export type LessonProduct = {
 };
 
 /**
- * Approved editorial product copy. Square remains the source of truth for
- * appointment availability, checkout, and the final confirmation screen.
+ * Approved editorial product copy for the lessons page.
+ *
+ * The booking Worker's `lesson_types` table is the source of truth for what is
+ * actually bookable, its duration and its price. Keep the two in step: this
+ * copy is what a visitor reads, that table is what they can book.
  */
 export const lessonProducts: LessonProduct[] = [
   {

@@ -10,12 +10,15 @@
     "typecheck": "tsc --noEmit",
     "check:booking": "node scripts/check-booking-link.mjs",
     "test:flow": "node scripts/qa-flow.mjs",
-    "deploy:cloudflare": "NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual npm run check:booking && NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual npm run build && wrangler pages deploy out --project-name=portuguese-with-ines --branch=main",
+    "deploy:cloudflare": "npm run check:booking && npm run build && wrangler pages deploy out --project-name=portuguese-with-ines --branch=main",
     "deploy:cloudflare:redirect": "wrangler pages deploy redirects/portuguescomaines.com --project-name=portugues-com-a-ines-redirect --branch=main",
-    "worker:dev": "wrangler dev --config workers/wrangler.jsonc",
-    "worker:dry-run": "wrangler deploy --config workers/wrangler.jsonc --dry-run",
-    "worker:deploy": "wrangler deploy --config workers/wrangler.jsonc",
-    "worker:tail": "wrangler tail --config workers/wrangler.jsonc"
+    "worker:dev": "wrangler dev --config workers/booking/wrangler.jsonc",
+    "worker:dry-run": "wrangler deploy --config workers/booking/wrangler.jsonc --dry-run",
+    "worker:deploy": "wrangler deploy --config workers/booking/wrangler.jsonc",
+    "worker:tail": "wrangler tail --config workers/booking/wrangler.jsonc",
+    "worker:schema": "wrangler d1 execute ines-booking --remote --config workers/booking/wrangler.jsonc --file workers/booking/schema.sql",
+    "worker:seed": "wrangler d1 execute ines-booking --remote --config workers/booking/wrangler.jsonc --file workers/booking/seed.sql",
+    "test:booking": "node workers/booking/test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.14.0",

@@ -2,12 +2,13 @@
 
 ## Verification and release
 
-- During implementation, run the smallest relevant check. Use the booking check when booking configuration or routing changes, the focused Playwright smoke test for affected customer journeys, and the production build for release or cross-cutting work.
+- During implementation, run the smallest relevant check. Use `npm run test:booking` for Worker logic, `npm run check:booking` when booking configuration or routing changes, the focused Playwright smoke test for affected customer journeys, and the production build for release or cross-cutting work.
+- Booking changes span two deployables: the static site and the `ines-booking` Worker. Deploy the Worker first — the site's release gate checks its health and will refuse to publish against a broken one.
 - Markdown and `docs/**`-only changes do not require a build or deployment; the Pages workflow intentionally ignores them.
 
 ## Figma-first design workflow
 
-- The canonical editable website design is the [Português com a Inês Figma file](https://www.figma.com/design/c4AYW94iWzVqfRkCjyJs0Y). Figma owns intended visual design; Git owns production implementation and delivery; Square owns live booking and payment truth.
+- The canonical editable website design is the [Português com a Inês Figma file](https://www.figma.com/design/c4AYW94iWzVqfRkCjyJs0Y). Figma owns intended visual design; Git owns production implementation and delivery; the `ines-booking` Worker and its D1 database own live booking truth.
 - Start meaningful visual changes in Figma before editing production code. This includes new pages or sections, layout changes, component redesigns, typography or colour-system changes, new interaction patterns, and material desktop/mobile composition changes.
 - In the same task, prepare the relevant desktop and mobile frames plus important states, obtain Dan’s approval, implement the approved design, verify the real site, and reconcile any implementation-led visual adjustments back into Figma before calling the work complete.
 - Copy-only edits, urgent production fixes, accessibility corrections, provider/configuration changes, and truly minor pixel adjustments may start in code. If they visibly change the interface, sync the resulting design back to Figma in the same task.
@@ -18,4 +19,5 @@
 
 ## Documentation
 
-- Git owns website implementation and deployment history; Square and other providers own live booking and payment truth. Update `README.md` or the relevant focused documentation in the same commit whenever a material change alters customer behaviour, booking/payment flow, architecture, providers, publication workflow, or the next milestone.
+- Git owns website implementation and deployment history; the booking Worker's D1 database owns live booking state. Update `README.md` or `docs-booking-system.md` in the same commit whenever a material change alters customer behaviour, booking flow, architecture, providers, publication workflow, or the next milestone.
+- Booking touches money, a student's time and Inês's calendar. Never change the manage-link token scheme, the iCalendar `UID`/`SEQUENCE` handling, or the same-day fee detection without running `npm run test:booking` — each has a failure mode that is invisible until a real student is affected.

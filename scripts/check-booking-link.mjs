@@ -1,184 +1,90 @@
+/**
+ * Release gate for booking.
+ *
+ * Booking is served by the `ines-booking` Worker (workers/booking/). Publishing
+ * a build whose booking API is missing or unhealthy would put a dead calendar in
+ * front of students, so this fails loudly rather than warning.
+ *
+ * ALLOW_BOOKING_PREVIEW=1 permits a build with no API configured — the booking
+ * page then renders its setup placeholder. That is for local design previews
+ * only, and the deploy workflow does not set it.
+ */
+
 import { existsSync, readFileSync } from "node:fs";
 
+loadDotEnv(".env.development.local");
 loadDotEnv(".env.local");
 loadDotEnv(".env");
 
-const rawBookingMode = process.env.NEXT_PUBLIC_BOOKING_MODE ?? "";
-const bookingMode = normalizeBookingMode(rawBookingMode);
-const rawBookingApiBaseUrl = process.env.NEXT_PUBLIC_BOOKING_API_BASE_URL ?? "";
-const bookingApiBaseUrl = normalizePublicHttpUrl(rawBookingApiBaseUrl);
-const allowPreviewBooking = process.env.ALLOW_BOOKING_PREVIEW === "1";
-const rawRescheduleFeeMode = process.env.NEXT_PUBLIC_RESCHEDULE_FEE_MODE ?? "";
-const rescheduleFeeMode = normalizeRescheduleFeeMode(rawRescheduleFeeMode);
+const rawApiBaseUrl = process.env.NEXT_PUBLIC_BOOKING_API_BASE_URL ?? "";
+const apiBaseUrl = normalizePublicHttpUrl(rawApiBaseUrl);
+const allowPreview = process.env.ALLOW_BOOKING_PREVIEW === "1";
 
-if (rawRescheduleFeeMode.trim() && !rescheduleFeeMode) {
-  console.error("NEXT_PUBLIC_RESCHEDULE_FEE_MODE must be manual, square-policy, or policy-only.");
+if (rawApiBaseUrl.trim() && !apiBaseUrl) {
+  console.error("NEXT_PUBLIC_BOOKING_API_BASE_URL is set but is not a valid http(s) URL.");
   process.exit(1);
 }
 
-if (!allowPreviewBooking && (!rescheduleFeeMode || rescheduleFeeMode === "policy-only")) {
+if (!apiBaseUrl) {
+  if (allowPreview) {
+    console.log("No booking API configured; the booking page will show its setup placeholder.");
+    process.exit(0);
+  }
+
   console.error(
-    "Choose NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual or square-policy before production. policy-only is for local design preview and does not enforce the €5 same-day rule."
+    "NEXT_PUBLIC_BOOKING_API_BASE_URL is required. Deploy workers/booking and set the variable to its URL, " +
+      "or set ALLOW_BOOKING_PREVIEW=1 for a local preview build."
   );
   process.exit(1);
 }
 
-if (rawBookingApiBaseUrl.trim() && !bookingApiBaseUrl) {
-  console.error("NEXT_PUBLIC_BOOKING_API_BASE_URL must be an http(s) URL for the Square booking adapter.");
+let response;
+try {
+  response = await fetch(`${apiBaseUrl}/health`, { redirect: "follow" });
+} catch (error) {
+  console.error(`Could not reach the booking API at ${apiBaseUrl}/health — ${error.message}`);
   process.exit(1);
 }
 
-const rawSquareUrl = process.env.NEXT_PUBLIC_SQUARE_BOOKING_URL ?? "";
-const squareUrl = normalizeSquareBookingUrl(rawSquareUrl);
+const body = await response.json().catch(() => ({}));
+const healthy = response.ok && body.ok === true;
 
-if (rawSquareUrl.trim() && !squareUrl) {
+console.log(
+  JSON.stringify(
+    {
+      api: `${apiBaseUrl}/health`,
+      status: response.status,
+      ok: healthy,
+      lessonTypes: body.lessonTypes ?? 0,
+      emailMode: body.emailMode ?? "unknown",
+      missing: body.missing ?? []
+    },
+    null,
+    2
+  )
+);
+
+if (!healthy) {
   console.error(
-    "NEXT_PUBLIC_SQUARE_BOOKING_URL is set, but it is not a valid Square booking URL. Use a squareup.com or square.site booking link, or paste Square's one-line iframe/button code."
+    `The booking API is not healthy. Missing configuration: ${(body.missing ?? []).join(", ") || "unknown"}. ` +
+      "Set the Worker's secrets and apply the schema before publishing."
   );
   process.exit(1);
 }
 
-if (bookingMode === "custom-square") {
-  if (!bookingApiBaseUrl && !allowPreviewBooking) {
-    console.error(
-      "NEXT_PUBLIC_BOOKING_MODE=custom-square requires NEXT_PUBLIC_BOOKING_API_BASE_URL. Set ALLOW_BOOKING_PREVIEW=1 only for local/demo preview builds."
-    );
-    process.exit(1);
-  }
-
-  if (bookingApiBaseUrl) {
-    await checkBookingApiHealth(bookingApiBaseUrl);
-  } else {
-    console.log("Custom Square booking preview allowed; API health check skipped.");
-  }
-
-  if (!squareUrl && !allowPreviewBooking) {
-    console.error("NEXT_PUBLIC_SQUARE_BOOKING_URL is required as the hosted Square fallback/manage link.");
-    process.exit(1);
-  }
-
-  if (squareUrl) {
-    await checkUrl({
-      provider: "square",
-      url: squareUrl,
-      failureMessage:
-        "Square booking link is not live yet. In Square, go to Appointments > Online booking > Channels > Add your booking flow to an existing site."
-    });
-  }
-
-  process.exit(0);
+if (!body.lessonTypes) {
+  console.error("The booking API is up but has no active lesson types, so nothing can be booked. Apply seed.sql.");
+  process.exit(1);
 }
 
-if (bookingApiBaseUrl) {
-  await checkBookingApiHealth(bookingApiBaseUrl);
-  process.exit(0);
-}
-
-if (squareUrl) {
-  await checkUrl({
-    provider: "square",
-    url: squareUrl,
-    failureMessage:
-      "Square booking link is not live yet. In Square, go to Appointments > Online booking > Channels > Add your booking flow to an existing site."
-  });
-  process.exit(0);
-}
-
-const rawAcuityUrl = process.env.NEXT_PUBLIC_ACUITY_SCHEDULER_URL ?? "";
-const acuityUrl = normalizeAcuitySchedulerUrl(rawAcuityUrl);
-
-if (rawAcuityUrl.trim() && !acuityUrl) {
+// A live site sending nothing is worse than an obvious outage: the student sees
+// a confirmed booking and never receives the link they need to change it.
+if (body.emailMode !== "live") {
   console.error(
-    "NEXT_PUBLIC_ACUITY_SCHEDULER_URL is set, but it is not a valid Acuity scheduler URL. Use an acuityscheduling.com, squarespacescheduling.com, or as.me scheduler link."
+    "The booking API is in dry-run email mode, so confirmations would not be sent. " +
+      "Set RESEND_API_KEY and EMAIL_DRY_RUN=0 on the Worker before publishing."
   );
   process.exit(1);
-}
-
-if (acuityUrl) {
-  await checkUrl({
-    provider: "acuity",
-    url: acuityUrl,
-    failureMessage:
-      "Acuity booking link is not live yet. Copy the scheduler link from Acuity Scheduling Page > Link after the appointment type is ready."
-  });
-  process.exit(0);
-}
-
-const calLink = normalizeCalComLink(process.env.NEXT_PUBLIC_CALCOM_LINK ?? "");
-
-if (!calLink) {
-  console.log("No booking provider configured; booking embed will show the setup placeholder.");
-  process.exit(0);
-}
-
-await checkUrl({
-  provider: "calcom",
-  url: `https://cal.com/${calLink}`,
-  failureMessage:
-    "Cal.com booking link is not live yet. Create the event and connect payment before publishing this as the active booking link."
-});
-
-async function checkUrl({ provider, url, failureMessage }) {
-  const response = await fetch(url, { redirect: "follow" });
-  const body = await response.text();
-  const title = body.match(/<title>(.*?)<\/title>/i)?.[1]?.trim() ?? "";
-  const notFound = response.status === 404 || /^404:/i.test(title);
-
-  console.log(
-    JSON.stringify(
-      {
-        provider,
-        url,
-        status: response.status,
-        ok: response.ok && !notFound,
-        title
-      },
-      null,
-      2
-    )
-  );
-
-  if (!response.ok || notFound) {
-    console.error(`${failureMessage} Checked URL: ${url}`);
-    process.exit(1);
-  }
-}
-
-function normalizeCalComLink(value) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.hostname === "cal.com" || parsed.hostname === "app.cal.com") {
-      return parsed.pathname.replace(/^\/+/, "");
-    }
-  } catch {
-    // Plain Cal.com slugs land here.
-  }
-
-  return trimmed
-    .replace(/^https?:\/\/(?:app\.)?cal\.com\//, "")
-    .replace(/^\/+/, "")
-    .replace(/[?#].*$/, "");
-}
-
-function normalizeAcuitySchedulerUrl(value) {
-  return normalizeExternalBookingUrl(value, isAcuityHost);
-}
-
-function normalizeSquareBookingUrl(value) {
-  return normalizeExternalBookingUrl(value, isSquareHost);
-}
-
-function normalizeBookingMode(value) {
-  if (value === "auto" || value === "custom-square") return value;
-  return "square-hosted";
-}
-
-function normalizeRescheduleFeeMode(value) {
-  if (value === "manual" || value === "square-policy" || value === "policy-only") return value;
-  return "";
 }
 
 function normalizePublicHttpUrl(value) {
@@ -193,72 +99,6 @@ function normalizePublicHttpUrl(value) {
   } catch {
     return "";
   }
-}
-
-async function checkBookingApiHealth(apiBaseUrl) {
-  const response = await fetch(`${apiBaseUrl}/health`, { redirect: "follow" });
-  const body = await response.json().catch(() => ({}));
-  const ok = response.ok && body.ok === true;
-
-  console.log(
-    JSON.stringify(
-      {
-        provider: "square-api",
-        url: `${apiBaseUrl}/health`,
-        status: response.status,
-        ok,
-        missing: body.missing ?? []
-      },
-      null,
-      2
-    )
-  );
-
-  if (!ok) {
-    console.error("Square booking API health check failed. Check the Worker deployment and private Square env/secrets.");
-    process.exit(1);
-  }
-}
-
-function normalizeExternalBookingUrl(value, isAllowedHost) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  const rawUrl = trimmed.match(/(?:src|href)=["']([^"']+)["']/i)?.[1] ?? trimmed;
-  const withProtocol = /^[a-z][a-z\d+.-]*:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-
-  try {
-    const parsed = new URL(withProtocol);
-    if (!["http:", "https:"].includes(parsed.protocol) || !isAllowedHost(parsed.hostname)) {
-      return "";
-    }
-
-    parsed.protocol = "https:";
-    parsed.hash = "";
-    return parsed.toString();
-  } catch {
-    return "";
-  }
-}
-
-function isAcuityHost(hostname) {
-  return (
-    hostname === "acuityscheduling.com" ||
-    hostname.endsWith(".acuityscheduling.com") ||
-    hostname === "squarespacescheduling.com" ||
-    hostname.endsWith(".squarespacescheduling.com") ||
-    hostname === "as.me" ||
-    hostname.endsWith(".as.me")
-  );
-}
-
-function isSquareHost(hostname) {
-  return (
-    hostname === "squareup.com" ||
-    hostname.endsWith(".squareup.com") ||
-    hostname === "square.site" ||
-    hostname.endsWith(".square.site")
-  );
 }
 
 function loadDotEnv(path) {

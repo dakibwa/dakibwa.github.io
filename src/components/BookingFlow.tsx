@@ -1,107 +1,19 @@
 "use client";
 
-import Script from "next/script";
-import type { ComponentType } from "react";
-import { useEffect, useRef, useState } from "react";
 import { AssetMark } from "@/components/BrandMarks";
+import { BookingCalendar } from "@/components/BookingCalendar";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import {
-  BOOKING_DIRECT_URL,
-  BOOKING_EMBED_URL,
-  BOOKING_PROVIDER,
-  BOOKING_PROVIDER_NAME,
-  CALCOM_LINK,
+  BOOKING_CONFIGURED,
+  CONTACT_WHATSAPP_URL,
   SAME_DAY_RESCHEDULE_FEE_CENTS,
-  USE_CUSTOM_SQUARE_BOOKING,
   formatMoney
 } from "@/lib/config";
 
-type CalCommandArgs = unknown[];
-type CalApi = ((command: string, ...args: CalCommandArgs) => void) & {
-  loaded?: boolean;
-  ns?: Record<string, CalApi>;
-  q?: CalCommandArgs[];
-};
-
-declare global {
-  interface Window {
-    Cal?: CalApi;
-  }
-}
-
-const calScriptSrc = "https://app.cal.com/embed/embed.js";
-const acuityScriptSrc = "https://embed.acuityscheduling.com/js/embed.js";
-const bookingDirectUrl = BOOKING_DIRECT_URL;
-const bookingEmbedUrl = BOOKING_EMBED_URL;
-const isSquare = BOOKING_PROVIDER === "square";
-const isAcuity = BOOKING_PROVIDER === "acuity";
-const isCalCom = BOOKING_PROVIDER === "calcom";
 const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 
-function loadCalEmbed() {
-  if (window.Cal) {
-    window.Cal.ns = window.Cal.ns ?? {};
-    return window.Cal;
-  }
-
-  const cal = ((...args: CalCommandArgs) => {
-    cal.q = cal.q ?? [];
-    cal.q.push(args);
-  }) as CalApi;
-
-  cal.q = [];
-  cal.ns = {};
-  window.Cal = cal;
-
-  const script = document.createElement("script");
-  script.src = calScriptSrc;
-  script.async = true;
-  document.head.appendChild(script);
-  cal.loaded = true;
-
-  return cal;
-}
-
 export function BookingFlow() {
-  const widgetRef = useRef<HTMLDivElement>(null);
-  const [CustomBookingFlow, setCustomBookingFlow] = useState<ComponentType | null>(null);
-  const [embedReady, setEmbedReady] = useState(false);
-
-  useEffect(() => {
-    if (!USE_CUSTOM_SQUARE_BOOKING) return;
-
-    let isCurrent = true;
-    import("@/components/CustomSquareBookingFlow").then((module) => {
-      if (isCurrent) {
-        setCustomBookingFlow(() => module.CustomSquareBookingFlow);
-      }
-    });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isCalCom || !CALCOM_LINK || !widgetRef.current) return;
-
-    const parentElement = widgetRef.current;
-    parentElement.innerHTML = "";
-
-    const cal = loadCalEmbed();
-    cal("init", { origin: "https://app.cal.com" });
-    cal("inline", {
-      elementOrSelector: parentElement,
-      calLink: CALCOM_LINK
-    });
-    setEmbedReady(true);
-
-    return () => {
-      parentElement.innerHTML = "";
-    };
-  }, []);
-
   return (
     <>
       <SiteHeader currentPage="book" />
@@ -109,13 +21,28 @@ export function BookingFlow() {
       <main className="book-page" id="main-content">
         <section className="booking-composition" aria-labelledby="booking-title">
           <aside className="booking-intro">
-            <h1 id="booking-title">Book your<br />Portuguese<br />lesson</h1>
+            <h1 id="booking-title">
+              Book your
+              <br />
+              Portuguese
+              <br />
+              lesson
+            </h1>
             <div className="editorial-rule" aria-hidden="true" />
-            <p>Pick a time that works, add your details, and you’re booked.</p>
+            <p>Pick a time that works, add your details, and you&rsquo;re booked.</p>
             <ul className="booking-intro__points">
-              <li><AssetMark asset="/visuals/v2-splats/one-to-one-splat-v2.svg" /><span>One to one</span></li>
-              <li><AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" /><span>In Porto or online</span></li>
-              <li><AssetMark asset="/visuals/v2-splats/lesson-format-splat-v2.svg" /><span>Porto time</span></li>
+              <li>
+                <AssetMark asset="/visuals/v2-splats/one-to-one-splat-v2.svg" />
+                <span>One to one</span>
+              </li>
+              <li>
+                <AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" />
+                <span>In Porto or online</span>
+              </li>
+              <li>
+                <AssetMark asset="/visuals/v2-splats/lesson-format-splat-v2.svg" />
+                <span>Porto time</span>
+              </li>
             </ul>
             <AssetMark
               asset="/visuals/v2-splats/booking-availability-splat-v2.svg"
@@ -123,90 +50,20 @@ export function BookingFlow() {
             />
           </aside>
 
-          <section className="booking-provider" aria-label={`${BOOKING_PROVIDER_NAME} lesson booking`}>
-            <header className="booking-provider__header">
-              <div>
-                <p className="eyebrow">
-                  {USE_CUSTOM_SQUARE_BOOKING ? "Choose a day and time" : "Live availability"}
-                </p>
-                <h2>
-                  {BOOKING_PROVIDER === "none"
-                    ? "Booking is being set up."
-                    : `Book through ${BOOKING_PROVIDER_NAME}.`}
-                </h2>
-                <p>
-                  {BOOKING_PROVIDER === "none"
-                    ? "Times and checkout will appear here shortly."
-                    : `Pick a time and pay by card. ${BOOKING_PROVIDER_NAME} confirms it straight away.`}
-                </p>
-              </div>
-              {bookingDirectUrl ? (
-                <a className="button button--coral booking-provider__direct" href={bookingDirectUrl} target="_blank" rel="noreferrer">
-                  Open booking in {BOOKING_PROVIDER_NAME}
-                </a>
-              ) : null}
-            </header>
-
-            {USE_CUSTOM_SQUARE_BOOKING ? (
-              CustomBookingFlow ? (
-                <CustomBookingFlow />
-              ) : (
-                <p className="booking-loading">Loading the booking calendar…</p>
-              )
-            ) : isSquare && bookingEmbedUrl ? (
-              <div className="booking-widget-stack">
-                <div
-                  className="booking-embed-frame"
-                  aria-busy={!embedReady}
-                  aria-label="Square booking widget"
-                >
-                  {!embedReady ? <p className="booking-loading">Loading live availability…</p> : null}
-                  <iframe
-                    src={bookingEmbedUrl}
-                    title="Schedule a Portuguese lesson with Square"
-                    width="100%"
-                    height="980"
-                    allow="payment"
-                    loading="lazy"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    onLoad={() => setEmbedReady(true)}
-                  />
-                </div>
-                <p className="booking-fallback-note">
-                  If the calendar doesn’t load, you can{" "}
-                  <a href={bookingDirectUrl} target="_blank" rel="noreferrer">book in {BOOKING_PROVIDER_NAME} directly</a>{" "}
-                  instead.
-                </p>
-              </div>
-            ) : isAcuity && bookingEmbedUrl ? (
-              <div className="booking-widget-stack">
-                <Script src={acuityScriptSrc} strategy="afterInteractive" />
-                <div className="booking-embed-frame" aria-busy={!embedReady} aria-label="Acuity booking widget">
-                  <iframe
-                    src={bookingEmbedUrl}
-                    title="Schedule a Portuguese lesson"
-                    width="100%"
-                    height="900"
-                    loading="lazy"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    onLoad={() => setEmbedReady(true)}
-                  />
-                </div>
-              </div>
-            ) : isCalCom && CALCOM_LINK ? (
-              <div className="booking-widget-stack">
-                <div
-                  ref={widgetRef}
-                  className="booking-embed-frame"
-                  aria-busy={!embedReady}
-                  aria-label="Cal.com booking widget"
-                />
-              </div>
+          <section className="booking-provider" aria-label="Lesson booking">
+            {BOOKING_CONFIGURED ? (
+              <BookingCalendar />
             ) : (
               <div className="booking-placeholder" aria-label="Booking setup placeholder">
                 <p className="eyebrow">Not yet available</p>
                 <h3>Booking will open here.</h3>
-                <p>Times and checkout will appear once the booking provider is connected.</p>
+                <p>
+                  Times will appear once booking is connected. In the meantime,{" "}
+                  <a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">
+                    message Inês
+                  </a>{" "}
+                  and she&rsquo;ll arrange a lesson with you.
+                </p>
               </div>
             )}
           </section>
@@ -217,12 +74,10 @@ export function BookingFlow() {
           <div>
             <p className="eyebrow">Changing a lesson</p>
             <p>
-              Move to any time that’s free. It costs nothing the day before or earlier; on the day itself there’s a {sameDayFee} fee.
+              Move to any time that&rsquo;s free, from the link in your confirmation email. It costs nothing the day
+              before or earlier; on the day itself there&rsquo;s a {sameDayFee} fee.
             </p>
           </div>
-          {bookingDirectUrl ? (
-            <a href={bookingDirectUrl} target="_blank" rel="noreferrer">Manage in {BOOKING_PROVIDER_NAME}</a>
-          ) : null}
         </section>
       </main>
 

@@ -4,8 +4,6 @@ import path from "node:path";
 
 const outDir = path.join(process.cwd(), "tmp/qa");
 const base = (process.env.QA_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-const expectedBookingMode = normalizeBookingMode(process.env.NEXT_PUBLIC_BOOKING_MODE ?? "");
-const expectCustomBooking = expectedBookingMode === "custom-square";
 const routes = [
   { id: "home", path: "/", heading: "Português" },
   { id: "approach", path: "/approach", heading: "No class." },
@@ -103,25 +101,32 @@ if (await firstFaq.evaluate((element) => element.hasAttribute("open"))) {
 
 await page.goto(`${base}/book`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".booking-provider", { timeout: 10_000 });
-const customBookingConfigured = (await page.locator(".custom-booking-calendar").count()) > 0;
-const bookingEmbedConfigured = (await page.locator(".booking-embed-frame iframe").count()) > 0;
-const directBookingHref = await page.locator(".booking-provider__direct").getAttribute("href").catch(() => null);
-const bookingText = await page.locator(".booking-composition").innerText();
+const bookingCalendar = (await page.locator(".custom-booking-calendar").count()) > 0;
+const bookingPlaceholder = (await page.locator(".booking-placeholder").count()) > 0;
 
-assertIncludes(bookingText.toLowerCase(), "live availability", "booking live-availability label");
-assertIncludes(bookingText.toLowerCase(), "square", "booking provider");
-
-if (!directBookingHref?.includes("book.squareup.com")) {
-  throw new Error("The public Square fallback link is missing or invalid.");
+// The booking UI is served by this site against the ines-booking Worker. With
+// no API configured the page must degrade to the placeholder rather than to a
+// broken calendar, so both outcomes are legitimate — but nothing else is.
+if (!bookingCalendar && !bookingPlaceholder) {
+  throw new Error("The booking page rendered neither the calendar nor the setup placeholder.");
 }
 
-if (expectCustomBooking && !customBookingConfigured) {
-  throw new Error("Expected the custom Square booking calendar in custom-square mode.");
+if (bookingCalendar) {
+  await page.waitForSelector(".lesson-type-option", { timeout: 10_000 });
+  const lessonTypeCount = await page.locator(".lesson-type-option").count();
+  if (lessonTypeCount < 1) {
+    throw new Error("The booking calendar rendered no lesson types.");
+  }
+
+  const bookingText = (await page.locator(".booking-composition").innerText()).toLowerCase();
+  assertIncludes(bookingText, "choose a lesson", "booking calendar heading");
+  assertIncludes(bookingText, "porto time", "booking timezone note");
 }
 
-if (!expectCustomBooking && !bookingEmbedConfigured) {
-  throw new Error("Expected the hosted booking embed in square-hosted mode.");
-}
+// The self-service management route must exist for the links in confirmation
+// emails to resolve at all.
+await page.goto(`${base}/booking`, { waitUntil: "domcontentloaded" });
+await page.waitForSelector(".manage-page", { timeout: 10_000 });
 
 await browser.close();
 
@@ -136,9 +141,8 @@ console.log(
     {
       base,
       results,
-      bookingEmbedConfigured,
-      customBookingConfigured,
-      directBookingHref,
+      bookingCalendar,
+      bookingPlaceholder,
       mobileNavigation,
       externalResourceWarnings: logs.filter((entry) => entry.includes("Failed to load resource")),
       screenshots: outDir
@@ -147,11 +151,6 @@ console.log(
     2
   )
 );
-
-function normalizeBookingMode(value) {
-  if (value === "auto" || value === "custom-square") return value;
-  return "square-hosted";
-}
 
 function assertIncludes(value, expected, label) {
   if (!value.includes(expected)) {

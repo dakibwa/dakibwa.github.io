@@ -1,0 +1,31 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "ines-booking",
+  "main": "index.mjs",
+  "compatibility_date": "2026-06-19",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ines-booking",
+      "database_id": "PLACEHOLDER_SET_AFTER_CREATE"
+    }
+  ],
+  "vars": {
+    // Origins allowed to call this API. The live domains plus local development.
+    "ALLOWED_ORIGIN": "https://portuguesewithines.com,https://portuguescomaines.com,https://dakibwa.github.io,http://localhost:3002,http://127.0.0.1:3002,http://localhost:3000",
+    "SITE_URL": "https://portuguesewithines.com",
+    "MAIL_FROM": "Português com a Inês <bookings@portuguesewithines.com>",
+    "MAIL_SENDER_ADDRESS": "bookings@portuguesewithines.com",
+    // Flip to "0" once the Resend domain is verified. Until then every message
+    // is written to email_log and logged, and nothing is actually sent.
+    "EMAIL_DRY_RUN": "1"
+  },
+  "secrets": {
+    // wrangler secret put <NAME> --config workers/booking/wrangler.jsonc
+    "required": ["BOOKING_TOKEN_SECRET", "ADMIN_TOKEN", "RESEND_API_KEY", "TEACHER_EMAIL"]
+  }
+}

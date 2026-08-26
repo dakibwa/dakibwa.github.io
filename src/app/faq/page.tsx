@@ -4,8 +4,6 @@ import { AssetMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import {
-  BOOKING_PROVIDER,
-  BOOKING_PROVIDER_NAME,
   CONTACT_WHATSAPP_URL,
   SAME_DAY_RESCHEDULE_FEE_CENTS,
   formatMoney
@@ -20,9 +18,7 @@ export const metadata: Metadata = {
 
 const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 const changeBookingInstructions =
-  BOOKING_PROVIDER === "acuity"
-    ? "Log in to the scheduler, or use the link in your confirmation email."
-    : `Use the change-booking link in your confirmation email from ${BOOKING_PROVIDER_NAME}.`;
+  "Use the link in your confirmation email. It opens your booking on this site, where you can move it or cancel it yourself.";
 
 const faqSections = [
   {
@@ -146,12 +142,12 @@ const faqSections = [
       {
         question: "How do I book a lesson?",
         answer:
-          "Go to the booking page, pick a time that suits you, and pay. Square shows you the full details before you confirm."
+          "Go to the booking page, choose the lesson you want, pick a time that suits you, and add your details. You'’'ll see the full details before you confirm."
       },
       {
         question: "What happens after I book?",
         answer:
-          "An email arrives with the lesson details and a link you can use to change or cancel it."
+          "An email arrives straight away with the lesson details, a calendar invitation, and a link you can use to move or cancel it yourself at any time."
       },
       {
         question: "Do I have to commit to a block of lessons?",
@@ -166,11 +162,13 @@ const faqSections = [
     questions: [
       {
         question: "How do I pay?",
-        answer: `By card, through ${BOOKING_PROVIDER_NAME}, at the time you book. Your slot is confirmed once the payment goes through.`
+        answer:
+          "You don’t pay when you book — your slot is held as soon as you confirm it. Inês will arrange payment with you directly."
       },
       {
         question: "How much does a lesson cost?",
-        answer: `The prices are all on the lessons page, and ${BOOKING_PROVIDER_NAME} shows you the total before you pay.`
+        answer:
+          "The prices are all on the lessons page, and the price of the lesson you’ve chosen is shown before you confirm."
       },
       {
         question: "What if the trial lesson isn’t for me?",

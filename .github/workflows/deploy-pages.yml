@@ -32,16 +32,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_BOOKING_MODE: ${{ vars.NEXT_PUBLIC_BOOKING_MODE }}
+      # Booking is served by the ines-booking Worker. The check:booking step
+      # below fails the build if it is missing or unhealthy, so a release can
+      # never quietly ship a dead calendar.
       NEXT_PUBLIC_BOOKING_API_BASE_URL: ${{ vars.NEXT_PUBLIC_BOOKING_API_BASE_URL }}
-      NEXT_PUBLIC_SQUARE_BOOKING_URL: ${{ vars.NEXT_PUBLIC_SQUARE_BOOKING_URL }}
-      NEXT_PUBLIC_ACUITY_SCHEDULER_URL: ${{ vars.NEXT_PUBLIC_ACUITY_SCHEDULER_URL }}
-      NEXT_PUBLIC_CALCOM_LINK: ${{ vars.NEXT_PUBLIC_CALCOM_LINK }}
       LESSON_PRICE_CENTS: ${{ vars.LESSON_PRICE_CENTS || '2500' }}
       LESSON_CURRENCY: ${{ vars.LESSON_CURRENCY || 'eur' }}
       NEXT_PUBLIC_LESSON_DURATION_MINUTES: ${{ vars.NEXT_PUBLIC_LESSON_DURATION_MINUTES || '60' }}
       NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS: ${{ vars.NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS || '500' }}
-      NEXT_PUBLIC_RESCHEDULE_FEE_MODE: ${{ vars.NEXT_PUBLIC_RESCHEDULE_FEE_MODE || 'manual' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

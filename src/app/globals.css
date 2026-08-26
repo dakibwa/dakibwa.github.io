@@ -1374,6 +1374,13 @@ html.route-is-leaving .route-fade {
   font-weight: 700;
 }
 
+/* Dates from the neighbouring month. They are real and bookable, but must not
+   read as part of the month on screen. */
+.calendar-grid button .is-muted {
+  opacity: 0.45;
+  font-weight: 400;
+}
+
 .calendar-grid button.is-selected,
 .slot-grid button.is-selected {
   background: var(--green);
@@ -1484,6 +1491,457 @@ html.route-is-leaving .route-fade {
 
 .booking-manage-link a {
   text-decoration: underline;
+}
+
+/* Lesson type, booking outcome, and self-service management */
+
+.lesson-type-picker {
+  display: grid;
+  margin-bottom: 1.4rem;
+  gap: 0.5rem;
+}
+
+.lesson-type-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid var(--rule);
+  padding: 0.7rem 0.85rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.lesson-type-option strong {
+  font-family: var(--ui);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.lesson-type-option span {
+  font-size: 0.82rem;
+  opacity: 0.78;
+}
+
+.lesson-type-option.is-selected {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--paper);
+}
+
+.lesson-type-option.is-selected span {
+  opacity: 0.92;
+}
+
+.slot-grid button small {
+  display: block;
+  font-size: 0.66rem;
+  opacity: 0.72;
+}
+
+.booking-location-choice {
+  margin-bottom: 0.8rem;
+  border: 0;
+  padding: 0;
+}
+
+.booking-location-choice legend {
+  margin-bottom: 0.25rem;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.booking-location-choice label {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 1rem 0 0;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.booking-location-choice input {
+  width: auto;
+}
+
+.student-details-form label em {
+  font-style: normal;
+  opacity: 0.6;
+  text-transform: none;
+}
+
+.booking-form-note {
+  margin-top: 0.7rem;
+  font-size: 0.8rem;
+  opacity: 0.78;
+}
+
+.booking-alert--warn {
+  border-left: 3px solid var(--coral);
+  padding: 0.7rem 0.85rem;
+  background: rgba(239, 93, 60, 0.09);
+}
+
+/* Confirmation shown in place of the calendar once a booking succeeds. */
+
+.booking-success {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 1.5rem;
+  border: 1px solid var(--rule);
+  padding: 2rem 1.75rem;
+  gap: 0.55rem;
+}
+
+.booking-success h2 {
+  font-family: var(--display);
+  font-size: clamp(1.9rem, 3.6vw, 2.6rem);
+  line-height: 1.1;
+}
+
+.booking-success__when {
+  font-family: var(--ui);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.booking-success__reference {
+  display: flex;
+  align-items: baseline;
+  margin: 0.5rem 0;
+  gap: 0.6rem;
+}
+
+.booking-success__reference dt {
+  font-family: var(--ui);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.booking-success__reference dd {
+  font-family: var(--ui);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.booking-success__note {
+  font-size: 0.84rem;
+  opacity: 0.78;
+}
+
+/* /booking — the page a student reaches from their confirmation email. */
+
+.manage-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 3.5rem) var(--page-pad) 4rem;
+}
+
+.manage-page__intro h1 {
+  font-family: var(--display);
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
+  line-height: 1.05;
+}
+
+.manage-page__intro p {
+  margin-top: 0.4rem;
+}
+
+.manage-booking {
+  margin-top: 1.75rem;
+}
+
+.manage-booking__card {
+  border: 1px solid var(--rule);
+  padding: 1.5rem;
+}
+
+.manage-booking__card h2 {
+  margin-bottom: 0.9rem;
+  font-family: var(--display);
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
+  line-height: 1.1;
+}
+
+.manage-booking__facts > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.5fr) 1fr;
+  align-items: baseline;
+  border-top: 1px solid var(--rule-soft);
+  padding: 0.6rem 0;
+  gap: 1rem;
+}
+
+.manage-booking__facts dt {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--ui);
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.manage-booking__facts dd {
+  font-size: 0.98rem;
+}
+
+.manage-booking__facts dd.is-struck {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.manage-booking__actions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 1.4rem;
+  gap: 0.7rem;
+}
+
+.button--quiet {
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.button--quiet:hover {
+  border-color: var(--green);
+}
+
+.manage-booking__confirm,
+.manage-booking__reschedule {
+  margin-top: 1.4rem;
+  border: 1px solid var(--rule);
+  padding: 1.4rem;
+}
+
+.manage-booking__reschedule .calendar-grid {
+  margin-bottom: 1.2rem;
+}
+
+.manage-booking__reschedule .slot-grid {
+  margin-bottom: 0.4rem;
+}
+
+.booking-outcome {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1.4rem;
+  border-left: 3px solid var(--green);
+  padding: 0.9rem 1rem;
+  background: rgba(170, 164, 230, 0.22);
+  gap: 0.7rem;
+}
+
+.booking-outcome strong {
+  display: block;
+  font-family: var(--ui);
+  font-size: 0.95rem;
+}
+
+.booking-outcome p {
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+}
+
+/* /schedule — Inês's own view. Not linked from the site and not indexed. */
+
+.schedule-signin {
+  max-width: 380px;
+  margin-top: 1.5rem;
+  border: 1px solid var(--rule);
+  padding: 1.5rem;
+}
+
+.schedule-signin label {
+  display: block;
+  margin-bottom: 0.9rem;
+}
+
+.schedule-signin label span {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.schedule-signin input {
+  width: 100%;
+  border: 1px solid var(--rule);
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.schedule-block {
+  margin-top: 2.4rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 1.6rem;
+}
+
+.schedule-block h2 {
+  margin-bottom: 0.5rem;
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 3.6vw, 2.1rem);
+  line-height: 1.1;
+}
+
+.schedule-bookings {
+  list-style: none;
+}
+
+.schedule-bookings li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--rule-soft);
+  padding: 0.8rem 0;
+  gap: 0.6rem;
+}
+
+.schedule-bookings strong {
+  display: block;
+  font-family: var(--ui);
+  font-size: 0.95rem;
+}
+
+.schedule-bookings span {
+  font-size: 0.88rem;
+  opacity: 0.82;
+}
+
+.schedule-bookings em {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.schedule-bookings__meta {
+  text-align: right;
+  font-size: 0.82rem;
+}
+
+.schedule-bookings__meta a {
+  text-decoration: underline;
+}
+
+.schedule-flag {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--coral-action);
+  font-weight: 700;
+}
+
+.schedule-week {
+  margin: 1.2rem 0 1.4rem;
+}
+
+.schedule-day {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.4fr) 1fr;
+  align-items: start;
+  border-top: 1px solid var(--rule-soft);
+  padding: 0.7rem 0;
+  gap: 1rem;
+}
+
+.schedule-day h3 {
+  font-family: var(--ui);
+  font-size: 0.78rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.schedule-day__windows {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.schedule-window {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--rule);
+  padding: 0.25rem 0.35rem;
+  gap: 0.35rem;
+}
+
+.schedule-window input {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.schedule-window span {
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+.schedule-window button,
+.schedule-exceptions button {
+  display: grid;
+  min-width: 32px;
+  min-height: 32px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--coral-action);
+  cursor: pointer;
+}
+
+.schedule-add {
+  display: inline-flex;
+  align-items: center;
+  border: 1px dashed var(--rule);
+  padding: 0.4rem 0.65rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  gap: 0.3rem;
+  font-family: var(--ui);
+  font-size: 0.8rem;
+}
+
+.schedule-dayoff {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+  gap: 0.5rem;
+}
+
+.schedule-dayoff input {
+  border: 1px solid var(--rule);
+  padding: 0.6rem;
+  background: rgba(255, 255, 255, 0.45);
+  font: inherit;
+}
+
+.schedule-exceptions {
+  list-style: none;
+}
+
+.schedule-exceptions li {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--rule-soft);
+  padding: 0.55rem 0;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.schedule-exceptions li span {
+  flex: 1;
 }
 
 /* Footer */
@@ -1804,6 +2262,25 @@ html.route-is-leaving .route-fade {
 
   .custom-booking-calendar {
     grid-template-columns: 1fr;
+  }
+
+  .manage-booking__facts > div {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .manage-booking__actions .button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .schedule-day {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .schedule-bookings__meta {
+    text-align: left;
   }
 
   .calendar-column {

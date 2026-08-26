@@ -10,3 +10,8 @@ dist/
 tmp/
 tsconfig.tsbuildinfo
 *.log
+
+# Local Worker development secrets
+workers/booking/.dev.vars
+.wrangler/
+workers/**/.wrangler/

@@ -78,7 +78,7 @@ export default function LessonsPage() {
 
         <section className="lessons-note">
           <p>
-            Square handles the booking and takes the payment. You see the total before you confirm anything.
+            Pick a time on the booking page and you’re booked — you’ll see the full details before you confirm. Payment is arranged with Inês directly.
           </p>
           <Link className="text-action" href="/faq#faq-payment">Payment questions</Link>
         </section>

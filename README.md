@@ -10,7 +10,11 @@ five responsive routes:
 - `/approach` — teaching approach and confirmed credentials
 - `/lessons` — lesson formats and prices
 - `/faq` — booking, lesson, location, payment, rescheduling, and level answers
-- `/book` — live Square-hosted booking with a direct secure fallback
+- `/book` — the booking calendar
+- `/booking` — where a student moves or cancels their own lesson (noindex, reached
+  only from the link in their confirmation email)
+- `/schedule` — Inês's own view: teaching hours, days off, and what is booked
+  (noindex, access key required)
 
 Every route carries a booking action within reach of its closing content, not
 only in the header: the home page closes on one, and the FAQ ends with a route
@@ -69,19 +73,26 @@ request only competes with the fonts for no gain.
 - The canonical editable design is the Figma file linked from
   [design/README.md](./design/README.md). Read that before changing anything
   visual.
-- Square owns live availability, appointment confirmation, checkout, and
-  booking-management state.
-- The current Akibwa Square account requires full prepayment for fixed-price
-  appointment services. Reconfirm that policy when the Portuguese Square
-  account replaces it.
+- **Booking is owned by this repository**, not by a third-party scheduler. The
+  `ines-booking` Worker in `workers/booking/` and its D1 database are the source
+  of truth for availability, bookings, reschedules and cancellations. See
+  [docs-booking-system.md](./docs-booking-system.md).
+- Square was removed in August 2026. Square does not onboard sellers in
+  Portugal, so the account this site pointed at — Dan's UK account, set up as a
+  test — could never have been hers.
+- There is no payment rail yet. Students pay Inês directly, as they already did.
+  Stripe supports Portugal and is the intended route; it needs her own account.
 - The approved product display is trial lesson €20 / 60 minutes, single lessons
   at €25 / 60 minutes or €35 / 1 hour 30 minutes. Bundles are not part of the
   public launch offer. Existing students retain their individually agreed
   legacy €20 / €30 pricing, which is not advertised publicly.
-  Square shows the final appointment details and total before confirmation.
-- The current rescheduling rule is free before the lesson day, with a €5 fee for
-  a change made on the lesson day in Porto time. Production uses manual
-  enforcement until a provider-backed exact rule exists.
+  The Worker's `lesson_types` table decides what is actually bookable; the
+  lessons page is the copy a visitor reads. Keep the two in step.
+- The rescheduling rule is free before the lesson day, with a €5 fee for a change
+  made on the lesson day in Porto time. The Worker detects a same-day change,
+  warns the student before they confirm it, and emails Inês a notice subjected
+  "Same-day change" — she collects the fee at the lesson. Nothing charges it
+  automatically, because there is no payment rail to charge against.
 
 ## Run and verify
 
@@ -97,10 +108,15 @@ Smallest relevant checks:
 ```bash
 npm run typecheck
 npm run lint
-npm run check:booking
+npm run test:booking   # Worker logic: DST, iCalendar, manage-link signing
+npm run check:booking  # release gate — the booking API must be healthy
 npm run test:flow
 npm run build
 ```
+
+`test:booking` needs neither a server nor a network. It covers the parts that
+are genuinely easy to get wrong: the 23- and 25-hour DST days, iCalendar folding
+of accented text at 75 octets, and rejection of tampered manage links.
 
 `test:flow` expects a running static or development server. Set
 `QA_BASE_URL` when it is not `http://localhost:3000`.
@@ -131,34 +147,33 @@ animation, smooth scrolling, and the button and navigation hover transforms,
 keeping colour changes so states stay distinguishable.
 
 Hero artwork is served as compressed WebP and fetched eagerly, with dedicated
-800 px sources for screens up to 720 px; non-critical marks load lazily. On the
-booking page, the third-party hosted calendar is lazy on narrow screens and
-the dormant custom Square calendar is fetched only when `custom-square` mode
-is actually enabled.
+800 px sources for screens up to 720 px; non-critical marks load lazily. The
+booking calendar renders from this site's own JavaScript against the booking
+Worker, so there is no third-party iframe to wait on.
 
 ## Booking configuration
 
-Copy `.env.example` to `.env.local` and provide the production Square URL:
+Copy `.env.example` to `.env.local` and point the site at the deployed Worker:
 
 ```bash
-NEXT_PUBLIC_BOOKING_MODE=square-hosted
-NEXT_PUBLIC_SQUARE_BOOKING_URL=https://book.squareup.com/appointments/...
+NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking.<subdomain>.workers.dev
 LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=60
 NEXT_PUBLIC_SAME_DAY_RESCHEDULE_FEE_CENTS=500
-NEXT_PUBLIC_RESCHEDULE_FEE_MODE=manual
 ```
 
-Hosted mode renders the Square booking route inside `/book` and always exposes
-an “Open secure booking” link so students can recover if third-party embedding
-or cookie controls prevent the calendar from appearing.
+With no API URL the booking page degrades to its setup placeholder and sends
+students to WhatsApp, rather than rendering a calendar that cannot work.
 
-The dormant custom calendar remains in the repository for a future
-secret-backed Worker. Do not set `custom-square` in production until the Worker
-is deployed, its `/health` endpoint returns `ok: true`, and booking completion
-has been tested against Square. Never put Square access tokens in this static
-site. See [docs-square-custom-booking.md](./docs-square-custom-booking.md).
+`npm run check:booking` is the release gate. It fails the build when the API is
+unreachable, has no lesson types, or is still in dry-run email mode — because a
+site that confirms bookings while silently sending no confirmations is worse
+than one that is visibly down. No secret belongs in this static site or in any
+`NEXT_PUBLIC_` variable: the Worker holds them all.
+
+Full architecture, the reasoning behind not using the Google Calendar API, and
+the deployment steps are in [docs-booking-system.md](./docs-booking-system.md).
 
 ## Publication
 
