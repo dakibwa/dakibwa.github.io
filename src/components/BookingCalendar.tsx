@@ -395,10 +395,6 @@ export function BookingCalendar() {
                   </button>
                 </h3>
                 <p>
-                  <Clock3 size={17} aria-hidden="true" />
-                  {lessonType ? formatLessonDuration(lessonType.duration_minutes) : "—"}
-                </p>
-                <p>
                   <CalendarDays size={17} aria-hidden="true" />
                   <span>
                     {chosen ? `${formatLongDate(chosen.startAt)}, ${formatSlotTime(chosen.startAt)}` : "—"}
@@ -413,10 +409,16 @@ export function BookingCalendar() {
                     {differingLocalTime(chosen.startAt, studentZone)} your time
                   </p>
                 ) : null}
-                <p>
-                  <MapPin size={17} aria-hidden="true" />
-                  {form.location === "porto" ? "In person, in Porto" : "Online"}
-                </p>
+                <div className="booking-recap__pair">
+                  <p>
+                    <Clock3 size={17} aria-hidden="true" />
+                    {lessonType ? formatLessonDuration(lessonType.duration_minutes) : "—"}
+                  </p>
+                  <p>
+                    <MapPin size={17} aria-hidden="true" />
+                    {form.location === "porto" ? "In Porto" : "Online"}
+                  </p>
+                </div>
                 {lessonType ? <strong>{formatMoneyCents(lessonType.price_cents)}</strong> : null}
               </aside>
 

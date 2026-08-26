@@ -73,15 +73,24 @@ export function AuthPanel({
   return (
     <div className="auth-panel">
       <AssetMark asset="/visuals/v2-splats/built-around-you-splat-v2.svg" className="auth-panel__mark" />
-      {heading ? <h3>{heading}</h3> : null}
-      {intro ? <p className="auth-panel__intro">{intro}</p> : null}
+      {/* The heading follows the mode, or it contradicts the active tab —
+          "Sign in" sat above a selected "Create an account". */}
+      <h3>{mode === "forgot" ? "Forgotten password" : mode === "register" ? "Create an account" : heading}</h3>
+      <p className="auth-panel__intro">
+        {mode === "forgot"
+          ? "Give us the email you booked with and we'll send you a link to choose a new password. It works for one hour."
+          : mode === "register"
+            ? "One account keeps every lesson you book in one place, so you can move or cancel any of them yourself."
+            : intro}
+      </p>
 
       {mode !== "forgot" ? (
         <GoogleSignInButton onError={setError} onSignedIn={onSignedIn} />
       ) : null}
 
       {mode !== "forgot" ? (
-        <div className="auth-tabs" role="tablist">
+        <div className={`auth-tabs auth-tabs--${mode}`} role="tablist">
+          <span aria-hidden="true" className="auth-tabs__thumb" />
           <button
             aria-selected={mode === "signin"}
             className={mode === "signin" ? "is-active" : ""}
@@ -103,7 +112,7 @@ export function AuthPanel({
         </div>
       ) : null}
 
-      <form onSubmit={submit}>
+      <form className="auth-panel__form" key={mode} onSubmit={submit}>
         {mode === "register" ? (
           <label>
             <span>
@@ -172,11 +181,11 @@ export function AuthPanel({
 
       <p className="auth-panel__aside">
         {mode === "forgot" ? (
-          <button onClick={() => setMode("signin")} type="button">
+          <button className="auth-panel__link" onClick={() => setMode("signin")} type="button">
             Back to signing in
           </button>
         ) : (
-          <button onClick={() => setMode("forgot")} type="button">
+          <button className="auth-panel__link" onClick={() => setMode("forgot")} type="button">
             I&rsquo;ve forgotten my password
           </button>
         )}

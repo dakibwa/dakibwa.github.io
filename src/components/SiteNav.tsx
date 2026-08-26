@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { readSession } from "@/lib/auth-api";
+import { AccountLink } from "@/components/AccountLink";
 import type { SitePage } from "@/components/SiteHeader";
 
 type NavItem = { href: string; id: SitePage; label: string };
@@ -17,13 +17,8 @@ const navigation: NavItem[] = [
 
 export function SiteNav({ currentPage }: { currentPage: SitePage }) {
   const [open, setOpen] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
-
-  useEffect(() => {
-    setSignedIn(Boolean(readSession()));
-  }, []);
 
   // Navigating away must close the panel, or it stays open over the new page.
   useEffect(() => {
@@ -45,7 +40,6 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
-  const accountLabel = signedIn ? "My lessons" : "Sign in";
   const isAccountPage = currentPage === "my-lessons";
 
   return (
@@ -61,13 +55,7 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
             {item.label}
           </Link>
         ))}
-        <Link
-          aria-current={isAccountPage ? "page" : undefined}
-          className="site-nav__link site-nav__link--account"
-          href="/my-lessons"
-        >
-          {accountLabel}
-        </Link>
+        <AccountLink className="site-nav__link site-nav__link--account" isCurrent={isAccountPage} />
       </nav>
 
       <button
@@ -101,14 +89,7 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
               {item.label}
             </Link>
           ))}
-          <Link
-            aria-current={isAccountPage ? "page" : undefined}
-            className="nav-mobile__link nav-mobile__link--account"
-            href="/my-lessons"
-            onClick={() => setOpen(false)}
-          >
-            {accountLabel}
-          </Link>
+          <AccountLink className="nav-mobile__link nav-mobile__link--account" isCurrent={isAccountPage} />
         </div>
       </div>
     </>

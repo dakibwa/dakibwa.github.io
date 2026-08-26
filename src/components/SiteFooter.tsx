@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AccountLink } from "@/components/AccountLink";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { CONTACT_WHATSAPP_URL } from "@/lib/config";
 
@@ -13,6 +14,7 @@ export function SiteFooter() {
         <Link href="/lessons">Lessons</Link>
         <Link href="/faq">FAQ</Link>
         <Link href="/book">Booking</Link>
+        <AccountLink />
       </nav>
       <div className="site-footer__contact">
         <a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">
