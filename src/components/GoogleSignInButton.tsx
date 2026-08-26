@@ -84,14 +84,19 @@ export function GoogleSignInButton({
           }
         });
 
+        // Google renders at a fixed pixel width, so it has to be told the
+        // space available or it sits narrower than every field beneath it.
+        // 400 is Google's own maximum.
+        const available = Math.min(400, Math.floor(holder.current.getBoundingClientRect().width) || 320);
+
         window.google.accounts.id.renderButton(holder.current, {
           type: "standard",
           theme: "outline",
           size: "large",
           text: "continue_with",
-          shape: "rectangular",
+          shape: "pill",
           logo_alignment: "center",
-          width: 320
+          width: available
         });
         setAvailable(true);
       })

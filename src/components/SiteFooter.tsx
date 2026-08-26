@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AccountLink } from "@/components/AccountLink";
+import { BackToTop } from "@/components/BackToTop";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { CONTACT_WHATSAPP_URL } from "@/lib/config";
 
@@ -20,6 +21,7 @@ export function SiteFooter() {
         <a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">
           Message Inês
         </a>
+        <BackToTop />
       </div>
     </footer>
   );

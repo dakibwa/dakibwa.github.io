@@ -1214,6 +1214,8 @@ html.route-is-leaving .route-fade {
   position: relative;
   display: inline;
   color: inherit;
+  /* The coral rule below is the underline; the browser's own would sit beside
+     it and read as two lines. */
   text-decoration: none;
   transition: color 160ms ease;
 }
@@ -1386,7 +1388,9 @@ html.route-is-leaving .route-fade {
   font-family: var(--display);
   font-size: 1.55rem;
   font-weight: 400;
-  line-height: 1.15;
+  /* Deep descenders on the display face fall outside the line box and were
+     landing on the price line beneath. */
+  line-height: 1.32;
 }
 
 .lesson-card__meta {
@@ -1488,11 +1492,21 @@ html.route-is-leaving .route-fade {
   transition: background 120ms ease, color 120ms ease;
 }
 
-.calendar-week button:nth-child(7n) {
+.calendar-week button:last-child {
   border-right: 1px solid var(--rule-soft);
 }
 
-.calendar-week:last-of-type button {
+/*
+ * Every week closes its own box.
+ *
+ * The grid used to be one continuous block, so a single bottom edge on the last
+ * row was enough. Splitting it into per-month weeks broke that: a week that
+ * ended a month had no bottom edge at all, and nth-child(7n) stopped landing on
+ * the last cell once the weeks became separate grids — which is why the line
+ * between Friday and Saturday went missing.
+ */
+.calendar-week:last-of-type button,
+.calendar-week:has(+ .calendar-month) button {
   border-bottom: 1px solid var(--rule-soft);
 }
 
@@ -1673,16 +1687,30 @@ html.route-is-leaving .route-fade {
   }
 }
 
+/* Rounded to match the sign-in card it sits beside; two cards side by side
+   with different corners read as two unrelated things. */
 .booking-recap {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--rule);
+  border-radius: 18px;
   padding: 1.5rem;
   background: rgba(170, 164, 230, 0.14);
 }
 
+/* Corner, as on the sign-in card, rather than a band above the heading. */
 .booking-recap__mark {
-  width: 58px;
-  height: 36px;
-  color: var(--coral);
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 46px;
+  height: 46px;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.booking-recap h3 {
+  padding-right: 54px;
 }
 
 .booking-recap h3 {
@@ -1962,16 +1990,11 @@ html.route-is-leaving .route-fade {
 }
 
 /*
- * Reserve the taller of the two tabbed forms. Creating an account has one more
- * field than signing in, so without this the whole card grew by that field's
- * height every time the tabs were flicked between.
- *
- * Only the tabbed modes: forgotten password is a separate screen reached
- * deliberately, where a change of size is expected rather than jarring.
+ * No reserved height. It stopped the card resizing between the tabs, but the
+ * cost was a visible band of empty card between the button and the
+ * forgotten-password link on the more common of the two views — a worse
+ * problem than the resize it prevented.
  */
-.auth-tabs ~ .auth-panel__form {
-  min-height: 370px;
-}
 
 /* Keyed on the mode, so switching to forgotten-password or between the two
    tabs fades the fields in rather than replacing them abruptly. */
@@ -2784,9 +2807,9 @@ html.route-is-leaving .route-fade {
 .site-footer {
   display: grid;
   grid-template-columns:
-    minmax(300px, 1.1fr)
-    minmax(390px, auto)
-    minmax(168px, 0.8fr);
+    minmax(0, 1fr)
+    minmax(0, auto)
+    minmax(0, 1fr);
   align-items: center;
   min-height: 0;
   padding: 1.35rem var(--page-pad);
@@ -2800,11 +2823,13 @@ html.route-is-leaving .route-fade {
   width: min(260px, 100%);
 }
 
+/* Flex, not a four-column grid: the account link made five items, and the
+   fifth wrapped to a second row, which is what made the footer look stacked. */
 .site-footer__nav {
-  display: grid;
-  grid-template-columns: repeat(4, auto);
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: clamp(1.25rem, 2.5vw, 3rem);
+  gap: 0 clamp(1rem, 2.2vw, 2.6rem);
   font-family: var(--ui);
   font-size: 0.72rem;
   font-weight: 700;
@@ -2827,9 +2852,34 @@ html.route-is-leaving .route-fade {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: clamp(1rem, 2vw, 2rem);
+  gap: clamp(0.9rem, 1.8vw, 1.8rem);
   text-align: right;
   white-space: nowrap;
+}
+
+/* Quieter than "Message Inês", which is the one thing here worth acting on. */
+.site-footer__top {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  gap: 0.35rem;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  opacity: 0.72;
+  text-transform: uppercase;
+  transition: opacity 160ms ease, color 160ms ease;
+}
+
+.site-footer__top:hover,
+.site-footer__top:focus-visible {
+  color: var(--lavender);
+  opacity: 1;
 }
 
 .site-footer__contact a {
