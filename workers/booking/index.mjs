@@ -174,6 +174,19 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
     { label: "Reference", value: row.reference }
   ];
 
+  // The student's copy also says what it costs and how paying works — the
+  // confirmation is the one email everyone reads, and payment shouldn't be a
+  // surprise at the door. Not on a cancellation, where a price is just noise,
+  // and not on Inês's copy, which would be telling her her own prices.
+  const studentRows =
+    event === "cancelled"
+      ? baseRows
+      : [
+          ...baseRows.slice(0, 2),
+          { label: "Price", value: `€${(lessonType.price_cents / 100).toFixed(0)} · pay on the day, in person` },
+          ...baseRows.slice(2)
+        ];
+
   const uid = calendarUid(row.id);
   const method = event === "cancelled" ? "CANCEL" : "REQUEST";
   const invite = (attendees) =>
@@ -304,7 +317,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         hero,
         heroNote: studentHeroNote,
         preheader: `${lessonType.name} · ${portoTime}`,
-        rows: baseRows,
+        rows: studentRows,
         action: manageUrl && event !== "cancelled" ? { label: "Change or cancel this lesson", url: manageUrl } : null,
         footer: student.footer
       }
@@ -399,6 +412,14 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
     { label: "Dates", value: dateLines }
   ];
 
+  // Price on the student's copy only, per lesson — the run is paid lesson by
+  // lesson, on the day, and Inês doesn't need her own prices repeated to her.
+  const studentSeriesRows = [
+    ...rowsForBoth.slice(0, 2),
+    { label: "Price", value: `€${(lessonType.price_cents / 100).toFixed(0)} a lesson · pay on the day, in person` },
+    ...rowsForBoth.slice(2)
+  ];
+
   const sends = [
     deliver(env, {
       to: first.student_email,
@@ -424,7 +445,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
         hero: `${formatInZone(new Date(first.starts_at), PORTO)} (${timeZoneAbbreviation(new Date(first.starts_at), PORTO)})`,
         heroNote: differingZonedTime(new Date(first.starts_at), studentZone) ? `${differingZonedTime(new Date(first.starts_at), studentZone)} — your time` : "",
         preheader: `${lessonType.name} · ${cadence}`,
-        rows: rowsForBoth,
+        rows: studentSeriesRows,
         action: { label: "See all your lessons", url: siteUrl(env, "/my-lessons/") },
         footer: `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free. Not turning up is €10.`
       }
