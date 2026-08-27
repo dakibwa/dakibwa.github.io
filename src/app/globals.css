@@ -20,6 +20,19 @@
   --ink: #1a3169;
   --rule: rgba(139, 130, 211, 0.72);
   --rule-soft: rgba(139, 130, 211, 0.38);
+  /*
+   * Hand-drawn rather than geometric: every corner radius differs slightly from
+   * its neighbours, the way her splats and lettering do. A pill and a hard
+   * rectangle both read as stock UI dropped onto the site; these read as drawn.
+   * Kept small enough to stay a button shape — felt before it is noticed.
+   */
+  --squiggle-card: 34px 18px 38px 22px / 20px 36px 18px 34px;
+  --squiggle-button: 26px 12px 28px 14px / 14px 28px 12px 26px;
+  /* Mirrored, so two coral buttons in one card are not the same drawing. */
+  --squiggle-button-alt: 13px 27px 14px 29px / 27px 13px 29px 14px;
+  --squiggle-tabs: 22px 11px 24px 13px / 12px 23px 11px 22px;
+  --squiggle-thumb: 19px 9px 20px 11px / 10px 19px 9px 18px;
+  --squiggle-field: 17px 8px 18px 10px / 9px 17px 8px 16px;
   --display: var(--font-beth-ellen), cursive;
   --body: var(--font-montserrat), Arial, sans-serif;
   --ui: var(--font-montserrat), Arial, sans-serif;
@@ -1893,7 +1906,7 @@ textarea,
 .student-details-form label > span {
   display: flex;
   align-items: center;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.45rem;
   gap: 0.35rem;
   font-family: var(--ui);
   font-size: 0.72rem;
@@ -1912,6 +1925,11 @@ textarea,
 }
 
 .student-details-form textarea {
+  /* More above the first line than beside it: at an even 0.8rem the typed text
+     sat on the top edge of a three-row box and looked like it had overflowed
+     into it. */
+  padding: 0.95rem 0.9rem 0.85rem;
+  line-height: 1.55;
   resize: vertical;
 }
 
@@ -1949,20 +1967,6 @@ textarea,
   /* Never wider than the space it is given, whatever its contents want. */
   max-width: min(460px, 100%);
   margin: 0 auto;
-  /*
-   * Hand-drawn rather than geometric: every corner radius in this card is
-   * slightly different from its neighbours, the way her splats and lettering
-   * are. A pill and a hard rectangle both read as stock UI dropped onto the
-   * site; these read as drawn. Kept small enough to stay a button shape —
-   * the wobble should be felt before it is noticed.
-   */
-  --squiggle-card: 34px 18px 38px 22px / 20px 36px 18px 34px;
-  --squiggle-button: 26px 12px 28px 14px / 14px 28px 12px 26px;
-  /* Mirrored, so two coral buttons in one card are not the same drawing. */
-  --squiggle-button-alt: 13px 27px 14px 29px / 27px 13px 29px 14px;
-  --squiggle-tabs: 22px 11px 24px 13px / 12px 23px 11px 22px;
-  --squiggle-thumb: 19px 9px 20px 11px / 10px 19px 9px 18px;
-  --squiggle-field: 17px 8px 18px 10px / 9px 17px 8px 16px;
   border: 1px solid var(--rule);
   border-radius: var(--squiggle-card);
   /* Kept tight enough that the confirm step still fits the height the intro
@@ -2131,7 +2135,8 @@ textarea,
   opacity: 0.75;
 }
 
-.auth-tabs {
+.auth-tabs,
+.segmented {
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2143,7 +2148,8 @@ textarea,
   gap: 4px;
 }
 
-.auth-tabs button {
+.auth-tabs button,
+.segmented label {
   border: 0;
   border-radius: var(--squiggle-thumb);
   padding: 0.62rem 0.5rem;
@@ -2158,12 +2164,40 @@ textarea,
   transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
 }
 
-.auth-tabs button {
+/* A label, not a button, so it has to be told to centre its own text. */
+.segmented label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* The radio still holds the state and still takes focus — it is only unpainted,
+   so a keyboard user keeps the arrow-key behaviour a radio group is meant to
+   have rather than being handed two look-alike buttons. */
+.segmented input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.segmented label:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.auth-tabs button,
+.segmented label {
   position: relative;
   z-index: 1;
 }
 
-.auth-tabs button.is-active {
+.auth-tabs button.is-active,
+.segmented label.is-active {
   color: var(--paper);
   opacity: 1;
 }
@@ -2172,7 +2206,8 @@ textarea,
  * One pill that slides, rather than two buttons swapping colour — the movement
  * is what makes the two options read as a single control.
  */
-.auth-tabs__thumb {
+.auth-tabs__thumb,
+.segmented__thumb {
   position: absolute;
   top: 4px;
   bottom: 4px;
@@ -2183,7 +2218,8 @@ textarea,
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.auth-tabs--signin .auth-tabs__thumb {
+.auth-tabs--signin .auth-tabs__thumb,
+.segmented--porto .segmented__thumb {
   transform: translateX(calc(100% + 4px));
 }
 
@@ -2577,16 +2613,8 @@ textarea,
   text-transform: uppercase;
 }
 
-.booking-location-choice label {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 1rem 0 0;
-  gap: 0.35rem;
-  font-size: 0.9rem;
-}
-
-.booking-location-choice input {
-  width: auto;
+.booking-location-choice .segmented {
+  margin-bottom: 0;
 }
 
 .student-details-form label em {
@@ -2633,6 +2661,32 @@ textarea,
   border: 1px solid var(--rule);
   padding: 2rem 1.75rem;
   gap: 0.55rem;
+}
+
+.booking-success__head {
+  display: flex;
+  width: 100%;
+  align-self: stretch;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* Never squeezed by a long heading, and never wrapped onto its own line. */
+.booking-success__badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-top: 0.5rem;
+  gap: 0.4rem;
+}
+
+.booking-success__actions {
+  display: flex;
+  align-items: center;
+  margin: 0.4rem 0 0.2rem;
+  gap: 1.4rem;
+  flex-wrap: wrap;
 }
 
 .booking-success h2 {

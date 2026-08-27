@@ -106,6 +106,11 @@ depending on them having kept the right confirmation email.
   sensitive than a lesson calendar.
 - The emailed manage link still works on its own, so a forgotten password never
   blocks someone from changing a lesson.
+- **Booking confirmation leads to `/my-lessons`, not to the inbox.** Every lesson
+  a student has booked is already in their own area, and they are signed in by
+  the time they get there — telling them to keep an email was the older, thinner
+  story. The emailed link is still offered beside it for that one lesson, because
+  it is the route that survives a forgotten password.
 
 ### How her calendar stays current
 

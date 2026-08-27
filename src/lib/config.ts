@@ -56,12 +56,12 @@ export function formatMoney(cents = LESSON_PRICE_CENTS, currency = LESSON_CURREN
   }).format(cents / 100);
 }
 
+/**
+ * Plain minutes, always. Rendering hours split the site against itself: the
+ * lessons page said "60 minutes" while the booking card beside it said "1 hour"
+ * for the same lesson, and "1 hour 30 minutes" was long enough to wrap its own
+ * column on a phone. One unit compares at a glance and never wraps.
+ */
 export function formatLessonDuration(minutes = LESSON_DURATION_MINUTES) {
-  if (minutes < 60) return `${minutes} minutes`;
-
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  const hourLabel = `${hours} ${hours === 1 ? "hour" : "hours"}`;
-
-  return remainingMinutes ? `${hourLabel} ${remainingMinutes} minutes` : hourLabel;
+  return `${minutes} minutes`;
 }

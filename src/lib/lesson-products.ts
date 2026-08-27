@@ -36,7 +36,7 @@ export const lessonProducts: LessonProduct[] = [
     id: "long",
     title: "Longer lesson",
     price: "\u20ac35",
-    duration: "1 hour 30 minutes",
+    duration: "90 minutes",
     description: "An hour and a half, if you want more time to talk."
   }
 ];

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   AlertCircle,
   ArrowLeft,
@@ -197,27 +198,41 @@ export function BookingCalendar() {
     const localTime = differingLocalTime(confirmation.startAt, studentZone);
     return (
       <section className="booking-success" aria-live="polite">
-        <CheckCircle2 size={40} aria-hidden="true" />
-        <p className="eyebrow">Booked</p>
-        <h2>You&rsquo;re booked in.</h2>
+        {/* The tick and the word sat above the heading and pushed everything
+            down a screen that is mostly one sentence of good news. Beside it,
+            they confirm the same thing and cost no height. */}
+        <div className="booking-success__head">
+          <h2>You&rsquo;re booked in.</h2>
+          <p className="eyebrow booking-success__badge">
+            <CheckCircle2 size={18} aria-hidden="true" />
+            Booked
+          </p>
+        </div>
         <p className="booking-success__when">
           {formatLongDate(confirmation.startAt)} at {formatSlotTime(confirmation.startAt)} Porto time
           {localTime ? ` · ${localTime} your time` : ""}
         </p>
         <p>
-          A confirmation is on its way to <strong>{confirmation.email}</strong>, with a calendar invitation and a link to
-          change or cancel the lesson yourself.
+          A confirmation and calendar invitation are on their way to <strong>{confirmation.email}</strong>.
         </p>
         <dl className="booking-success__reference">
           <dt>Your reference</dt>
           <dd>{confirmation.reference}</dd>
         </dl>
-        <a className="button button--coral" href={confirmation.manageUrl}>
-          Manage this booking
-        </a>
+        {/* The email is no longer the only way back. Everything a student has
+            booked is in their own area, so that leads, and the emailed link
+            stays for this one lesson because it works without signing in. */}
+        <div className="booking-success__actions">
+          <Link className="button button--coral" href="/my-lessons/">
+            Go to your lessons
+          </Link>
+          <a className="text-action" href={confirmation.manageUrl}>
+            Change or cancel this one
+          </a>
+        </div>
         <p className="booking-success__note">
-          Keep that email — it&rsquo;s how you get back to this booking. Changing on the day of the lesson costs{" "}
-          {formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}; any earlier is free.
+          Everything you book lives in your lessons, and you can move or cancel any of it there. Changing on the day of
+          the lesson costs {formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}; any earlier is free.
         </p>
       </section>
     );
@@ -449,20 +464,28 @@ export function BookingCalendar() {
                     </button>
                   </p>
 
+                  {/* The same segmented control the account tabs use. Two small
+                      radios read as a stray form control among her buttons, and
+                      the choice is one of the two things a student actually
+                      decides here — it should look like a decision. The radios
+                      are still what holds the state; they are only unpainted. */}
                   <fieldset className="booking-location-choice">
                     <legend>Where</legend>
-                    {(["online", "porto"] as const).map((option) => (
-                      <label key={option}>
-                        <input
-                          checked={form.location === option}
-                          name="location"
-                          onChange={() => setForm((current) => ({ ...current, location: option }))}
-                          type="radio"
-                          value={option}
-                        />
-                        <span>{option === "online" ? "Online" : "In Porto"}</span>
-                      </label>
-                    ))}
+                    <div className={`segmented segmented--${form.location}`}>
+                      <span aria-hidden="true" className="segmented__thumb" />
+                      {(["online", "porto"] as const).map((option) => (
+                        <label className={form.location === option ? "is-active" : ""} key={option}>
+                          <input
+                            checked={form.location === option}
+                            name="location"
+                            onChange={() => setForm((current) => ({ ...current, location: option }))}
+                            type="radio"
+                            value={option}
+                          />
+                          <span>{option === "online" ? "Online" : "In Porto"}</span>
+                        </label>
+                      ))}
+                    </div>
                   </fieldset>
 
                   <label>
