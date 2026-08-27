@@ -3082,7 +3082,8 @@ button.text-action {
 
 .manage-booking__card {
   border: 1px solid var(--rule);
-  padding: 1.5rem;
+  border-radius: var(--squiggle-panel);
+  padding: 1.5rem 1.7rem;
 }
 
 .manage-booking__card h2 {
@@ -3160,6 +3161,7 @@ button.text-action {
 .manage-booking__reschedule {
   margin-top: 1.4rem;
   border: 1px solid var(--rule);
+  border-radius: var(--squiggle-tile);
   padding: 1.4rem;
 }
 

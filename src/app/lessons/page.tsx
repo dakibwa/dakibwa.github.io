@@ -66,9 +66,7 @@ export default function LessonsPage() {
         </section>
 
         <section className="lessons-note">
-          <p>
-            Pick a time on the booking page and you’re booked — you’ll see the full details before you confirm. Payment is arranged with Inês directly.
-          </p>
+          <p>Pick a time on the booking page — you pay on the day, in person with Inês.</p>
           <Link className="text-action" href="/faq#faq-payment">Payment questions</Link>
         </section>
       </main>
