@@ -293,7 +293,10 @@ html.route-is-leaving .route-fade {
   justify-content: center;
   min-height: 60px;
   border: 1px solid transparent;
-  border-radius: 0;
+  /* Every call to action on the site, in the same hand as the booking flow. It
+     was the last square thing left: "Book a lesson" is the button the whole
+     site is pointing at, and it looked like it belonged to a different one. */
+  border-radius: var(--squiggle-button);
   padding: 0.9rem 2.7rem;
   font-family: var(--ui);
   font-size: 0.78rem;
