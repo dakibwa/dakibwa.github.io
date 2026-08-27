@@ -195,6 +195,13 @@ const faqSections = [
           "There’s a cancellation link in your confirmation email. If you’re not sure what to do, message me first."
       },
       {
+        question: "What if I don’t turn up?",
+        answer:
+          "Cancelling is always better than not coming — even on the day, that’s only the €5 fee. If you don’t come and haven’t said anything, it’s half the price of the lesson, because the time was held for you and nobody else could take it. If something happened, message me: I’d rather sort it out than charge you.",
+        // Placed under cancelling rather than payment on purpose — the answer is
+        // mostly "cancel instead", and that is the thing worth reading.
+      },
+      {
         question: "What if I need to stop for a while?",
         answer:
           "Then you stop. There’s no subscription and nothing to cancel, so a gap costs you nothing. Book again whenever you’re ready."

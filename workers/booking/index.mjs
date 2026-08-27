@@ -210,7 +210,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
       callout: "",
       footer: `Need to change it? Use the link above. Changing on the day of the lesson costs €${(
         settings.sameDayChangeFeeCents / 100
-      ).toFixed(0)}; any earlier is free.`
+      ).toFixed(0)}; any earlier is free. Not coming without telling her is half the lesson.`
     },
     rescheduled: byTeacher
       ? {
@@ -424,7 +424,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
         preheader: `${lessonType.name} · ${cadence}`,
         rows: rowsForBoth,
         action: { label: "See all your lessons", url: siteUrl(env, "/my-lessons/") },
-        footer: `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free.`
+        footer: `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free. Not coming without telling her is half the lesson.`
       }
     })
   ];

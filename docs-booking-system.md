@@ -227,6 +227,22 @@ Email is best-effort, but "best effort" used to mean "one attempt, and silence".
 - **A database error is not a duplicate.** Any write failure used to be reported
   as "already sent"; only a unique-constraint violation means that now.
 
+### The no-show policy
+
+Not coming, without saying anything, is half the lesson price.
+
+- **Nothing in the system charges it.** `payment_mode` is off and payment is
+  arranged with Inês directly, so this is stated policy she applies or waives —
+  not something the site collects. There is no no-show flag on a booking and no
+  handler that sets one.
+- **It is a share, not an amount.** The three lessons are €20, €25 and €35, so
+  one figure would be wrong for two of them. The copy says "half the lesson"
+  everywhere rather than a euro number.
+- **It is said before booking, not only after.** A charge someone first learns
+  about by being charged is the kind that costs a relationship. It appears on the
+  booking page's policy band, directly above the confirm button, on the
+  confirmation screen, in the confirmation email, and in the FAQ.
+
 ### How her calendar stays current
 
 Each lifecycle event emails an iCalendar attachment. Gmail adds the event on

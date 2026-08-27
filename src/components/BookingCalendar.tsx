@@ -337,7 +337,8 @@ export function BookingCalendar() {
         </div>
         <p className="booking-success__note">
           Everything you book lives in your lessons, and you can move or cancel any of it there. Changing on the day of
-          the lesson costs {formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}; any earlier is free.
+          the lesson costs {formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}; any earlier is free. Not coming without
+          telling her is half the lesson.
         </p>
       </section>
     );
@@ -686,7 +687,8 @@ export function BookingCalendar() {
                   <p className="booking-form-note">
                     You don&rsquo;t pay now &mdash; Inês will arrange payment with you directly. Change your booking
                     any time from your <a href="/my-lessons/">lessons page</a>; changing on the same day is{" "}
-                    <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong>.
+                    <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong>, and not turning up is half the
+                    lesson.
                   </p>
                 </form>
               )}

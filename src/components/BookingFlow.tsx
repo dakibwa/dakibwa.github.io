@@ -79,7 +79,8 @@ export function BookingFlow() {
             <p className="eyebrow">Changing a lesson</p>
             <p>
               Move it from the link in your confirmation email, or your <a href="/my-lessons/">lessons page</a>. Free
-              the day before or earlier &mdash; <strong>{sameDayFee} on the day itself</strong>.
+              the day before or earlier &mdash; <strong>{sameDayFee} on the day itself</strong>. Not turning up at all
+              is <strong>half the lesson</strong>, so it&rsquo;s always worth telling her.
             </p>
           </div>
         </section>
