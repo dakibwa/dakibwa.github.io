@@ -264,7 +264,9 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
     booked: {
       subject: `New booking — ${row.student_name}, ${shortWhen}`,
       heading: "New booking",
-      intro: `${row.student_name} has booked a lesson. Accepting the attached invitation adds it to your calendar.`,
+      // The invitation carries PARTSTAT=ACCEPTED, so there is nothing for her
+      // to accept — telling her to was instructing a step that doesn't exist.
+      intro: `${row.student_name} has booked a lesson. The attached invitation goes straight into your calendar.`,
       callout: ""
     },
     rescheduled: {
