@@ -163,7 +163,7 @@ const faqSections = [
       {
         question: "How do I pay?",
         answer:
-          "You don’t pay when you book — your slot is held as soon as you confirm it. Inês will arrange payment with you directly."
+          "You don’t pay when you book — your slot is held as soon as you confirm it. You pay on the day, in person with Inês."
       },
       {
         question: "How much does a lesson cost?",
@@ -197,7 +197,7 @@ const faqSections = [
       {
         question: "What if I don’t turn up?",
         answer:
-          "Cancelling is always better than not coming — even on the day, that’s only the €5 fee. If you don’t come and haven’t said anything, it’s half the price of the lesson, because the time was held for you and nobody else could take it. If something happened, message me: I’d rather sort it out than charge you.",
+          "Cancelling is always better than not coming — even on the day, that’s only the €5 fee. If you don’t come and haven’t said anything, it’s €10, because the time was held for you and nobody else could take it. If something happened, message me: I’d rather sort it out than charge you.",
         // Placed under cancelling rather than payment on purpose — the answer is
         // mostly "cancel instead", and that is the thing worth reading.
       },

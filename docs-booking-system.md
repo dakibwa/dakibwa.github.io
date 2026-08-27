@@ -229,15 +229,19 @@ Email is best-effort, but "best effort" used to mean "one attempt, and silence".
 
 ### The no-show policy
 
-Not coming, without saying anything, is half the lesson price.
+Not coming, without saying anything, is €10.
 
 - **Nothing in the system charges it.** `payment_mode` is off and payment is
-  arranged with Inês directly, so this is stated policy she applies or waives —
-  not something the site collects. There is no no-show flag on a booking and no
-  handler that sets one.
-- **It is a share, not an amount.** The three lessons are €20, €25 and €35, so
-  one figure would be wrong for two of them. The copy says "half the lesson"
-  everywhere rather than a euro number.
+  made on the day, in person with Inês, so this is stated policy she applies or
+  waives — not something the site collects. There is no no-show flag on a
+  booking and no handler that sets one.
+- **It is a flat €10.** It was "half the lesson" until 27 August 2026 — a share,
+  because the three lessons are €20, €25 and €35 and one figure would have been
+  wrong for two of them — but Dan set it to a flat €10, which is simpler to say
+  and simpler to apply. The copy states the euro number everywhere; if the
+  policy changes again, the places to update are the booking page's policy band,
+  the confirm-form note, the confirmation screen, the two Worker email footers,
+  and the FAQ.
 - **It is said before booking, not only after.** A charge someone first learns
   about by being charged is the kind that costs a relationship. It appears on the
   booking page's policy band, directly above the confirm button, on the

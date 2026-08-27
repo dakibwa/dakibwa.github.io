@@ -229,7 +229,7 @@ export function MyLessons() {
           Signed in as <strong>{student.name}</strong> ({student.email})
         </p>
         <div className="my-lessons__header-actions">
-          <button className="text-action" onClick={() => setEditing((open) => !open)} type="button">
+          <button className="button button--coral" onClick={() => setEditing((open) => !open)} type="button">
             {editing ? "Done" : "Edit details"}
           </button>
           <button
@@ -257,7 +257,7 @@ export function MyLessons() {
             />
           </label>
           <button
-            className="text-action"
+            className="button button--coral"
             disabled={savingName || !details.name.trim() || details.name.trim() === student.name}
             onClick={saveName}
             type="button"
@@ -277,7 +277,7 @@ export function MyLessons() {
           {/* Changing the address you sign in with is deliberately the slower of
               the two: nothing moves until the new address answers. */}
           <button
-            className="text-action"
+            className="button button--coral"
             disabled={!details.email.trim() || details.email.trim() === student.email}
             onClick={changeEmail}
             type="button"
@@ -292,8 +292,7 @@ export function MyLessons() {
             </p>
           ) : (
             <p className="my-lessons__details-note">
-              Your name changes straight away. A new email address has to confirm itself first, so nothing moves until
-              you use the link we send it.
+              A new email address only takes effect once you confirm it from the link we send.
             </p>
           )}
 
@@ -404,7 +403,7 @@ export function MyLessons() {
 
       {past.length ? (
         <section className="my-lessons__group">
-          <h2>Earlier</h2>
+          <h2>History</h2>
           <ul className="lesson-list lesson-list--past">
             {past.map((booking) => (
               <li key={booking.reference}>
