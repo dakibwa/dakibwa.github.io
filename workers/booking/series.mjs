@@ -18,8 +18,14 @@
 import { isSlotBookable } from "./availability.mjs";
 import { PORTO, addDaysToKey, dateKey, parseDateKey, zonedParts, zonedToUtc } from "./time.mjs";
 
-/** Bounded runs a student can choose, plus open-ended. */
-export const SERIES_LENGTHS = [4, 8, 12];
+/**
+ * The one bounded run a student can choose, plus open-ended.
+ *
+ * It was 4, 8 and 12. Three lengths plus "every week" is four ways to answer a
+ * question that really has two shapes — try it for a bit, or keep the slot — and
+ * the middle two were the ones nobody could tell apart.
+ */
+export const SERIES_LENGTHS = [4];
 
 /**
  * How far ahead an open-ended series is kept booked. Far enough that a student

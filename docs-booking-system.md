@@ -210,6 +210,23 @@ different students were confirmed into the same lesson in testing.
   student's own name could forge calendar properties or cut the address off the
   ATTENDEE line. Parameter values are quoted per RFC 5545 §3.1 instead.
 
+### When email fails
+
+Email is best-effort, but "best effort" used to mean "one attempt, and silence".
+
+- **A failed send is retryable.** The log row was written before the send and left
+  behind on failure, so the unique key made every later attempt return "already
+  sent" without sending. A message Resend rate-limited was lost for good, and the
+  caller was told it succeeded.
+- **There is now a sweep.** The nightly cron re-sends failed rows older than five
+  minutes. Only a booking's own confirmation can be rebuilt — the body is not
+  stored — so anything else stays in the log for a person to look at.
+- **A cancelled run is one email, not one per lesson.** Stopping a twelve-week
+  series fired twenty-four requests at the provider in the same instant; behind a
+  2/second limit, twenty-two were dropped and never retried.
+- **A database error is not a duplicate.** Any write failure used to be reported
+  as "already sent"; only a unique-constraint violation means that now.
+
 ### How her calendar stays current
 
 Each lifecycle event emails an iCalendar attachment. Gmail adds the event on

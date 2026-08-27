@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { preconnect } from "react-dom";
 import { AssetMark } from "@/components/BrandMarks";
 import { MyLessons } from "@/components/MyLessons";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -20,6 +21,11 @@ export const metadata: Metadata = {
  * space that was going spare.
  */
 export default function MyLessonsPage() {
+  // Google's sign-in script is 100 kB from a cold origin, fetched after
+  // hydration. Opening the connection while the page is still painting takes
+  // the handshake off the critical path for the one page that needs it.
+  preconnect("https://accounts.google.com", { crossOrigin: "anonymous" });
+
   return (
     <>
       <SiteHeader currentPage="my-lessons" />
@@ -53,7 +59,11 @@ export default function MyLessonsPage() {
             />
           </aside>
 
-          <section className="booking-provider" aria-label="Your lessons">
+          {/* The server renders one line ("Loading your lessons…") where a whole
+              sign-in panel is about to go. On a slow connection that swap moved
+              everything below it — 0.19 CLS on a phone, twice the threshold. The
+              placeholder now reserves roughly what replaces it. */}
+          <section className="booking-provider booking-provider--account" aria-label="Your lessons">
             <MyLessons />
           </section>
         </section>

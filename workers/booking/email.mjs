@@ -201,29 +201,25 @@ function layout({ heading, preheader, intro, hero, heroNote, rows, callout, acti
 </body></html>`;
 }
 
+/*
+ * The text alternative. These values are what the caller passed — plain text
+ * with newlines — not markup, so nothing here strips tags: doing so quietly
+ * deleted anything a student had written between angle brackets, including part
+ * of an address, from the text part while the HTML part showed it correctly.
+ */
 function plainText({ heading, intro, hero, heroNote, rows, callout, action, footer }) {
-  const lines = [heading, "", stripTags(intro)];
+  const clean = (value) => String(value ?? "").trim();
+  const lines = [heading, "", clean(intro)];
   // heroNote already reads "… — your time", so a bracket here nests badly.
   if (hero) lines.push("", `When: ${hero}`, ...(heroNote ? [heroNote] : []));
-  if (callout) lines.push("", stripTags(callout));
+  if (callout) lines.push("", clean(callout));
   if (rows.length) {
     lines.push("");
-    for (const { label, value } of rows) lines.push(`${label}: ${stripTags(value)}`);
+    for (const { label, value } of rows) lines.push(`${label}: ${clean(value)}`);
   }
   if (action) lines.push("", `${action.label}: ${action.url}`);
-  lines.push("", stripTags(footer), "portuguesewithines.com");
+  lines.push("", clean(footer), "portuguesewithines.com");
   return lines.join("\n");
-}
-
-function stripTags(value) {
-  return String(value ?? "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .trim();
 }
 
 export function renderEmail(content) {
@@ -239,15 +235,41 @@ export async function deliver(env, { to, subject, content, calendar, dedupeKey, 
   const from = env.MAIL_FROM || "Português com a Inês <bookings@portuguesewithines.com>";
   const now = new Date().toISOString();
 
-  // Idempotency before anything leaves: a retried request must not send twice.
+  /*
+   * Idempotency before anything leaves: a retried request must not send twice.
+   *
+   * But a failed attempt must not be mistaken for a delivered one. The row was
+   * written first and left behind on failure, so a message Resend rejected —
+   * or that never reached it — became permanently unsendable: every retry hit
+   * the unique key and returned "already sent". A single bad minute at the
+   * provider silently cost a student their confirmation, for good.
+   *
+   * So a row is only a duplicate if it is one. A previous attempt that failed
+   * is cleared and tried again, and any other database trouble is reported
+   * rather than dressed up as success.
+   */
   try {
     await env.DB.prepare(
       "INSERT INTO email_log (booking_id, kind, recipient, dedupe_key, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)"
     )
       .bind(bookingId ?? null, kind, to, dedupeKey, now)
       .run();
-  } catch {
-    return { ok: true, skipped: "already-sent" };
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    if (!/UNIQUE|constraint/i.test(message)) {
+      console.error("email-log-write", kind, message);
+      return { ok: false, error: message };
+    }
+
+    const previous = await env.DB.prepare("SELECT status FROM email_log WHERE dedupe_key = ?")
+      .bind(dedupeKey)
+      .first();
+
+    if (previous?.status !== "failed") return { ok: true, skipped: "already-sent" };
+
+    await env.DB.prepare("UPDATE email_log SET status = 'pending', error = NULL, created_at = ? WHERE dedupe_key = ?")
+      .bind(now, dedupeKey)
+      .run();
   }
 
   const attachments = calendar

@@ -43,15 +43,13 @@ const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 type Step = "lesson" | "day" | "time" | "details";
 
 /** "once" is a real choice, not the absence of one, so it lives in the union. */
-type RepeatOption = "once" | 4 | 8 | 12 | "open";
+type RepeatOption = "once" | 4 | "open";
 type FormState = { notes: string; location: "online" | "porto"; repeat: RepeatOption };
 const emptyForm: FormState = { notes: "", location: "online", repeat: "once" };
 
 const REPEAT_OPTIONS: { value: RepeatOption; label: string }[] = [
   { value: "once", label: "Just once" },
   { value: 4, label: "4 weeks" },
-  { value: 8, label: "8 weeks" },
-  { value: 12, label: "12 weeks" },
   { value: "open", label: "Every week" }
 ];
 
@@ -363,9 +361,14 @@ export function BookingCalendar() {
       <div className="booking-stage">
         {step === "lesson" ? (
           <>
-            <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-              Which lesson?
-            </h2>
+            <div className="booking-step-head booking-step-head--lesson">
+              <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
+                Which lesson?
+              </h2>
+              <a className="button button--coral booking-existing-link" href="/my-lessons/">
+                Already booked? Sign in
+              </a>
+            </div>
             {/* No list roles here. An explicit role replaces the implicit one,
                 so role="listitem" on a <button> destroyed the button role and
                 these announced as unnamed list items — the first step of the
@@ -395,9 +398,6 @@ export function BookingCalendar() {
               {!lessonTypes.length && !loadError ? <p className="booking-state-note">Loading lessons…</p> : null}
             </div>
 
-            <p className="booking-existing">
-              Already have a lesson booked? <a href="/my-lessons/">Sign in here</a>.
-            </p>
           </>
         ) : null}
 

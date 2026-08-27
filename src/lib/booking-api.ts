@@ -91,7 +91,7 @@ export function fetchAvailability(lessonType: string, from: string, to: string, 
  * every week until the student stops it — and is not the same as omitting the
  * field, which books one lesson.
  */
-export type RepeatChoice = 4 | 8 | 12 | null;
+export type RepeatChoice = 4 | null;
 
 export type SeriesOutcome = {
   id: string;

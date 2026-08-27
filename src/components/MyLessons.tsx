@@ -345,13 +345,14 @@ export function MyLessons() {
               <li key={booking.reference}>
                 <LessonMark className="lesson-list__mark" lessonTypeId={booking.lessonType.id} />
                 <div className="lesson-list__body">
-                  <h3>{booking.lessonType.name}</h3>
-                  <p>
-                    <span>
-                      <CalendarDays size={16} aria-hidden="true" />
-                      {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)} Porto time
-                    </span>
-                  </p>
+                  {/* The date is what tells one of these apart from the next.
+                      The lesson type was the heading on every card, which on a
+                      page of eight read as the same word eight times — it is
+                      still there, in the line that carries the other details. */}
+                  <h3>
+                    {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
+                    <em> Porto time</em>
+                  </h3>
                   {differingLocalTime(booking.startAt, zone) ? (
                     <p>
                       <span>
@@ -363,7 +364,7 @@ export function MyLessons() {
                   <p>
                     <span>
                       <Clock3 size={16} aria-hidden="true" />
-                      {formatLessonDuration(booking.lessonType.durationMinutes)}
+                      {booking.lessonType.name} · {formatLessonDuration(booking.lessonType.durationMinutes)}
                     </span>
                     <span>
                       <MapPin size={16} aria-hidden="true" />

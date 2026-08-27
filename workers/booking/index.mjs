@@ -68,9 +68,17 @@ function fail(message, status, request, env) {
   return json({ error: message }, status, request, env);
 }
 
+/**
+ * The body as an object, or an empty one.
+ *
+ * `null`, `7`, `"hi"` and `true` are all valid JSON, so a parse that succeeded
+ * was not enough — those went straight into handlers doing `body.notes` and
+ * `"repeat" in body`, and a four-byte unauthenticated body turned into a 500.
+ */
 async function readJson(request) {
   try {
-    return await request.json();
+    const data = await request.json();
+    return data && typeof data === "object" && !Array.isArray(data) ? data : {};
   } catch {
     return {};
   }
@@ -80,8 +88,16 @@ function siteUrl(env, path = "") {
   return `${String(env.SITE_URL ?? "https://portuguesewithines.com").replace(/\/+$/, "")}${path}`;
 }
 
+/*
+ * Deliberately narrower than the RFC. The old pattern allowed quotes, brackets,
+ * commas and semicolons in the local part — none of which Resend will send to,
+ * and all of which then travelled into the iCalendar ATTENDEE line. Refusing
+ * them at registration puts the error in front of the person who can fix it.
+ */
 function isEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value ?? "").trim());
+  return /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(
+    String(value ?? "").trim()
+  );
 }
 
 function cleanText(value, maxLength) {
@@ -214,13 +230,21 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           callout: sameDayNotice,
           footer: "You can move or cancel it again from the same link."
         },
-    cancelled: {
-      subject: `Your lesson on ${shortWhen} is cancelled`,
-      heading: "Your lesson is cancelled",
-      intro: `Olá ${row.student_name.split(" ")[0]}, your lesson has been cancelled and removed from your calendar.`,
-      callout: sameDayNotice,
-      footer: "You're welcome back any time — booking is always open on the website."
-    }
+    cancelled: byTeacher
+      ? {
+          subject: `Inês has cancelled your lesson on ${shortWhen}`,
+          heading: "Inês has cancelled this lesson",
+          intro: `Olá ${row.student_name.split(" ")[0]}, Inês has had to cancel this lesson and it has been removed from your calendar. Sorry about that — book another time whenever suits you, or reply and she'll sort one out with you.`,
+          callout: "",
+          footer: "No charge for a cancellation she makes."
+        }
+      : {
+          subject: `Your lesson on ${shortWhen} is cancelled`,
+          heading: "Your lesson is cancelled",
+          intro: `Olá ${row.student_name.split(" ")[0]}, your lesson has been cancelled and removed from your calendar.`,
+          callout: sameDayNotice,
+          footer: "You're welcome back any time — booking is always open on the website."
+        }
   }[event];
 
   const teacher = {
@@ -249,9 +273,13 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         : ""
     },
     cancelled: {
-      subject: `${row.same_day_change ? "Same-day cancellation" : "Cancellation"} — ${row.student_name}, ${shortWhen}`,
-      heading: row.same_day_change ? "Cancelled on the lesson day" : "Lesson cancelled",
-      intro: `${row.student_name} cancelled their lesson on ${formatInZone(start, PORTO)}. It has been removed from your calendar.`,
+      subject: byTeacher
+        ? `You cancelled ${row.student_name}'s lesson — ${shortWhen}`
+        : `${row.same_day_change ? "Same-day cancellation" : "Cancellation"} — ${row.student_name}, ${shortWhen}`,
+      heading: byTeacher ? "You cancelled this lesson" : row.same_day_change ? "Cancelled on the lesson day" : "Lesson cancelled",
+      intro: byTeacher
+        ? `You cancelled ${row.student_name}'s lesson on ${formatInZone(start, PORTO)}. They have been told, and it is off your calendar.`
+        : `${row.student_name} cancelled their lesson on ${formatInZone(start, PORTO)}. It has been removed from your calendar.`,
       callout: row.same_day_change
         ? `This was cancelled on the day of the lesson, so the €${(settings.sameDayChangeFeeCents / 100).toFixed(
             0
@@ -324,7 +352,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
  * single week later goes out through the ordinary per-lesson path and matches
  * the event already sitting in her calendar.
  */
-async function notifySeries(env, { rows, lessonType, settings, series, manageUrls, skipped }) {
+async function notifySeries(env, { rows, lessonType, settings, series, manageUrls, skipped, reason = "booked" }) {
   if (!rows.length) return [];
 
   const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
@@ -372,8 +400,11 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
   const sends = [
     deliver(env, {
       to: first.student_email,
-      subject: `Your weekly Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
-      kind: "student_series_booked",
+      subject:
+        reason === "extended"
+          ? `More of your weekly lessons are in the calendar — from ${formatShort(new Date(first.starts_at), PORTO)}`
+          : `Your weekly Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
+      kind: reason === "extended" ? "student_series_extended" : "student_series_booked",
       bookingId: first.id,
       // Keyed on the occurrences it describes, not how many there are. A count
       // collides every week for an open-ended series, so after the first top-up
@@ -382,10 +413,13 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
       replyTo,
       calendar: { body: invite({ name: first.student_name, email: first.student_email }), method: "REQUEST" },
       content: {
-        heading: "Your weekly slot is booked",
-        intro: `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on its own from your lessons page.`,
+        heading: reason === "extended" ? "More lessons in your calendar" : "Your weekly slot is booked",
+        intro:
+          reason === "extended"
+            ? `Olá ${first.student_name.split(" ")[0]}, your weekly slot keeps going, so a few more lessons have been added to your calendar. Move or cancel any one of them on its own from your lessons page, or stop the repeat there whenever you like.`
+            : `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on its own from your lessons page.`,
         callout: skippedNote,
-        hero: formatInZone(new Date(first.starts_at), PORTO),
+        hero: `${formatInZone(new Date(first.starts_at), PORTO)} (${timeZoneAbbreviation(new Date(first.starts_at), PORTO)})`,
         heroNote: differingZonedTime(new Date(first.starts_at), studentZone) ? `${differingZonedTime(new Date(first.starts_at), studentZone)} — your time` : "",
         preheader: `${lessonType.name} · ${cadence}`,
         rows: rowsForBoth,
@@ -399,17 +433,23 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
     sends.push(
       deliver(env, {
         to: teacherEmail,
-        subject: `Weekly booking — ${first.student_name}, from ${formatShort(new Date(first.starts_at), PORTO)}`,
-        kind: "teacher_series_booked",
+        subject:
+          reason === "extended"
+            ? `Weekly slot extended — ${first.student_name}, to ${formatShort(new Date(rows[rows.length - 1].starts_at), PORTO)}`
+            : `Weekly booking — ${first.student_name}, from ${formatShort(new Date(first.starts_at), PORTO)}`,
+        kind: reason === "extended" ? "teacher_series_extended" : "teacher_series_booked",
         bookingId: first.id,
         dedupeKey: `teacher:series:${series.id}:${rows[0].id}`,
         replyTo: first.student_email,
         calendar: { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "REQUEST" },
         content: {
-          heading: "A weekly slot was booked",
-          intro: `${first.student_name} booked the same slot each week. Every lesson is in the calendar attachment.`,
+          heading: reason === "extended" ? "A weekly slot was extended" : "A weekly slot was booked",
+          intro:
+            reason === "extended"
+              ? `${first.student_name}'s open-ended weekly slot has been carried forward. The new lessons are in the calendar attachment.`
+              : `${first.student_name} booked the same slot each week. Every lesson is in the calendar attachment.`,
           callout: skippedNote,
-          hero: formatInZone(new Date(first.starts_at), PORTO),
+          hero: `${formatInZone(new Date(first.starts_at), PORTO)} (${timeZoneAbbreviation(new Date(first.starts_at), PORTO)})`,
           heroNote: "",
           preheader: `${first.student_name} · ${cadence}`,
           rows: [
@@ -457,6 +497,95 @@ async function claimSlot(env, { columns, values, startAt, endAt }) {
     .run();
 
   return (result?.meta?.changes ?? 0) > 0;
+}
+
+/**
+ * A whole run cancelled, in one email each way.
+ *
+ * Stopping an open-ended series used to call notify() per lesson, so twelve
+ * occurrences meant twenty-four requests to the mail provider in the same
+ * instant — most of which its rate limit drops on the floor, silently. One
+ * message carries one calendar file cancelling every occurrence, each under its
+ * own booking's UID with its own incremented SEQUENCE, which is what a calendar
+ * needs to remove them.
+ */
+async function notifySeriesCancelled(env, { rows, lessonType, settings }) {
+  if (!rows.length) return [];
+
+  const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
+  const replyTo = settings.replyToEmail || teacherEmail || undefined;
+  const first = rows[0];
+
+  const events = rows.map((row) => ({
+    uid: calendarUid(row.id),
+    sequence: row.sequence,
+    summary: lessonSummary(row, lessonType),
+    description: lessonDescription(row, lessonType, ""),
+    location: locationLabel(row),
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    organiserName: settings.teacherName,
+    organiserEmail: env.MAIL_SENDER_ADDRESS || "bookings@portuguesewithines.com"
+  }));
+
+  const invite = (attendee) =>
+    buildCalendarSeriesInvite({ method: "CANCEL", events: events.map((event) => ({ ...event, attendees: [attendee] })) });
+
+  const dates = rows.map((row) => formatInZone(new Date(row.starts_at), PORTO)).join("\n");
+  const count = `${rows.length} ${rows.length === 1 ? "lesson" : "lessons"}`;
+
+  const sends = [
+    deliver(env, {
+      to: first.student_email,
+      subject: `Your weekly lessons are cancelled — ${count}`,
+      kind: "student_series_cancelled",
+      bookingId: first.id,
+      dedupeKey: `student:series-cancel:${first.id}:${rows.length}`,
+      replyTo,
+      calendar: { body: invite({ name: first.student_name, email: first.student_email }), method: "CANCEL" },
+      content: {
+        heading: "Your weekly lessons are cancelled",
+        preheader: `${count} removed from your calendar.`,
+        intro: `Olá ${first.student_name.split(" ")[0]}, the rest of your weekly run has been cancelled and removed from your calendar. You're welcome back any time — booking is always open on the website.`,
+        callout: "",
+        hero: "",
+        heroNote: "",
+        rows: [{ label: "Cancelled", value: dates }],
+        action: null,
+        footer: "Booking is always open on portuguesewithines.com."
+      }
+    })
+  ];
+
+  if (teacherEmail) {
+    sends.push(
+      deliver(env, {
+        to: teacherEmail,
+        subject: `Weekly run cancelled — ${first.student_name}, ${count}`,
+        kind: "teacher_series_cancelled",
+        bookingId: first.id,
+        dedupeKey: `teacher:series-cancel:${first.id}:${rows.length}`,
+        replyTo: first.student_email,
+        calendar: { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "CANCEL" },
+        content: {
+          heading: "A weekly run was cancelled",
+          preheader: `${first.student_name} · ${count}`,
+          intro: `${first.student_name} cancelled the rest of their weekly lessons. They are off your calendar.`,
+          callout: "",
+          hero: "",
+          heroNote: "",
+          rows: [
+            { label: "Student", value: `${first.student_name}\n${first.student_email}` },
+            { label: "Cancelled", value: dates }
+          ],
+          action: null,
+          footer: "Sent automatically by the booking system on portuguesewithines.com."
+        }
+      })
+    );
+  }
+
+  return Promise.allSettled(sends);
 }
 
 /** The signed-in student, or null. */
@@ -583,8 +712,63 @@ const worker = {
    */
   async scheduled(event, env, ctx) {
     ctx.waitUntil(topUpOpenSeries(env));
+    ctx.waitUntil(resendFailedEmails(env));
   }
 };
+
+/**
+ * Retry what the provider refused.
+ *
+ * email_log has always been described as the audit trail for a reconciliation
+ * sweep, and there was no sweep — nothing in the worker ever read the table. A
+ * booking would confirm, the confirmation would fail on a rate limit, and
+ * neither the student nor Inês would ever learn the lesson existed.
+ *
+ * Only the fact of the failure is retryable, not the message: the body is not
+ * stored. So this re-sends the one thing that can be rebuilt from the booking —
+ * its own confirmation — and leaves anything else for a person to see.
+ */
+async function resendFailedEmails(env) {
+  const cutoff = new Date(Date.now() - 5 * 60000).toISOString();
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM email_log
+     WHERE status = 'failed' AND booking_id IS NOT NULL AND created_at < ?
+     ORDER BY created_at LIMIT 25`
+  )
+    .bind(cutoff)
+    .all();
+
+  if (!results?.length) return;
+
+  const settings = await loadSettings(env);
+
+  for (const entry of results) {
+    try {
+      const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(entry.booking_id).first();
+      if (!row) continue;
+
+      const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+        .bind(row.lesson_type_id)
+        .first();
+      if (!lessonType) continue;
+
+      const event = row.status === "cancelled" ? "cancelled" : "booked";
+      const token = await createManageToken(row.id, env.BOOKING_TOKEN_SECRET);
+
+      // deliver() clears a failed row before retrying, so this is not suppressed
+      // as a duplicate the way it used to be.
+      await notify(env, {
+        event,
+        row,
+        lessonType,
+        settings,
+        manageUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`)
+      });
+    } catch (error) {
+      console.error("email-resend", entry.dedupe_key, String(error?.message ?? error));
+    }
+  }
+}
 
 async function topUpOpenSeries(env) {
   const now = new Date();
@@ -633,7 +817,11 @@ async function topUpOpenSeries(env) {
         settings,
         series,
         manageUrls,
-        skipped: filled.skipped
+        skipped: filled.skipped,
+        // Not a new booking — this slot was already theirs. Telling an existing
+        // student it "is now held for you each week" every month reads as a
+        // duplicate of something they did in September.
+        reason: "extended"
       });
     } catch (error) {
       // One bad series must not stop the rest being extended.
@@ -1145,15 +1333,22 @@ async function handleStopSeries(request, env, ctx, seriesId) {
       .first();
     const settings = await loadSettings(env);
 
+    const cancelledRows = [];
     for (const row of results ?? []) {
       await env.DB.prepare(
         "UPDATE bookings SET status = 'cancelled', cancelled_at = ?, cancelled_by = 'student', sequence = sequence + 1, updated_at = ? WHERE id = ?"
       )
         .bind(now.toISOString(), now.toISOString(), row.id)
         .run();
-      const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
-      ctx.waitUntil(notify(env, { event: "cancelled", row: updated, lessonType, settings, manageUrl: "" }));
+      cancelledRows.push(await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first());
       cancelled += 1;
+    }
+
+    // One message each way, not one per lesson: a dozen occurrences used to mean
+    // two dozen simultaneous requests to the mail provider, and its rate limit
+    // drops most of them without saying so.
+    if (cancelledRows.length) {
+      ctx.waitUntil(notifySeriesCancelled(env, { rows: cancelledRows, lessonType, settings }));
     }
   }
 
@@ -1201,10 +1396,20 @@ async function handleReschedule(request, env, ctx, token) {
 
   // Same gap as creating a booking: the check above and this write are two
   // statements, and a lesson can be claimed between them.
+  /*
+   * The row must still be exactly where the handler found it. Six round trips
+   * happen between reading it and writing it, and without these two extra
+   * conditions both of the obvious races land: a cancel arriving in that window
+   * was overwritten — the lesson moved after it was cancelled, and the calendar
+   * invite brought it back — and two simultaneous moves both reported success
+   * while only one of them was true.
+   */
   const moved = await env.DB.prepare(
     `UPDATE bookings SET starts_at = ?, ends_at = ?, previous_starts_at = ?, sequence = sequence + 1,
        reschedule_count = reschedule_count + 1, same_day_change = ?, updated_at = ?
      WHERE id = ?
+       AND status = 'confirmed'
+       AND starts_at = ?
        AND NOT EXISTS (
          SELECT 1 FROM bookings other
          WHERE other.status IN ('confirmed', 'pending_payment')
@@ -1212,11 +1417,16 @@ async function handleReschedule(request, env, ctx, token) {
            AND other.starts_at < ? AND other.ends_at > ?
        )`
   )
-    .bind(startsAt, endsAt, row.starts_at, sameDay, now.toISOString(), row.id, endsAt, startsAt)
+    .bind(startsAt, endsAt, row.starts_at, sameDay, now.toISOString(), row.id, row.starts_at, endsAt, startsAt)
     .run();
 
   if ((moved?.meta?.changes ?? 0) === 0) {
-    return fail("That time has just been taken. Please choose another.", 409, request, env);
+    // Say which it was, rather than blaming the slot for a cancellation.
+    const current = await env.DB.prepare("SELECT status FROM bookings WHERE id = ?").bind(row.id).first();
+    if (current?.status === "cancelled") {
+      return fail("That lesson has been cancelled, so it can't be moved.", 409, request, env);
+    }
+    return fail("That lesson has just changed. Please reload and try again.", 409, request, env);
   }
 
   const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
@@ -1522,7 +1732,7 @@ async function handleForgot(request, env, ctx) {
         subject: "Reset your password — Português com a Inês",
         kind: "password_reset",
         dedupeKey: `reset:${nonce}`,
-        replyTo: settings.replyToEmail || undefined,
+        replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail || undefined,
         content: {
           heading: "Reset your password",
           preheader: "Choose a new password — the link works for one hour.",
@@ -1685,7 +1895,7 @@ async function handleRequestEmailChange(request, env, ctx) {
         subject: "Confirm your new email — Português com a Inês",
         kind: "email_change",
         dedupeKey: `email-change:${nonce}`,
-        replyTo: settings.replyToEmail || undefined,
+        replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail || undefined,
         content: {
           heading: "Confirm this address",
           preheader: "One click, and this becomes the address you sign in with.",
@@ -1706,7 +1916,7 @@ async function handleRequestEmailChange(request, env, ctx) {
         subject: "Someone asked to change your email — Português com a Inês",
         kind: "email_change_notice",
         dedupeKey: `email-change-notice:${nonce}`,
-        replyTo: settings.replyToEmail || undefined,
+        replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail || undefined,
         content: {
           heading: "A change was requested",
           preheader: "Your address has not changed yet.",
@@ -2062,8 +2272,11 @@ async function handleAdmin(request, env, ctx, url, path) {
       .first();
     const settings = await loadSettings(env);
 
-    // No same-day fee when she is the one cancelling.
-    ctx.waitUntil(notify(env, { event: "cancelled", row: updated, lessonType, settings, manageUrl: "" }));
+    // No same-day fee when she is the one cancelling — and the emails should say
+    // she did it, rather than telling the student they cancelled their own lesson.
+    ctx.waitUntil(
+      notify(env, { event: "cancelled", row: updated, lessonType, settings, manageUrl: "", byTeacher: true })
+    );
 
     return json({ booking: publicBooking(updated, lessonType, settings) }, 200, request, env);
   }

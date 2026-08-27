@@ -5,10 +5,17 @@ import { RouteMotion } from "@/components/RouteMotion";
 import { publicAssetPath, publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
 
+/*
+ * Not preloaded. It is the display face — headings only — and on a slow
+ * connection its 40-odd kB arrived several hundred milliseconds after the text
+ * had already painted in the metric-matched fallback, so the preload bought
+ * nothing and cost about 110ms of first paint by competing for the pipe.
+ */
 const bethEllen = Beth_Ellen({
   weight: "400",
   subsets: ["latin"],
   display: "swap",
+  preload: false,
   variable: "--font-beth-ellen"
 });
 
