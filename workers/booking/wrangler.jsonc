@@ -3,6 +3,12 @@
   "name": "ines-booking",
   "main": "index.mjs",
   "compatibility_date": "2026-06-19",
+  // Nightly, so an open-ended weekly booking always has a run of lessons in
+  // front of it and her calendar is blocked that far ahead. 03:10 UTC is well
+  // clear of the evening lessons.
+  "triggers": {
+    "crons": ["10 3 * * *"]
+  },
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1

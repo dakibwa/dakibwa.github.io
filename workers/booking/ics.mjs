@@ -60,7 +60,13 @@ function icsTimestamp(date) {
  * @param {object} options
  * @param {"REQUEST"|"CANCEL"} options.method
  */
-export function buildCalendarInvite({
+/**
+ * One VEVENT. Split out so a run of weekly lessons can be carried by a single
+ * calendar file without any of them losing its own identity: each keeps the UID
+ * of its own booking, so changing week six later still matches the event
+ * already in her calendar and updates it rather than adding a second one.
+ */
+function veventLines({
   method,
   uid,
   sequence,
@@ -72,15 +78,10 @@ export function buildCalendarInvite({
   organiserName,
   organiserEmail,
   attendees = [],
-  url = ""
+  url = "",
+  now
 }) {
-  const now = new Date();
   const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Portugues com a Ines//Booking//EN",
-    "CALSCALE:GREGORIAN",
-    `METHOD:${method}`,
     "BEGIN:VEVENT",
     `UID:${uid}`,
     `SEQUENCE:${sequence}`,
@@ -116,9 +117,37 @@ export function buildCalendarInvite({
     );
   }
 
-  lines.push("END:VEVENT", "END:VCALENDAR");
+  lines.push("END:VEVENT");
+  return lines;
+}
 
+function wrapCalendar(method, eventLines) {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Portugues com a Ines//Booking//EN",
+    "CALSCALE:GREGORIAN",
+    `METHOD:${method}`,
+    ...eventLines,
+    "END:VCALENDAR"
+  ];
   return lines.map(foldLine).join(CRLF) + CRLF;
+}
+
+export function buildCalendarInvite(event) {
+  return wrapCalendar(event.method, veventLines({ ...event, now: new Date() }));
+}
+
+/**
+ * Every lesson in a weekly run, in one file. A student who books twelve weeks
+ * should not receive twelve emails, and Inês should not have to accept twelve
+ * invitations — but each lesson still has to reach her calendar as its own
+ * entry, because that is the whole point of booking the time.
+ */
+export function buildCalendarSeriesInvite({ method, events }) {
+  const now = new Date();
+  const body = events.flatMap((event) => veventLines({ ...event, method, now }));
+  return wrapCalendar(method, body);
 }
 
 /** Stable for the life of the booking, so updates match the original event. */

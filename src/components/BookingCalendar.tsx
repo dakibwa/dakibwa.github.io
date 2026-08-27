@@ -29,8 +29,11 @@ import {
   formatSlotTime,
   listLessonTypes,
   portoDateKey,
+  previewSeries,
   shortMonth,
   type LessonType,
+  type RepeatChoice,
+  type SeriesOutcome,
   type Slot
 } from "@/lib/booking-api";
 import { BOOKING_TIME_ZONE, CONTACT_WHATSAPP_URL, SAME_DAY_RESCHEDULE_FEE_CENTS, formatLessonDuration } from "@/lib/config";
@@ -39,10 +42,32 @@ const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 type Step = "lesson" | "day" | "time" | "details";
 
-type FormState = { notes: string; location: "online" | "porto" };
-const emptyForm: FormState = { notes: "", location: "online" };
+/** "once" is a real choice, not the absence of one, so it lives in the union. */
+type RepeatOption = "once" | 4 | 8 | 12 | "open";
+type FormState = { notes: string; location: "online" | "porto"; repeat: RepeatOption };
+const emptyForm: FormState = { notes: "", location: "online", repeat: "once" };
 
-type Confirmation = { reference: string; startAt: string; manageUrl: string; email: string };
+const REPEAT_OPTIONS: { value: RepeatOption; label: string }[] = [
+  { value: "once", label: "Just once" },
+  { value: 4, label: "4 weeks" },
+  { value: 8, label: "8 weeks" },
+  { value: 12, label: "12 weeks" },
+  { value: "open", label: "Every week" }
+];
+
+/** The wire form: `undefined` books one lesson, `null` repeats indefinitely. */
+function repeatPayload(option: RepeatOption): RepeatChoice | undefined {
+  if (option === "once") return undefined;
+  return option === "open" ? null : option;
+}
+
+type Confirmation = {
+  reference: string;
+  startAt: string;
+  manageUrl: string;
+  email: string;
+  series?: SeriesOutcome;
+};
 
 /**
  * Times read more easily grouped by part of day than as one long grid, and it
@@ -77,6 +102,8 @@ export function BookingCalendar() {
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [seriesPreview, setSeriesPreview] = useState<{ bookable: string[]; skipped: string[] } | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [studentZone, setStudentZone] = useState(BOOKING_TIME_ZONE);
   const [student, setStudent] = useState<Student | null>(null);
@@ -144,6 +171,41 @@ export function BookingCalendar() {
   const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
 
+  /*
+   * Which weeks a repeat would actually take, asked for before anything is
+   * booked. A student who picks eight weeks and gets seven should learn that
+   * while they can still change their mind, not from the confirmation email.
+   */
+  useEffect(() => {
+    const repeat = repeatPayload(form.repeat);
+    if (repeat === undefined || !chosen || !lessonType || !student) {
+      setSeriesPreview(null);
+      setPreviewing(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPreviewing(true);
+
+    previewSeries(readSession(), { lessonType: lessonType.id, startAt: chosen.startAt, weeks: repeat })
+      .then((result) => {
+        if (cancelled) return;
+        setSeriesPreview({ bookable: result.bookable, skipped: result.skipped });
+      })
+      .catch(() => {
+        // The confirm step re-checks every week anyway, so a failed preview
+        // costs a reassurance, not correctness.
+        if (!cancelled) setSeriesPreview(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewing(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [form.repeat, chosen, lessonType, student]);
+
   const canSubmit = Boolean(chosen && lessonType && student) && !submitting;
 
   function goTo(next: Step) {
@@ -162,12 +224,15 @@ export function BookingCalendar() {
     setSubmitError("");
 
     try {
+      const repeat = repeatPayload(form.repeat);
       const result = await createBooking(readSession(), {
         notes: form.notes.trim(),
         lessonType: lessonType.id,
         startAt: chosen.startAt,
         location: form.location,
-        timezone: studentZone
+        timezone: studentZone,
+        // Omitted entirely for a one-off: `null` means "every week" on the wire.
+        ...(repeat === undefined ? {} : { repeat })
       });
 
       // With prepayment on, the slot is only held: Stripe finishes the booking.
@@ -180,7 +245,8 @@ export function BookingCalendar() {
         reference: result.booking.reference,
         startAt: result.booking.startAt,
         manageUrl: result.manageUrl ?? "/my-lessons/",
-        email: result.booking.studentEmail
+        email: result.booking.studentEmail,
+        series: result.series
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "The booking could not be created.";
@@ -215,6 +281,27 @@ export function BookingCalendar() {
         <p>
           A confirmation and calendar invitation are on their way to <strong>{confirmation.email}</strong>.
         </p>
+
+        {confirmation.series ? (
+          <div className="booking-success__series">
+            <p>
+              <strong>
+                {confirmation.series.booked.length}{" "}
+                {confirmation.series.booked.length === 1 ? "lesson" : "lessons"} booked
+              </strong>
+              {confirmation.series.openEnded
+                ? " — and this time stays yours every week until you stop it."
+                : " at the same time each week."}
+            </p>
+            {confirmation.series.skipped.length ? (
+              <p className="booking-success__skipped">
+                {confirmation.series.skipped.length === 1 ? "One week wasn't" : "Some weeks weren't"} free, so{" "}
+                {confirmation.series.skipped.length === 1 ? "it was" : "they were"} left out:{" "}
+                {confirmation.series.skipped.map((startAt) => formatLongDate(startAt)).join(", ")}.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <dl className="booking-success__reference">
           <dt>Your reference</dt>
           <dd>{confirmation.reference}</dd>
@@ -488,6 +575,59 @@ export function BookingCalendar() {
                     </div>
                   </fieldset>
 
+                  {/* Radios again rather than buttons, so the whole thing is one
+                      group to a screen reader and to the arrow keys. */}
+                  <fieldset className="booking-repeat-choice">
+                    <legend>How often</legend>
+                    <div className="chip-choice">
+                      {REPEAT_OPTIONS.map((option) => (
+                        <label
+                          className={form.repeat === option.value ? "is-active" : ""}
+                          key={String(option.value)}
+                        >
+                          <input
+                            checked={form.repeat === option.value}
+                            name="repeat"
+                            onChange={() => setForm((current) => ({ ...current, repeat: option.value }))}
+                            type="radio"
+                            value={String(option.value)}
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+
+                    {form.repeat !== "once" ? (
+                      <p className="booking-repeat-note" role="status">
+                        {previewing ? (
+                          "Checking which weeks are free…"
+                        ) : seriesPreview ? (
+                          <>
+                            <strong>
+                              {seriesPreview.bookable.length}{" "}
+                              {seriesPreview.bookable.length === 1 ? "lesson" : "lessons"}
+                            </strong>{" "}
+                            at this time
+                            {form.repeat === "open" ? ", and it keeps going until you stop it" : ""}.
+                            {seriesPreview.skipped.length ? (
+                              <>
+                                {" "}
+                                {seriesPreview.skipped.length === 1 ? "One week isn't" : "Some weeks aren't"} free
+                                and will be skipped:{" "}
+                                {seriesPreview.skipped
+                                  .map((startAt) => formatLongDate(startAt))
+                                  .join(", ")}
+                                .
+                              </>
+                            ) : null}
+                          </>
+                        ) : (
+                          "You can move or cancel any single lesson later without stopping the rest."
+                        )}
+                      </p>
+                    ) : null}
+                  </fieldset>
+
                   <label>
                     <span>
                       <MessageSquareText size={16} aria-hidden="true" />
@@ -507,8 +647,15 @@ export function BookingCalendar() {
                     </div>
                   ) : null}
 
+                  {/* Says what is actually about to happen. "Confirm this lesson"
+                      above a preview reading "8 lessons" invites the reader to
+                      believe only the first one is being booked. */}
                   <button className="button button--coral booking-confirm-button" disabled={!canSubmit} type="submit">
-                    {submitting ? "Booking…" : "Confirm this lesson"}
+                    {submitting
+                      ? "Booking…"
+                      : form.repeat === "once" || !seriesPreview || seriesPreview.bookable.length <= 1
+                        ? "Confirm this lesson"
+                        : `Confirm these ${seriesPreview.bookable.length} lessons`}
                   </button>
 
                   <p className="booking-form-note">

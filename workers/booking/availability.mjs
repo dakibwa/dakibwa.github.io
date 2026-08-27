@@ -93,15 +93,25 @@ export async function listLessonTypes(env) {
  * @param ignoreBookingId lets a reschedule offer the slot the booking already
  *        occupies, instead of the student's own lesson blocking their move.
  */
-export async function computeAvailability(env, { fromKey, toKey, lessonType, now, ignoreBookingId = null }) {
+export async function computeAvailability(
+  env,
+  { fromKey, toKey, lessonType, now, ignoreBookingId = null, ignoreHorizon = false }
+) {
   const settings = await loadSettings(env);
   const duration = Number(lessonType.duration_minutes);
   const interval = settings.slotIntervalMinutes;
 
   const todayKey = dateKey(now, PORTO);
+  /*
+   * The horizon stops a stranger reaching in and taking a slot months out. A
+   * student holding their own standing weekly time is the case it is meant to
+   * allow, not the one it is meant to stop — and with a 30-day horizon a
+   * twelve-week booking would silently become a four-week one. So a series is
+   * checked against her actual teaching hours without it.
+   */
   const horizonKey = addDaysToKey(todayKey, settings.bookingHorizonDays);
   const start = fromKey < todayKey ? todayKey : fromKey;
-  const end = toKey > horizonKey ? horizonKey : toKey;
+  const end = !ignoreHorizon && toKey > horizonKey ? horizonKey : toKey;
   if (!parseDateKey(start) || !parseDateKey(end) || start > end) return { slots: [], settings };
 
   const earliest = new Date(now.getTime() + settings.minimumNoticeHours * 3600000);
@@ -206,7 +216,10 @@ export async function computeAvailability(env, { fromKey, toKey, lessonType, now
  * snapshot; this is what actually decides, and it closes the window where two
  * people pick the same slot seconds apart.
  */
-export async function isSlotBookable(env, { startAt, lessonType, now, ignoreBookingId = null }) {
+export async function isSlotBookable(
+  env,
+  { startAt, lessonType, now, ignoreBookingId = null, ignoreHorizon = false }
+) {
   const start = new Date(startAt);
   if (Number.isNaN(start.getTime())) return { ok: false, reason: "That time could not be understood." };
 
@@ -216,7 +229,8 @@ export async function isSlotBookable(env, { startAt, lessonType, now, ignoreBook
     toKey: key,
     lessonType,
     now,
-    ignoreBookingId
+    ignoreBookingId,
+    ignoreHorizon
   });
 
   const match = (slotsByDate?.[key] ?? []).some((slot) => slot.startAt === start.toISOString());

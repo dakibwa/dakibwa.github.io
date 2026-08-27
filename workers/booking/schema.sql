@@ -130,7 +130,11 @@ CREATE TABLE IF NOT EXISTS bookings (
   amount_cents      INTEGER,
   stripe_session_id TEXT,
   stripe_payment_intent TEXT,
-  hold_expires_at   TEXT
+  hold_expires_at   TEXT,
+  -- Set when this lesson is one occurrence of a weekly series. Nullable: a
+  -- one-off booking has no series, and everything else about the row behaves
+  -- identically either way.
+  series_id         TEXT REFERENCES booking_series (id)
 );
 
 -- Availability is computed by subtracting confirmed bookings from the rules,
@@ -165,3 +169,25 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Recurring student bookings. See migrations/0007-booking-series.sql for why
+-- the occurrences are real booking rows rather than something derived.
+CREATE TABLE IF NOT EXISTS booking_series (
+  id             TEXT PRIMARY KEY,
+  student_id     TEXT NOT NULL REFERENCES students (id),
+  lesson_type_id TEXT NOT NULL REFERENCES lesson_types (id),
+  location       TEXT NOT NULL DEFAULT 'online' CHECK (location IN ('online', 'porto')),
+  notes          TEXT NOT NULL DEFAULT '',
+  weekday        INTEGER NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+  minute_of_day  INTEGER NOT NULL CHECK (minute_of_day BETWEEN 0 AND 1439),
+  occurrences    INTEGER CHECK (occurrences IS NULL OR occurrences > 0),
+  status         TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ended')),
+  filled_to      TEXT,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL,
+  ended_at       TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_series ON bookings (series_id);
+CREATE INDEX IF NOT EXISTS idx_series_student ON booking_series (student_id);
+CREATE INDEX IF NOT EXISTS idx_series_active ON booking_series (status, filled_to);

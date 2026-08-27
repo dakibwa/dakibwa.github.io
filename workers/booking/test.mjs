@@ -11,7 +11,8 @@ import { candidateStartMinutes } from "./availability.mjs";
 import { verifyWebhook } from "./stripe.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
 import { hashPassword, verifyPassword, passwordProblem } from "./auth.mjs";
-import { buildCalendarInvite, calendarUid } from "./ics.mjs";
+import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./ics.mjs";
+import { normaliseWeeks, occurrenceInstants, outstandingFor, slotOf, SERIES_LENGTHS } from "./series.mjs";
 import { createManageToken, readManageToken, safeEqual, bookingReference } from "./tokens.mjs";
 import {
   addDaysToKey,
@@ -515,6 +516,115 @@ await test("malformed tokens are rejected", async () => {
   for (const token of ["", "a.b", "a.b.c", "not-a-token", null, undefined]) {
     assert.equal(await verifyGoogleIdToken(token, CLIENT_ID), null, `accepted: ${token}`);
   }
+});
+
+
+// --- Recurring bookings -----------------------------------------------------
+
+await test("a weekly slot keeps its Porto wall-clock time across the autumn change", () => {
+  // Portugal goes back to UTC+0 on 25 October 2026, in the middle of this run.
+  // Adding 7x24 hours instead of stepping the date would hold the UTC instant
+  // and so move every later lesson to 16:30 Porto — an hour earlier than the
+  // student agreed to, for the rest of the term.
+  const weeks = occurrenceInstants({ fromKey: "2026-10-22", minuteOfDay: 17 * 60 + 30, count: 3 });
+  assert.deepEqual(
+    weeks.map((week) => week.key),
+    ["2026-10-22", "2026-10-29", "2026-11-05"]
+  );
+  // Before the change: 17:30 Porto is 16:30 UTC.
+  assert.equal(weeks[0].startAt.toISOString(), "2026-10-22T16:30:00.000Z");
+  // After it: still 17:30 Porto, now 17:30 UTC.
+  assert.equal(weeks[1].startAt.toISOString(), "2026-10-29T17:30:00.000Z");
+  assert.equal(weeks[2].startAt.toISOString(), "2026-11-05T17:30:00.000Z");
+});
+
+await test("the slot is read from the first lesson in Porto terms", () => {
+  // 2026-09-09 is a Wednesday. 16:30 UTC is 17:30 Porto in summer time.
+  const slot = slotOf("2026-09-09T16:30:00.000Z");
+  assert.equal(slot.weekday, 3);
+  assert.equal(slot.minuteOfDay, 17 * 60 + 30);
+  assert.equal(slot.dateKey, "2026-09-09");
+});
+
+await test("a late-evening lesson is not pushed onto the next Porto day", () => {
+  // 23:30 Porto on a Friday in summer is 22:30 UTC the same day.
+  const slot = slotOf("2026-07-03T22:30:00.000Z");
+  assert.equal(slot.dateKey, "2026-07-03");
+  assert.equal(slot.weekday, 5);
+  assert.equal(slot.minuteOfDay, 23 * 60 + 30);
+});
+
+await test("only the offered run lengths are accepted, and open-ended is distinct from invalid", () => {
+  for (const weeks of SERIES_LENGTHS) assert.equal(normaliseWeeks(weeks), weeks);
+  assert.equal(normaliseWeeks(null), null, "null is the open-ended choice");
+  assert.equal(normaliseWeeks("open"), null);
+  for (const bad of [1, 3, 5, 52, 0, -4, "many", {}]) {
+    assert.equal(normaliseWeeks(bad), undefined, `accepted ${JSON.stringify(bad)}`);
+  }
+});
+
+await test("a bounded series stops asking for weeks once it has them all", () => {
+  const series = { occurrences: 8, filled_to: "2026-10-28" };
+  const now = new Date("2026-09-09T12:00:00.000Z");
+  assert.equal(outstandingFor(series, { bookedCount: 8, now }), null);
+  const partial = outstandingFor(series, { bookedCount: 5, now });
+  assert.equal(partial.count, 3);
+  // Resumes the week after the last one considered, never repeating it.
+  assert.equal(partial.fromKey, "2026-11-04");
+});
+
+await test("an open-ended series is pulled forward to the horizon and no further", () => {
+  const now = new Date("2026-09-09T12:00:00.000Z");
+  const fresh = outstandingFor({ occurrences: null, filled_to: null }, { bookedCount: 0, now });
+  assert.equal(fresh.fromKey, "2026-09-09");
+  assert.ok(fresh.count > 0 && fresh.count <= 16);
+
+  // Already filled beyond the horizon: nothing to do.
+  const ahead = outstandingFor({ occurrences: null, filled_to: "2027-06-01" }, { bookedCount: 40, now });
+  assert.equal(ahead, null);
+});
+
+await test("one calendar file carries every lesson, each under its own booking's UID", () => {
+  const event = (id, day) => ({
+    uid: calendarUid(id),
+    sequence: 0,
+    summary: "Lesson",
+    description: "d",
+    location: "Online",
+    startsAt: `2026-09-${day}T16:30:00.000Z`,
+    endsAt: `2026-09-${day}T17:30:00.000Z`,
+    organiserName: "Inês",
+    organiserEmail: "bookings@portuguesewithines.com",
+    attendees: [{ name: "A", email: "a@example.com" }]
+  });
+
+  const ics = buildCalendarSeriesInvite({ method: "REQUEST", events: [event("a", "09"), event("b", "16")] });
+  assert.equal(ics.split("BEGIN:VCALENDAR").length - 1, 1, "one calendar");
+  assert.equal(ics.split("BEGIN:VEVENT").length - 1, 2, "two events");
+  // Distinct UIDs are what let one week be moved later without duplicating it.
+  assert.ok(ics.includes(`UID:${calendarUid("a")}`));
+  assert.ok(ics.includes(`UID:${calendarUid("b")}`));
+  assert.ok(ics.trimEnd().endsWith("END:VCALENDAR"));
+});
+
+await test("a single invitation is unchanged by the series refactor", () => {
+  const ics = buildCalendarInvite({
+    method: "REQUEST",
+    uid: calendarUid("solo"),
+    sequence: 2,
+    summary: "Lesson",
+    description: "d",
+    location: "Online",
+    startsAt: "2026-09-09T16:30:00.000Z",
+    endsAt: "2026-09-09T17:30:00.000Z",
+    organiserName: "Inês",
+    organiserEmail: "bookings@portuguesewithines.com",
+    attendees: [{ name: "A", email: "a@example.com" }]
+  });
+  assert.equal(ics.split("BEGIN:VEVENT").length - 1, 1);
+  assert.ok(ics.includes("SEQUENCE:2"));
+  assert.ok(ics.includes("BEGIN:VALARM"));
+  assert.ok(ics.startsWith("BEGIN:VCALENDAR"));
 });
 
 // --- Report -----------------------------------------------------------------

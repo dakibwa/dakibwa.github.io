@@ -86,6 +86,43 @@ export function fetchAvailability(lessonType: string, from: string, to: string, 
   );
 }
 
+/**
+ * How often a lesson repeats. `null` is the deliberate open-ended choice —
+ * every week until the student stops it — and is not the same as omitting the
+ * field, which books one lesson.
+ */
+export type RepeatChoice = 4 | 8 | 12 | null;
+
+export type SeriesOutcome = {
+  id: string;
+  weeks: number | null;
+  openEnded: boolean;
+  /** Every lesson actually booked, first included. */
+  booked: string[];
+  /** Weeks that were already taken, and so left out. */
+  skipped: string[];
+};
+
+/**
+ * What a repeat would book, before anything is booked. The student is shown the
+ * weeks that are unavailable while they can still change their mind.
+ */
+export function previewSeries(
+  session: string,
+  payload: { lessonType: string; startAt: string; weeks: RepeatChoice }
+) {
+  return request<{
+    weeks: number | null;
+    openEnded: boolean;
+    bookable: string[];
+    skipped: string[];
+  }>("/bookings/series/preview", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session}` },
+    body: JSON.stringify(payload)
+  });
+}
+
 /** Requires a signed-in student: identity comes from the session, not the form. */
 export function createBooking(
   session: string,
@@ -95,6 +132,8 @@ export function createBooking(
     startAt: string;
     location: "online" | "porto";
     timezone: string;
+    /** Omitted entirely for a one-off lesson. */
+    repeat?: RepeatChoice;
   }
 ) {
   return request<{
@@ -104,11 +143,28 @@ export function createBooking(
     checkoutUrl?: string;
     manageUrl?: string;
     manageToken?: string;
+    /** Present only when the lesson was booked as a repeating one. */
+    series?: SeriesOutcome;
   }>("/bookings", {
     method: "POST",
     headers: { Authorization: `Bearer ${session}` },
     body: JSON.stringify(payload)
   });
+}
+
+/**
+ * Stop a repeating booking. By default the lessons already in the calendar are
+ * kept — someone who stops the repeat usually still intends to come to those.
+ */
+export function stopSeries(session: string, seriesId: string, cancelRemaining = false) {
+  return request<{ ok: true; stopped: true; cancelled: number }>(
+    `/series/${encodeURIComponent(seriesId)}/stop`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session}` },
+      body: JSON.stringify({ cancelRemaining })
+    }
+  );
 }
 
 export function fetchBooking(token: string) {

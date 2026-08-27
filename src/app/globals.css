@@ -2627,6 +2627,151 @@ textarea,
   margin-bottom: 0;
 }
 
+.booking-repeat-choice {
+  margin-bottom: 0.9rem;
+  border: 0;
+  padding: 0;
+}
+
+.booking-repeat-choice legend {
+  margin-bottom: 0.25rem;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+/*
+ * Five options rather than two, so a sliding segmented control cannot carry
+ * them — these wrap instead. Still radios underneath, so the group keeps its
+ * arrow keys and reads as one question.
+ */
+.chip-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip-choice label {
+  position: relative;
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-chip);
+  padding: 0 0.85rem;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease, opacity 140ms ease;
+}
+
+.chip-choice label.is-active {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--paper);
+  opacity: 1;
+}
+
+.chip-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.chip-choice label:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Reserves no height when empty, so choosing a repeat does not shove the rest
+   of the form down the page. */
+.booking-repeat-note {
+  margin-top: 0.55rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.booking-success__series {
+  align-self: stretch;
+  border-left: 3px solid var(--lavender);
+  padding: 0.15rem 0 0.15rem 0.85rem;
+}
+
+.booking-success__skipped {
+  margin-top: 0.35rem;
+  font-size: 0.86rem;
+  opacity: 0.8;
+}
+
+/* Repeats, on the student's own page. Set above the list rather than inside it,
+   because a repeat is one thing that owns several lessons — putting the control
+   on a lesson would suggest stopping it cancels that lesson. */
+.my-lessons__series {
+  margin-bottom: 1.6rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-panel);
+  padding: 1.1rem 1.25rem;
+  background: rgba(170, 164, 230, 0.14);
+}
+
+.my-lessons__series h2 {
+  margin-bottom: 0.6rem;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lavender-ink);
+}
+
+.my-lessons__series-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.my-lessons__series-row p {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.95rem;
+}
+
+.my-lessons__series-row button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--coral-action);
+}
+
+.my-lessons__series-note {
+  margin-top: 0.6rem;
+  font-size: 0.84rem;
+  opacity: 0.78;
+}
+
+.lesson-list__repeats {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--lavender-ink);
+  font-family: var(--ui);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .student-details-form label em {
   font-style: normal;
   opacity: 0.6;

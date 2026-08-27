@@ -112,6 +112,41 @@ depending on them having kept the right confirmation email.
   story. The emailed link is still offered beside it for that one lesson, because
   it is the route that survives a forgotten password.
 
+### Repeating bookings
+
+A student can hold the same slot every week: 4, 8 or 12 weeks, or open-ended
+until they stop it.
+
+- **The occurrences are ordinary rows in `bookings`.** A series is only the
+  recipe that made them. That is what puts the time in Ines's calendar for real,
+  and it means every per-lesson behaviour already built keeps working without
+  knowing series exist — the manage link, the iCalendar `UID` and `SEQUENCE`,
+  the same-day fee, moving one week for a dentist appointment.
+- **The slot is stored as a Porto weekday and minute-of-day, not a UTC time.**
+  A run booked in October crosses the change to winter time; holding the UTC
+  instant would move every later lesson an hour earlier than the student agreed
+  to. Occurrences are stepped by date, so 18:00 stays 18:00.
+- **A week that is not free is skipped, not fatal**, and the student is shown
+  which weeks before they confirm rather than after. One holiday in week six
+  must not stop someone booking the other eleven.
+- **Series occurrences ignore `booking_horizon_days`.** That horizon stops a
+  stranger reaching in and taking a slot months out; a student keeping their own
+  standing time is the case it is meant to allow. At the current 30 days, a
+  twelve-week booking would otherwise have quietly become a four-week one.
+- **One email each way, carrying every lesson in one calendar file**, each event
+  under its own booking's UID so a later change to one week still matches the
+  entry already in her calendar. Twelve lessons must not mean twelve emails.
+- **Open-ended series are topped up by a nightly cron**, not on a page view: her
+  calendar has to be right whether or not anyone has opened the site, and a read
+  path that quietly writes bookings is impossible to reason about later.
+- **Stopping a repeat keeps the lessons already booked.** Someone who stops
+  repeating almost always still means to attend the ones in their calendar;
+  cancelling those silently would be the worse of the two mistakes. Passing
+  `cancelRemaining` cancels them too.
+- **Repeats are refused while prepayment is on.** Whether twelve lessons are one
+  charge or twelve is a decision about her money that has not been made, and
+  booking a series while charging for one lesson would be worse than declining.
+
 ### How her calendar stays current
 
 Each lifecycle event emails an iCalendar attachment. Gmail adds the event on

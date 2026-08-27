@@ -1,5 +1,13 @@
 import { computeAvailability, isSlotBookable, listLessonTypes, loadLessonType, loadSettings } from "./availability.mjs";
-import { buildCalendarInvite, calendarUid } from "./ics.mjs";
+import {
+  OPEN_ENDED_HORIZON_WEEKS,
+  SERIES_LENGTHS,
+  normaliseWeeks,
+  outstandingFor,
+  planOccurrences,
+  slotOf
+} from "./series.mjs";
+import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./ics.mjs";
 import { deliver } from "./email.mjs";
 import { createCheckoutSession, isTestMode, stripeConfigured, verifyWebhook } from "./stripe.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
@@ -290,6 +298,115 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   return Promise.allSettled(sends);
 }
 
+/**
+ * A whole run of lessons, in one email each way.
+ *
+ * Twelve bookings must not mean twelve emails, but each lesson still has to
+ * reach Inês's calendar as its own entry — so one message carries one calendar
+ * file holding every occurrence, each under its own booking's UID. Changing a
+ * single week later goes out through the ordinary per-lesson path and matches
+ * the event already sitting in her calendar.
+ */
+async function notifySeries(env, { rows, lessonType, settings, series, manageUrls, skipped }) {
+  if (!rows.length) return [];
+
+  const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
+  const replyTo = settings.replyToEmail || teacherEmail || undefined;
+  const first = rows[0];
+  const studentZone = isValidTimeZone(first.student_timezone) ? first.student_timezone : PORTO;
+
+  const events = rows.map((row) => ({
+    uid: calendarUid(row.id),
+    sequence: row.sequence,
+    summary: lessonSummary(row, lessonType),
+    description: lessonDescription(row, lessonType, manageUrls[row.id] ?? ""),
+    location: locationLabel(row),
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    organiserName: settings.teacherName,
+    organiserEmail: env.MAIL_SENDER_ADDRESS || "bookings@portuguesewithines.com",
+    url: manageUrls[row.id] ?? ""
+  }));
+
+  const invite = (attendee) =>
+    buildCalendarSeriesInvite({
+      method: "REQUEST",
+      events: events.map((event) => ({ ...event, attendees: [attendee] }))
+    });
+
+  const dateLines = rows
+    .map((row) => `${formatInZone(new Date(row.starts_at), PORTO)} (${timeZoneAbbreviation(new Date(row.starts_at), PORTO)})`)
+    .join("<br>");
+
+  const cadence = series.occurrences ? `${rows.length} lessons` : "Every week, until you stop it";
+  const skippedNote = skipped.length
+    ? `${skipped.length === 1 ? "One week was" : `${skipped.length} weeks were`} not free and ${
+        skipped.length === 1 ? "has" : "have"
+      } been left out: ${skipped.map((entry) => formatShort(new Date(entry.startAt), PORTO)).join(", ")}.`
+    : "";
+
+  const rowsForBoth = [
+    { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
+    { label: "Where", value: locationLabel(first) },
+    { label: "Repeats", value: cadence },
+    { label: "Dates", value: dateLines }
+  ];
+
+  const sends = [
+    deliver(env, {
+      to: first.student_email,
+      subject: `Your weekly Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
+      kind: "student_series_booked",
+      bookingId: first.id,
+      dedupeKey: `student:series:${series.id}:${rows.length}`,
+      replyTo,
+      calendar: { body: invite({ name: first.student_name, email: first.student_email }), method: "REQUEST" },
+      content: {
+        heading: "Your weekly slot is booked",
+        intro: `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on its own from your lessons page.`,
+        callout: skippedNote,
+        hero: formatInZone(new Date(first.starts_at), PORTO),
+        heroNote: differingZonedTime(new Date(first.starts_at), studentZone) ? `${differingZonedTime(new Date(first.starts_at), studentZone)} — your time` : "",
+        preheader: `${lessonType.name} · ${cadence}`,
+        rows: rowsForBoth,
+        action: { label: "See all your lessons", url: siteUrl(env, "/my-lessons/") },
+        footer: `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free.`
+      }
+    })
+  ];
+
+  if (teacherEmail) {
+    sends.push(
+      deliver(env, {
+        to: teacherEmail,
+        subject: `Weekly booking — ${first.student_name}, from ${formatShort(new Date(first.starts_at), PORTO)}`,
+        kind: "teacher_series_booked",
+        bookingId: first.id,
+        dedupeKey: `teacher:series:${series.id}:${rows.length}`,
+        replyTo: first.student_email,
+        calendar: { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "REQUEST" },
+        content: {
+          heading: "A weekly slot was booked",
+          intro: `${first.student_name} booked the same slot each week. Every lesson is in the calendar attachment.`,
+          callout: skippedNote,
+          hero: formatInZone(new Date(first.starts_at), PORTO),
+          heroNote: "",
+          preheader: `${first.student_name} · ${cadence}`,
+          rows: [
+            ...rowsForBoth,
+            { label: "Student", value: `${first.student_name}<br>${first.student_email}${first.student_phone ? `<br>${first.student_phone}` : ""}` },
+            ...(first.notes ? [{ label: "Notes", value: first.notes }] : [])
+          ],
+          action: null,
+          footer: "Sent automatically by the booking system on portuguesewithines.com."
+        }
+      })
+    );
+  }
+
+  return Promise.allSettled(sends);
+}
+
 /** The signed-in student, or null. */
 async function currentStudent(request, env) {
   const bearer = (request.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
@@ -367,7 +484,16 @@ const worker = {
       if (request.method === "GET" && path === "/me") return handleMe(request, env);
       if (request.method === "POST" && path === "/me") return handleUpdateMe(request, env);
 
+      // Preview before commit: a student is told which weeks are free, and
+      // which are not, before anything is booked in their name.
+      if (request.method === "POST" && path === "/bookings/series/preview") {
+        return handleSeriesPreview(request, env);
+      }
+
       if (request.method === "POST" && path === "/bookings") return handleCreate(request, env, ctx);
+
+      const stopSeries = path.match(/^\/series\/([^/]+)\/stop$/);
+      if (stopSeries && request.method === "POST") return handleStopSeries(request, env, ctx, stopSeries[1]);
 
       const manage = path.match(/^\/bookings\/([^/]+)$/);
       if (manage && request.method === "GET") return handleGetBooking(request, env, manage[1]);
@@ -385,8 +511,76 @@ const worker = {
       console.error("booking-worker", error?.stack ?? String(error));
       return fail("Something went wrong handling that request.", 500, request, env);
     }
+  },
+
+  /**
+   * Nightly: pull every open-ended series forward so a student always has a run
+   * of lessons in front of them and Inês's calendar is blocked that far ahead.
+   *
+   * Deliberately not done on a page view. Her calendar has to be right whether
+   * or not anyone has opened the site, and a read path that quietly writes
+   * bookings is the kind of thing that is impossible to reason about later.
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(topUpOpenSeries(env));
   }
 };
+
+async function topUpOpenSeries(env) {
+  const now = new Date();
+  const { results } = await env.DB.prepare(
+    "SELECT * FROM booking_series WHERE status = 'active' AND occurrences IS NULL"
+  ).all();
+
+  for (const series of results ?? []) {
+    try {
+      const counted = await env.DB.prepare(
+        "SELECT COUNT(*) AS count FROM bookings WHERE series_id = ? AND status = 'confirmed'"
+      )
+        .bind(series.id)
+        .first();
+
+      const outstanding = outstandingFor(series, { bookedCount: counted?.count ?? 0, now });
+      if (!outstanding || outstanding.count <= 0) continue;
+
+      const student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(series.student_id).first();
+      const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+        .bind(series.lesson_type_id)
+        .first();
+      if (!student || !lessonType) continue;
+
+      const filled = await fillSeries(env, {
+        series,
+        student,
+        lessonType,
+        fromKey: outstanding.fromKey,
+        count: outstanding.count,
+        now
+      });
+
+      if (!filled.rows.length) continue;
+
+      const settings = await loadSettings(env);
+      const manageUrls = {};
+      for (const row of filled.rows) {
+        const token = await createManageToken(row.id, env.BOOKING_TOKEN_SECRET);
+        manageUrls[row.id] = siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`);
+      }
+
+      await notifySeries(env, {
+        rows: filled.rows,
+        lessonType,
+        settings,
+        series,
+        manageUrls,
+        skipped: filled.skipped
+      });
+    } catch (error) {
+      // One bad series must not stop the rest being extended.
+      console.error("series-topup", series.id, String(error?.message ?? error));
+    }
+  }
+}
 
 async function handleHealth(request, env) {
   const missing = [];
@@ -484,12 +678,27 @@ async function handleCreate(request, env, ctx) {
   const lessonType = await loadLessonType(env, cleanText(body.lessonType, 40) || "single");
   if (!lessonType) return fail("That lesson type is not available.", 400, request, env);
 
+  // `null` is the deliberate open-ended choice and `undefined` is "not asked
+  // for", so the two must not be collapsed. Anything else unrecognised is a
+  // refusal rather than a silent fallback to a one-off.
+  const wantsRepeat = "repeat" in body && body.repeat !== undefined;
+  const repeatWeeks = wantsRepeat ? normaliseWeeks(body.repeat) : undefined;
+  if (wantsRepeat && repeatWeeks === undefined) {
+    return fail(`Choose ${SERIES_LENGTHS.join(", ")} weeks, or every week.`, 400, request, env);
+  }
+
   // Cheap abuse guard: a real student does not book six lessons in a minute,
   // and without this one account can fill her whole calendar.
+  // Counts booking *acts*, not rows. A twelve-week series writes twelve rows
+  // for one decision, so its occurrences are excluded here and the series
+  // itself is counted once — otherwise booking a term locks the student out of
+  // their own calendar for an hour.
+  const sinceIso = new Date(now.getTime() - 3600000).toISOString();
   const recent = await env.DB.prepare(
-    "SELECT COUNT(*) AS count FROM bookings WHERE student_id = ? AND created_at > ?"
+    `SELECT (SELECT COUNT(*) FROM bookings WHERE student_id = ?1 AND created_at > ?2 AND series_id IS NULL)
+          + (SELECT COUNT(*) FROM booking_series WHERE student_id = ?1 AND created_at > ?2) AS count`
   )
-    .bind(student.id, new Date(now.getTime() - 3600000).toISOString())
+    .bind(student.id, sinceIso)
     .first();
   if ((recent?.count ?? 0) >= 5) {
     return fail("That's several bookings in a short time. Please email Inês directly instead.", 429, request, env);
@@ -500,6 +709,13 @@ async function handleCreate(request, env, ctx) {
 
   const settings = await loadSettings(env);
   const prepay = settings.paymentMode === "prepay" && stripeConfigured(env);
+
+  // Taking one payment for twelve lessons, or twelve payments in one checkout,
+  // is a decision about her money that has not been made. Refusing is honest;
+  // quietly booking a series and charging for one lesson would not be.
+  if (wantsRepeat && prepay) {
+    return fail("Repeating bookings aren't available while payment is taken up front.", 400, request, env);
+  }
 
   const id = crypto.randomUUID();
   const reference = bookingReference();
@@ -570,6 +786,81 @@ async function handleCreate(request, env, ctx) {
     }
   }
 
+  // A repeat is created only once the first lesson is real, so a failure part
+  // way through leaves a booked lesson rather than a series pointing at nothing.
+  if (wantsRepeat) {
+    const slot = slotOf(startsAt);
+    const seriesId = crypto.randomUUID();
+
+    await env.DB.prepare(
+      `INSERT INTO booking_series (id, student_id, lesson_type_id, location, notes, weekday, minute_of_day,
+         occurrences, status, filled_to, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`
+    )
+      .bind(
+        seriesId,
+        student.id,
+        lessonType.id,
+        location,
+        notes,
+        slot.weekday,
+        slot.minuteOfDay,
+        repeatWeeks,
+        slot.dateKey,
+        timestamp,
+        timestamp
+      )
+      .run();
+
+    await env.DB.prepare("UPDATE bookings SET series_id = ? WHERE id = ?").bind(seriesId, id).run();
+    const series = await env.DB.prepare("SELECT * FROM booking_series WHERE id = ?").bind(seriesId).first();
+
+    // The lesson just booked is the first occurrence, so the rest start a week on.
+    const remaining = (repeatWeeks ?? OPEN_ENDED_HORIZON_WEEKS) - 1;
+    const filled =
+      remaining > 0
+        ? await fillSeries(env, {
+            series,
+            student,
+            lessonType,
+            fromKey: addDaysToKey(slot.dateKey, 7),
+            count: remaining,
+            now
+          })
+        : { rows: [], skipped: [] };
+
+    const first = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
+    const allRows = [first, ...filled.rows];
+
+    const manageUrls = {};
+    for (const occurrence of allRows) {
+      const occurrenceToken = await createManageToken(occurrence.id, env.BOOKING_TOKEN_SECRET);
+      manageUrls[occurrence.id] = siteUrl(env, `/booking/?token=${encodeURIComponent(occurrenceToken)}`);
+    }
+
+    ctx.waitUntil(
+      notifySeries(env, { rows: allRows, lessonType, settings, series, manageUrls, skipped: filled.skipped })
+    );
+
+    return json(
+      {
+        booking: publicBooking(first, lessonType, settings),
+        manageUrl,
+        manageToken: token,
+        series: {
+          id: seriesId,
+          weeks: repeatWeeks,
+          openEnded: repeatWeeks === null,
+          booked: allRows.map((occurrence) => occurrence.starts_at),
+          skipped: filled.skipped.map((occurrence) => occurrence.startAt)
+        }
+      },
+      201,
+      request,
+      env
+    );
+  }
+
   ctx.waitUntil(notify(env, { event: "booked", row, lessonType, settings, manageUrl }));
 
   return json(
@@ -578,6 +869,186 @@ async function handleCreate(request, env, ctx) {
     request,
     env
   );
+}
+
+/**
+ * Insert one occurrence of a series. Deliberately the same shape of row as a
+ * one-off booking, carrying only `series_id` extra — everything downstream
+ * treats it as an ordinary lesson, which is what makes moving or cancelling a
+ * single week work without any special case.
+ */
+async function insertOccurrence(env, { seriesId, student, lessonType, timezone, location, notes, startAt, endAt, now }) {
+  const id = crypto.randomUUID();
+  const timestamp = now.toISOString();
+
+  await env.DB.prepare(
+    `INSERT INTO bookings (id, reference, lesson_type_id, student_id, student_name, student_email, student_phone,
+       student_timezone, location, notes, starts_at, ends_at, status, sequence, created_at, updated_at,
+       payment_status, amount_cents, hold_expires_at, series_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 0, ?, ?, 'not_required', NULL, NULL, ?)`
+  )
+    .bind(
+      id,
+      bookingReference(),
+      lessonType.id,
+      student.id,
+      student.name,
+      student.email,
+      student.phone,
+      timezone,
+      location,
+      notes,
+      new Date(startAt).toISOString(),
+      new Date(endAt).toISOString(),
+      timestamp,
+      timestamp,
+      seriesId
+    )
+    .run();
+
+  return env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
+}
+
+/**
+ * Fill a series forward, skipping any week that is not free.
+ *
+ * `filled_to` moves to the last week *considered*, not the last one booked, so
+ * a skipped week is never reconsidered on the next top-up and the run cannot
+ * stall on it forever.
+ */
+async function fillSeries(env, { series, student, lessonType, fromKey, count, now }) {
+  const { bookable, skipped } = await planOccurrences(env, {
+    fromKey,
+    minuteOfDay: series.minute_of_day,
+    count,
+    lessonType,
+    now
+  });
+
+  const rows = [];
+  for (const occurrence of bookable) {
+    rows.push(
+      await insertOccurrence(env, {
+        seriesId: series.id,
+        student,
+        lessonType,
+        timezone: student.timezone,
+        location: series.location,
+        notes: series.notes,
+        startAt: occurrence.startAt,
+        endAt: occurrence.endAt,
+        now
+      })
+    );
+  }
+
+  const considered = [...bookable.map((o) => o.key), ...skipped.map((o) => o.key)].sort();
+  const lastConsidered = considered[considered.length - 1] ?? series.filled_to;
+  if (lastConsidered) {
+    await env.DB.prepare("UPDATE booking_series SET filled_to = ?, updated_at = ? WHERE id = ?")
+      .bind(lastConsidered, now.toISOString(), series.id)
+      .run();
+  }
+
+  return { rows, skipped };
+}
+
+/**
+ * What a repeat would actually book, without booking it.
+ *
+ * The student sees the skipped weeks before they commit rather than after, so
+ * "eight weeks" never quietly turns into seven in their inbox.
+ */
+async function handleSeriesPreview(request, env) {
+  const student = await currentStudent(request, env);
+  if (!student) return fail("Please sign in to book a lesson.", 401, request, env);
+
+  const body = await readJson(request);
+  const weeks = normaliseWeeks(body.weeks);
+  if (weeks === undefined) {
+    return fail(`Choose ${SERIES_LENGTHS.join(", ")} weeks, or every week.`, 400, request, env);
+  }
+
+  const lessonType = await loadLessonType(env, cleanText(body.lessonType, 40) || "single");
+  if (!lessonType) return fail("That lesson type is not available.", 400, request, env);
+
+  const start = new Date(body.startAt);
+  if (Number.isNaN(start.getTime())) return fail("That time could not be understood.", 400, request, env);
+
+  const slot = slotOf(start);
+  const now = new Date();
+  const count = weeks ?? OPEN_ENDED_HORIZON_WEEKS;
+
+  const { bookable, skipped } = await planOccurrences(env, {
+    fromKey: slot.dateKey,
+    minuteOfDay: slot.minuteOfDay,
+    count,
+    lessonType,
+    now
+  });
+
+  return json(
+    {
+      weeks,
+      openEnded: weeks === null,
+      bookable: bookable.map((o) => o.startAt.toISOString()),
+      skipped: skipped.map((o) => o.startAt)
+    },
+    200,
+    request,
+    env
+  );
+}
+
+/**
+ * Stop a series. The lessons already booked are left alone unless the student
+ * asks for them too: someone who wants to stop repeating usually still intends
+ * to come to the ones in their calendar, and silently cancelling those would be
+ * the worse mistake of the two.
+ */
+async function handleStopSeries(request, env, ctx, seriesId) {
+  const student = await currentStudent(request, env);
+  if (!student) return fail("Please sign in.", 401, request, env);
+
+  const series = await env.DB.prepare("SELECT * FROM booking_series WHERE id = ? AND student_id = ?")
+    .bind(seriesId, student.id)
+    .first();
+  if (!series) return fail("That repeating booking could not be found.", 404, request, env);
+
+  const body = await readJson(request);
+  const cancelRemaining = body.cancelRemaining === true;
+  const now = new Date();
+
+  await env.DB.prepare("UPDATE booking_series SET status = 'ended', ended_at = ?, updated_at = ? WHERE id = ?")
+    .bind(now.toISOString(), now.toISOString(), seriesId)
+    .run();
+
+  let cancelled = 0;
+  if (cancelRemaining) {
+    const { results } = await env.DB.prepare(
+      "SELECT * FROM bookings WHERE series_id = ? AND status = 'confirmed' AND starts_at > ? ORDER BY starts_at"
+    )
+      .bind(seriesId, now.toISOString())
+      .all();
+
+    const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+      .bind(series.lesson_type_id)
+      .first();
+    const settings = await loadSettings(env);
+
+    for (const row of results ?? []) {
+      await env.DB.prepare(
+        "UPDATE bookings SET status = 'cancelled', cancelled_at = ?, cancelled_by = 'student', sequence = sequence + 1, updated_at = ? WHERE id = ?"
+      )
+        .bind(now.toISOString(), now.toISOString(), row.id)
+        .run();
+      const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
+      ctx.waitUntil(notify(env, { event: "cancelled", row: updated, lessonType, settings, manageUrl: "" }));
+      cancelled += 1;
+    }
+  }
+
+  return json({ ok: true, stopped: true, cancelled }, 200, request, env);
 }
 
 async function handleGetBooking(request, env, token) {
@@ -980,12 +1451,34 @@ async function handleMe(request, env) {
       },
       isPast: new Date(row.starts_at) <= now,
       sameDayFeeApplies: dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO),
+      seriesId: row.series_id ?? null,
       manageToken: await createManageToken(row.id, env.BOOKING_TOKEN_SECRET)
     }))
   );
 
+  // Only what the page needs to say "this repeats, and here is how to stop it".
+  const { results: seriesRows } = await env.DB.prepare(
+    `SELECT s.*, COUNT(b.id) AS upcoming
+     FROM booking_series s
+     LEFT JOIN bookings b
+       ON b.series_id = s.id AND b.status = 'confirmed' AND b.starts_at > ?
+     WHERE s.student_id = ? AND s.status = 'active'
+     GROUP BY s.id`
+  )
+    .bind(now.toISOString(), student.id)
+    .all();
+
+  const series = (seriesRows ?? []).map((row) => ({
+    id: row.id,
+    weekday: row.weekday,
+    minuteOfDay: row.minute_of_day,
+    occurrences: row.occurrences ?? null,
+    openEnded: row.occurrences === null,
+    upcoming: row.upcoming ?? 0
+  }));
+
   return json(
-    { student: publicStudent(student), bookings, sameDayFeeCents: settings.sameDayChangeFeeCents },
+    { student: publicStudent(student), bookings, series, sameDayFeeCents: settings.sameDayChangeFeeCents },
     200,
     request,
     env

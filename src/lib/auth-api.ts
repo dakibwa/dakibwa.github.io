@@ -22,7 +22,19 @@ export type MyBooking = {
   lessonType: { id: string; name: string; durationMinutes: number; priceCents: number };
   isPast: boolean;
   sameDayFeeApplies: boolean;
+  /** Set when this lesson is one occurrence of a weekly series. */
+  seriesId: string | null;
   manageToken: string;
+};
+
+/** An active weekly repeat, as /my-lessons needs to describe it. */
+export type LessonSeries = {
+  id: string;
+  weekday: number;
+  minuteOfDay: number;
+  occurrences: number | null;
+  openEnded: boolean;
+  upcoming: number;
 };
 
 const SESSION_KEY = "ines-student-session";
@@ -121,6 +133,7 @@ export async function fetchMe(token: string) {
   const data = (await response.json().catch(() => ({}))) as {
     student: Student;
     bookings: MyBooking[];
+    series?: LessonSeries[];
     sameDayFeeCents: number;
     error?: string;
   };
