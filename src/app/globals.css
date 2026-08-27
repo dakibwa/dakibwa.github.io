@@ -33,6 +33,16 @@
   --squiggle-tabs: 22px 11px 24px 13px / 12px 23px 11px 22px;
   --squiggle-thumb: 19px 9px 20px 11px / 10px 19px 9px 18px;
   --squiggle-field: 17px 8px 18px 10px / 9px 17px 8px 16px;
+  /*
+   * Quieter relatives of the same hand, for the things a student moves through
+   * rather than decides on — a calendar, a row of times, a way back. Smaller
+   * differences between corners, because seven wonky tiles in a row become
+   * noise where one wonky button is character.
+   */
+  --squiggle-panel: 22px 14px 24px 16px / 16px 24px 14px 22px;
+  --squiggle-tile: 16px 10px 15px 11px / 11px 15px 10px 16px;
+  --squiggle-chip: 13px 8px 14px 9px / 9px 14px 8px 13px;
+  --squiggle-pill: 24px 15px 22px 17px / 17px 22px 15px 24px;
   --display: var(--font-beth-ellen), cursive;
   --body: var(--font-montserrat), Arial, sans-serif;
   --ui: var(--font-montserrat), Arial, sans-serif;
@@ -828,8 +838,8 @@ html.route-is-leaving .route-fade {
 .lesson-product__note {
   display: flex;
   align-items: center;
-  margin-top: 1rem;
-  color: var(--lavender-ink);
+  margin-top: 0.5rem;
+  color: var(--coral-action);
   font-family: var(--ui);
   font-size: 0.78rem;
   font-weight: 700;
@@ -1313,7 +1323,7 @@ textarea,
   flex-wrap: nowrap;
   align-items: center;
   border: 1px solid var(--coral);
-  border-radius: 999px;
+  border-radius: var(--squiggle-pill);
   padding: 0.55rem 1.1rem 0.55rem 0.9rem;
   background: transparent;
   color: var(--coral-action);
@@ -1422,7 +1432,7 @@ textarea,
   grid-template-columns: 56px 1fr auto;
   align-items: center;
   border: 1px solid var(--rule);
-  border-radius: 14px;
+  border-radius: var(--squiggle-tile);
   padding: 0.9rem 1.1rem;
   background: transparent;
   color: inherit;
@@ -1497,7 +1507,7 @@ textarea,
   position: relative;
   overflow: hidden;
   max-width: 640px;
-  border-radius: 18px;
+  border-radius: var(--squiggle-panel);
   border: 1px solid var(--rule);
   padding: clamp(1rem, 2.4vw, 1.75rem);
 }
@@ -1589,7 +1599,7 @@ textarea,
   min-height: 62px;
   place-items: center;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--squiggle-chip);
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -1695,7 +1705,7 @@ textarea,
 .slot-grid button {
   min-height: 58px;
   border: 1px solid var(--rule);
-  border-radius: 12px;
+  border-radius: var(--squiggle-chip);
   /* A fill, so each time reads as its own thing rather than as an outline
      drawn on the page behind it. */
   background: rgba(255, 255, 255, 0.55);
@@ -1918,7 +1928,7 @@ textarea,
 .student-details-form textarea {
   width: 100%;
   border: 1px solid var(--rule);
-  border-radius: 10px;
+  border-radius: var(--squiggle-field);
   padding: 0.8rem;
   background: rgba(255, 255, 255, 0.5);
   font: inherit;
@@ -2050,11 +2060,11 @@ textarea,
   justify-content: center;
   width: 100%;
   min-height: 60px;
-  border: 1px solid transparent;
+  border: 2px solid var(--coral-action);
   border-radius: var(--squiggle-button);
   padding: 0.9rem 1.3rem;
-  background: var(--coral-action);
-  color: var(--paper-light);
+  background: #fff;
+  color: var(--ink);
   font-family: var(--ui);
   font-size: 0.78rem;
   font-weight: 600;
@@ -2067,7 +2077,7 @@ textarea,
 }
 
 .google-signin__button:hover .google-signin__face {
-  background: #95301f;
+  background: rgba(239, 93, 60, 0.09);
 }
 
 /* Keyboard focus lands inside Google's iframe, so the ring has to be drawn
@@ -2077,6 +2087,8 @@ textarea,
   outline-offset: 3px;
 }
 
+/* The chip only ever existed to keep Google's mark legible on coral. On white
+   it is just spacing, so it keeps the size and loses the disc. */
 .google-signin__mark {
   display: inline-flex;
   overflow: hidden;
@@ -2085,8 +2097,6 @@ textarea,
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 50%;
-  background: #fff;
 }
 
 .google-signin__mark svg {
@@ -3568,7 +3578,7 @@ textarea,
 
   .lesson-product__note {
     grid-area: note;
-    margin-top: 0.6rem;
+    margin-top: 0.35rem;
   }
 
   .lesson-product:last-child {
