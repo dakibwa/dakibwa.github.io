@@ -429,6 +429,8 @@ export function BookingCalendar() {
               ) : !student ? (
                 <AuthPanel
                   heading="Almost there"
+                  initialMode="register"
+                  keepCopy
                   intro="An account keeps all your lessons in one place, so you can move or cancel any of them whenever you like."
                   onSignedIn={setStudent}
                 />

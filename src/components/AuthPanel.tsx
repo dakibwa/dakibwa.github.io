@@ -18,11 +18,19 @@ type Mode = "signin" | "register" | "forgot";
  */
 export function AuthPanel({
   initialMode = "signin",
+  keepCopy = false,
   onSignedIn,
   heading,
   intro
 }: {
   initialMode?: Mode;
+  /**
+   * Hold the caller's heading and intro across the two tabs. For a caller whose
+   * heading names one of them — "Sign in" — the copy has to follow the tab or it
+   * contradicts it. For one whose heading names neither, like "Almost there" at
+   * the end of a booking, following the tab only throws away the better line.
+   */
+  keepCopy?: boolean;
   onSignedIn: (student: Student) => void;
   heading?: string;
   intro?: string;
@@ -74,12 +82,13 @@ export function AuthPanel({
     <div className="auth-panel">
       <AssetMark asset="/visuals/v2-splats/built-around-you-splat-v2.svg" className="auth-panel__mark" />
       {/* The heading follows the mode, or it contradicts the active tab —
-          "Sign in" sat above a selected "Create an account". */}
-      <h3>{mode === "forgot" ? "Forgotten password" : mode === "register" ? "Create an account" : heading}</h3>
+          "Sign in" sat above a selected "Create an account". Forgotten password
+          is its own task, so it overrides the copy either way. */}
+      <h3>{mode === "forgot" ? "Forgotten password" : mode === "register" && !keepCopy ? "Create an account" : heading}</h3>
       <p className="auth-panel__intro">
         {mode === "forgot"
           ? "Give us the email you booked with and we'll send you a link to choose a new password. It works for one hour."
-          : mode === "register"
+          : mode === "register" && !keepCopy
             ? "Keeps all your lessons in one place, so you can change them yourself."
             : intro}
       </p>
@@ -88,18 +97,13 @@ export function AuthPanel({
         <GoogleSignInButton onError={setError} onSignedIn={onSignedIn} />
       ) : null}
 
+      {/* Creating an account leads, because at the end of a booking most people
+          have never been here before. Signing in follows it rather than
+          fronting it, and the surfaces that are only ever reached by a
+          returning student open on it instead. */}
       {mode !== "forgot" ? (
         <div className={`auth-tabs auth-tabs--${mode}`} role="tablist">
           <span aria-hidden="true" className="auth-tabs__thumb" />
-          <button
-            aria-selected={mode === "signin"}
-            className={mode === "signin" ? "is-active" : ""}
-            onClick={() => setMode("signin")}
-            role="tab"
-            type="button"
-          >
-            I have an account
-          </button>
           <button
             aria-selected={mode === "register"}
             className={mode === "register" ? "is-active" : ""}
@@ -108,6 +112,15 @@ export function AuthPanel({
             type="button"
           >
             Create an account
+          </button>
+          <button
+            aria-selected={mode === "signin"}
+            className={mode === "signin" ? "is-active" : ""}
+            onClick={() => setMode("signin")}
+            role="tab"
+            type="button"
+          >
+            I have an account
           </button>
         </div>
       ) : null}

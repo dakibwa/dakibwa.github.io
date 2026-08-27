@@ -75,6 +75,23 @@ depending on them having kept the right confirmation email.
   Google verification review — unlike the Calendar API. Absent a client id the
   button simply does not render. Matching is by *verified* email, so someone who
   registered with a password and later uses Google lands on the same account.
+  Google renders that button itself and will not be styled, so the coral button
+  a student sees is ours and Google's own is stretched over it at zero opacity.
+  The click, the ID token and the Worker's verification are all still Google's;
+  only the paint is hers. It means the button's hit area has to be checked
+  whenever its size changes — Google sizes its own to 40px and its own width,
+  and anything it does not cover is coral that looks like a button and is not.
+- **Only one JavaScript origin is registered**: `https://portuguesewithines.com`.
+  Google's ID-token flow consults that list and ignores the redirect URIs, so the
+  button renders anywhere but can only complete there. Local development and the
+  `dakibwa.github.io` preview both ship the client id and both fail on click
+  until their origins are added to the OAuth client.
+- **Which tab leads follows who is likely to be there.** At the end of a booking
+  the panel opens on *Create an account*, because almost nobody reaching that
+  step has booked before; `/my-lessons` and `/schedule` open on *I have an
+  account*, because nothing but a returning student arrives there. The two tabs
+  sit in the same order everywhere — creating first — so only the selection
+  moves, never the layout.
 - Sign-in answers identically for a wrong password and an unknown address, so
   the endpoint cannot be used to discover who has an account. Repeated failures
   are throttled for 15 minutes — which does also hold off the real student, the

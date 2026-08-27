@@ -1949,8 +1949,22 @@ textarea,
   /* Never wider than the space it is given, whatever its contents want. */
   max-width: min(460px, 100%);
   margin: 0 auto;
+  /*
+   * Hand-drawn rather than geometric: every corner radius in this card is
+   * slightly different from its neighbours, the way her splats and lettering
+   * are. A pill and a hard rectangle both read as stock UI dropped onto the
+   * site; these read as drawn. Kept small enough to stay a button shape —
+   * the wobble should be felt before it is noticed.
+   */
+  --squiggle-card: 34px 18px 38px 22px / 20px 36px 18px 34px;
+  --squiggle-button: 26px 12px 28px 14px / 14px 28px 12px 26px;
+  /* Mirrored, so two coral buttons in one card are not the same drawing. */
+  --squiggle-button-alt: 13px 27px 14px 29px / 27px 13px 29px 14px;
+  --squiggle-tabs: 22px 11px 24px 13px / 12px 23px 11px 22px;
+  --squiggle-thumb: 19px 9px 20px 11px / 10px 19px 9px 18px;
+  --squiggle-field: 17px 8px 18px 10px / 9px 17px 8px 16px;
   border: 1px solid var(--rule);
-  border-radius: 18px;
+  border-radius: var(--squiggle-card);
   /* Kept tight enough that the confirm step still fits the height the intro
      panel sets, so the page does not grow when a student reaches sign-in. */
   padding: clamp(1.4rem, 3.4vw, 2rem);
@@ -2000,9 +2014,11 @@ textarea,
 }
 
 /*
- * Google renders this button itself, at a fixed width, so all that is ours is
- * the space around it and a cap so it cannot push the card wider than its
- * column.
+ * Google renders its button inside a cross-origin iframe, so its colour, radius
+ * and type are all out of reach. Rather than accept a white pill in the middle
+ * of her square coral buttons, the face below is ours and Google's button is
+ * stretched over it at zero opacity — seen here, clicked there. It stays
+ * Google's real button, so the ID token and the Worker's checks are unchanged.
  */
 .google-signin {
   margin-bottom: 0.5rem;
@@ -2012,11 +2028,98 @@ textarea,
   display: none;
 }
 
-.google-signin > div {
+.google-signin__button {
+  position: relative;
+  width: 100%;
+  transition: transform 160ms ease;
+}
+
+/* The whole wrapper lifts, not just the face: the invisible button on top has
+   to keep covering it, or the hover state grows a dead strip along one edge. */
+.google-signin__button:hover {
+  transform: translateY(-2px);
+}
+
+.google-signin__face {
   display: flex;
-  overflow: hidden;
-  max-width: 100%;
+  align-items: center;
   justify-content: center;
+  width: 100%;
+  min-height: 60px;
+  border: 1px solid transparent;
+  border-radius: var(--squiggle-button);
+  padding: 0.9rem 1.3rem;
+  background: var(--coral-action);
+  color: var(--paper-light);
+  font-family: var(--ui);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.19em;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: uppercase;
+  transition: background 160ms ease;
+  gap: 0.7rem;
+}
+
+.google-signin__button:hover .google-signin__face {
+  background: #95301f;
+}
+
+/* Keyboard focus lands inside Google's iframe, so the ring has to be drawn
+   from the wrapper — the face itself never receives focus. */
+.google-signin__button:focus-within .google-signin__face {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.google-signin__mark {
+  display: inline-flex;
+  overflow: hidden;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.google-signin__mark svg {
+  width: 15px;
+  height: 15px;
+}
+
+.google-signin__real {
+  position: absolute;
+  z-index: 2;
+  overflow: hidden;
+  inset: 0;
+  opacity: 0;
+}
+
+/*
+ * Google's button is real DOM in this page, not the iframe beside it, so it can
+ * be reached from here — and it has to be, because Google sizes it to its own
+ * fixed width and 40px height. Left alone it covers the top-left of a 60px
+ * face and the rest of the coral is dead paint that looks like a button.
+ * Nothing here is seen; it only decides where a click counts.
+ */
+.google-signin__real > div,
+.google-signin__real > div > div,
+.google-signin__real [role="button"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 100% !important;
+  margin: 0 !important;
+}
+
+/* Google's helper iframe, which is not the button. It follows the button in
+   flow, so at full height it is pushed clear of the face and clipped away. */
+.google-signin__real iframe {
+  position: absolute !important;
+  top: 100% !important;
 }
 
 .google-signin__divider {
@@ -2051,7 +2154,7 @@ textarea,
   grid-template-columns: 1fr 1fr;
   margin-bottom: 1.2rem;
   border: 1px solid var(--rule);
-  border-radius: 999px;
+  border-radius: var(--squiggle-tabs);
   padding: 4px;
   background: rgba(255, 255, 255, 0.55);
   gap: 4px;
@@ -2059,7 +2162,7 @@ textarea,
 
 .auth-tabs button {
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--squiggle-thumb);
   padding: 0.62rem 0.5rem;
   background: transparent;
   color: var(--ink);
@@ -2092,12 +2195,12 @@ textarea,
   bottom: 4px;
   left: 4px;
   width: calc(50% - 6px);
-  border-radius: 999px;
+  border-radius: var(--squiggle-thumb);
   background: var(--green);
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.auth-tabs--register .auth-tabs__thumb {
+.auth-tabs--signin .auth-tabs__thumb {
   transform: translateX(calc(100% + 4px));
 }
 
@@ -2145,7 +2248,7 @@ textarea,
 .auth-panel input {
   width: 100%;
   border: 1px solid var(--rule);
-  border-radius: 10px;
+  border-radius: var(--squiggle-field);
   padding: 0.85rem 0.9rem;
   background: rgba(255, 255, 255, 0.75);
   font: inherit;
@@ -2169,7 +2272,7 @@ textarea,
 }
 
 .auth-panel .booking-confirm-button {
-  border-radius: 999px;
+  border-radius: var(--squiggle-button-alt);
 }
 
 .auth-panel label small {
