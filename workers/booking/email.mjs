@@ -39,6 +39,19 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Escaped, then newlines turned into line breaks.
+ *
+ * Four fields used to be interpolated raw so that callers could pass `<br>` —
+ * which meant a student's own name, email or lesson notes went into Inês's
+ * inbox as markup. She is the one person who reads every one of these, so she
+ * was the one person exposed. Callers now send "\n" and get a line break;
+ * anything else they send arrives as text, which is what it is.
+ */
+function escapeRich(value) {
+  return escapeHtml(value).replace(/\r?\n/g, "<br>");
+}
+
 function base64(text) {
   const bytes = new TextEncoder().encode(text);
   let binary = "";
@@ -69,7 +82,7 @@ function layout({ heading, preheader, intro, hero, heroNote, rows, callout, acti
           };width:36%;vertical-align:top">${escapeHtml(label)}</td>
           <td style="padding:11px 0;border-bottom:${rule};font:400 15px/1.5 Arial,Helvetica,sans-serif;color:${
             BRAND.ink
-          }">${value}</td>
+          }">${escapeRich(value)}</td>
         </tr>`;
         })
         .join("")}</table>`
@@ -102,7 +115,7 @@ function layout({ heading, preheader, intro, hero, heroNote, rows, callout, acti
         <h1 style="margin:0;font:400 26px/1.2 Georgia,'Times New Roman',serif;color:${BRAND.ink}">${escapeHtml(
           heading
         )}</h1>
-        <p style="margin:12px 0 0;font:400 16px/1.65 Arial,Helvetica,sans-serif;color:${BRAND.ink}">${intro}</p>
+        <p style="margin:12px 0 0;font:400 16px/1.65 Arial,Helvetica,sans-serif;color:${BRAND.ink}">${escapeRich(intro)}</p>
       </td></tr>
 
       ${
@@ -141,7 +154,7 @@ function layout({ heading, preheader, intro, hero, heroNote, rows, callout, acti
             <td width="4" bgcolor="${BRAND.coral}" style="background:${BRAND.coral};width:4px;line-height:0">&nbsp;</td>
             <td style="padding:14px 18px;font:400 15px/1.6 Arial,Helvetica,sans-serif;color:${
               BRAND.ink
-            }">${callout}</td>
+            }">${escapeRich(callout)}</td>
           </tr>
         </table>
       </td></tr>`
@@ -172,7 +185,7 @@ function layout({ heading, preheader, intro, hero, heroNote, rows, callout, acti
       <tr><td style="padding:26px 32px 30px">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
           <tr><td style="border-top:1px solid ${BRAND.rule};padding-top:18px">
-            <p style="margin:0;font:400 13px/1.65 Arial,Helvetica,sans-serif;color:${BRAND.lavenderInk}">${footer}</p>
+            <p style="margin:0;font:400 13px/1.65 Arial,Helvetica,sans-serif;color:${BRAND.lavenderInk}">${escapeRich(footer)}</p>
             <p style="margin:10px 0 0;font:400 13px/1.65 Arial,Helvetica,sans-serif;color:${BRAND.lavenderInk}">
               <a href="https://portuguesewithines.com" style="color:${
                 BRAND.lavenderInk

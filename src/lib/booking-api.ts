@@ -294,7 +294,32 @@ export function differingLocalTime(startAt: string, studentZone: string) {
   if (studentZone === BOOKING_TIME_ZONE) return null;
 
   const local = formatSlotTime(startAt, studentZone);
-  return local === formatSlotTime(startAt) ? null : local;
+  if (local === formatSlotTime(startAt)) return null;
+
+  /*
+   * The date comes too when the student's calendar day is not Porto's. A
+   * lesson at 10:00 Porto is 21:00 the day before in Auckland, and printing
+   * "21:00 your time" beside a Porto date told them the wrong day entirely —
+   * the further from Portugal a student is, the more wrong it got.
+   */
+  const date = new Date(startAt);
+  const localKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: studentZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+
+  if (localKey === portoDateKey(date)) return local;
+
+  const day = new Intl.DateTimeFormat("en-GB", {
+    timeZone: studentZone,
+    weekday: "long",
+    day: "numeric",
+    month: "long"
+  }).format(date);
+
+  return `${day}, ${local}`;
 }
 
 export type DayCell = { key: string; day: number; month: number; isToday: boolean };

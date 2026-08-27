@@ -6,8 +6,13 @@
   --lavender: #aaa4e6;
   /* Light enough to clear 4.5:1 against the blue booking panel. */
   --lavender-soft: #dcd8f5;
-  /* A touch deeper than #6a63aa so the 12.5px eyebrow labels clear AA on cream. */
-  --lavender-ink: #665fa6;
+  /*
+   * Deeper again. It was tuned to clear AA on cream, which it does, but the
+   * same colour is used inside the sign-in card where the ground is lighter —
+   * "I've forgotten my password" measured 4.38:1 there, just under. This clears
+   * both, and every other place the token is used along with them.
+   */
+  --lavender-ink: #554f91;
   --paper: #f5ecd9;
   --paper-light: #fbf4e5;
   --coral: #ef5d3c;
@@ -1243,8 +1248,14 @@ textarea,
   user-select: text;
 }
 
+/*
+ * Ink, not coral. Her coral on the lavender band measures 2.56:1 — the fee is
+ * the one number on that line a student needs to read, and it was the least
+ * readable thing on it. Weight carries the emphasis instead; no coral survives
+ * this background at AA.
+ */
 .booking-policy strong {
-  color: var(--coral-action);
+  color: var(--ink);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -2262,6 +2273,11 @@ textarea,
 
 .auth-panel__link {
   position: relative;
+  display: inline-flex;
+  /* 21px was under every pointer-target guideline; the underline still sits
+     against the text, the box around it is just big enough to hit. */
+  min-height: 44px;
+  align-items: center;
   border: 0;
   padding: 0 0 2px;
   background: transparent;
@@ -2602,8 +2618,18 @@ button.text-action {
   font-size: 0.9rem;
 }
 
+/* Each icon is bound to the words it labels, so a long date wraps under itself
+   rather than leaving the calendar icon alone on the line above it. */
+.lesson-list__body p > span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
 .lesson-list__body p svg {
   flex: none;
+  align-self: center;
 }
 
 .lesson-list__fee {
@@ -4126,5 +4152,17 @@ button.text-action {
 
   .faq-row__symbol::after {
     transition: none;
+  }
+
+  /* The sliding thumb and the form fade were the two motions the earlier pass
+     missed — both animate on every tab change, which is exactly the kind of
+     movement this preference is asking us to stop. */
+  .auth-tabs__thumb,
+  .segmented__thumb {
+    transition: none;
+  }
+
+  .auth-panel__form {
+    animation: none;
   }
 }

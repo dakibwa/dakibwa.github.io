@@ -236,7 +236,28 @@ export async function isSlotBookable(
   });
 
   const match = (slotsByDate?.[key] ?? []).some((slot) => slot.startAt === start.toISOString());
-  return match
-    ? { ok: true, endAt: new Date(start.getTime() + lessonType.duration_minutes * 60000) }
-    : { ok: false, reason: "That time has just been taken or is no longer available. Please choose another." };
+  if (match) return { ok: true, endAt: new Date(start.getTime() + lessonType.duration_minutes * 60000) };
+
+  /*
+   * Say which of these it was. One message covered all of them, so a student
+   * trying to book tomorrow morning inside the notice window was told the slot
+   * had "just been taken" — which is not true, and sends them off to pick
+   * another time that will refuse them for the same reason.
+   */
+  const settings = await loadSettings(env);
+  const noticeCutoff = new Date(now.getTime() + settings.minimumNoticeHours * 3600000);
+  if (start < noticeCutoff) {
+    const hours = settings.minimumNoticeHours;
+    return {
+      ok: false,
+      reason: `That's too soon — Inês needs at least ${hours} hour${hours === 1 ? "" : "s"}' notice. Please choose a later time.`
+    };
+  }
+
+  const horizonKey = addDaysToKey(dateKey(now, PORTO), settings.bookingHorizonDays);
+  if (!ignoreHorizon && key > horizonKey) {
+    return { ok: false, reason: "That's further ahead than booking is open. Please choose an earlier date." };
+  }
+
+  return { ok: false, reason: "That time has just been taken or is no longer available. Please choose another." };
 }

@@ -66,6 +66,20 @@ function icsTimestamp(date) {
  * of its own booking, so changing week six later still matches the event
  * already in her calendar and updates it rather than adding a second one.
  */
+/**
+ * A parameter value, which is not a text value.
+ *
+ * RFC 5545 3.3.11 escaping — backslash, semicolon, comma, newline — is right
+ * for SUMMARY and DESCRIPTION and wrong for `CN=`, where a semicolon starts the
+ * next parameter and a colon ends the parameter list. Escaping a name with
+ * text rules there let a student's own name forge calendar properties or cut
+ * the address off the ATTENDEE line. Section 3.1 says to quote instead.
+ */
+function escapeParam(value) {
+  const clean = String(value ?? "").replace(/[\r\n"]/g, " ");
+  return /[;:,]/.test(clean) ? `"${clean}"` : clean;
+}
+
 function veventLines({
   method,
   uid,
@@ -91,7 +105,7 @@ function veventLines({
     `SUMMARY:${escapeText(summary)}`,
     `DESCRIPTION:${escapeText(description)}`,
     `LOCATION:${escapeText(location)}`,
-    `ORGANIZER;CN=${escapeText(organiserName)}:mailto:${organiserEmail}`,
+    `ORGANIZER;CN=${escapeParam(organiserName)}:mailto:${organiserEmail}`,
     `STATUS:${method === "CANCEL" ? "CANCELLED" : "CONFIRMED"}`,
     "TRANSP:OPAQUE"
   ];
@@ -102,7 +116,7 @@ function veventLines({
     lines.push(
       `ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=${
         method === "CANCEL" ? "DECLINED" : "ACCEPTED"
-      };CN=${escapeText(attendee.name)}:mailto:${attendee.email}`
+      };CN=${escapeParam(attendee.name)}:mailto:${attendee.email}`
     );
   }
 

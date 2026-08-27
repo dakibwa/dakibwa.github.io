@@ -150,7 +150,11 @@ export function MyLessons() {
     setError("");
     try {
       await stopSeries(readSession(), seriesId);
+      // Reload rather than patching state: the lessons keep their series_id in
+      // the database, and it is the *active* series list that decides whether
+      // "one of your weekly lessons" is still true of them.
       await load();
+      setSeries((current) => current.filter((entry) => entry.id !== seriesId));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "That repeat could not be stopped.");
     } finally {
@@ -159,6 +163,36 @@ export function MyLessons() {
   }
 
   if (loading) return <p className="booking-state-note">Loading your lessons…</p>;
+
+  /*
+   * An unreachable API leaves `student` null, which used to fall straight
+   * through to the sign-in panel — telling someone who is signed in that they
+   * are not, and burying the real message. The session is still in hand, so
+   * say what actually happened and offer the way back.
+   */
+  if (!student && error && readSession()) {
+    return (
+      <div className="my-lessons">
+        <div className="booking-alert" role="alert">
+          <AlertCircle size={18} aria-hidden="true" />
+          <p>{error}</p>
+        </div>
+        <p className="booking-state-note">
+          <button
+            className="text-action"
+            onClick={() => {
+              setError("");
+              setLoading(true);
+              load();
+            }}
+            type="button"
+          >
+            Try again
+          </button>
+        </p>
+      </div>
+    );
+  }
 
   if (!student) {
     return (
@@ -174,8 +208,19 @@ export function MyLessons() {
     );
   }
 
-  const upcoming = bookings.filter((booking) => !booking.isPast && booking.status === "confirmed");
-  const past = bookings.filter((booking) => booking.isPast || booking.status === "cancelled");
+  /*
+   * Both lists come from one query sorted newest-first, which is right for what
+   * has happened and backwards for what has not: it put a student's next lesson
+   * at the bottom of "Coming up" and one three months away at the top. Soonest
+   * first going forward, most recent first going back — in both cases the one
+   * you care about is the one you land on.
+   */
+  const upcoming = bookings
+    .filter((booking) => !booking.isPast && booking.status === "confirmed")
+    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const past = bookings
+    .filter((booking) => booking.isPast || booking.status === "cancelled")
+    .sort((a, b) => b.startAt.localeCompare(a.startAt));
 
   return (
     <div className="my-lessons">
@@ -302,22 +347,30 @@ export function MyLessons() {
                 <div className="lesson-list__body">
                   <h3>{booking.lessonType.name}</h3>
                   <p>
-                    <CalendarDays size={16} aria-hidden="true" />
-                    {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)} Porto time
+                    <span>
+                      <CalendarDays size={16} aria-hidden="true" />
+                      {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)} Porto time
+                    </span>
                   </p>
                   {differingLocalTime(booking.startAt, zone) ? (
                     <p>
-                      <Globe2 size={16} aria-hidden="true" />
-                      {differingLocalTime(booking.startAt, zone)} your time
+                      <span>
+                        <Globe2 size={16} aria-hidden="true" />
+                        {differingLocalTime(booking.startAt, zone)} your time
+                      </span>
                     </p>
                   ) : null}
                   <p>
-                    <Clock3 size={16} aria-hidden="true" />
-                    {formatLessonDuration(booking.lessonType.durationMinutes)}
-                    <MapPin size={16} aria-hidden="true" />
-                    {booking.location === "porto" ? "In Porto" : "Online"}
+                    <span>
+                      <Clock3 size={16} aria-hidden="true" />
+                      {formatLessonDuration(booking.lessonType.durationMinutes)}
+                    </span>
+                    <span>
+                      <MapPin size={16} aria-hidden="true" />
+                      {booking.location === "porto" ? "In Porto" : "Online"}
+                    </span>
                   </p>
-                  {booking.seriesId ? (
+                  {booking.seriesId && series.some((entry) => entry.id === booking.seriesId) ? (
                     <p className="lesson-list__repeats">
                       <Repeat size={16} aria-hidden="true" />
                       One of your weekly lessons

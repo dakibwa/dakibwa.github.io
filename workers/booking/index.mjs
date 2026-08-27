@@ -302,7 +302,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           preheader: `${row.student_name} · ${lessonType.name} · ${portoTime}`,
           rows: [
             ...baseRows,
-            { label: "Student", value: `${row.student_name}<br>${row.student_email}${row.student_phone ? `<br>${row.student_phone}` : ""}` },
+            { label: "Student", value: `${row.student_name}\n${row.student_email}${row.student_phone ? `\n${row.student_phone}` : ""}` },
             ...(row.notes ? [{ label: "Notes", value: row.notes }] : [])
           ],
           action: null,
@@ -353,7 +353,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
 
   const dateLines = rows
     .map((row) => `${formatInZone(new Date(row.starts_at), PORTO)} (${timeZoneAbbreviation(new Date(row.starts_at), PORTO)})`)
-    .join("<br>");
+    .join("\n");
 
   const cadence = series.occurrences ? `${rows.length} lessons` : "Every week, until you stop it";
   const skippedNote = skipped.length
@@ -375,7 +375,10 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
       subject: `Your weekly Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
       kind: "student_series_booked",
       bookingId: first.id,
-      dedupeKey: `student:series:${series.id}:${rows.length}`,
+      // Keyed on the occurrences it describes, not how many there are. A count
+      // collides every week for an open-ended series, so after the first top-up
+      // every later one was silently swallowed as a duplicate.
+      dedupeKey: `student:series:${series.id}:${rows[0].id}`,
       replyTo,
       calendar: { body: invite({ name: first.student_name, email: first.student_email }), method: "REQUEST" },
       content: {
@@ -399,7 +402,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
         subject: `Weekly booking — ${first.student_name}, from ${formatShort(new Date(first.starts_at), PORTO)}`,
         kind: "teacher_series_booked",
         bookingId: first.id,
-        dedupeKey: `teacher:series:${series.id}:${rows.length}`,
+        dedupeKey: `teacher:series:${series.id}:${rows[0].id}`,
         replyTo: first.student_email,
         calendar: { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "REQUEST" },
         content: {
@@ -411,7 +414,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
           preheader: `${first.student_name} · ${cadence}`,
           rows: [
             ...rowsForBoth,
-            { label: "Student", value: `${first.student_name}<br>${first.student_email}${first.student_phone ? `<br>${first.student_phone}` : ""}` },
+            { label: "Student", value: `${first.student_name}\n${first.student_email}${first.student_phone ? `\n${first.student_phone}` : ""}` },
             ...(first.notes ? [{ label: "Notes", value: first.notes }] : [])
           ],
           action: null,
@@ -422,6 +425,38 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
   }
 
   return Promise.allSettled(sends);
+}
+
+/**
+ * Claim a time, or find out someone else already has.
+ *
+ * Availability is checked before this, but a check and a separate insert are
+ * two statements, and between them another request can pass the same check.
+ * Under load that is not theoretical: four different students were confirmed
+ * into one lesson in testing. So the decision and the write are one statement,
+ * and SQLite settles it — a row is written only if nothing overlapping exists,
+ * and zero rows affected means somebody won the race.
+ *
+ * Overlap, not equality: her lessons are 60 and 90 minutes on a 30-minute grid,
+ * so a 90-minute lesson at 17:00 and a 60-minute one at 17:30 collide while
+ * starting at different times. A unique index on the start time would miss it.
+ */
+async function claimSlot(env, { columns, values, startAt, endAt }) {
+  const placeholders = columns.map(() => "?").join(", ");
+  const result = await env.DB.prepare(
+    `INSERT INTO bookings (${columns.join(", ")})
+     SELECT ${placeholders}
+     WHERE NOT EXISTS (
+       SELECT 1 FROM bookings
+       WHERE status IN ('confirmed', 'pending_payment')
+         AND starts_at < ?
+         AND ends_at > ?
+     )`
+  )
+    .bind(...values, endAt, startAt)
+    .run();
+
+  return (result?.meta?.changes ?? 0) > 0;
 }
 
 /** The signed-in student, or null. */
@@ -485,45 +520,51 @@ const worker = {
       if (!env.DB) return fail("The booking database is not bound to this Worker.", 500, request, env);
       if (!env.BOOKING_TOKEN_SECRET) return fail("The booking service is not fully configured.", 500, request, env);
 
-      if (request.method === "GET" && path === "/health") return handleHealth(request, env);
+      /*
+       * `await`, not a bare return. The catch below exists to turn any handler
+       * failure into a tidy JSON 500, and it never fired: returning a promise
+       * from inside a try block does not route its rejection there, because the
+       * function has already returned by the time it rejects.
+       */
+      if (request.method === "GET" && path === "/health") return await handleHealth(request, env);
       if (request.method === "GET" && path === "/lesson-types") {
         return json({ lessonTypes: await listLessonTypes(env) }, 200, request, env);
       }
-      if (request.method === "GET" && path === "/availability") return handleAvailability(request, env, url);
+      if (request.method === "GET" && path === "/availability") return await handleAvailability(request, env, url);
 
-      if (request.method === "POST" && path === "/stripe/webhook") return handleStripeWebhook(request, env, ctx);
+      if (request.method === "POST" && path === "/stripe/webhook") return await handleStripeWebhook(request, env, ctx);
 
-      if (request.method === "POST" && path === "/auth/register") return handleRegister(request, env);
-      if (request.method === "POST" && path === "/auth/login") return handleLogin(request, env);
-      if (request.method === "POST" && path === "/auth/google") return handleGoogleSignIn(request, env);
-      if (request.method === "POST" && path === "/auth/forgot") return handleForgot(request, env, ctx);
-      if (request.method === "POST" && path === "/auth/reset") return handleReset(request, env);
-      if (request.method === "GET" && path === "/me") return handleMe(request, env);
-      if (request.method === "POST" && path === "/me") return handleUpdateMe(request, env);
-      if (request.method === "POST" && path === "/me/email") return handleRequestEmailChange(request, env, ctx);
-      if (request.method === "POST" && path === "/me/email/confirm") return handleConfirmEmailChange(request, env);
+      if (request.method === "POST" && path === "/auth/register") return await handleRegister(request, env);
+      if (request.method === "POST" && path === "/auth/login") return await handleLogin(request, env);
+      if (request.method === "POST" && path === "/auth/google") return await handleGoogleSignIn(request, env);
+      if (request.method === "POST" && path === "/auth/forgot") return await handleForgot(request, env, ctx);
+      if (request.method === "POST" && path === "/auth/reset") return await handleReset(request, env);
+      if (request.method === "GET" && path === "/me") return await handleMe(request, env);
+      if (request.method === "POST" && path === "/me") return await handleUpdateMe(request, env);
+      if (request.method === "POST" && path === "/me/email") return await handleRequestEmailChange(request, env, ctx);
+      if (request.method === "POST" && path === "/me/email/confirm") return await handleConfirmEmailChange(request, env);
 
       // Preview before commit: a student is told which weeks are free, and
       // which are not, before anything is booked in their name.
       if (request.method === "POST" && path === "/bookings/series/preview") {
-        return handleSeriesPreview(request, env);
+        return await handleSeriesPreview(request, env);
       }
 
-      if (request.method === "POST" && path === "/bookings") return handleCreate(request, env, ctx);
+      if (request.method === "POST" && path === "/bookings") return await handleCreate(request, env, ctx);
 
       const stopSeries = path.match(/^\/series\/([^/]+)\/stop$/);
-      if (stopSeries && request.method === "POST") return handleStopSeries(request, env, ctx, stopSeries[1]);
+      if (stopSeries && request.method === "POST") return await handleStopSeries(request, env, ctx, stopSeries[1]);
 
       const manage = path.match(/^\/bookings\/([^/]+)$/);
-      if (manage && request.method === "GET") return handleGetBooking(request, env, manage[1]);
+      if (manage && request.method === "GET") return await handleGetBooking(request, env, manage[1]);
 
       const reschedule = path.match(/^\/bookings\/([^/]+)\/reschedule$/);
-      if (reschedule && request.method === "POST") return handleReschedule(request, env, ctx, reschedule[1]);
+      if (reschedule && request.method === "POST") return await handleReschedule(request, env, ctx, reschedule[1]);
 
       const cancel = path.match(/^\/bookings\/([^/]+)\/cancel$/);
-      if (cancel && request.method === "POST") return handleCancel(request, env, ctx, cancel[1]);
+      if (cancel && request.method === "POST") return await handleCancel(request, env, ctx, cancel[1]);
 
-      if (path.startsWith("/admin/")) return handleAdmin(request, env, ctx, url, path);
+      if (path.startsWith("/admin/")) return await handleAdmin(request, env, ctx, url, path);
 
       return fail("Not found.", 404, request, env);
     } catch (error) {
@@ -637,7 +678,10 @@ async function handleHealth(request, env) {
       stripe: stripeConfigured(env) ? (isTestMode(env) ? "test" : "live") : "not-configured",
       googleSignIn: env.GOOGLE_CLIENT_ID ? "configured" : "not-configured"
     },
-    200,
+    // A health check that always answers 200 cannot be alerted on. Nothing reads
+    // the status code today — check-booking-link.mjs parses the body — so this
+    // only adds a signal.
+    missing.length === 0 ? 200 : 503,
     request,
     env
   );
@@ -718,11 +762,19 @@ async function handleCreate(request, env, ctx) {
   const sinceIso = new Date(now.getTime() - 3600000).toISOString();
   const recent = await env.DB.prepare(
     `SELECT (SELECT COUNT(*) FROM bookings WHERE student_id = ?1 AND created_at > ?2 AND series_id IS NULL)
-          + (SELECT COUNT(*) FROM booking_series WHERE student_id = ?1 AND created_at > ?2) AS count`
+          + (SELECT COUNT(*) FROM booking_series WHERE student_id = ?1 AND created_at > ?2) AS acts,
+            (SELECT COUNT(*) FROM bookings WHERE student_id = ?1 AND created_at > ?2) AS lessons`
   )
     .bind(student.id, sinceIso)
     .first();
-  if ((recent?.count ?? 0) >= 5) {
+
+  /*
+   * Two bounds, because one act can write twelve rows. Counting only acts let a
+   * single account take sixty lessons an hour through repeats; counting only
+   * rows would lock someone out of their own term booking. So: five decisions,
+   * and no more than about two terms' worth of lessons, in an hour.
+   */
+  if ((recent?.acts ?? 0) >= 5 || (recent?.lessons ?? 0) >= 26) {
     return fail("That's several bookings in a short time. Please email Inês directly instead.", 429, request, env);
   }
 
@@ -747,13 +799,14 @@ async function handleCreate(request, env, ctx) {
   // checkout rather than the other way round.
   const holdExpiresAt = new Date(now.getTime() + 35 * 60000).toISOString();
 
-  await env.DB.prepare(
-    `INSERT INTO bookings (id, reference, lesson_type_id, student_id, student_name, student_email, student_phone,
-       student_timezone, location, notes, starts_at, ends_at, status, sequence, created_at, updated_at,
-       payment_status, amount_cents, hold_expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`
-  )
-    .bind(
+  const endsAt = check.endAt.toISOString();
+  const claimed = await claimSlot(env, {
+    columns: [
+      "id", "reference", "lesson_type_id", "student_id", "student_name", "student_email", "student_phone",
+      "student_timezone", "location", "notes", "starts_at", "ends_at", "status", "sequence", "created_at",
+      "updated_at", "payment_status", "amount_cents", "hold_expires_at"
+    ],
+    values: [
       id,
       reference,
       lessonType.id,
@@ -765,15 +818,22 @@ async function handleCreate(request, env, ctx) {
       location,
       notes,
       startsAt,
-      check.endAt.toISOString(),
+      endsAt,
       prepay ? "pending_payment" : "confirmed",
+      0,
       timestamp,
       timestamp,
       prepay ? "pending" : "not_required",
       prepay ? lessonType.price_cents : null,
       prepay ? holdExpiresAt : null
-    )
-    .run();
+    ],
+    startAt: startsAt,
+    endAt: endsAt
+  });
+
+  if (!claimed) {
+    return fail("That time has just been taken. Please choose another.", 409, request, env);
+  }
 
   // Keep the account's timezone in step with the browser it was booked from.
   if (timezone !== student.timezone) {
@@ -902,14 +962,16 @@ async function handleCreate(request, env, ctx) {
 async function insertOccurrence(env, { seriesId, student, lessonType, timezone, location, notes, startAt, endAt, now }) {
   const id = crypto.randomUUID();
   const timestamp = now.toISOString();
+  const startsAt = new Date(startAt).toISOString();
+  const endsAt = new Date(endAt).toISOString();
 
-  await env.DB.prepare(
-    `INSERT INTO bookings (id, reference, lesson_type_id, student_id, student_name, student_email, student_phone,
-       student_timezone, location, notes, starts_at, ends_at, status, sequence, created_at, updated_at,
-       payment_status, amount_cents, hold_expires_at, series_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 0, ?, ?, 'not_required', NULL, NULL, ?)`
-  )
-    .bind(
+  const claimed = await claimSlot(env, {
+    columns: [
+      "id", "reference", "lesson_type_id", "student_id", "student_name", "student_email", "student_phone",
+      "student_timezone", "location", "notes", "starts_at", "ends_at", "status", "sequence", "created_at",
+      "updated_at", "payment_status", "amount_cents", "hold_expires_at", "series_id"
+    ],
+    values: [
       id,
       bookingReference(),
       lessonType.id,
@@ -920,13 +982,24 @@ async function insertOccurrence(env, { seriesId, student, lessonType, timezone, 
       timezone,
       location,
       notes,
-      new Date(startAt).toISOString(),
-      new Date(endAt).toISOString(),
+      startsAt,
+      endsAt,
+      "confirmed",
+      0,
       timestamp,
       timestamp,
+      "not_required",
+      null,
+      null,
       seriesId
-    )
-    .run();
+    ],
+    startAt: startsAt,
+    endAt: endsAt
+  });
+
+  // Losing the race is a skipped week, not a failed booking: the rest of the
+  // run is still worth having, and the student is told which weeks were missed.
+  if (!claimed) return null;
 
   return env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
 }
@@ -948,22 +1021,36 @@ async function fillSeries(env, { series, student, lessonType, fromKey, count, no
   });
 
   const rows = [];
+  const lost = [];
   for (const occurrence of bookable) {
-    rows.push(
-      await insertOccurrence(env, {
-        seriesId: series.id,
-        student,
-        lessonType,
-        timezone: student.timezone,
-        location: series.location,
-        notes: series.notes,
-        startAt: occurrence.startAt,
-        endAt: occurrence.endAt,
-        now
-      })
-    );
+    const row = await insertOccurrence(env, {
+      seriesId: series.id,
+      student,
+      lessonType,
+      timezone: student.timezone,
+      location: series.location,
+      notes: series.notes,
+      startAt: occurrence.startAt,
+      endAt: occurrence.endAt,
+      now
+    });
+
+    if (row) rows.push(row);
+    else lost.push({ key: occurrence.key, startAt: occurrence.startAt.toISOString(), reason: "Taken while booking." });
+
+    /*
+     * The bookmark moves with each occurrence, not once at the end. Advancing it
+     * only after the loop meant a run that died half way left rows committed and
+     * `filled_to` untouched — so the next night replanned the same weeks, found
+     * its own bookings in the way, and emailed the student and Inês to say those
+     * lessons had been "left out". They were in the calendar the whole time.
+     */
+    await env.DB.prepare("UPDATE booking_series SET filled_to = ?, updated_at = ? WHERE id = ?")
+      .bind(occurrence.key, now.toISOString(), series.id)
+      .run();
   }
 
+  const allSkipped = [...skipped, ...lost];
   const considered = [...bookable.map((o) => o.key), ...skipped.map((o) => o.key)].sort();
   const lastConsidered = considered[considered.length - 1] ?? series.filled_to;
   if (lastConsidered) {
@@ -972,7 +1059,7 @@ async function fillSeries(env, { series, student, lessonType, fromKey, count, no
       .run();
   }
 
-  return { rows, skipped };
+  return { rows, skipped: allSkipped };
 }
 
 /**
@@ -1110,13 +1197,27 @@ async function handleReschedule(request, env, ctx, token) {
   // lesson they are moving away from.
   const sameDay = dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO) ? 1 : 0;
   const startsAt = new Date(body.startAt).toISOString();
+  const endsAt = check.endAt.toISOString();
 
-  await env.DB.prepare(
+  // Same gap as creating a booking: the check above and this write are two
+  // statements, and a lesson can be claimed between them.
+  const moved = await env.DB.prepare(
     `UPDATE bookings SET starts_at = ?, ends_at = ?, previous_starts_at = ?, sequence = sequence + 1,
-       reschedule_count = reschedule_count + 1, same_day_change = ?, updated_at = ? WHERE id = ?`
+       reschedule_count = reschedule_count + 1, same_day_change = ?, updated_at = ?
+     WHERE id = ?
+       AND NOT EXISTS (
+         SELECT 1 FROM bookings other
+         WHERE other.status IN ('confirmed', 'pending_payment')
+           AND other.id != bookings.id
+           AND other.starts_at < ? AND other.ends_at > ?
+       )`
   )
-    .bind(startsAt, check.endAt.toISOString(), row.starts_at, sameDay, now.toISOString(), row.id)
+    .bind(startsAt, endsAt, row.starts_at, sameDay, now.toISOString(), row.id, endsAt, startsAt)
     .run();
+
+  if ((moved?.meta?.changes ?? 0) === 0) {
+    return fail("That time has just been taken. Please choose another.", 409, request, env);
+  }
 
   const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
   const settings = await loadSettings(env);
@@ -1638,12 +1739,16 @@ async function handleConfirmEmailChange(request, env) {
   if (!student) return fail("Please sign in.", 401, request, env);
 
   const body = await readJson(request);
-  const studentId = await readResetToken(body.token, env.BOOKING_TOKEN_SECRET);
-  if (!studentId || studentId !== student.id) {
+  // readResetToken returns { studentId, nonce }, not a string. Comparing the
+  // object to an id was never equal, so every confirmation was refused —
+  // including the right person's, with a valid link. It failed closed, so it
+  // was a dead feature rather than an open door, but it was completely dead.
+  const parsed = await readResetToken(body.token, env.BOOKING_TOKEN_SECRET);
+  if (!parsed || parsed.studentId !== student.id) {
     return fail("That link is no longer valid. Please ask for a new one.", 400, request, env);
   }
 
-  const nonce = String(body.token ?? "").split(".")[2];
+  const nonce = parsed.nonce;
   const pending = await env.DB.prepare("SELECT * FROM email_changes WHERE nonce = ? AND student_id = ?")
     .bind(nonce, student.id)
     .first();

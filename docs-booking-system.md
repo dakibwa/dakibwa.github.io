@@ -184,6 +184,32 @@ student booking three months out costs her a conversation rather than a lost slo
   longer horizon means more lessons she may need to move, so this had to be right
   before the horizon was widened, not after.
 
+### What stops two people booking one lesson
+
+The availability check and the insert used to be two statements with nothing
+between them, which is a race, and not a theoretical one — under load, four
+different students were confirmed into the same lesson in testing.
+
+- **The decision and the write are one statement.** A booking row is inserted
+  only if nothing overlapping exists, and zero rows affected is the 409. The
+  same guard is on rescheduling and on every occurrence of a series.
+- **Overlap, not equality.** Lessons are 60 and 90 minutes on a 30-minute grid,
+  so a 90-minute lesson at 17:00 and a 60-minute one at 17:30 collide while
+  starting at different times. A unique index on the start time would miss that.
+- A series occurrence that loses the race becomes a skipped week rather than a
+  failed booking: the rest of the run is still worth having.
+
+### Notes on the email and calendar output
+
+- **Everything a student typed is escaped.** Four fields reached the HTML raw so
+  that callers could pass `<br>` — meaning a name, an address or a lesson note
+  arrived in Inês's inbox as markup, and she is the one person who reads every
+  one of these. Callers now send `\n` and the template turns it into a break.
+- **`CN=` is a parameter, not a text value.** iCalendar text escaping is wrong
+  there — a semicolon starts the next parameter and a colon ends the list — so a
+  student's own name could forge calendar properties or cut the address off the
+  ATTENDEE line. Parameter values are quoted per RFC 5545 §3.1 instead.
+
 ### How her calendar stays current
 
 Each lifecycle event emails an iCalendar attachment. Gmail adds the event on

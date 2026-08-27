@@ -214,6 +214,18 @@ export function BookingCalendar() {
 
   const canSubmit = Boolean(chosen && lessonType && student) && !submitting;
 
+  /*
+   * The confirmation mounts its region and its text in one commit, which is the
+   * case a live region is least reliable at announcing. Moving focus to the
+   * heading is what the step changes already do, and it works here for the same
+   * reason: it says the thing and puts the reader at the top of it.
+   */
+  useEffect(() => {
+    if (!confirmation) return;
+    const frame = requestAnimationFrame(() => document.getElementById("booking-success-heading")?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [confirmation]);
+
   function goTo(next: Step) {
     setStep(next);
     setSubmitError("");
@@ -274,7 +286,9 @@ export function BookingCalendar() {
             down a screen that is mostly one sentence of good news. Beside it,
             they confirm the same thing and cost no height. */}
         <div className="booking-success__head">
-          <h2>You&rsquo;re booked in.</h2>
+          <h2 id="booking-success-heading" tabIndex={-1}>
+            You&rsquo;re booked in.
+          </h2>
           <p className="eyebrow booking-success__badge">
             <CheckCircle2 size={18} aria-hidden="true" />
             Booked
@@ -352,7 +366,11 @@ export function BookingCalendar() {
             <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
               Which lesson?
             </h2>
-            <div className="lesson-choice" role="list">
+            {/* No list roles here. An explicit role replaces the implicit one,
+                so role="listitem" on a <button> destroyed the button role and
+                these announced as unnamed list items — the first step of the
+                booking flow, unusable to a screen reader. */}
+            <div className="lesson-choice">
               {lessonTypes.map((type) => (
                 <button
                   className="lesson-card"
@@ -362,7 +380,6 @@ export function BookingCalendar() {
                     setSelectedSlot("");
                     goTo("day");
                   }}
-                  role="listitem"
                   type="button"
                 >
                   <LessonMark className="lesson-card__mark" lessonTypeId={type.id} />
@@ -659,9 +676,11 @@ export function BookingCalendar() {
                   <button className="button button--coral booking-confirm-button" disabled={!canSubmit} type="submit">
                     {submitting
                       ? "Booking…"
-                      : form.repeat === "once" || !seriesPreview || seriesPreview.bookable.length <= 1
+                      : form.repeat === "once"
                         ? "Confirm this lesson"
-                        : `Confirm these ${seriesPreview.bookable.length} lessons`}
+                        : seriesPreview
+                          ? `Confirm ${seriesPreview.bookable.length === 1 ? "this lesson" : `these ${seriesPreview.bookable.length} lessons`}`
+                          : "Confirm these lessons"}
                   </button>
 
                   <p className="booking-form-note">

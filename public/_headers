@@ -1,5 +1,18 @@
 # Cloudflare Pages response headers.
 #
+# Security headers first, on everything. The site had none of its own — only the
+# two Cloudflare sets by default — so a CSP is the meaningful addition: the page
+# loads Google's sign-in script and fonts and nothing else, which is narrow
+# enough to state exactly.
+/*
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://*.googleusercontent.com https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://ines-booking.dakibwa.workers.dev https://accounts.google.com
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=()
+
+#
 # Without this file Pages serves everything with `max-age=14400, must-revalidate`,
 # which makes the browser re-check the fonts, CSS and JS on every visit once four
 # hours have passed. Everything under /_next/static/ carries a content hash in its
