@@ -221,11 +221,29 @@ export function ManageBooking() {
       </div>
 
       {cancelled ? (
-        <p className="booking-state-note">
-          This lesson is cancelled. You&rsquo;re very welcome to <a href="/book/">book another one</a>.
-        </p>
+        <>
+          <p className="booking-state-note">This lesson is cancelled.</p>
+          <div className="manage-booking__onward">
+            <a className="button button--coral" href="/my-lessons/">
+              Go to your lessons
+            </a>
+            <a className="text-action" href="/book/">
+              Book another lesson
+            </a>
+          </div>
+        </>
       ) : isPast ? (
-        <p className="booking-state-note">This lesson has already happened, so it can no longer be changed here.</p>
+        <>
+          <p className="booking-state-note">This lesson has already happened, so it can no longer be changed here.</p>
+          <div className="manage-booking__onward">
+            <a className="button button--coral" href="/my-lessons/">
+              Go to your lessons
+            </a>
+            <a className="text-action" href="/book/">
+              Book another lesson
+            </a>
+          </div>
+        </>
       ) : (
         <>
           {sameDayFeeApplies && !outcome ? (
@@ -362,6 +380,17 @@ export function ManageBooking() {
           ) : null}
         </>
       )}
+
+      {/* Every one of these pages is somewhere a student arrives from an email
+          and would otherwise have to reach for the back button. A finished
+          action should always say where to go next. */}
+      {outcome && !cancelled ? (
+        <div className="manage-booking__onward">
+          <a className="button button--coral" href="/my-lessons/">
+            Go to your lessons
+          </a>
+        </div>
+      ) : null}
     </div>
   );
 }

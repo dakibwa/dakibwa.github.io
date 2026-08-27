@@ -1,41 +1,27 @@
 "use client";
 
-import { ArrowUp, Menu } from "lucide-react";
-
-function scrollToTop() {
-  window.scrollTo({
-    top: 0,
-    // Honours a reduced-motion preference, as the rest of the site does.
-    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"
-  });
-}
+import { Menu } from "lucide-react";
 
 /**
- * The two things worth doing from the bottom of a page.
+ * One control, and only where it does something.
  *
- * They swap at 820px rather than sitting together. Below it the header's links
- * are behind a toggle, so Menu is the useful one — and since it returns you to
- * the top on its way to opening, Top alongside it did the same thing twice.
- * Above it there is no toggle, so Top is the one that helps.
+ * Top went because Menu already returns you to the top on its way to opening,
+ * so the two did the same thing side by side. Menu itself is hidden above the
+ * breakpoint, where the footer already lists every page in a row and a button
+ * to reveal them is a button to reveal what is already on screen.
  *
- * Menu asks the header to open by event, since the two live in separate trees
+ * It asks the header to open by event, since the two live in separate trees
  * with the whole page between them.
  */
 export function BackToTop() {
   return (
-    <>
-      <button
-        className="site-footer__top site-footer__menu"
-        onClick={() => window.dispatchEvent(new CustomEvent("ines:open-menu"))}
-        type="button"
-      >
-        <Menu aria-hidden="true" size={15} />
-        Menu
-      </button>
-      <button className="site-footer__top site-footer__desktop-only" onClick={scrollToTop} type="button">
-        <ArrowUp aria-hidden="true" size={15} />
-        Top
-      </button>
-    </>
+    <button
+      className="site-footer__top site-footer__menu"
+      onClick={() => window.dispatchEvent(new CustomEvent("ines:open-menu"))}
+      type="button"
+    >
+      <Menu aria-hidden="true" size={15} />
+      Menu
+    </button>
   );
 }

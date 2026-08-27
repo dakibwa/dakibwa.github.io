@@ -1339,10 +1339,6 @@ textarea,
 
 /* The control sits beside the heading rather than above it, which cost a whole
    row of vertical space on every step after the first. */
-.booking-step-head--lesson {
-  margin-bottom: 1.1rem;
-}
-
 /* Smaller than a page-level call to action: it is the way out for the minority
    who are already booked, not the thing this page is for. */
 /*
@@ -1355,6 +1351,7 @@ textarea,
   width: auto;
   align-self: flex-start;
   min-height: 46px;
+  margin-top: 0.2rem;
   padding: 0.6rem 1.3rem;
   font-size: 0.7rem;
   letter-spacing: 0.14em;
@@ -1367,6 +1364,21 @@ textarea,
   margin-bottom: 0.2rem;
   gap: 0.35rem 1rem;
 }
+
+/*
+ * Stacked, not beside. Baseline-aligning a button against a script face with a
+ * long descender never sat right — the "?" of "Which lesson?" drops well below
+ * the line the button was aligning to, so the two always looked a few pixels
+ * out however they were nudged. Underneath, with room, it reads as its own
+ * thing rather than a label that failed to line up.
+ */
+.booking-step-head--lesson {
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  gap: 1.5rem;
+}
+
 
 .booking-step-head .booking-step-heading {
   margin: 0;
@@ -3081,6 +3093,15 @@ button.text-action {
   text-decoration: line-through;
 }
 
+/* Where to go once the thing is done. */
+.manage-booking__onward {
+  display: flex;
+  align-items: center;
+  margin-top: 1.4rem;
+  gap: 1.4rem;
+  flex-wrap: wrap;
+}
+
 .manage-booking__actions {
   display: flex;
   flex-wrap: wrap;
@@ -3572,10 +3593,10 @@ button.text-action {
 }
 
 /*
- * Which of the two shows, and at what width. Deliberately after the block
- * styling above rather than before it: both are two-class selectors, so source
- * order decides, and sitting first meant `display: inline-flex` won and all
- * three controls appeared at every size.
+ * Hidden above the breakpoint, where the footer already lists every page across
+ * one row — a button to reveal a menu you can already read is noise. After the
+ * block styling above rather than before it: both are two-class selectors, so
+ * source order decides which wins.
  */
 .site-footer__contact .site-footer__menu {
   display: none;
@@ -3584,10 +3605,6 @@ button.text-action {
 @media (max-width: 820px) {
   .site-footer__contact .site-footer__menu {
     display: inline-flex;
-  }
-
-  .site-footer__contact .site-footer__desktop-only {
-    display: none;
   }
 }
 
@@ -3972,6 +3989,13 @@ button.text-action {
   .site-footer__contact {
     justify-content: flex-end;
     text-align: right;
+  }
+
+  /* One control now, so it sits on the wordmark's line rather than under it. */
+  .site-footer {
+    grid-template-areas: "brand contact";
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
   }
 }
 

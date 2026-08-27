@@ -2,7 +2,6 @@ import Link from "next/link";
 import { AccountLink } from "@/components/AccountLink";
 import { BackToTop } from "@/components/BackToTop";
 import { BrandWordmark } from "@/components/BrandWordmark";
-import { CONTACT_WHATSAPP_URL } from "@/lib/config";
 
 export function SiteFooter() {
   return (
@@ -17,10 +16,10 @@ export function SiteFooter() {
         <Link href="/book">Booking</Link>
         <AccountLink />
       </nav>
+      {/* Just the way back to the rest of the site. "Message Inês" lives in the
+          header and on the FAQ, and a third copy down here was the loudest thing
+          in a footer whose job is navigation. */}
       <div className="site-footer__contact">
-        <a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">
-          Message Inês
-        </a>
         <BackToTop />
       </div>
     </footer>
