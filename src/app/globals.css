@@ -2099,28 +2099,11 @@ textarea,
 }
 
 /*
- * Google's button is real DOM in this page, not the iframe beside it, so it can
- * be reached from here — and it has to be, because Google sizes it to its own
- * fixed width and 40px height. Left alone it covers the top-left of a 60px
- * face and the rest of the coral is dead paint that looks like a button.
- * Nothing here is seen; it only decides where a click counts.
+ * Deliberately no rules reaching into Google's own markup. It renders a real
+ * button here in some conditions and only an iframe in others, and CSS written
+ * for one shape moved the other off the face — so the component measures
+ * whatever arrived and scales it on, instead of this guessing.
  */
-.google-signin__real > div,
-.google-signin__real > div > div,
-.google-signin__real [role="button"] {
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  height: 100% !important;
-  margin: 0 !important;
-}
-
-/* Google's helper iframe, which is not the button. It follows the button in
-   flow, so at full height it is pushed clear of the face and clipped away. */
-.google-signin__real iframe {
-  position: absolute !important;
-  top: 100% !important;
-}
 
 .google-signin__divider {
   position: relative;
