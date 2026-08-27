@@ -26,9 +26,11 @@ export default function LessonsPage() {
           <div className="lessons-hero__art">
             <AssetMark
               asset="/visuals/generated-splats/open-centre-lavender-splat.webp"
+              avifAsset="/visuals/generated-splats/open-centre-lavender-splat.avif"
               className="lessons-hero__field"
               height={1254}
               mobileAsset="/visuals/generated-splats/open-centre-lavender-splat-mobile.webp"
+              mobileAvifAsset="/visuals/generated-splats/open-centre-lavender-splat-mobile.avif"
               priority
               width={1254}
             />

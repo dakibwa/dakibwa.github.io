@@ -43,9 +43,11 @@ export default function Home() {
           <div className="home-hero__art">
             <AssetMark
               asset="/visuals/generated-splats/business-card-splat-generated-v2.webp"
+              avifAsset="/visuals/generated-splats/business-card-splat-generated-v2.avif"
               className="home-hero__burst"
               height={730}
               mobileAsset="/visuals/generated-splats/business-card-splat-generated-v2-mobile.webp"
+              mobileAvifAsset="/visuals/generated-splats/business-card-splat-generated-v2-mobile.avif"
               priority
               width={1100}
             />

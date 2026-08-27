@@ -45,9 +45,11 @@ export default function ApproachPage() {
             <p>We start from what you can already say. Where it goes after that is up to you.</p>
             <AssetMark
               asset="/visuals/generated-splats/cream-blue-fan-splat.webp"
+              avifAsset="/visuals/generated-splats/cream-blue-fan-splat.avif"
               className="approach-intro__splat"
               height={1254}
               mobileAsset="/visuals/generated-splats/cream-blue-fan-splat-mobile.webp"
+              mobileAvifAsset="/visuals/generated-splats/cream-blue-fan-splat-mobile.avif"
               priority
               width={1254}
             />

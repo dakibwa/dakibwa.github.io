@@ -140,16 +140,22 @@ body text on lavender.
 
 ## Motion and loading
 
-Internal route changes use opacity only: an 80 ms exit and 170 ms entrance on
-mobile, or a 110 ms exit and 220 ms entrance on wider screens. There is no
-overlay, movement, scale, or staggered hero animation. Base-path deployments
-strip their prefix before handing a route to Next.js so navigation never
-duplicates `/portugal`. `prefers-reduced-motion: reduce` removes the route
-animation, smooth scrolling, and the button and navigation hover transforms,
-keeping colour changes so states stay distinguishable.
+The entrance fade — opacity only, 170 ms on mobile, 220 ms on wider screens —
+runs once, on first arrival. Internal navigation is instant: the old
+click-interception that held every route change for 80–110 ms to play an exit
+fade was removed in August 2026 as felt lag, and `RouteMotion` now only marks
+the first in-app navigation so the CSS can skip the entrance animation from
+then on. There is no overlay, movement, scale, or staggered hero animation.
+`prefers-reduced-motion: reduce` removes the entrance animation, smooth
+scrolling, and the button and navigation hover transforms, keeping colour
+changes so states stay distinguishable.
 
-Hero artwork is served as compressed WebP and fetched eagerly, with dedicated
-800 px sources for screens up to 720 px; non-critical marks load lazily. The
+Hero artwork is served as AVIF with a WebP fallback — the painterly splats
+cost less than half as much in AVIF as they did in WebP — and fetched
+eagerly, with dedicated
+800 px sources for screens up to 720 px and preload links for the priority
+hero on each page; non-critical marks load lazily. The display font is
+preloaded because every page's largest text is a Beth Ellen headline. The
 booking calendar renders from this site's own JavaScript against the booking
 Worker, so there is no third-party iframe to wait on.
 

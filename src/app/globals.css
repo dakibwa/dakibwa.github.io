@@ -153,13 +153,15 @@ p {
   }
 }
 
+/* The entrance fade runs once, on arrival. RouteMotion marks <html> with
+   .route-arrived on the first in-app navigation; from then on pages paint
+   immediately — moving around the site must never wait on an animation. */
 .route-fade {
   animation: route-fade-in 220ms ease-out backwards;
 }
 
-html.route-is-leaving .route-fade {
-  opacity: 0;
-  transition: opacity 110ms ease-out;
+html.route-arrived .route-fade {
+  animation: none;
 }
 
 @keyframes route-fade-in {
@@ -175,10 +177,6 @@ html.route-is-leaving .route-fade {
   .route-fade {
     animation-duration: 170ms;
   }
-
-  html.route-is-leaving .route-fade {
-    transition-duration: 80ms;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -188,11 +186,6 @@ html.route-is-leaving .route-fade {
 
   .route-fade {
     animation: none;
-  }
-
-  html.route-is-leaving .route-fade {
-    opacity: 1;
-    transition: none;
   }
 }
 
