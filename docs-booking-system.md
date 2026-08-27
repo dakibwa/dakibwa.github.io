@@ -147,6 +147,43 @@ until they stop it.
   charge or twelve is a decision about her money that has not been made, and
   booking a series while charging for one lesson would be worse than declining.
 
+### Changing your name or email
+
+- **Name changes straight away; the address you sign in with does not.** A new
+  address is mailed a single-use, one-hour link and nothing moves until that link
+  comes back — an address change that takes effect on assertion alone is a way to
+  point your account at someone else's inbox. The address on file is told a
+  change was requested, because it is the one that would notice a request nobody
+  made.
+- **The answer is the same whether or not the new address is already in use.**
+  Saying "that one exists" would make this a way to test who has an account,
+  which sign-in and forgotten-password already go out of their way not to reveal.
+  Nothing is written and nothing is sent when it is taken.
+- **Google sign-in matches on the Google account id, not the address.** Matching
+  on email alone and overwriting `google_sub` was an account takeover: point your
+  own row at an address someone else uses with Google, and their next sign-in
+  hands you their account with your password still on it. Email is kept only as a
+  fallback for someone who registered with a password first, and never claims a
+  row already linked to a different Google account.
+- On a confirmed change, outstanding password resets are deleted — a live reset
+  link sitting in the old mailbox would otherwise stay valid for its hour — and
+  future lessons are re-addressed. Past and cancelled lessons keep the address
+  they were taken under, which is the record of what happened.
+
+### How far ahead you can book
+
+`booking_horizon_days` is **90**. She reserves the right to move a lesson, so a
+student booking three months out costs her a conversation rather than a lost slot.
+
+- The front end asks for a window wider than the horizon and lets the Worker
+  clamp it. It used to ask for a fixed 62 days while sizing the grid from whatever
+  horizon the API reported, so raising the horizon past 62 would have drawn weeks
+  of empty cells saying "no times free" — a lie rather than a gap.
+- **When she moves a lesson, the emails now say so.** They used to go out in the
+  student's own voice — "that's done" — and tell her the student had moved it. A
+  longer horizon means more lessons she may need to move, so this had to be right
+  before the horizon was widened, not after.
+
 ### How her calendar stays current
 
 Each lifecycle event emails an iCalendar attachment. Gmail adds the event on

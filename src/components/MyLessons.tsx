@@ -6,8 +6,11 @@ import { AuthPanel } from "@/components/AuthPanel";
 import { LessonMark } from "@/components/LessonMarks";
 import {
   clearSession,
+  confirmEmailChange,
   fetchMe,
   readSession,
+  requestEmailChange,
+  updateProfile,
   type LessonSeries,
   type MyBooking,
   type Student
@@ -34,6 +37,11 @@ export function MyLessons() {
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [series, setSeries] = useState<LessonSeries[]>([]);
   const [stopping, setStopping] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [details, setDetails] = useState({ name: "", email: "" });
+  const [savingName, setSavingName] = useState(false);
+  const [emailPending, setEmailPending] = useState("");
+  const [detailsNote, setDetailsNote] = useState("");
   const [feeCents, setFeeCents] = useState(500);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -54,6 +62,7 @@ export function MyLessons() {
         return;
       }
       setStudent(data.student);
+      setDetails({ name: data.student.name, email: data.student.email });
       setBookings(data.bookings);
       setSeries(data.series ?? []);
       setFeeCents(data.sameDayFeeCents);
@@ -69,12 +78,73 @@ export function MyLessons() {
     load();
   }, [load]);
 
+  /*
+   * The link mailed to the new address lands back here. It is applied only for
+   * a signed-in student, so possession of the link alone is not enough — the
+   * person confirming has to be the person who asked.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const changeToken = params.get("emailToken");
+    if (!changeToken || !readSession()) return;
+
+    confirmEmailChange(readSession(), changeToken)
+      .then((result) => {
+        setStudent(result.student);
+        setDetails({ name: result.student.name, email: result.student.email });
+        setDetailsNote("That's your email address updated.");
+        setEmailPending("");
+      })
+      .catch((caught) => {
+        setError(caught instanceof Error ? caught.message : "That link could not be used.");
+      })
+      .finally(() => {
+        // Take the token out of the address bar either way, so a refresh does
+        // not try to spend a link that has already been used.
+        params.delete("emailToken");
+        const query = params.toString();
+        window.history.replaceState({}, "", window.location.pathname + (query ? `?${query}` : ""));
+      });
+  }, []);
+
   /**
    * Stops the repeat without touching the lessons already booked. Someone who
    * stops repeating almost always still intends to come to the ones in their
    * calendar, and cancelling those silently would be the worse mistake — each
    * can still be cancelled on its own.
    */
+  async function saveName() {
+    setSavingName(true);
+    setError("");
+    setDetailsNote("");
+    try {
+      // Phone and timezone go back untouched: the endpoint keeps a field it is
+      // not sent, but sending what we hold is one less thing to rely on.
+      const result = await updateProfile(readSession(), {
+        name: details.name.trim(),
+        phone: student?.phone,
+        timezone: student?.timezone
+      });
+      setStudent(result.student);
+      setDetailsNote("Saved.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "That could not be saved.");
+    } finally {
+      setSavingName(false);
+    }
+  }
+
+  async function changeEmail() {
+    setError("");
+    setDetailsNote("");
+    try {
+      const result = await requestEmailChange(readSession(), details.email.trim());
+      setEmailPending(result.pending);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "That could not be sent.");
+    }
+  }
+
   async function stopRepeating(seriesId: string) {
     setStopping(seriesId);
     setError("");
@@ -113,18 +183,80 @@ export function MyLessons() {
         <p>
           Signed in as <strong>{student.name}</strong> ({student.email})
         </p>
-        <button
-          className="button button--quiet"
-          onClick={() => {
-            clearSession();
-            setStudent(null);
-            setBookings([]);
-          }}
-          type="button"
-        >
-          Sign out
-        </button>
+        <div className="my-lessons__header-actions">
+          <button className="text-action" onClick={() => setEditing((open) => !open)} type="button">
+            {editing ? "Done" : "Edit details"}
+          </button>
+          <button
+            className="button button--quiet"
+            onClick={() => {
+              clearSession();
+              setStudent(null);
+              setBookings([]);
+            }}
+            type="button"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
+
+      {editing ? (
+        <section className="my-lessons__details">
+          <label>
+            <span>Your name</span>
+            <input
+              autoComplete="name"
+              onChange={(event) => setDetails((current) => ({ ...current, name: event.target.value }))}
+              value={details.name}
+            />
+          </label>
+          <button
+            className="text-action"
+            disabled={savingName || !details.name.trim() || details.name.trim() === student.name}
+            onClick={saveName}
+            type="button"
+          >
+            {savingName ? "Saving…" : "Save name"}
+          </button>
+
+          <label>
+            <span>Email address</span>
+            <input
+              autoComplete="email"
+              onChange={(event) => setDetails((current) => ({ ...current, email: event.target.value }))}
+              type="email"
+              value={details.email}
+            />
+          </label>
+          {/* Changing the address you sign in with is deliberately the slower of
+              the two: nothing moves until the new address answers. */}
+          <button
+            className="text-action"
+            disabled={!details.email.trim() || details.email.trim() === student.email}
+            onClick={changeEmail}
+            type="button"
+          >
+            Send a confirmation link
+          </button>
+
+          {emailPending ? (
+            <p className="my-lessons__details-note">
+              Check <strong>{emailPending}</strong> — it only becomes your address once that link is used. Until then
+              you sign in with {student.email}.
+            </p>
+          ) : (
+            <p className="my-lessons__details-note">
+              Your name changes straight away. A new email address has to confirm itself first, so nothing moves until
+              you use the link we send it.
+            </p>
+          )}
+
+          {detailsNote ? (
+            <p className="my-lessons__details-note my-lessons__details-note--ok">{detailsNote}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       {error ? (
         <div className="booking-alert" role="alert">

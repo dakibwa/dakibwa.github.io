@@ -133,7 +133,7 @@ function locationLabel(row) {
  * Every student-facing and teacher-facing message for one lifecycle event.
  * Kept in one place so a change to wording cannot drift between the two sides.
  */
-async function notify(env, { event, row, lessonType, settings, manageUrl, previousStartsAt }) {
+async function notify(env, { event, row, lessonType, settings, manageUrl, previousStartsAt, byTeacher = false }) {
   const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
   const replyTo = settings.replyToEmail || teacherEmail || undefined;
   const start = new Date(row.starts_at);
@@ -196,13 +196,24 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         settings.sameDayChangeFeeCents / 100
       ).toFixed(0)}; any earlier is free.`
     },
-    rescheduled: {
-      subject: `Your lesson has moved — ${shortWhen}`,
-      heading: "Your lesson has moved",
-      intro: `Olá ${row.student_name.split(" ")[0]}, that's done — your lesson is now at the time below and your calendar has been updated.`,
-      callout: sameDayNotice,
-      footer: "You can move or cancel it again from the same link."
-    },
+    rescheduled: byTeacher
+      ? {
+          // Written for someone who did not ask for this. The old copy said
+          // "that's done", which reads as a confirmation of something you did
+          // — a strange thing to receive when Inês moved your lesson.
+          subject: `Inês has moved your lesson — now ${shortWhen}`,
+          heading: "Inês has moved your lesson",
+          intro: `Olá ${row.student_name.split(" ")[0]}, Inês has had to move your lesson. Sorry about that — the new time is below and your calendar has been updated. If it doesn't suit, move it again from the link below or reply and she'll find another.`,
+          callout: "",
+          footer: "No charge for a change she makes."
+        }
+      : {
+          subject: `Your lesson has moved — ${shortWhen}`,
+          heading: "Your lesson has moved",
+          intro: `Olá ${row.student_name.split(" ")[0]}, that's done — your lesson is now at the time below and your calendar has been updated.`,
+          callout: sameDayNotice,
+          footer: "You can move or cancel it again from the same link."
+        },
     cancelled: {
       subject: `Your lesson on ${shortWhen} is cancelled`,
       heading: "Your lesson is cancelled",
@@ -220,11 +231,17 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
       callout: ""
     },
     rescheduled: {
-      subject: `${row.same_day_change ? "Same-day change" : "Lesson moved"} — ${row.student_name}, ${shortWhen}`,
-      heading: row.same_day_change ? "Changed on the lesson day" : "Lesson moved",
-      intro: `${row.student_name} moved their lesson${
-        previousStartsAt ? ` from ${formatInZone(new Date(previousStartsAt), PORTO)}` : ""
-      }. Your calendar has been updated.`,
+      subject: byTeacher
+        ? `You moved ${row.student_name}'s lesson — ${shortWhen}`
+        : `${row.same_day_change ? "Same-day change" : "Lesson moved"} — ${row.student_name}, ${shortWhen}`,
+      heading: byTeacher ? "You moved this lesson" : row.same_day_change ? "Changed on the lesson day" : "Lesson moved",
+      intro: byTeacher
+        ? `You moved ${row.student_name}'s lesson${
+            previousStartsAt ? ` from ${formatInZone(new Date(previousStartsAt), PORTO)}` : ""
+          }. They have been told, and your calendar has been updated.`
+        : `${row.student_name} moved their lesson${
+            previousStartsAt ? ` from ${formatInZone(new Date(previousStartsAt), PORTO)}` : ""
+          }. Your calendar has been updated.`,
       callout: row.same_day_change
         ? `This was changed on the day of the lesson, so the €${(settings.sameDayChangeFeeCents / 100).toFixed(
             0
@@ -483,6 +500,8 @@ const worker = {
       if (request.method === "POST" && path === "/auth/reset") return handleReset(request, env);
       if (request.method === "GET" && path === "/me") return handleMe(request, env);
       if (request.method === "POST" && path === "/me") return handleUpdateMe(request, env);
+      if (request.method === "POST" && path === "/me/email") return handleRequestEmailChange(request, env, ctx);
+      if (request.method === "POST" && path === "/me/email/confirm") return handleConfirmEmailChange(request, env);
 
       // Preview before commit: a student is told which weeks are free, and
       // which are not, before anything is booked in their name.
@@ -636,7 +655,10 @@ async function handleAvailability(request, env, url) {
 
   const now = new Date();
   const fromKey = url.searchParams.get("from") || dateKey(now, PORTO);
-  const toKey = url.searchParams.get("to") || addDaysToKey(fromKey, 34);
+  // Generous, because computeAvailability clamps to the booking horizon anyway.
+  // A hard-coded default narrower than the horizon silently truncates the
+  // answer for any caller that does not pass an explicit range.
+  const toKey = url.searchParams.get("to") || addDaysToKey(fromKey, 140);
   if (!parseDateKey(fromKey) || !parseDateKey(toKey)) return fail("Invalid date range.", 400, request, env);
 
   ctx_releaseHolds(env);
@@ -1313,12 +1335,42 @@ async function handleGoogleSignIn(request, env) {
   if (!profile) return fail("That Google sign-in could not be verified. Please try again.", 401, request, env);
 
   const now = new Date().toISOString();
-  let student = await env.DB.prepare("SELECT * FROM students WHERE email = ?").bind(profile.email).first();
+
+  /*
+   * The Google account id first, the address only as a fallback.
+   *
+   * Matching on email alone and then overwriting google_sub was an account
+   * takeover waiting to happen: anyone who could point their own row at an
+   * address someone else uses with Google would receive that person's account
+   * on their next sign-in, and keep a password on it afterwards. `sub` is the
+   * identifier Google actually promises is stable and unique to one account.
+   * Email remains the fallback so someone who registered with a password and
+   * later uses Google still lands on their own account — but only when that
+   * row is not already claimed by a different Google account.
+   */
+  let student = await env.DB.prepare("SELECT * FROM students WHERE google_sub = ?").bind(profile.sub).first();
+
+  if (!student) {
+    const byEmail = await env.DB.prepare("SELECT * FROM students WHERE email = ?").bind(profile.email).first();
+    if (byEmail?.google_sub && byEmail.google_sub !== profile.sub) {
+      return fail(
+        "That address is already linked to a different Google account. Please sign in with your password.",
+        409,
+        request,
+        env
+      );
+    }
+    student = byEmail ?? null;
+  }
 
   if (student) {
+    // The address is deliberately not rewritten here. A student who changed it
+    // on the site means that change to stand, and forcing it back to whatever
+    // Google holds would both undo them and collide with the unique index.
     await env.DB.prepare("UPDATE students SET google_sub = ?, last_login_at = ? WHERE id = ?")
       .bind(profile.sub, now, student.id)
       .run();
+    student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(student.id).first();
   } else {
     const id = crypto.randomUUID();
     await env.DB.prepare(
@@ -1485,13 +1537,161 @@ async function handleMe(request, env) {
   );
 }
 
+/**
+ * Ask to change the address you sign in with.
+ *
+ * Nothing moves here. The new address is only written once it has proved it
+ * receives mail, because an address change that takes effect on assertion alone
+ * is a way to point your account at somebody else's inbox — and, before the
+ * Google matching fix that ships with this, a way to take their account.
+ *
+ * The answer is the same whether or not the address is already taken. Telling
+ * the caller "that one exists" would turn this endpoint into a way to test
+ * whether a given person has an account, which is the thing sign-in and
+ * forgotten-password already go out of their way not to reveal.
+ */
+async function handleRequestEmailChange(request, env, ctx) {
+  const student = await currentStudent(request, env);
+  if (!student) return fail("Please sign in.", 401, request, env);
+
+  const body = await readJson(request);
+  const email = normaliseEmail(body.email);
+  if (!isEmail(email)) return fail("That email address doesn't look right.", 400, request, env);
+  if (email === student.email) return fail("That's already your email address.", 400, request, env);
+
+  const taken = await env.DB.prepare("SELECT id FROM students WHERE email = ?").bind(email).first();
+  const now = new Date().toISOString();
+
+  if (!taken) {
+    const token = await createResetToken(student.id, env.BOOKING_TOKEN_SECRET);
+    const nonce = token.split(".")[2];
+
+    // One pending change per student: asking again replaces the last request
+    // rather than leaving a second live link in a second inbox.
+    await env.DB.prepare("DELETE FROM email_changes WHERE student_id = ?").bind(student.id).run();
+    await env.DB.prepare(
+      "INSERT INTO email_changes (nonce, student_id, new_email, created_at) VALUES (?, ?, ?, ?)"
+    )
+      .bind(nonce, student.id, email, now)
+      .run();
+
+    const settings = await loadSettings(env);
+    const confirmUrl = siteUrl(env, `/my-lessons/?emailToken=${encodeURIComponent(token)}`);
+
+    ctx.waitUntil(
+      deliver(env, {
+        to: email,
+        subject: "Confirm your new email — Português com a Inês",
+        kind: "email_change",
+        dedupeKey: `email-change:${nonce}`,
+        replyTo: settings.replyToEmail || undefined,
+        content: {
+          heading: "Confirm this address",
+          preheader: "One click, and this becomes the address you sign in with.",
+          intro: `Olá ${student.name.split(" ")[0]}, confirm this address and it becomes the one you sign in with and receive lesson emails at. The link works for one hour, and only once.`,
+          callout: "",
+          rows: [{ label: "New address", value: email }],
+          action: { label: "Confirm this address", url: confirmUrl },
+          footer: "If you didn't ask for this, ignore it — nothing has changed."
+        }
+      })
+    );
+
+    // And a word to the address on file, which is the one that would notice a
+    // change nobody asked for.
+    ctx.waitUntil(
+      deliver(env, {
+        to: student.email,
+        subject: "Someone asked to change your email — Português com a Inês",
+        kind: "email_change_notice",
+        dedupeKey: `email-change-notice:${nonce}`,
+        replyTo: settings.replyToEmail || undefined,
+        content: {
+          heading: "A change was requested",
+          preheader: "Your address has not changed yet.",
+          intro: `Olá ${student.name.split(" ")[0]}, someone signed in to your account and asked to move it to ${email}. Nothing has changed yet — it only takes effect if that address confirms.`,
+          callout: "If this wasn't you, change your password now and tell Inês.",
+          rows: [],
+          action: null,
+          footer: "Sent automatically by the booking system on portuguesewithines.com."
+        }
+      })
+    );
+  }
+
+  return json({ ok: true, pending: email }, 200, request, env);
+}
+
+/**
+ * Apply a change the new address has proved.
+ *
+ * Two loose ends are tidied here rather than left for later: any live password
+ * reset is dropped, because a reset link already sitting in the old mailbox
+ * would otherwise stay valid for its remaining hour and let whoever holds that
+ * mailbox set a password on the account; and future lessons are re-addressed,
+ * because that is where her confirmations and reminders are sent. Past and
+ * cancelled lessons keep the address they were actually taken under — that is
+ * the record of what happened, and rewriting it would be a small lie.
+ */
+async function handleConfirmEmailChange(request, env) {
+  const student = await currentStudent(request, env);
+  if (!student) return fail("Please sign in.", 401, request, env);
+
+  const body = await readJson(request);
+  const studentId = await readResetToken(body.token, env.BOOKING_TOKEN_SECRET);
+  if (!studentId || studentId !== student.id) {
+    return fail("That link is no longer valid. Please ask for a new one.", 400, request, env);
+  }
+
+  const nonce = String(body.token ?? "").split(".")[2];
+  const pending = await env.DB.prepare("SELECT * FROM email_changes WHERE nonce = ? AND student_id = ?")
+    .bind(nonce, student.id)
+    .first();
+  if (!pending) return fail("That link has already been used. Please ask for a new one.", 400, request, env);
+
+  const now = new Date().toISOString();
+
+  // Between the request and the click, someone else may have taken it.
+  const taken = await env.DB.prepare("SELECT id FROM students WHERE email = ? AND id != ?")
+    .bind(pending.new_email, student.id)
+    .first();
+  if (taken) {
+    await env.DB.prepare("DELETE FROM email_changes WHERE nonce = ?").bind(nonce).run();
+    return fail("That address is now in use on another account.", 409, request, env);
+  }
+
+  try {
+    await env.DB.prepare("UPDATE students SET email = ? WHERE id = ?").bind(pending.new_email, student.id).run();
+  } catch {
+    await env.DB.prepare("DELETE FROM email_changes WHERE nonce = ?").bind(nonce).run();
+    return fail("That address is now in use on another account.", 409, request, env);
+  }
+
+  await env.DB.prepare("DELETE FROM email_changes WHERE student_id = ?").bind(student.id).run();
+  await env.DB.prepare("DELETE FROM password_resets WHERE student_id = ?").bind(student.id).run();
+  await env.DB.prepare("DELETE FROM login_attempts WHERE email = ?").bind(student.email).run().catch(() => {});
+
+  await env.DB.prepare(
+    `UPDATE bookings SET student_email = ?, updated_at = ?
+     WHERE student_id = ? AND status IN ('confirmed', 'pending_payment') AND starts_at > ?`
+  )
+    .bind(pending.new_email, now, student.id, now)
+    .run();
+
+  const updated = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(student.id).first();
+  return json({ student: publicStudent(updated) }, 200, request, env);
+}
+
 async function handleUpdateMe(request, env) {
   const student = await currentStudent(request, env);
   if (!student) return fail("Please sign in.", 401, request, env);
 
   const body = await readJson(request);
   const name = cleanText(body.name, 120) || student.name;
-  const phone = cleanText(body.phone, 40);
+  // "in body", not falsiness: a field that was not sent must keep its value,
+  // while one sent empty is a student deliberately clearing it. Sending only a
+  // name used to wipe the phone number without anyone noticing.
+  const phone = "phone" in body ? cleanText(body.phone, 40) : student.phone;
   const timezone = isValidTimeZone(body.timezone) ? body.timezone : student.timezone;
 
   await env.DB.prepare("UPDATE students SET name = ?, phone = ?, timezone = ? WHERE id = ?")
@@ -1727,7 +1927,10 @@ async function handleAdmin(request, env, ctx, url, path) {
         lessonType,
         settings,
         manageUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`),
-        previousStartsAt: row.starts_at
+        previousStartsAt: row.starts_at,
+        // She moved it, not them. Without this the student is thanked for a
+        // change they did not make, and she is told they made it.
+        byTeacher: true
       })
     );
 

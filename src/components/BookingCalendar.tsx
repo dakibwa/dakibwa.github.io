@@ -139,12 +139,18 @@ export function BookingCalendar() {
       setLoadingSlots(true);
       setLoadError("");
 
-      // The whole bookable horizon in one request: it is 30 days, so there is
-      // nothing to page through and no month navigation to get wrong.
-      fetchAvailability(lessonTypeId, todayKey, addDaysToKey(todayKey, 62), signal)
+      /*
+       * Ask for more than the horizon and let the Worker clamp it, rather than
+       * hard-coding a window that has to be remembered every time the horizon
+       * moves. It was fixed at 62 days while the grid was sized from whatever
+       * horizon the API reported — so raising the horizon past 62 would have
+       * drawn weeks of empty cells announcing "no times free", which would have
+       * been a lie rather than a gap.
+       */
+      fetchAvailability(lessonTypeId, todayKey, addDaysToKey(todayKey, 140), signal)
         .then((data) => {
           setSlotsByDate(data.slotsByDate);
-          setHorizonDays(data.horizonDays || 30);
+          setHorizonDays(data.horizonDays || 90);
         })
         .catch((error: Error) => {
           if (signal?.aborted) return;

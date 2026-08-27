@@ -22,6 +22,9 @@ declare global {
 
 const SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 
+/** Google's own maximum for a rendered button. */
+const MAX_BUTTON_WIDTH = 400;
+
 function loadGoogleScript() {
   return new Promise<void>((resolve, reject) => {
     if (window.google?.accounts?.id) {
@@ -46,50 +49,29 @@ function loadGoogleScript() {
   });
 }
 
-/** Google's own four-colour mark. Kept on a white chip so it stays legible on coral. */
-function GoogleMark() {
-  return (
-    <span className="google-signin__mark" aria-hidden="true">
-      <svg viewBox="0 0 48 48" focusable="false">
-        <path
-          fill="#4285F4"
-          d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"
-        />
-        <path
-          fill="#34A853"
-          d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"
-        />
-        <path
-          fill="#FBBC05"
-          d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z"
-        />
-        <path
-          fill="#EA4335"
-          d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"
-        />
-      </svg>
-    </span>
-  );
-}
-
 /**
- * Renders nothing at all when no client id is configured, or when Google's
- * script is blocked — a common outcome behind privacy extensions. Email and
- * password sits beside it and always works, so this is an addition rather than
- * a dependency.
+ * Google's own button, sat inside her coral frame.
  *
- * Google will not let its button be styled, so the button a student sees is
- * ours and Google's own is held invisibly over it: seen here, clicked there.
- * The ID token and the Worker's verification are untouched by any of it.
+ * An earlier version drew our own coral button and held Google's invisibly on
+ * top of it — seen here, clicked there. It measured as fully covered in a test
+ * and was still broken in front of people, for two reasons worth keeping.
  *
- * What Google renders is not fixed. In this page it is sometimes a real button
- * in the DOM and sometimes only a cross-origin iframe — the same client id gave
- * one shape in development and the other in production, and CSS written for the
- * first silently displaced the second, leaving coral that looked like a button
- * and did nothing. So neither shape is assumed: whichever arrives is measured
- * and scaled onto the face. Scaling rather than resizing is what makes the
- * whole face live, because it takes the hit area with it — and distorting
- * something already at zero opacity costs nothing.
+ * The button was hidden with `display: none` until Google had rendered, so at
+ * render time it had no width; Google fell back to 320px, and the code meant to
+ * scale it over the 394px face measured zero and silently did nothing. The
+ * result was a button whose bottom 20px and right 74px did nothing at all while
+ * looking entirely pressable — which is exactly what "it isn't working" feels
+ * like when you click the wrong half of it.
+ *
+ * The deeper reason is that there is nothing stable to pin to. Google renders a
+ * button into this page and then, once it knows the visitor's session, replaces
+ * it with a cross-origin iframe of a different size. Anything anchored to the
+ * first one is wrong by the time the second arrives.
+ *
+ * So the button below is Google's, visible and untouched, and all that is ours
+ * is the frame around it — which is where the coral goes. A frame that centres
+ * whatever turns up survives the swap. The ID token, and the Worker's
+ * verification of it, are unchanged.
  */
 export function GoogleSignInButton({
   onSignedIn,
@@ -99,7 +81,7 @@ export function GoogleSignInButton({
   onError: (message: string) => void;
 }) {
   const holder = useRef<HTMLDivElement>(null);
-  const wrap = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState(false);
 
   const handleCredential = useCallback(
@@ -119,39 +101,41 @@ export function GoogleSignInButton({
     if (!GOOGLE_CLIENT_ID) return;
 
     let cancelled = false;
-    let frame = 0;
-    const observers: { disconnect: () => void }[] = [];
+    let lastWidth = 0;
+    let resizes: ResizeObserver | null = null;
 
-    function fit() {
-      const wrapper = wrap.current;
-      const holderEl = holder.current;
-      if (!wrapper || !holderEl) return;
+    /**
+     * Google sizes its button in pixels and will not take a percentage, so the
+     * width has to be measured and handed over — and handed over again when the
+     * column changes, or the button sits narrower than the frame around it.
+     */
+    function draw() {
+      if (cancelled || !holder.current || !frame.current || !window.google?.accounts?.id) return;
 
-      const target = holderEl.querySelector<HTMLElement>('[role="button"]') ?? holderEl.querySelector("iframe");
-      if (!target) return;
+      const inner = frame.current.clientWidth - 8;
+      const width = Math.min(MAX_BUTTON_WIDTH, Math.floor(inner) || 320);
+      // Re-rendering on every observed pixel would thrash a cross-origin iframe.
+      if (Math.abs(width - lastWidth) < 4) return;
+      lastWidth = width;
 
-      // Measure unscaled, or each pass would compound the last one's scale.
-      target.style.transform = "none";
-      const natural = target.getBoundingClientRect();
-      const face = wrapper.getBoundingClientRect();
-      if (!natural.width || !natural.height || !face.width || !face.height) return;
-
-      target.style.position = "absolute";
-      target.style.top = "0";
-      target.style.left = "0";
-      target.style.margin = "0";
-      target.style.transformOrigin = "top left";
-      target.style.transform = `scale(${face.width / natural.width}, ${face.height / natural.height})`;
-    }
-
-    function scheduleFit() {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(fit);
+      holder.current.replaceChildren();
+      window.google.accounts.id.renderButton(holder.current, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        text: "continue_with",
+        // Rounded ends sit inside a rounded frame; a rectangle inside it looks
+        // like two shapes that were not designed together.
+        shape: "pill",
+        logo_alignment: "center",
+        width
+      });
+      setAvailable(true);
     }
 
     loadGoogleScript()
       .then(() => {
-        if (cancelled || !holder.current || !window.google?.accounts?.id) return;
+        if (cancelled || !window.google?.accounts?.id) return;
 
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
@@ -160,31 +144,12 @@ export function GoogleSignInButton({
           }
         });
 
-        window.google.accounts.id.renderButton(holder.current, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          text: "continue_with",
-          shape: "rectangular",
-          logo_alignment: "center",
-          width: Math.min(400, Math.floor(wrap.current?.getBoundingClientRect().width ?? 0) || 320)
-        });
-        setAvailable(true);
+        draw();
 
-        // Google renders asynchronously and does not always render the same
-        // thing: sometimes a button in this page, sometimes only an iframe.
-        // Watch for whichever arrives rather than assuming one of them.
-        const mutations = new MutationObserver(scheduleFit);
-        mutations.observe(holder.current, { childList: true, subtree: true });
-        observers.push(mutations);
-
-        if (wrap.current) {
-          const resizes = new ResizeObserver(scheduleFit);
-          resizes.observe(wrap.current);
-          observers.push(resizes);
+        if (frame.current) {
+          resizes = new ResizeObserver(draw);
+          resizes.observe(frame.current);
         }
-
-        scheduleFit();
       })
       .catch(() => {
         // Blocked or offline. The password form is right there.
@@ -192,8 +157,7 @@ export function GoogleSignInButton({
 
     return () => {
       cancelled = true;
-      cancelAnimationFrame(frame);
-      observers.forEach((observer) => observer.disconnect());
+      resizes?.disconnect();
     };
   }, [handleCredential]);
 
@@ -201,15 +165,11 @@ export function GoogleSignInButton({
 
   return (
     <div className={available ? "google-signin" : "google-signin is-loading"}>
-      <div className="google-signin__button" ref={wrap}>
-        {/* The visible button. Inert: every pointer and key event belongs to
-            Google's own button stretched invisibly on top of it, which is also
-            what a screen reader announces. */}
-        <span aria-hidden="true" className="google-signin__face">
-          <GoogleMark />
-          Continue with Google
-        </span>
-        <div className="google-signin__real" ref={holder} />
+      {/* Hidden with visibility rather than display: the frame has to have a
+          width before Google will render into it, and reserving the height
+          stops the card jumping when the button arrives. */}
+      <div className="google-signin__frame" ref={frame}>
+        <div ref={holder} />
       </div>
       {available ? (
         <p className="google-signin__divider">

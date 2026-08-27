@@ -120,6 +120,20 @@ export function updateProfile(token: string, input: { name?: string; phone?: str
   return post<{ student: Student }>("/me", input, token);
 }
 
+/**
+ * Ask to change the address you sign in with. Nothing changes until the new
+ * address confirms, so the answer is the same whether or not it is already in
+ * use — otherwise this would be a way to test who has an account.
+ */
+export function requestEmailChange(token: string, email: string) {
+  return post<{ ok: true; pending: string }>("/me/email", { email }, token);
+}
+
+/** Apply a change the new address has proved, using the token from its email. */
+export function confirmEmailChange(token: string, changeToken: string) {
+  return post<{ student: Student }>("/me/email/confirm", { token: changeToken }, token);
+}
+
 export async function fetchMe(token: string) {
   let response: Response;
   try {

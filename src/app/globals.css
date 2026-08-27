@@ -21,28 +21,24 @@
   --rule: rgba(139, 130, 211, 0.72);
   --rule-soft: rgba(139, 130, 211, 0.38);
   /*
-   * Hand-drawn rather than geometric: every corner radius differs slightly from
-   * its neighbours, the way her splats and lettering do. A pill and a hard
-   * rectangle both read as stock UI dropped onto the site; these read as drawn.
-   * Kept small enough to stay a button shape — felt before it is noticed.
+   * "Thumbprint" — one hand, scaled to each thing it lands on rather than ten
+   * unrelated shapes. Every corner differs from its neighbours the way her
+   * splats and lettering do, and opposite corners are mirrored on the second
+   * button token so two coral buttons in one card are never the same drawing
+   * twice. Chosen from the specimen sheet; the smaller the element, the gentler
+   * the hand, because a radius that reads as character on a button reads as
+   * damage on a 40px chip.
    */
-  --squiggle-card: 34px 18px 38px 22px / 20px 36px 18px 34px;
-  --squiggle-button: 26px 12px 28px 14px / 14px 28px 12px 26px;
-  /* Mirrored, so two coral buttons in one card are not the same drawing. */
-  --squiggle-button-alt: 13px 27px 14px 29px / 27px 13px 29px 14px;
-  --squiggle-tabs: 22px 11px 24px 13px / 12px 23px 11px 22px;
-  --squiggle-thumb: 19px 9px 20px 11px / 10px 19px 9px 18px;
-  --squiggle-field: 17px 8px 18px 10px / 9px 17px 8px 16px;
-  /*
-   * Quieter relatives of the same hand, for the things a student moves through
-   * rather than decides on — a calendar, a row of times, a way back. Smaller
-   * differences between corners, because seven wonky tiles in a row become
-   * noise where one wonky button is character.
-   */
-  --squiggle-panel: 22px 14px 24px 16px / 16px 24px 14px 22px;
-  --squiggle-tile: 16px 10px 15px 11px / 11px 15px 10px 16px;
-  --squiggle-chip: 13px 8px 14px 9px / 9px 14px 8px 13px;
-  --squiggle-pill: 24px 15px 22px 17px / 17px 22px 15px 24px;
+  --squiggle-card: 57px 23px 52px 29px / 26px 55px 25px 49px;
+  --squiggle-panel: 48px 20px 44px 24px / 22px 46px 21px 42px;
+  --squiggle-button: 44px 18px 40px 22px / 20px 42px 19px 38px;
+  --squiggle-button-alt: 20px 42px 19px 38px / 44px 18px 40px 22px;
+  --squiggle-tile: 37px 15px 34px 19px / 17px 36px 16px 32px;
+  --squiggle-tabs: 35px 14px 32px 18px / 16px 34px 15px 30px;
+  --squiggle-field: 33px 13px 30px 16px / 15px 31px 14px 28px;
+  --squiggle-thumb: 27px 11px 25px 14px / 12px 26px 12px 24px;
+  --squiggle-pill: 27px 11px 25px 14px / 12px 26px 12px 24px;
+  --squiggle-chip: 26px 10px 23px 13px / 12px 24px 11px 22px;
   --display: var(--font-beth-ellen), cursive;
   --body: var(--font-montserrat), Arial, sans-serif;
   --ui: var(--font-montserrat), Arial, sans-serif;
@@ -1777,7 +1773,10 @@ textarea,
   position: relative;
   overflow: hidden;
   border: 1px solid var(--rule);
-  border-radius: 18px;
+  /* It sits directly beside the sign-in card, so it takes the same hand. Left
+     on a plain 18px it was the one square corner in a card of drawn ones, which
+     read as unfinished rather than restrained. */
+  border-radius: var(--squiggle-panel);
   padding: 1.5rem;
   background: rgba(170, 164, 230, 0.14);
 }
@@ -1830,7 +1829,7 @@ textarea,
   align-items: center;
   min-height: 40px;
   border: 1px solid var(--coral);
-  border-radius: 999px;
+  border-radius: var(--squiggle-pill);
   padding: 0 0.95rem;
   background: transparent;
   color: var(--coral-action);
@@ -2028,96 +2027,34 @@ textarea,
 }
 
 /*
- * Google renders its button inside a cross-origin iframe, so its colour, radius
- * and type are all out of reach. Rather than accept a white pill in the middle
- * of her square coral buttons, the face below is ours and Google's button is
- * stretched over it at zero opacity — seen here, clicked there. It stays
- * Google's real button, so the ID token and the Worker's checks are unchanged.
+ * Google's button is Google's. What is ours is the frame around it — coral
+ * outline, white fill, her corner shape — which is as far as this can go
+ * without breaking the sign-in itself.
  */
 .google-signin {
   margin-bottom: 0.5rem;
 }
 
+/* Not display:none: Google measures the frame before it will render into it,
+   and keeping the height reserved stops the card jumping when it arrives. */
 .google-signin.is-loading {
-  display: none;
+  visibility: hidden;
 }
 
-.google-signin__button {
-  position: relative;
-  width: 100%;
-  transition: transform 160ms ease;
-}
-
-/* The whole wrapper lifts, not just the face: the invisible button on top has
-   to keep covering it, or the hover state grows a dead strip along one edge. */
-.google-signin__button:hover {
-  transform: translateY(-2px);
-}
-
-.google-signin__face {
+.google-signin__frame {
   display: flex;
-  align-items: center;
+  overflow: hidden;
   justify-content: center;
-  width: 100%;
-  min-height: 60px;
+  min-height: 56px;
+  align-items: center;
   border: 2px solid var(--coral-action);
-  border-radius: var(--squiggle-button);
-  padding: 0.9rem 1.3rem;
+  /* A gentler hand than the coral buttons take. The frame holds a rectangle
+     drawn by Google, and the full button squiggle around a straight edge reads
+     as a mistake rather than a choice. */
+  border-radius: var(--squiggle-thumb);
+  padding: 3px;
   background: #fff;
-  color: var(--ink);
-  font-family: var(--ui);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.19em;
-  line-height: 1.15;
-  text-align: center;
-  text-transform: uppercase;
-  transition: background 160ms ease;
-  gap: 0.7rem;
 }
-
-.google-signin__button:hover .google-signin__face {
-  background: rgba(239, 93, 60, 0.09);
-}
-
-/* Keyboard focus lands inside Google's iframe, so the ring has to be drawn
-   from the wrapper — the face itself never receives focus. */
-.google-signin__button:focus-within .google-signin__face {
-  outline: 2px solid var(--ink);
-  outline-offset: 3px;
-}
-
-/* The chip only ever existed to keep Google's mark legible on coral. On white
-   it is just spacing, so it keeps the size and loses the disc. */
-.google-signin__mark {
-  display: inline-flex;
-  overflow: hidden;
-  flex: 0 0 24px;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-
-.google-signin__mark svg {
-  width: 15px;
-  height: 15px;
-}
-
-.google-signin__real {
-  position: absolute;
-  z-index: 2;
-  overflow: hidden;
-  inset: 0;
-  opacity: 0;
-}
-
-/*
- * Deliberately no rules reaching into Google's own markup. It renders a real
- * button here in some conditions and only an iframe in others, and CSS written
- * for one shape moved the other off the face — so the component measures
- * whatever arrived and scales it on, instead of this guessing.
- */
 
 .google-signin__divider {
   position: relative;
@@ -2300,7 +2237,11 @@ textarea,
   letter-spacing: 0.2em;
 }
 
-.auth-panel .booking-confirm-button {
+/* Scoped to the class, not to .auth-panel. A signed-in student sees this button
+   inside .student-details-form instead, where the panel-scoped rule never
+   reached it and `.button { border-radius: 0 }` won — so the one button they
+   actually press to book was the only square thing on the page. */
+.booking-confirm-button {
   border-radius: var(--squiggle-button-alt);
 }
 
@@ -2522,6 +2463,85 @@ textarea,
   margin-bottom: 1.75rem;
   gap: 0.75rem;
   font-size: 0.92rem;
+}
+
+/* .text-action was written for links, which have no border of their own. On a
+   <button> the user-agent border survives and the control renders as a box —
+   which is how "Edit details" ended up looking like a second Sign out. */
+button.text-action {
+  border: 0;
+  border-bottom: 1px solid rgba(8, 43, 36, 0.2);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--coral-action);
+}
+
+.my-lessons__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+}
+
+/* Deliberately quiet. It is a thing a student changes once, sitting above the
+   lessons they came to the page for. */
+.my-lessons__details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 1.75rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-panel);
+  padding: 1.2rem 1.3rem;
+  background: rgba(170, 164, 230, 0.14);
+  gap: 0.5rem;
+}
+
+.my-lessons__details label {
+  display: block;
+  width: min(360px, 100%);
+}
+
+.my-lessons__details label > span {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.my-lessons__details input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-field);
+  padding: 0 0.85rem;
+  background: rgba(255, 255, 255, 0.7);
+  font: inherit;
+}
+
+.my-lessons__details button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.my-lessons__details-note {
+  max-width: 52ch;
+  margin-top: 0.35rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+.my-lessons__details-note--ok {
+  color: var(--coral-action);
+  opacity: 1;
 }
 
 .my-lessons__group {
@@ -2748,12 +2768,7 @@ textarea,
   font-size: 0.95rem;
 }
 
-.my-lessons__series-row button {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  color: var(--coral-action);
-}
+
 
 .my-lessons__series-note {
   margin-top: 0.6rem;
@@ -3268,7 +3283,7 @@ textarea,
   width: 100%;
   min-height: 46px;
   border: 1px solid var(--rule);
-  border-radius: 10px;
+  border-radius: var(--squiggle-field);
   padding: 0 0.7rem;
   background: rgba(255, 255, 255, 0.6);
   font: inherit;
@@ -3276,7 +3291,7 @@ textarea,
 
 .schedule-add-lesson .button {
   min-height: 46px;
-  border-radius: 999px;
+  border-radius: var(--squiggle-pill);
 }
 
 .schedule-move,
@@ -3328,7 +3343,7 @@ textarea,
   width: 100%;
   min-height: 46px;
   border: 1px solid var(--rule);
-  border-radius: 10px;
+  border-radius: var(--squiggle-field);
   padding: 0 0.7rem;
   background: rgba(255, 255, 255, 0.6);
   font: inherit;
@@ -3336,7 +3351,7 @@ textarea,
 
 .schedule-move-form .button {
   min-height: 46px;
-  border-radius: 999px;
+  border-radius: var(--squiggle-pill);
 }
 
 .schedule-dayoff {

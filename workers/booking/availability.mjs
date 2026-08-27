@@ -66,7 +66,9 @@ export async function loadSettings(env) {
 
   return {
     minimumNoticeHours: Number(settings.minimum_notice_hours ?? 12),
-    bookingHorizonDays: Number(settings.booking_horizon_days ?? 60),
+    // Matches what seed.sql writes. The two disagreed for a while, which meant
+    // a database missing the row behaved differently from every real one.
+    bookingHorizonDays: Number(settings.booking_horizon_days ?? 90),
     slotIntervalMinutes: Number(settings.slot_interval_minutes ?? 30),
     sameDayChangeFeeCents: Number(settings.same_day_change_fee_cents ?? 500),
     // 'off' keeps every booking confirmed on creation, as it was before

@@ -74,10 +74,13 @@ export function ManageBooking() {
 
       setLoadingSlots(true);
 
-      fetchAvailability(booking.lessonType.id, todayKey, addDaysToKey(todayKey, 62), signal)
+      // Generous window, clamped by the Worker to the real horizon. See the
+      // note in BookingCalendar: a fixed window and a horizon-sized grid drift
+      // apart the moment the horizon changes.
+      fetchAvailability(booking.lessonType.id, todayKey, addDaysToKey(todayKey, 140), signal)
         .then((data) => {
           setSlotsByDate(data.slotsByDate);
-          setHorizonDays(data.horizonDays || 30);
+          setHorizonDays(data.horizonDays || 90);
           setSelectedDate((current) =>
             current && data.slotsByDate[current]?.length ? current : Object.keys(data.slotsByDate).sort()[0] ?? ""
           );

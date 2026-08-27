@@ -21,7 +21,9 @@ INSERT INTO availability_rules (weekday, start_minute, last_start_minute, active
 
 INSERT OR REPLACE INTO settings (key, value) VALUES
   ('minimum_notice_hours', '24'),
-  ('booking_horizon_days', '30'),
+  -- Three months. She reserves the right to move a lesson, so a student
+  -- booking far out costs her a conversation rather than a lost slot.
+  ('booking_horizon_days', '90'),
   ('slot_interval_minutes', '30'),
   ('same_day_change_fee_cents', '500'),
   ('teacher_name', 'Inês Dias Baía'),

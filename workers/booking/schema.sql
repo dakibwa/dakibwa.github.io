@@ -66,6 +66,11 @@ CREATE TABLE IF NOT EXISTS students (
   phone         TEXT NOT NULL DEFAULT '',
   timezone      TEXT NOT NULL DEFAULT 'Europe/Lisbon',
   password_hash TEXT NOT NULL,
+  -- Google's stable account id, and what a Google sign-in matches on. Migration
+  -- 0004 added it to the live database but never here, so a database built
+  -- fresh from this file had no column for it and Google sign-in failed on its
+  -- first query.
+  google_sub    TEXT,
   -- 'teacher' grants the admin endpoints. Inês signs in as herself rather than
   -- pasting a shared token, though ADMIN_TOKEN remains as a way back in.
   role          TEXT NOT NULL DEFAULT 'student',
@@ -95,6 +100,18 @@ CREATE TABLE IF NOT EXISTS password_resets (
   student_id TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+-- A requested address change, held here until the new address proves itself.
+-- Deliberately not on `students`: an unconfirmed address must never sit in the
+-- row that sign-in matches against. See migrations/0008-email-changes.sql.
+CREATE TABLE IF NOT EXISTS email_changes (
+  nonce      TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL REFERENCES students (id),
+  new_email  TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_changes_student ON email_changes (student_id);
 
 CREATE TABLE IF NOT EXISTS bookings (
   id                TEXT PRIMARY KEY,
@@ -188,6 +205,7 @@ CREATE TABLE IF NOT EXISTS booking_series (
   ended_at       TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_students_google ON students (google_sub);
 CREATE INDEX IF NOT EXISTS idx_bookings_series ON bookings (series_id);
 CREATE INDEX IF NOT EXISTS idx_series_student ON booking_series (student_id);
 CREATE INDEX IF NOT EXISTS idx_series_active ON booking_series (status, filled_to);
