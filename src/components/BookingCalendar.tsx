@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -14,7 +15,16 @@ import {
   MessageSquareText
 } from "lucide-react";
 import { AssetMark } from "@/components/BrandMarks";
-import { AuthPanel } from "@/components/AuthPanel";
+/*
+ * Loaded when it is needed, not before. The sign-in panel — with the Google
+ * button, the segmented tabs and the whole account form behind it — is only
+ * reached at the last step, and having it in the first chunk meant a student
+ * choosing a lesson waited for code they might never see. It is fetched while
+ * they are picking a date.
+ */
+const AuthPanel = dynamic(() => import("@/components/AuthPanel").then((m) => m.AuthPanel), {
+  loading: () => <p className="booking-state-note">Loading…</p>
+});
 import { LessonMark } from "@/components/LessonMarks";
 import { clearSession, fetchMe, readSession, type Student } from "@/lib/auth-api";
 import {
@@ -37,6 +47,7 @@ import {
   type Slot
 } from "@/lib/booking-api";
 import { BOOKING_TIME_ZONE, CONTACT_WHATSAPP_URL, SAME_DAY_RESCHEDULE_FEE_CENTS, formatLessonDuration } from "@/lib/config";
+import { staticLessonTypes } from "@/lib/lesson-products";
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -88,7 +99,14 @@ function groupSlots(slots: Slot[]) {
 
 export function BookingCalendar() {
   const [step, setStep] = useState<Step>("lesson");
-  const [lessonTypes, setLessonTypes] = useState<LessonType[]>([]);
+  /*
+   * Seeded from the published lesson copy so the three cards are in the static
+   * HTML and on screen at first paint. Before this the first step was an empty
+   * panel until the bundle had hydrated and a round trip had returned — four
+   * seconds of nothing on a slow phone. The API answer overwrites this as soon
+   * as it arrives, so the live table still decides names and prices.
+   */
+  const [lessonTypes, setLessonTypes] = useState<LessonType[]>(staticLessonTypes);
   const [lessonTypeId, setLessonTypeId] = useState("");
   const [todayKey, setTodayKey] = useState("");
   const [horizonDays, setHorizonDays] = useState(30);
@@ -408,7 +426,7 @@ export function BookingCalendar() {
                   <ChevronRight aria-hidden="true" size={20} />
                 </button>
               ))}
-              {!lessonTypes.length && !loadError ? <p className="booking-state-note">Loading lessons…</p> : null}
+              {!lessonTypes.length && !loadError ? <p className="booking-state-note">No lessons are listed right now.</p> : null}
             </div>
 
           </>

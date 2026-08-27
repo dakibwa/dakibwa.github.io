@@ -75,7 +75,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return data;
 }
 
+declare global {
+  interface Window {
+    /** Set by the inline script on /book, before React exists. */
+    __inesLessonTypes?: Promise<{ lessonTypes: LessonType[] } | null> | null;
+  }
+}
+
 export function listLessonTypes() {
+  // Use the request the document already started, if there was one. Cleared on
+  // read so a later call goes to the network rather than replaying a stale list.
+  if (typeof window !== "undefined" && window.__inesLessonTypes) {
+    const primed = window.__inesLessonTypes;
+    window.__inesLessonTypes = null;
+    return primed.then(
+      (data) => data ?? request<{ lessonTypes: LessonType[] }>("/lesson-types")
+    );
+  }
+
   return request<{ lessonTypes: LessonType[] }>("/lesson-types");
 }
 
