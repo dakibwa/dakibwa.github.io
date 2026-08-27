@@ -2414,6 +2414,7 @@ textarea,
 }
 
 .nav-mobile__link {
+  position: relative;
   display: flex;
   min-height: 54px;
   align-items: center;
@@ -2424,14 +2425,39 @@ textarea,
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  transition: color 160ms ease;
+}
+
+/* The same coral line the nav links draw, sat on the row's own divider rather
+   than beside it — the menu should answer a pointer the way the header does. */
+.nav-mobile__link::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--coral);
+  content: "";
+  opacity: 0;
+  transform: scaleX(0.5);
+  transition: opacity 160ms ease, transform 160ms ease;
 }
 
 .nav-mobile__link:last-child {
   border-bottom: 0;
 }
 
+.nav-mobile__link:hover,
+.nav-mobile__link:focus-visible,
 .nav-mobile__link[aria-current="page"] {
   color: var(--coral-action);
+}
+
+.nav-mobile__link:hover::after,
+.nav-mobile__link:focus-visible::after,
+.nav-mobile__link[aria-current="page"]::after {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
 .nav-mobile__link--account {
@@ -3446,13 +3472,66 @@ textarea,
     grid-template-columns: 1fr;
   }
 
+  /*
+   * The price and the words about it, side by side. Stacked, the rule between
+   * them read as a divider between two lessons rather than inside one, so a
+   * description could as easily be taken for the price below it as the price
+   * above. Turning that rule on its end puts it between the pair instead: this
+   * money buys this lesson, and the eye has nowhere else to go.
+   */
   .lesson-product,
   .lesson-product:first-child,
   .lesson-product:last-child {
+    display: grid;
     min-height: auto;
+    grid-template-areas:
+      "eyebrow  rule description"
+      "price    rule description"
+      "duration rule description"
+      ".        rule note";
+    grid-template-columns: minmax(5.5rem, 0.74fr) 1px minmax(0, 1.26fr);
     border-right: 0;
     border-bottom: 1px solid var(--rule);
     padding: 1.5rem 0;
+    align-content: start;
+    column-gap: clamp(0.9rem, 3.6vw, 1.5rem);
+  }
+
+  /* Tightened just enough that "Single lesson" holds one line in the narrower
+     column — the alternative was taking that width off the description, which
+     is the half doing the work here. */
+  .lesson-product > .eyebrow {
+    grid-area: eyebrow;
+    font-size: 0.72rem;
+    letter-spacing: 0.09em;
+  }
+
+  .lesson-product__price {
+    grid-area: price;
+  }
+
+  .lesson-product__duration {
+    grid-area: duration;
+    font-size: 1.02rem;
+  }
+
+  /* Now a divider between the two columns rather than a break across them. */
+  .lesson-product__rule {
+    grid-area: rule;
+    width: 1px;
+    height: auto;
+    margin: 0;
+    align-self: stretch;
+  }
+
+  .lesson-product__description {
+    grid-area: description;
+    font-size: 1rem;
+  }
+
+  .lesson-product__note {
+    grid-area: note;
+    margin-top: 0.6rem;
   }
 
   .lesson-product:last-child {
@@ -3827,7 +3906,10 @@ textarea,
 
   .site-nav__link::after,
   .site-nav__link:hover::after,
-  .site-nav__link[aria-current="page"]::after {
+  .site-nav__link[aria-current="page"]::after,
+  .nav-mobile__link::after,
+  .nav-mobile__link:hover::after,
+  .nav-mobile__link[aria-current="page"]::after {
     transform: none;
     transition: none;
   }
