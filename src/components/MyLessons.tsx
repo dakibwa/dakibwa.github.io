@@ -383,11 +383,14 @@ export function MyLessons() {
                     </p>
                   ) : null}
                 </div>
+                {/* Along the bottom rather than down the right. In a column
+                    beside the text it squeezed the date into three lines and
+                    left the rest of the card empty. */}
                 <div className="lesson-list__actions">
-                  <span className="lesson-list__reference">{booking.reference}</span>
                   <a className="button button--coral" href={`/booking/?token=${encodeURIComponent(booking.manageToken)}`}>
                     Move or cancel
                   </a>
+                  <span className="lesson-list__reference">{booking.reference}</span>
                 </div>
               </li>
             ))}

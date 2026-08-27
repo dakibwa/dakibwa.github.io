@@ -312,11 +312,23 @@ export function BookingCalendar() {
                 : " at the same time each week."}
             </p>
             {confirmation.series.skipped.length ? (
-              <p className="booking-success__skipped">
-                {confirmation.series.skipped.length === 1 ? "One week wasn't" : "Some weeks weren't"} free, so{" "}
-                {confirmation.series.skipped.length === 1 ? "it was" : "they were"} left out:{" "}
-                {confirmation.series.skipped.map((startAt) => formatLongDate(startAt)).join(", ")}.
-              </p>
+              <div className="booking-alert booking-alert--warn booking-skipped">
+                <AlertCircle size={18} aria-hidden="true" />
+                <div>
+                  <p>
+                    <strong>
+                      {confirmation.series.skipped.length === 1
+                        ? "One week wasn't free, so it is not booked"
+                        : `${confirmation.series.skipped.length} weeks weren't free, so they are not booked`}
+                    </strong>
+                  </p>
+                  <ul>
+                    {confirmation.series.skipped.map((startAt) => (
+                      <li key={startAt}>{formatLongDate(startAt)}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -622,33 +634,50 @@ export function BookingCalendar() {
                     </div>
 
                     {form.repeat !== "once" ? (
-                      <p className="booking-repeat-note" role="status">
-                        {previewing ? (
-                          "Checking which weeks are free…"
-                        ) : seriesPreview ? (
-                          <>
-                            <strong>
-                              {seriesPreview.bookable.length}{" "}
-                              {seriesPreview.bookable.length === 1 ? "lesson" : "lessons"}
-                            </strong>{" "}
-                            at this time
-                            {form.repeat === "open" ? ", and it keeps going until you stop it" : ""}.
-                            {seriesPreview.skipped.length ? (
-                              <>
-                                {" "}
-                                {seriesPreview.skipped.length === 1 ? "One week isn't" : "Some weeks aren't"} free
-                                and will be skipped:{" "}
-                                {seriesPreview.skipped
-                                  .map((startAt) => formatLongDate(startAt))
-                                  .join(", ")}
-                                .
-                              </>
-                            ) : null}
-                          </>
-                        ) : (
-                          "You can move or cancel any single lesson later without stopping the rest."
-                        )}
-                      </p>
+                      <>
+                        <p className="booking-repeat-note" role="status">
+                          {previewing ? (
+                            "Checking which weeks are free…"
+                          ) : seriesPreview ? (
+                            <>
+                              <strong>
+                                {seriesPreview.bookable.length}{" "}
+                                {seriesPreview.bookable.length === 1 ? "lesson" : "lessons"}
+                              </strong>{" "}
+                              at this time
+                              {form.repeat === "open" ? ", and it keeps going until you stop it" : ""}.
+                            </>
+                          ) : (
+                            "You can move or cancel any single lesson later without stopping the rest."
+                          )}
+                        </p>
+
+                        {/* Its own block, not a clause at the end of a sentence.
+                            A student picking four weeks and getting three needs
+                            to see which week they will not have — and it was the
+                            quietest thing on the panel. */}
+                        {!previewing && seriesPreview?.skipped.length ? (
+                          <div className="booking-alert booking-alert--warn booking-skipped" role="status">
+                            <AlertCircle size={18} aria-hidden="true" />
+                            <div>
+                              <p>
+                                <strong>
+                                  {seriesPreview.skipped.length === 1
+                                    ? "One week isn't free"
+                                    : `${seriesPreview.skipped.length} weeks aren't free`}
+                                </strong>{" "}
+                                — you won&rsquo;t have a lesson{" "}
+                                {seriesPreview.skipped.length === 1 ? "that week" : "those weeks"}.
+                              </p>
+                              <ul>
+                                {seriesPreview.skipped.map((startAt) => (
+                                  <li key={startAt}>{formatLongDate(startAt)}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
                     ) : null}
                   </fieldset>
 

@@ -385,9 +385,11 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
 
   const cadence = series.occurrences ? `${rows.length} lessons` : "Every week, until you stop it";
   const skippedNote = skipped.length
-    ? `${skipped.length === 1 ? "One week was" : `${skipped.length} weeks were`} not free and ${
-        skipped.length === 1 ? "has" : "have"
-      } been left out: ${skipped.map((entry) => formatShort(new Date(entry.startAt), PORTO)).join(", ")}.`
+    ? `${
+        skipped.length === 1
+          ? "One week was not free, so there is no lesson that week:"
+          : `${skipped.length} weeks were not free, so there is no lesson on these dates:`
+      } ${skipped.map((entry) => formatShort(new Date(entry.startAt), PORTO)).join(", ")}.`
     : "";
 
   const rowsForBoth = [
