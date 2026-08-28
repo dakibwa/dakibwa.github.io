@@ -1298,6 +1298,8 @@ textarea,
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
+  /* A thumb target, not just a pill: 37px tall missed the 44px minimum. */
+  min-height: 44px;
   border: 1px solid var(--coral);
   border-radius: var(--squiggle-pill);
   padding: 0.55rem 1.1rem 0.55rem 0.9rem;
@@ -2491,7 +2493,10 @@ textarea,
 
 .booking-identity button {
   border: 0;
-  padding: 0;
+  /* The visible link stays a word; the padding+negative-margin pair grows the
+     touch target toward 44px without moving anything around it. */
+  padding: 10px 6px;
+  margin: -10px -6px;
   background: transparent;
   color: var(--coral-action);
   cursor: pointer;
@@ -3948,20 +3953,10 @@ button.text-action {
     font-size: 1.08rem;
   }
 
+  /* On a phone the flow is the page. The three reassurance rows cost 170px of
+     the first screen on every step, so they stay a desktop pleasure. */
   .booking-intro__points {
-    margin-top: 1.4rem;
-  }
-
-  .booking-intro__points li {
-    min-height: 58px;
-    grid-template-columns: 54px 1fr;
-    border-bottom: 0;
-    font-size: 0.7rem;
-  }
-
-  .booking-intro__points .asset-mark {
-    width: 42px;
-    height: 46px;
+    display: none;
   }
 
   /* Purely decorative, and it costs a third of a phone screen. */
