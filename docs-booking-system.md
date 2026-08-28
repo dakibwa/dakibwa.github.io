@@ -325,15 +325,19 @@ MB WAY and Multibanco natively — between them the majority of Portuguese onlin
 payments. `sk_test_` keys work identically, which is how this is exercised
 before Inês has her own account.
 
-**The account structure** (Dan, 28 August 2026): Dan's Stripe account is the
-platform, and Inês is onboarded as an **Express connected account** via Stripe
-Connect. `STRIPE_CONNECTED_ACCOUNT` in wrangler vars holds her `acct_…` id;
-with it set, every charge is a destination charge with `on_behalf_of` — money
-routes to her connected balance automatically, Stripe pays out to her own
-bank, her name appears on students' statements, and refunds pull the money
-back with `reverse_transfer`. Her one unavoidable step is the ~10-minute
-Express onboarding (identity + IBAN — EU KYC applies on any route that ends at
-her bank). Dan keeps the keys, the dashboard, and the integration.
+**The account structure** (Dan, 28 August 2026, settled after costing both
+routes): **Inês's own Stripe account, with Dan as Administrator** — cheapest
+fees (no Connect platform surcharges), EUR settlement on a Portuguese account,
+her name on statements natively, and Dan runs everything day-to-day through
+the Administrator role and the account's API keys. The signup is ~10 minutes
+together: her name, email, ID and IBAN; then she invites Dan as Administrator
+and he takes it from there. Scheduled for 29 August 2026.
+
+The Connect routing built into `stripe.mjs` (destination charges via
+`STRIPE_CONNECTED_ACCOUNT`) stays dormant as the documented alternative — it
+would route money from a platform account to hers automatically, at ~€2/month
+plus 0.25% + €0.10 per payout and a UK→PT cross-border wrinkle. Leave its
+config field empty on the chosen route.
 
 **Payment methods**: enable **cards** and **MB WAY** (instant confirmation, so
 the existing `checkout.session.completed` flow just works; Stripe only offers
@@ -348,10 +352,10 @@ not a dashboard toggle.
 **Go-live checklist**:
 
 1. ~~Apply migration 0009 to the live database~~ — done, 28 August 2026.
-2. In Dan's Stripe dashboard: enable Connect (platform), create an Express
-   account for Inês and send her the onboarding link; when she finishes, put
-   her `acct_…` id into `STRIPE_CONNECTED_ACCOUNT` in wrangler.jsonc. Enable
-   MB WAY in payment-method settings; leave Multibanco off (above).
+2. Open Inês's Stripe account together (her identity, her IBAN); she invites
+   Dan as **Administrator**. In its dashboard: enable MB WAY in payment-method
+   settings; leave Multibanco off (above). `STRIPE_CONNECTED_ACCOUNT` stays
+   empty.
 3. Put `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in as Worker secrets
    (test keys first). `STRIPE_UI_MODE` is already `embedded` in wrangler vars.
 4. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` for the
