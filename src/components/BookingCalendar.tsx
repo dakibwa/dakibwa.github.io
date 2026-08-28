@@ -203,6 +203,10 @@ export function BookingCalendar() {
   const [studentZone, setStudentZone] = useState(BOOKING_TIME_ZONE);
   const [student, setStudent] = useState<Student | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  // Someone with a lesson behind them shouldn't see the trial at all — the
+  // server refuses it anyway, but a card you can't book is a trap, not a choice.
+  const [hadLesson, setHadLesson] = useState(false);
+  const [trialNotice, setTrialNotice] = useState("");
 
   const lessonType = lessonTypes.find((type) => type.id === lessonTypeId) ?? null;
 
@@ -225,10 +229,24 @@ export function BookingCalendar() {
     }
 
     fetchMe(session)
-      .then((data) => setStudent(data?.student ?? null))
+      .then((data) => {
+        setStudent(data?.student ?? null);
+        setHadLesson((data?.bookings ?? []).some((booking) => booking.status !== "cancelled"));
+      })
       .catch(() => clearSession())
       .finally(() => setCheckingSession(false));
   }, []);
+
+  // Signing in mid-flow can reveal a history the lesson step didn't know
+  // about. If the trial is the current choice, step back rather than letting
+  // the confirm button walk into the server's refusal.
+  useEffect(() => {
+    if (!hadLesson || lessonTypeId !== "trial") return;
+    setLessonTypeId("");
+    setSelectedSlot("");
+    goTo("lesson");
+    setTrialNotice("The trial is for a first lesson with Inês — you're past that! A single lesson is the same hour.");
+  }, [hadLesson, lessonTypeId]);
 
   const loadAvailability = useCallback(
     (signal?: AbortSignal) => {
@@ -496,8 +514,14 @@ export function BookingCalendar() {
                 so role="listitem" on a <button> destroyed the button role and
                 these announced as unnamed list items — the first step of the
                 booking flow, unusable to a screen reader. */}
+            {trialNotice ? (
+              <div className="booking-alert" role="status">
+                <AlertCircle size={18} aria-hidden="true" />
+                <p>{trialNotice}</p>
+              </div>
+            ) : null}
             <div className="lesson-choice">
-              {lessonTypes.map((type) => (
+              {(hadLesson ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes).map((type) => (
                 <button
                   className="lesson-card"
                   key={type.id}
@@ -698,7 +722,18 @@ export function BookingCalendar() {
                   initialMode="register"
                   keepCopy
                   intro="An account keeps all your lessons in one place, so you can move or cancel any of them whenever you like."
-                  onSignedIn={setStudent}
+                  onSignedIn={(signedIn) => {
+                    setStudent(signedIn);
+                    // Their history decides whether the trial stays on offer.
+                    const session = readSession();
+                    if (session) {
+                      fetchMe(session)
+                        .then((data) =>
+                          setHadLesson((data?.bookings ?? []).some((booking) => booking.status !== "cancelled"))
+                        )
+                        .catch(() => {});
+                    }
+                  }}
                 />
               ) : (
                 <form className="student-details-form" onSubmit={submit}>
