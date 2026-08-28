@@ -90,11 +90,11 @@ request only competes with the fonts for no gain.
   legacy €20 / €30 pricing, which is not advertised publicly.
   The Worker's `lesson_types` table decides what is actually bookable; the
   lessons page is the copy a visitor reads. Keep the two in step.
-- The rescheduling rule is free before the lesson day, with a €5 fee for a change
-  made on the lesson day in Porto time. The Worker detects a same-day change,
-  warns the student before they confirm it, and emails Inês a notice subjected
-  "Same-day change" — she collects the fee at the lesson. Nothing charges it
-  automatically, because there is no payment rail to charge against.
+- Moving or cancelling a lesson costs nothing — the €5 same-day fee and the €10
+  no-show fee were retired on 28 August 2026, ahead of prepayment. The Worker
+  still marks a same-day change and tells Inês, as information only. Once
+  prepayment is live, commitment replaces fees: a paid or scheduled lesson
+  cannot be moved or cancelled on its own day (see docs-booking-system.md).
 
 ## Run and verify
 

@@ -3,11 +3,7 @@ import Link from "next/link";
 import { AssetMark } from "@/components/BrandMarks";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import {
-  CONTACT_WHATSAPP_URL,
-  SAME_DAY_RESCHEDULE_FEE_CENTS,
-  formatMoney
-} from "@/lib/config";
+import { CONTACT_WHATSAPP_URL } from "@/lib/config";
 import { trialLesson } from "@/lib/lesson-products";
 
 export const metadata: Metadata = {
@@ -16,7 +12,6 @@ export const metadata: Metadata = {
     "Answers for anyone nervous about speaking, plus levels, booking, payment and changing a lesson."
 };
 
-const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 const changeBookingInstructions =
   "Use the link in your confirmation email. It opens your booking on this site, where you can move it or cancel it yourself.";
 
@@ -142,7 +137,7 @@ const faqSections = [
       {
         question: "How do I book a lesson?",
         answer:
-          "Go to the booking page, choose the lesson you want, pick a time that suits you, and add your details. You'’'ll see the full details before you confirm."
+          "Go to the booking page, choose the lesson you want, pick a time that suits you, and add your details. You’ll see the full details before you confirm."
       },
       {
         question: "What happens after I book?",
@@ -182,12 +177,7 @@ const faqSections = [
     questions: [
       {
         question: "Can I reschedule?",
-        answer: `${changeBookingInstructions} Move to any time that’s free. It costs nothing if you change it the day before or earlier; on the day itself there’s a ${sameDayFee} fee.`
-      },
-      {
-        question: `When does the ${sameDayFee} fee apply?`,
-        answer:
-          "Only if you change the lesson on the day it’s due, counting by Porto time. Any earlier and it’s free."
+        answer: `${changeBookingInstructions} Move to any time that’s free — it costs nothing.`
       },
       {
         question: "Can I cancel?",
@@ -197,7 +187,7 @@ const faqSections = [
       {
         question: "What if I don’t turn up?",
         answer:
-          "Cancelling is always better than not coming — even on the day, that’s only the €5 fee. If you don’t come and haven’t said anything, it’s €10, because the time was held for you and nobody else could take it. If something happened, message me: I’d rather sort it out than charge you.",
+          "Cancelling is always better than not coming — even last minute, so the time isn’t held for nothing. If something happened, message me: I’d rather sort it out than worry about it.",
         // Placed under cancelling rather than payment on purpose — the answer is
         // mostly "cancel instead", and that is the thing worth reading.
       },

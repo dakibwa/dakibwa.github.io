@@ -4,14 +4,8 @@ import { AssetMark } from "@/components/BrandMarks";
 import { BookingCalendar } from "@/components/BookingCalendar";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import {
-  BOOKING_CONFIGURED,
-  CONTACT_WHATSAPP_URL,
-  SAME_DAY_RESCHEDULE_FEE_CENTS,
-  formatMoney
-} from "@/lib/config";
+import { BOOKING_CONFIGURED, CONTACT_WHATSAPP_URL } from "@/lib/config";
 
-const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 
 /**
  * The intro is a short banner rather than a full-height column. The booking
@@ -78,9 +72,8 @@ export function BookingFlow() {
           <div>
             <p className="eyebrow">Changing a lesson</p>
             <p>
-              Move it from your confirmation email or your <a href="/my-lessons/">lessons page</a>. Free until the day
-              before &mdash; <strong>{sameDayFee}</strong> on the day itself, <strong>&euro;10</strong>{" "}
-              if you don&rsquo;t show up.
+              Move it from your confirmation email or your <a href="/my-lessons/">lessons page</a>, to any time
+              that&rsquo;s free &mdash; it costs nothing. If you can&rsquo;t come, cancel there too, even last minute.
             </p>
           </div>
         </section>

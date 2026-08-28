@@ -19,7 +19,6 @@ import {
   browserTimeZone,
   differingLocalTime,
   formatLongDate,
-  formatMoneyCents,
   formatSlotTime,
   stopSeries
 } from "@/lib/booking-api";
@@ -42,7 +41,6 @@ export function MyLessons() {
   const [savingName, setSavingName] = useState(false);
   const [emailPending, setEmailPending] = useState("");
   const [detailsNote, setDetailsNote] = useState("");
-  const [feeCents, setFeeCents] = useState(500);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [zone, setZone] = useState(BOOKING_TIME_ZONE);
@@ -65,7 +63,6 @@ export function MyLessons() {
       setDetails({ name: data.student.name, email: data.student.email });
       setBookings(data.bookings);
       setSeries(data.series ?? []);
-      setFeeCents(data.sameDayFeeCents);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load your lessons.");
     } finally {
@@ -379,10 +376,6 @@ export function MyLessons() {
                   {booking.changeLocked ? (
                     <p className="lesson-list__fee">
                       This lesson is today and already paid — it can&rsquo;t be moved or cancelled on the day.
-                    </p>
-                  ) : booking.sameDayFeeApplies ? (
-                    <p className="lesson-list__fee">
-                      This lesson is today — changing or cancelling it now costs {formatMoneyCents(feeCents)}.
                     </p>
                   ) : null}
                 </div>

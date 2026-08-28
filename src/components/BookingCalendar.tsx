@@ -49,7 +49,6 @@ import {
 import {
   BOOKING_TIME_ZONE,
   CONTACT_WHATSAPP_URL,
-  SAME_DAY_RESCHEDULE_FEE_CENTS,
   STRIPE_PUBLISHABLE_KEY,
   formatLessonDuration
 } from "@/lib/config";
@@ -476,9 +475,7 @@ export function BookingCalendar() {
           </a>
         </div>
         <p className="booking-success__note">
-          Everything you book lives in your lessons, and you can move or cancel any of it there. Changing on the day of
-          the lesson costs {formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}; any earlier is free. Not turning up is
-          &euro;10.
+          Everything you book lives in your lessons, and you can move or cancel any of it there — it costs nothing.
         </p>
       </section>
     );
@@ -895,10 +892,8 @@ export function BookingCalendar() {
                     </p>
                   ) : (
                     <p className="booking-form-note">
-                      You pay on the day, in person with Inês. Change your booking any time from your{" "}
-                      <a href="/my-lessons/">lessons page</a>; changing on the same day is{" "}
-                      <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong>, not turning up is{" "}
-                      <strong>&euro;10</strong>.
+                      You pay on the day, in person with Inês. Change or cancel your booking any time from your{" "}
+                      <a href="/my-lessons/">lessons page</a> &mdash; it costs nothing.
                     </p>
                   )}
                 </form>

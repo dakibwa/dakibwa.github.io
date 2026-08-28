@@ -223,11 +223,9 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
       url: manageUrl
     });
 
-  const sameDayNotice = row.same_day_change
-    ? `This change was made on the day of the lesson, so the €${(settings.sameDayChangeFeeCents / 100).toFixed(
-        0
-      )} same-day change fee applies.`
-    : "";
+  // Fees were retired on 28 August 2026 — the same_day_change marker survives
+  // as information, but no email asks anyone for money over it.
+  const sameDayNotice = "";
 
   // Subjects carry the date, not the reference: "PT-LS29CT" tells the reader
   // nothing in an inbox list, and the date is what they are scanning for.
@@ -238,9 +236,8 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   // terms they were booked under.
   const paidChangeFooter =
     "Move or cancel it free until the day before, from the link above. On the day of the lesson it's yours — no changes and no refunds.";
-  const unpaidChangeFooter = `Need to change it? Use the link above. Changing on the day of the lesson costs €${(
-    settings.sameDayChangeFeeCents / 100
-  ).toFixed(0)}; any earlier is free. Not turning up is €10.`;
+  const unpaidChangeFooter =
+    "Need to change it? Use the link above — moving or cancelling costs nothing.";
   const refundNote = wasRefunded
     ? `Your €${((row.amount_cents ?? lessonType.price_cents) / 100).toFixed(0)} is on its way back to your card — refunds usually show within a few days.`
     : "";
@@ -311,11 +308,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         : `${row.student_name} moved their lesson${
             previousStartsAt ? ` from ${formatInZone(new Date(previousStartsAt), PORTO)}` : ""
           }. Your calendar has been updated.`,
-      callout: row.same_day_change
-        ? `This was changed on the day of the lesson, so the €${(settings.sameDayChangeFeeCents / 100).toFixed(
-            0
-          )} fee applies. Collect it at the lesson.`
-        : ""
+      callout: ""
     },
     cancelled: {
       subject: byTeacher
@@ -327,11 +320,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         : `${row.student_name} cancelled their lesson on ${formatInZone(start, PORTO)}. It has been removed from your calendar.`,
       callout: wasRefunded
         ? `€${((row.amount_cents ?? lessonType.price_cents) / 100).toFixed(0)} was refunded automatically — nothing to sort out.`
-        : row.same_day_change
-          ? `This was cancelled on the day of the lesson, so the €${(settings.sameDayChangeFeeCents / 100).toFixed(
-              0
-            )} fee applies.`
-          : ""
+        : ""
     }
   }[event];
 
@@ -466,7 +455,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
   ];
   const seriesFooter = seriesOnCard
     ? "Move or cancel any single lesson free until the day before it — a lesson not yet charged is never charged, and one already paid is refunded automatically. On a lesson's own day it's yours — no changes and no refunds."
-    : `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free. Not turning up is €10.`;
+    : "Move or cancel any lesson from its own link — it costs nothing.";
 
   const sends = [
     deliver(env, {

@@ -22,13 +22,12 @@ import {
 import { BOOKING_TIME_ZONE, CONTACT_WHATSAPP_URL, formatLessonDuration } from "@/lib/config";
 
 type Mode = "view" | "reschedule" | "confirm-cancel";
-type Outcome = { kind: "rescheduled" | "cancelled"; sameDayFee: boolean; refunded?: boolean } | null;
+type Outcome = { kind: "rescheduled" | "cancelled"; refunded?: boolean } | null;
 
 export function ManageBooking() {
   const [token, setToken] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isPast, setIsPast] = useState(false);
-  const [sameDayFeeApplies, setSameDayFeeApplies] = useState(false);
   const [changeLocked, setChangeLocked] = useState(false);
   const [refundOnCancel, setRefundOnCancel] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -64,7 +63,6 @@ export function ManageBooking() {
       .then((data) => {
         setBooking(data.booking);
         setIsPast(data.isPast);
-        setSameDayFeeApplies(data.sameDayFeeApplies);
         setChangeLocked(Boolean(data.changeLocked));
         setRefundOnCancel(Boolean(data.refundOnCancel));
       })
@@ -115,7 +113,7 @@ export function ManageBooking() {
     try {
       const result = await rescheduleBooking(token, selectedSlot);
       setBooking(result.booking);
-      setOutcome({ kind: "rescheduled", sameDayFee: result.sameDayFeeApplied });
+      setOutcome({ kind: "rescheduled" });
       setMode("view");
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "That change could not be made.");
@@ -134,7 +132,6 @@ export function ManageBooking() {
       setBooking(result.booking);
       setOutcome({
         kind: "cancelled",
-        sameDayFee: result.sameDayFeeApplied,
         refunded: result.booking.paymentStatus === "refunded"
       });
       setMode("view");
@@ -179,11 +176,6 @@ export function ManageBooking() {
               We&rsquo;ve emailed you the details and updated your calendar.
               {outcome.refunded && booking.amountCents
                 ? ` Your ${formatMoneyCents(booking.amountCents)} is on its way back to your card — refunds usually show within a few days.`
-                : ""}
-              {outcome.sameDayFee
-                ? ` Because this was on the day of the lesson, the ${formatMoneyCents(
-                    booking.sameDayFeeCents
-                  )} same-day fee applies — Inês will mention it.`
                 : ""}
             </p>
           </div>
@@ -263,16 +255,6 @@ export function ManageBooking() {
               <p>
                 Your lesson is today, and it&rsquo;s already paid — it can&rsquo;t be moved or cancelled on the day.
                 See you there. If something has happened, reply to your confirmation email and Inês will help.
-              </p>
-            </div>
-          ) : null}
-
-          {sameDayFeeApplies && !outcome ? (
-            <div className="booking-alert booking-alert--warn" role="status">
-              <AlertCircle size={18} aria-hidden="true" />
-              <p>
-                Your lesson is today. Changing or cancelling now means the{" "}
-                {formatMoneyCents(booking.sameDayFeeCents)} same-day fee applies.
               </p>
             </div>
           ) : null}
