@@ -77,7 +77,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     // A network failure here is indistinguishable from the Worker being down,
     // and both mean the same thing to a student: use another way to reach her.
-    throw new BookingApiError("We couldn't reach the booking system. Please check your connection, or message Inês directly.", 0);
+    throw new BookingApiError("We couldn't reach the booking system. Please check your connection.", 0);
   }
 
   const data = (await response.json().catch(() => ({}))) as T & { error?: string };
