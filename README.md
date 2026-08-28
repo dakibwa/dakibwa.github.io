@@ -82,8 +82,11 @@ request only competes with the fonts for no gain.
 - Square was removed in August 2026. Square does not onboard sellers in
   Portugal, so the account this site pointed at — Dan's UK account, set up as a
   test — could never have been hers.
-- There is no payment rail yet. Students pay Inês directly, as they already did.
-  Stripe supports Portugal and is the intended route; it needs her own account.
+- There is no live payment rail yet — students pay Inês directly — but the
+  Stripe integration is fully built and dormant. The decided structure (28
+  August 2026): Dan's account as Connect platform, Inês as an Express connected
+  account, money routed to her bank automatically. docs-booking-system.md has
+  the model and the go-live checklist.
 - The approved product display is trial lesson €20 / 60 minutes, single lessons
   at €25 / 60 minutes or €35 / 1 hour 30 minutes. Bundles are not part of the
   public launch offer. Existing students retain their individually agreed

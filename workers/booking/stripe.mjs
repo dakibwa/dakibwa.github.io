@@ -10,6 +10,24 @@
  */
 
 const API = "https://api.stripe.com/v1";
+
+/**
+ * Route the money straight to Inês: with STRIPE_CONNECTED_ACCOUNT set to her
+ * Express connected account, every charge becomes a destination charge — funds
+ * transfer to her account automatically and Stripe pays out to her own bank.
+ * `on_behalf_of` makes her the settlement merchant, so her name (not the
+ * platform's) is what a student's bank statement shows. Empty means the money
+ * stays on the platform account, which is how it runs until she is onboarded.
+ */
+function connectedAccount(env) {
+  return (env.STRIPE_CONNECTED_ACCOUNT ?? "").trim();
+}
+
+function connectFields(env) {
+  const acct = connectedAccount(env);
+  if (!acct) return {};
+  return { transfer_data: { destination: acct }, on_behalf_of: acct };
+}
 const encoder = new TextEncoder();
 
 /** Stripe's API is form-encoded, including nested keys like line_items[0][price_data][currency]. */
@@ -78,6 +96,7 @@ export function chargeSavedCard(env, { customer, paymentMethod, amountCents, des
     off_session: "true",
     confirm: "true",
     description,
+    ...connectFields(env),
     ...(metadata ? { metadata } : {})
   });
 }
@@ -129,8 +148,14 @@ export function createCheckoutSession(
     mode: "payment",
     client_reference_id: booking.id,
     customer_email: customerEmail,
-    ...(saveCard
-      ? { customer_creation: "always", payment_intent_data: { setup_future_usage: "off_session" } }
+    ...(saveCard ? { customer_creation: "always" } : {}),
+    ...((saveCard || connectedAccount(env))
+      ? {
+          payment_intent_data: {
+            ...(saveCard ? { setup_future_usage: "off_session" } : {}),
+            ...connectFields(env)
+          }
+        }
       : {}),
     ...uiModeFields(env, { successUrl, cancelUrl, forceHosted }),
     // Stripe expires the session itself, which is the backstop for a student
@@ -168,7 +193,10 @@ export function createCheckoutSession(
 export function refundPayment(env, paymentIntent, amountCents) {
   return stripeRequest(env, "/refunds", {
     payment_intent: paymentIntent,
-    ...(amountCents ? { amount: amountCents } : {})
+    ...(amountCents ? { amount: amountCents } : {}),
+    // With destination charges the money is already with Inês; the refund has
+    // to pull it back from her connected balance or it fails.
+    ...(connectedAccount(env) ? { reverse_transfer: "true" } : {})
   });
 }
 

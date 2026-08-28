@@ -325,29 +325,49 @@ MB WAY and Multibanco natively — between them the majority of Portuguese onlin
 payments. `sk_test_` keys work identically, which is how this is exercised
 before Inês has her own account.
 
-**Go-live checklist**, once her Stripe account exists (hers, with Dan as
-Administrator):
+**The account structure** (Dan, 28 August 2026): Dan's Stripe account is the
+platform, and Inês is onboarded as an **Express connected account** via Stripe
+Connect. `STRIPE_CONNECTED_ACCOUNT` in wrangler vars holds her `acct_…` id;
+with it set, every charge is a destination charge with `on_behalf_of` — money
+routes to her connected balance automatically, Stripe pays out to her own
+bank, her name appears on students' statements, and refunds pull the money
+back with `reverse_transfer`. Her one unavoidable step is the ~10-minute
+Express onboarding (identity + IBAN — EU KYC applies on any route that ends at
+her bank). Dan keeps the keys, the dashboard, and the integration.
 
-1. Apply migration 0009 to the live database (the three ALTERs in
-   `migrations/0009-saved-cards.sql`, via `wrangler d1 execute --remote`; the
-   migrations ledger was never used against the live DB, so `migrations apply`
-   would replay 0001 and fail).
-2. Put `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in as Worker secrets
+**Payment methods**: enable **cards** and **MB WAY** (instant confirmation, so
+the existing `checkout.session.completed` flow just works; Stripe only offers
+it on single lessons because MB WAY cannot save payment details, which is
+exactly right — weekly runs must be card-only for the automatic charges).
+Leave **Multibanco OFF**: it is a voucher paid later at an ATM or bank,
+confirmation can take days, which fights the 35-minute slot hold, and its
+money arrives on `checkout.session.async_payment_succeeded`, which this
+webhook deliberately does not handle. Enabling it is a real follow-up build,
+not a dashboard toggle.
+
+**Go-live checklist**:
+
+1. ~~Apply migration 0009 to the live database~~ — done, 28 August 2026.
+2. In Dan's Stripe dashboard: enable Connect (platform), create an Express
+   account for Inês and send her the onboarding link; when she finishes, put
+   her `acct_…` id into `STRIPE_CONNECTED_ACCOUNT` in wrangler.jsonc. Enable
+   MB WAY in payment-method settings; leave Multibanco off (above).
+3. Put `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in as Worker secrets
    (test keys first). `STRIPE_UI_MODE` is already `embedded` in wrangler vars.
-3. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` for the
+4. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` for the
    Pages build, so the embedded form can mount.
-4. Register the webhook for `checkout.session.completed` at `/stripe/webhook`.
-5. Run the full test-mode journey: book a single (embedded form mounts on the
+5. Register the webhook for `checkout.session.completed` at `/stripe/webhook`.
+6. Run the full test-mode journey: book a single (embedded form mounts on the
    page), pay with a test card, watch the webhook confirm; cancel ahead of the
    day and watch the refund. Book a weekly run: first lesson charges, the rest
    go `scheduled`; run the cron by hand (`wrangler dev --test-scheduled`) on a
    lesson's day and watch the saved card charge; kill the saved card in the
    Stripe dashboard and watch the decline turn into a pay-now email.
-6. Set the `payment_mode` settings row to `prepay`, and in the same breath ship
+7. Set the `payment_mode` settings row to `prepay`, and in the same breath ship
    the static-copy commit (FAQ, policy band, lessons note, and the README payment bullets) that states the
    prepaid terms — the page's dynamic copy follows the API on its own, the
    static prose does not.
-7. Swap to live keys and repeat the single-lesson journey with a real card
+8. Swap to live keys and repeat the single-lesson journey with a real card
    before telling anyone.
 
 ### Same-day changes
