@@ -29,8 +29,7 @@ import {
   formatInZone,
   formatShort,
   isValidTimeZone,
-  parseDateKey,
-  timeZoneAbbreviation
+  parseDateKey
 } from "./time.mjs";
 import { bookingReference, createManageToken, readManageToken, safeEqual } from "./tokens.mjs";
 
@@ -154,7 +153,10 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   const replyTo = settings.replyToEmail || teacherEmail || undefined;
   const start = new Date(row.starts_at);
 
-  const portoTime = `${formatInZone(start, PORTO)} (${timeZoneAbbreviation(start, PORTO)})`;
+  // "Porto time", in words — the site's own vocabulary. "(WEST)" was accurate
+  // but jargon to a student; the your-time line below the hero and the calendar
+  // attachment already carry the conversion for anyone in another zone.
+  const portoTime = `${formatInZone(start, PORTO)}, Porto time`;
   const studentZone = isValidTimeZone(row.student_timezone) ? row.student_timezone : PORTO;
   // Null unless the student's clock genuinely reads differently from Porto's.
   const studentTime = differingZonedTime(start, studentZone);
@@ -395,7 +397,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
     });
 
   const dateLines = rows
-    .map((row) => `${formatInZone(new Date(row.starts_at), PORTO)} (${timeZoneAbbreviation(new Date(row.starts_at), PORTO)})`)
+    .map((row) => formatInZone(new Date(row.starts_at), PORTO))
     .join("\n");
 
   const cadence = series.occurrences ? `${rows.length} lessons` : "Every week, until you stop it";
@@ -444,7 +446,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
             ? `Olá ${first.student_name.split(" ")[0]}, your weekly slot keeps going, so a few more lessons have been added to your calendar. Move or cancel any one of them on its own from your lessons page, or stop the repeat there whenever you like.`
             : `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on its own from your lessons page.`,
         callout: skippedNote,
-        hero: `${formatInZone(new Date(first.starts_at), PORTO)} (${timeZoneAbbreviation(new Date(first.starts_at), PORTO)})`,
+        hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
         heroNote: differingZonedTime(new Date(first.starts_at), studentZone) ? `${differingZonedTime(new Date(first.starts_at), studentZone)} — your time` : "",
         preheader: `${lessonType.name} · ${cadence}`,
         rows: studentSeriesRows,
@@ -474,7 +476,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
               ? `${first.student_name}'s open-ended weekly slot has been carried forward. The new lessons are in the calendar attachment.`
               : `${first.student_name} booked the same slot each week. Every lesson is in the calendar attachment.`,
           callout: skippedNote,
-          hero: `${formatInZone(new Date(first.starts_at), PORTO)} (${timeZoneAbbreviation(new Date(first.starts_at), PORTO)})`,
+          hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
           heroNote: "",
           preheader: `${first.student_name} · ${cadence}`,
           rows: [
