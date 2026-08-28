@@ -292,6 +292,7 @@ export function TeacherSchedule() {
                 </div>
                 <div className="schedule-bookings__meta">
                   <a href={`mailto:${booking.student_email}`}>{booking.student_email}</a>
+                  {booking.same_day_change ? <span className="schedule-flag">€5 same-day fee due</span> : null}
                   <button
                     className="schedule-move"
                     onClick={() =>

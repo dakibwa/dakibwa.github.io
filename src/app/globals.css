@@ -2472,14 +2472,33 @@ textarea,
   font-size: 0.88rem;
 }
 
+/* In the recap column it closes the card rather than opening the form. The
+   name stays body text: the card's display-face strong is for the price, and
+   inherited here it set "Booking as" in two-line script. */
+.booking-recap .booking-identity {
+  display: block;
+  margin: 1rem 0 0;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.booking-recap .booking-identity strong {
+  display: inline;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+}
+
 .booking-identity button {
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--lavender-ink);
+  color: var(--coral-action);
   cursor: pointer;
   font: inherit;
+  font-weight: 600;
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* /my-lessons */

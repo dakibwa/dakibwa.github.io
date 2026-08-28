@@ -238,9 +238,8 @@ Email is best-effort, but "best effort" used to mean "one attempt, and silence".
 For a prepaid lesson: not coming forfeits it — the lesson was paid for and the
 slot was held, so there is nothing to charge and nothing to do. For a booking
 made before prepayment (`payment_status = 'not_required'`), nothing: the €10
-no-show fee was retired on 28 August 2026 along with the €5 same-day fee, and
-every mention of both was removed from the site and the emails. Fees only ever
-worked as words; prepayment makes the commitment real instead.
+no-show fee was retired on 28 August 2026. The €5 same-day change fee remains
+the one fee that exists, stated wherever changes are offered.
 
 - **Nothing in the system charges it.** `payment_mode` is off and payment is
   made on the day, in person with Inês, so this is stated policy she applies or
@@ -361,10 +360,11 @@ booking time are kept:
   buttons, and the endpoints refuse with the same words for anyone who kept an
   old tab open. `same_day_change` is never set on a paid row.
 - **Booked before prepayment**: students may move or cancel right up to the
-  lesson start, free — the €5 fee was retired on 28 August 2026. A change on
-  the lesson's own Porto date still sets `same_day_change` and still subjects
-  Inês's mail **"Same-day change"**, as information about her day, not as
-  money to collect.
+  lesson start. A change on the lesson's own Porto date sets `same_day_change`,
+  warns the student on `/booking/` before they act, marks their confirmation,
+  and subjects Inês's mail **"Same-day change"** so she collects the €5 at the
+  lesson — by her in person, because those bookings have no payment to charge
+  against.
 
 ## Deploying the Worker
 

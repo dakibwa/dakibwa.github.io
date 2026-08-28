@@ -49,6 +49,7 @@ import {
 import {
   BOOKING_TIME_ZONE,
   CONTACT_WHATSAPP_URL,
+  SAME_DAY_RESCHEDULE_FEE_CENTS,
   STRIPE_PUBLISHABLE_KEY,
   formatLessonDuration
 } from "@/lib/config";
@@ -475,7 +476,8 @@ export function BookingCalendar() {
           </a>
         </div>
         <p className="booking-success__note">
-          Everything you book lives in your lessons, and you can move or cancel any of it there — it costs nothing.
+          Everything you book lives in your lessons, and you can move or cancel any of it there. Changing on the day of
+          the lesson costs {formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}; any earlier is free.
         </p>
       </section>
     );
@@ -691,6 +693,22 @@ export function BookingCalendar() {
                     Change time
                   </button>
                 </div>
+                {/* Who the booking is for lives with the rest of the recap, not
+                    at the top of the form it was crowding. */}
+                {student ? (
+                  <p className="booking-identity">
+                    Booking as <strong>{student.name}</strong> ({student.email}){" "}
+                    <button
+                      onClick={() => {
+                        clearSession();
+                        setStudent(null);
+                      }}
+                      type="button"
+                    >
+                      Not you?
+                    </button>
+                  </p>
+                ) : null}
               </aside>
 
               {payment ? (
@@ -734,19 +752,6 @@ export function BookingCalendar() {
                 />
               ) : (
                 <form className="student-details-form" onSubmit={submit}>
-                  <p className="booking-identity">
-                    Booking as <strong>{student.name}</strong> ({student.email}){" "}
-                    <button
-                      onClick={() => {
-                        clearSession();
-                        setStudent(null);
-                      }}
-                      type="button"
-                    >
-                      Not you?
-                    </button>
-                  </p>
-
                   {/* The same segmented control the account tabs use. Two small
                       radios read as a stray form control among her buttons, and
                       the choice is one of the two things a student actually
@@ -892,8 +897,9 @@ export function BookingCalendar() {
                     </p>
                   ) : (
                     <p className="booking-form-note">
-                      You pay on the day, in person with Inês. Change or cancel your booking any time from your{" "}
-                      <a href="/my-lessons/">lessons page</a> &mdash; it costs nothing.
+                      You pay on the day, in person with Inês. Change your booking any time from your{" "}
+                      <a href="/my-lessons/">lessons page</a> &mdash; free until the day before,{" "}
+                      <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong> on the day itself.
                     </p>
                   )}
                 </form>
