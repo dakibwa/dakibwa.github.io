@@ -28,14 +28,38 @@ const montserrat = Montserrat({
   variable: "--font-montserrat"
 });
 
+// Absolute base for share-card URLs. Social scrapers (WhatsApp, Instagram,
+// Facebook, iMessage) need an absolute image URL; without this Next resolves
+// og:image against localhost and the preview comes back blank. This is the
+// canonical production domain — the Portuguese-spelling domain redirects to it.
+const SITE_URL = "https://portuguesewithines.com";
+const shareDescription = "One-to-one European Portuguese lessons in Porto and online. Any level.";
+const shareImage = {
+  url: "/og.png",
+  width: 1200,
+  height: 630,
+  alt: "Português com a Inês — European Portuguese lessons in Porto, or online"
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Português com a Inês | Portuguese lessons in Porto",
   description:
     "One-to-one European Portuguese lessons in Porto and online, with a native speaker from Porto. Any level, no fixed syllabus.",
   openGraph: {
     title: "Português com a Inês | Portuguese lessons in Porto",
-    description: "One-to-one European Portuguese lessons in Porto and online. Any level.",
-    type: "website"
+    description: shareDescription,
+    url: "/",
+    siteName: "Português com a Inês",
+    locale: "en_GB",
+    type: "website",
+    images: [shareImage]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Português com a Inês | Portuguese lessons in Porto",
+    description: shareDescription,
+    images: [shareImage]
   }
 };
 

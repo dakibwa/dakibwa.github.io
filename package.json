@@ -19,7 +19,8 @@
     "worker:schema": "wrangler d1 execute ines-booking --remote --config workers/booking/wrangler.jsonc --file workers/booking/schema.sql",
     "worker:seed": "wrangler d1 execute ines-booking --remote --config workers/booking/wrangler.jsonc --file workers/booking/seed.sql",
     "test:booking": "node workers/booking/test.mjs",
-    "build:email-banner": "node scripts/build-email-banner.mjs"
+    "build:email-banner": "node scripts/build-email-banner.mjs",
+    "build:og-image": "node scripts/build-og-image.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.14.0",
