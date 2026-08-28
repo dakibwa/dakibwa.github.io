@@ -376,7 +376,11 @@ export function MyLessons() {
                       One of your weekly lessons
                     </p>
                   ) : null}
-                  {booking.sameDayFeeApplies ? (
+                  {booking.changeLocked ? (
+                    <p className="lesson-list__fee">
+                      This lesson is today and already paid — it can&rsquo;t be moved or cancelled on the day.
+                    </p>
+                  ) : booking.sameDayFeeApplies ? (
                     <p className="lesson-list__fee">
                       This lesson is today — changing or cancelling it now costs {formatMoneyCents(feeCents)}.
                     </p>
@@ -386,9 +390,11 @@ export function MyLessons() {
                     beside the text it squeezed the date into three lines and
                     left the rest of the card empty. */}
                 <div className="lesson-list__actions">
-                  <a className="button button--coral" href={`/booking/?token=${encodeURIComponent(booking.manageToken)}`}>
-                    Move or cancel
-                  </a>
+                  {booking.changeLocked ? null : (
+                    <a className="button button--coral" href={`/booking/?token=${encodeURIComponent(booking.manageToken)}`}>
+                      Move or cancel
+                    </a>
+                  )}
                   <span className="lesson-list__reference">{booking.reference}</span>
                 </div>
               </li>

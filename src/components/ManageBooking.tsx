@@ -22,13 +22,15 @@ import {
 import { BOOKING_TIME_ZONE, CONTACT_WHATSAPP_URL, formatLessonDuration } from "@/lib/config";
 
 type Mode = "view" | "reschedule" | "confirm-cancel";
-type Outcome = { kind: "rescheduled" | "cancelled"; sameDayFee: boolean } | null;
+type Outcome = { kind: "rescheduled" | "cancelled"; sameDayFee: boolean; refunded?: boolean } | null;
 
 export function ManageBooking() {
   const [token, setToken] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isPast, setIsPast] = useState(false);
   const [sameDayFeeApplies, setSameDayFeeApplies] = useState(false);
+  const [changeLocked, setChangeLocked] = useState(false);
+  const [refundOnCancel, setRefundOnCancel] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -63,6 +65,8 @@ export function ManageBooking() {
         setBooking(data.booking);
         setIsPast(data.isPast);
         setSameDayFeeApplies(data.sameDayFeeApplies);
+        setChangeLocked(Boolean(data.changeLocked));
+        setRefundOnCancel(Boolean(data.refundOnCancel));
       })
       .catch((caught: Error) => setError(caught.message))
       .finally(() => setLoading(false));
@@ -128,7 +132,11 @@ export function ManageBooking() {
     try {
       const result = await cancelBooking(token);
       setBooking(result.booking);
-      setOutcome({ kind: "cancelled", sameDayFee: result.sameDayFeeApplied });
+      setOutcome({
+        kind: "cancelled",
+        sameDayFee: result.sameDayFeeApplied,
+        refunded: result.booking.paymentStatus === "refunded"
+      });
       setMode("view");
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "That lesson could not be cancelled.");
@@ -169,6 +177,9 @@ export function ManageBooking() {
             </strong>
             <p>
               We&rsquo;ve emailed you the details and updated your calendar.
+              {outcome.refunded && booking.amountCents
+                ? ` Your ${formatMoneyCents(booking.amountCents)} is on its way back to your card — refunds usually show within a few days.`
+                : ""}
               {outcome.sameDayFee
                 ? ` Because this was on the day of the lesson, the ${formatMoneyCents(
                     booking.sameDayFeeCents
@@ -246,6 +257,16 @@ export function ManageBooking() {
         </>
       ) : (
         <>
+          {changeLocked && !outcome ? (
+            <div className="booking-alert booking-alert--warn" role="status">
+              <AlertCircle size={18} aria-hidden="true" />
+              <p>
+                Your lesson is today, and it&rsquo;s already paid — it can&rsquo;t be moved or cancelled on the day.
+                See you there. If something has happened, reply to your confirmation email and Inês will help.
+              </p>
+            </div>
+          ) : null}
+
           {sameDayFeeApplies && !outcome ? (
             <div className="booking-alert booking-alert--warn" role="status">
               <AlertCircle size={18} aria-hidden="true" />
@@ -263,7 +284,7 @@ export function ManageBooking() {
             </div>
           ) : null}
 
-          {mode === "view" ? (
+          {mode === "view" && !changeLocked ? (
             <div className="manage-booking__actions">
               <button className="button button--coral" onClick={() => setMode("reschedule")} type="button">
                 Move to another time
@@ -279,6 +300,9 @@ export function ManageBooking() {
               <p>
                 Cancel your {booking.lessonType.name.toLowerCase()} on {formatLongDate(booking.startAt)} at{" "}
                 {formatSlotTime(booking.startAt)}? This can&rsquo;t be undone — you&rsquo;d need to book again.
+                {refundOnCancel && booking.amountCents
+                  ? ` Your ${formatMoneyCents(booking.amountCents)} comes straight back to your card.`
+                  : ""}
               </p>
               <div className="manage-booking__actions">
                 <button className="button button--coral" disabled={working} onClick={doCancel} type="button">

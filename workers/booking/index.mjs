@@ -9,7 +9,15 @@ import {
 } from "./series.mjs";
 import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./ics.mjs";
 import { deliver } from "./email.mjs";
-import { createCheckoutSession, isTestMode, stripeConfigured, verifyWebhook } from "./stripe.mjs";
+import {
+  createCheckoutSession,
+  createSeriesCheckoutSession,
+  isTestMode,
+  refundPayment,
+  stripeConfigured,
+  verifyWebhook
+} from "./stripe.mjs";
+import { changePolicy, seriesTotalCents } from "./policy.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
 import {
   createResetToken,
@@ -117,7 +125,9 @@ function publicBooking(row, lessonType, settings) {
     studentTimezone: row.student_timezone,
     notes: row.notes,
     rescheduleCount: row.reschedule_count,
-    sameDayFeeCents: settings.sameDayChangeFeeCents
+    sameDayFeeCents: settings.sameDayChangeFeeCents,
+    paymentStatus: row.payment_status,
+    amountCents: row.amount_cents
   };
 }
 
@@ -180,14 +190,16 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   // confirmation is the one email everyone reads, and payment shouldn't be a
   // surprise at the door. Not on a cancellation, where a price is just noise,
   // and not on Inês's copy, which would be telling her her own prices.
+  // A prepaid booking says "paid"; one from before prepay keeps the old terms.
+  const isPaid = row.payment_status === "paid";
+  const wasRefunded = row.payment_status === "refunded";
+  const priceValue = isPaid
+    ? `€${(lessonType.price_cents / 100).toFixed(0)} · paid`
+    : `€${(lessonType.price_cents / 100).toFixed(0)} · pay on the day, in person`;
   const studentRows =
     event === "cancelled"
       ? baseRows
-      : [
-          ...baseRows.slice(0, 2),
-          { label: "Price", value: `€${(lessonType.price_cents / 100).toFixed(0)} · pay on the day, in person` },
-          ...baseRows.slice(2)
-        ];
+      : [...baseRows.slice(0, 2), { label: "Price", value: priceValue }, ...baseRows.slice(2)];
 
   const uid = calendarUid(row.id);
   const method = event === "cancelled" ? "CANCEL" : "REQUEST";
@@ -217,15 +229,27 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   // nothing in an inbox list, and the date is what they are scanning for.
   const shortWhen = formatShort(start, PORTO);
 
+  // Two footers because two sets of terms are live at once: prepaid bookings
+  // carry the one-rule policy, and bookings from before prepay keep the fee
+  // terms they were booked under.
+  const paidChangeFooter =
+    "Move or cancel it free until the day before, from the link above. On the day of the lesson it's yours — no changes and no refunds.";
+  const unpaidChangeFooter = `Need to change it? Use the link above. Changing on the day of the lesson costs €${(
+    settings.sameDayChangeFeeCents / 100
+  ).toFixed(0)}; any earlier is free. Not turning up is €10.`;
+  const refundNote = wasRefunded
+    ? `Your €${((row.amount_cents ?? lessonType.price_cents) / 100).toFixed(0)} is on its way back to your card — refunds usually show within a few days.`
+    : "";
+
   const student = {
     booked: {
       subject: `Your Portuguese lesson is booked — ${shortWhen}`,
       heading: "You're booked",
-      intro: `Olá ${row.student_name.split(" ")[0]}, your lesson with Inês is confirmed. It's in your calendar attachment, and you can move or cancel it any time using the button below.`,
+      intro: `Olá ${row.student_name.split(" ")[0]}, your lesson with Inês is ${
+        isPaid ? "paid and confirmed" : "confirmed"
+      }. It's in your calendar attachment, and you can move or cancel it any time using the button below.`,
       callout: "",
-      footer: `Need to change it? Use the link above. Changing on the day of the lesson costs €${(
-        settings.sameDayChangeFeeCents / 100
-      ).toFixed(0)}; any earlier is free. Not turning up is €10.`
+      footer: isPaid ? paidChangeFooter : unpaidChangeFooter
     },
     rescheduled: byTeacher
       ? {
@@ -242,22 +266,22 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           subject: `Your lesson has moved — ${shortWhen}`,
           heading: "Your lesson has moved",
           intro: `Olá ${row.student_name.split(" ")[0]}, that's done — your lesson is now at the time below and your calendar has been updated.`,
-          callout: sameDayNotice,
-          footer: "You can move or cancel it again from the same link."
+          callout: isPaid ? "" : sameDayNotice,
+          footer: isPaid ? paidChangeFooter : "You can move or cancel it again from the same link."
         },
     cancelled: byTeacher
       ? {
           subject: `Inês has cancelled your lesson on ${shortWhen}`,
           heading: "Inês has cancelled this lesson",
           intro: `Olá ${row.student_name.split(" ")[0]}, Inês has had to cancel this lesson and it has been removed from your calendar. Sorry about that — book another time whenever suits you, or reply and she'll sort one out with you.`,
-          callout: "",
-          footer: "No charge for a cancellation she makes."
+          callout: refundNote,
+          footer: wasRefunded ? "Refunded in full — a cancellation she makes never costs you anything." : "No charge for a cancellation she makes."
         }
       : {
           subject: `Your lesson on ${shortWhen} is cancelled`,
           heading: "Your lesson is cancelled",
           intro: `Olá ${row.student_name.split(" ")[0]}, your lesson has been cancelled and removed from your calendar.`,
-          callout: sameDayNotice,
+          callout: wasRefunded ? refundNote : sameDayNotice,
           footer: "You're welcome back any time — booking is always open on the website."
         }
   }[event];
@@ -297,11 +321,13 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
       intro: byTeacher
         ? `You cancelled ${row.student_name}'s lesson on ${formatInZone(start, PORTO)}. They have been told, and it is off your calendar.`
         : `${row.student_name} cancelled their lesson on ${formatInZone(start, PORTO)}. It has been removed from your calendar.`,
-      callout: row.same_day_change
-        ? `This was cancelled on the day of the lesson, so the €${(settings.sameDayChangeFeeCents / 100).toFixed(
-            0
-          )} fee applies.`
-        : ""
+      callout: wasRefunded
+        ? `€${((row.amount_cents ?? lessonType.price_cents) / 100).toFixed(0)} was refunded automatically — nothing to sort out.`
+        : row.same_day_change
+          ? `This was cancelled on the day of the lesson, so the €${(settings.sameDayChangeFeeCents / 100).toFixed(
+              0
+            )} fee applies.`
+          : ""
     }
   }[event];
 
@@ -416,13 +442,25 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
     { label: "Dates", value: dateLines }
   ];
 
-  // Price on the student's copy only, per lesson — the run is paid lesson by
-  // lesson, on the day, and Inês doesn't need her own prices repeated to her.
+  // Price on the student's copy only, per lesson — Inês doesn't need her own
+  // prices repeated to her. A prepaid run says so; an older run keeps the
+  // pay-on-the-day terms it was booked under.
+  const seriesPaid = first.payment_status === "paid";
   const studentSeriesRows = [
     ...rowsForBoth.slice(0, 2),
-    { label: "Price", value: `€${(lessonType.price_cents / 100).toFixed(0)} a lesson · pay on the day, in person` },
+    {
+      label: "Price",
+      value: seriesPaid
+        ? `€${(lessonType.price_cents / 100).toFixed(0)} a lesson · paid (€${(
+            seriesTotalCents(rows.length, lessonType.price_cents) / 100
+          ).toFixed(0)} for the run)`
+        : `€${(lessonType.price_cents / 100).toFixed(0)} a lesson · pay on the day, in person`
+    },
     ...rowsForBoth.slice(2)
   ];
+  const seriesFooter = seriesPaid
+    ? "Move or cancel any single lesson free until the day before it — a cancellation is refunded automatically. On a lesson's own day it's yours — no changes and no refunds."
+    : `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free. Not turning up is €10.`;
 
   const sends = [
     deliver(env, {
@@ -451,7 +489,7 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
         preheader: `${lessonType.name} · ${cadence}`,
         rows: studentSeriesRows,
         action: { label: "See all your lessons", url: siteUrl(env, "/my-lessons/") },
-        footer: `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free. Not turning up is €10.`
+        footer: seriesFooter
       }
     })
   ];
@@ -684,7 +722,18 @@ const worker = {
        */
       if (request.method === "GET" && path === "/health") return await handleHealth(request, env);
       if (request.method === "GET" && path === "/lesson-types") {
-        return json({ lessonTypes: await listLessonTypes(env) }, 200, request, env);
+        // The page adapts to payment mode before anyone books — prepay shows
+        // "confirm and pay", hides the open-ended repeat, and says the policy.
+        const settings = await loadSettings(env);
+        return json(
+          {
+            lessonTypes: await listLessonTypes(env),
+            prepay: settings.paymentMode === "prepay" && stripeConfigured(env)
+          },
+          200,
+          request,
+          env
+        );
       }
       if (request.method === "GET" && path === "/availability") return await handleAvailability(request, env, url);
 
@@ -999,11 +1048,17 @@ async function handleCreate(request, env, ctx) {
   const settings = await loadSettings(env);
   const prepay = settings.paymentMode === "prepay" && stripeConfigured(env);
 
-  // Taking one payment for twelve lessons, or twelve payments in one checkout,
-  // is a decision about her money that has not been made. Refusing is honest;
-  // quietly booking a series and charging for one lesson would not be.
-  if (wantsRepeat && prepay) {
-    return fail("Repeating bookings aren't available while payment is taken up front.", 400, request, env);
+  // A fixed run is one checkout — priced per lesson, quantity by the count
+  // actually bookable. Open-ended can't be priced at a single checkout, and
+  // charging a card later without the student present is a different contract;
+  // refusing it is honest, and the page offers fixed blocks instead.
+  if (wantsRepeat && prepay && repeatWeeks === null) {
+    return fail(
+      "An open-ended weekly slot isn't available with upfront payment — book a fixed run of weeks instead.",
+      400,
+      request,
+      env
+    );
   }
 
   const id = crypto.randomUUID();
@@ -1062,7 +1117,8 @@ async function handleCreate(request, env, ctx) {
   // Prepay: the slot is held, not booked, and nothing is emailed until Stripe
   // says the money arrived. Confirming first and reconciling later is how you
   // end up telling a student they have a lesson they never paid for.
-  if (prepay) {
+  // A repeat under prepay is handled below — the whole run goes in one checkout.
+  if (prepay && !wantsRepeat) {
     try {
       const session = await createCheckoutSession(env, {
         booking: row,
@@ -1122,12 +1178,57 @@ async function handleCreate(request, env, ctx) {
             lessonType,
             fromKey: addDaysToKey(slot.dateKey, 7),
             count: remaining,
-            now
+            now,
+            // Under prepay the whole run is held, not booked, until Stripe
+            // confirms the one payment that covers it.
+            pending: prepay,
+            holdExpiresAt: prepay ? holdExpiresAt : null
           })
         : { rows: [], skipped: [] };
 
     const first = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
     const allRows = [first, ...filled.rows];
+
+    const seriesPayload = {
+      id: seriesId,
+      weeks: repeatWeeks,
+      openEnded: repeatWeeks === null,
+      booked: allRows.map((occurrence) => occurrence.starts_at),
+      skipped: filled.skipped.map((occurrence) => occurrence.startAt)
+    };
+
+    if (prepay) {
+      try {
+        const session = await createSeriesCheckoutSession(env, {
+          seriesId,
+          firstBooking: first,
+          lessonType,
+          count: allRows.length,
+          customerEmail: student.email,
+          successUrl: siteUrl(env, "/my-lessons/?paid=1"),
+          cancelUrl: siteUrl(env, "/book/?cancelled=1"),
+          skippedStartAts: filled.skipped.map((occurrence) => occurrence.startAt)
+        });
+
+        await env.DB.prepare("UPDATE bookings SET stripe_session_id = ? WHERE series_id = ? OR id = ?")
+          .bind(session.id, seriesId, id)
+          .run();
+
+        // Emails wait for the webhook; the run isn't real until it's paid.
+        return json(
+          { booking: publicBooking(first, lessonType, settings), manageUrl, manageToken: token, series: seriesPayload, checkoutUrl: session.url },
+          201,
+          request,
+          env
+        );
+      } catch (error) {
+        // Never leave a run of dead holds behind when checkout couldn't start.
+        await env.DB.prepare("DELETE FROM bookings WHERE series_id = ? OR id = ?").bind(seriesId, id).run();
+        await env.DB.prepare("DELETE FROM booking_series WHERE id = ?").bind(seriesId).run();
+        console.error("stripe-series-checkout", String(error?.message ?? error));
+        return fail("We couldn't start the payment. Please try again in a moment.", 502, request, env);
+      }
+    }
 
     const manageUrls = {};
     for (const occurrence of allRows) {
@@ -1144,13 +1245,7 @@ async function handleCreate(request, env, ctx) {
         booking: publicBooking(first, lessonType, settings),
         manageUrl,
         manageToken: token,
-        series: {
-          id: seriesId,
-          weeks: repeatWeeks,
-          openEnded: repeatWeeks === null,
-          booked: allRows.map((occurrence) => occurrence.starts_at),
-          skipped: filled.skipped.map((occurrence) => occurrence.startAt)
-        }
+        series: seriesPayload
       },
       201,
       request,
@@ -1174,7 +1269,7 @@ async function handleCreate(request, env, ctx) {
  * treats it as an ordinary lesson, which is what makes moving or cancelling a
  * single week work without any special case.
  */
-async function insertOccurrence(env, { seriesId, student, lessonType, timezone, location, notes, startAt, endAt, now }) {
+async function insertOccurrence(env, { seriesId, student, lessonType, timezone, location, notes, startAt, endAt, now, pending = false, holdExpiresAt = null }) {
   const id = crypto.randomUUID();
   const timestamp = now.toISOString();
   const startsAt = new Date(startAt).toISOString();
@@ -1199,13 +1294,13 @@ async function insertOccurrence(env, { seriesId, student, lessonType, timezone, 
       notes,
       startsAt,
       endsAt,
-      "confirmed",
+      pending ? "pending_payment" : "confirmed",
       0,
       timestamp,
       timestamp,
-      "not_required",
-      null,
-      null,
+      pending ? "pending" : "not_required",
+      pending ? lessonType.price_cents : null,
+      pending ? holdExpiresAt : null,
       seriesId
     ],
     startAt: startsAt,
@@ -1226,7 +1321,7 @@ async function insertOccurrence(env, { seriesId, student, lessonType, timezone, 
  * a skipped week is never reconsidered on the next top-up and the run cannot
  * stall on it forever.
  */
-async function fillSeries(env, { series, student, lessonType, fromKey, count, now }) {
+async function fillSeries(env, { series, student, lessonType, fromKey, count, now, pending = false, holdExpiresAt = null }) {
   const { bookable, skipped } = await planOccurrences(env, {
     fromKey,
     minuteOfDay: series.minute_of_day,
@@ -1247,7 +1342,9 @@ async function fillSeries(env, { series, student, lessonType, fromKey, count, no
       notes: series.notes,
       startAt: occurrence.startAt,
       endAt: occurrence.endAt,
-      now
+      now,
+      pending,
+      holdExpiresAt
     });
 
     if (row) rows.push(row);
@@ -1389,11 +1486,17 @@ async function handleGetBooking(request, env, token) {
   const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(row.lesson_type_id).first();
   const settings = await loadSettings(env);
 
+  const policy = changePolicy(row);
+
   return json(
     {
       booking: publicBooking(row, lessonType, settings),
       isPast: new Date(row.starts_at) <= new Date(),
-      sameDayFeeApplies: dateKey(new Date(), PORTO) === dateKey(new Date(row.starts_at), PORTO)
+      // Fee terms only apply to bookings from before prepay; a paid lesson is
+      // simply locked on its day instead.
+      sameDayFeeApplies: !policy.paid && policy.sameDay,
+      changeLocked: policy.locked,
+      refundOnCancel: policy.refundOnCancel
     },
     200,
     request,
@@ -1408,6 +1511,16 @@ async function handleReschedule(request, env, ctx, token) {
 
   const now = new Date();
   if (new Date(row.starts_at) <= now) return fail("That lesson has already started. Please email Inês.", 409, request, env);
+
+  // A paid lesson is locked on its own Porto day: it happens or it's forfeit.
+  if (changePolicy(row, now).locked) {
+    return fail(
+      "This lesson is today and already paid, so it can't be moved. If something has happened, reply to your confirmation email and Inês will help.",
+      409,
+      request,
+      env
+    );
+  }
 
   const body = await readJson(request);
   const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(row.lesson_type_id).first();
@@ -1478,13 +1591,45 @@ async function handleCancel(request, env, ctx, token) {
   if (row.status === "cancelled") return fail("That lesson is already cancelled.", 409, request, env);
 
   const now = new Date();
-  const sameDay = dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO) ? 1 : 0;
+  const policy = changePolicy(row, now);
+
+  if (policy.locked) {
+    return fail(
+      "This lesson is today and already paid, so it can't be cancelled. If something has happened, reply to your confirmation email and Inês will help.",
+      409,
+      request,
+      env
+    );
+  }
+
+  /*
+   * Refund before cancelling, never after: a cancelled row with money still
+   * held is a promise broken quietly, while a refunded row that failed to
+   * cancel is retried by the student and Stripe answers "already refunded" —
+   * which is treated as success below, so the retry completes the cancel.
+   */
+  const refunded = policy.refundOnCancel ? 1 : 0;
+  if (policy.refundOnCancel) {
+    try {
+      await refundPayment(env, row.stripe_payment_intent, row.amount_cents ?? undefined);
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      if (!/already been refunded|charge_already_refunded/i.test(message)) {
+        console.error("stripe-refund", row.reference, message);
+        return fail("We couldn't process the refund just now, so nothing was cancelled. Please try again in a moment.", 502, request, env);
+      }
+    }
+  }
+
+  const sameDay = policy.paid ? 0 : dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO) ? 1 : 0;
 
   await env.DB.prepare(
     `UPDATE bookings SET status = 'cancelled', cancelled_at = ?, cancelled_by = 'student',
-       sequence = sequence + 1, same_day_change = ?, updated_at = ? WHERE id = ?`
+       sequence = sequence + 1, same_day_change = ?, updated_at = ?,
+       payment_status = CASE WHEN ? = 1 THEN 'refunded' ELSE payment_status END
+     WHERE id = ?`
   )
-    .bind(now.toISOString(), sameDay, now.toISOString(), row.id)
+    .bind(now.toISOString(), sameDay, now.toISOString(), refunded, row.id)
     .run();
 
   const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
@@ -1537,6 +1682,11 @@ async function handleStripeWebhook(request, env, ctx) {
   const bookingId = session.client_reference_id;
   if (!bookingId) return new Response("No booking reference.", { status: 200 });
 
+  // One payment for a whole run: every held occurrence confirms together.
+  if (session.metadata?.series_id) {
+    return await confirmPaidSeries(env, ctx, session);
+  }
+
   const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(bookingId).first();
   if (!row) return new Response("Unknown booking.", { status: 200 });
   if (row.status === "confirmed") return new Response("Already confirmed.", { status: 200 });
@@ -1569,6 +1719,58 @@ async function handleStripeWebhook(request, env, ctx) {
 }
 
 /**
+ * Confirms every occurrence of a prepaid run once its one payment lands.
+ *
+ * Idempotent the same way the single path is: rows already confirmed are left
+ * alone, and a repeat delivery finds nothing pending and stops. The skipped
+ * weeks note rides in on checkout metadata, because by webhook time the
+ * planning that produced it is long gone.
+ */
+async function confirmPaidSeries(env, ctx, session) {
+  const seriesId = session.metadata.series_id;
+  const series = await env.DB.prepare("SELECT * FROM booking_series WHERE id = ?").bind(seriesId).first();
+  if (!series) return new Response("Unknown series.", { status: 200 });
+
+  const now = new Date().toISOString();
+  const updated = await env.DB.prepare(
+    `UPDATE bookings SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?,
+       hold_expires_at = NULL, updated_at = ?
+     WHERE series_id = ? AND status = 'pending_payment'`
+  )
+    .bind(session.payment_intent ?? null, now, seriesId)
+    .run();
+
+  if ((updated?.meta?.changes ?? 0) === 0) return new Response("Already confirmed.", { status: 200 });
+
+  const { results: rows } = await env.DB.prepare(
+    "SELECT * FROM bookings WHERE series_id = ? AND status = 'confirmed' ORDER BY starts_at"
+  )
+    .bind(seriesId)
+    .all();
+  const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+    .bind(series.lesson_type_id)
+    .first();
+  const settings = await loadSettings(env);
+
+  let skipped = [];
+  try {
+    skipped = JSON.parse(session.metadata.skipped ?? "[]").map((startAt) => ({ startAt }));
+  } catch {
+    skipped = [];
+  }
+
+  const manageUrls = {};
+  for (const occurrence of rows) {
+    const occurrenceToken = await createManageToken(occurrence.id, env.BOOKING_TOKEN_SECRET);
+    manageUrls[occurrence.id] = siteUrl(env, `/booking/?token=${encodeURIComponent(occurrenceToken)}`);
+  }
+
+  ctx.waitUntil(notifySeries(env, { rows, lessonType, settings, series, manageUrls, skipped }));
+
+  return new Response("ok", { status: 200 });
+}
+
+/**
  * Releases slots whose checkout was abandoned.
  *
  * Called opportunistically rather than on a schedule: availability already
@@ -1581,6 +1783,16 @@ async function releaseExpiredHolds(env) {
   )
     .bind(new Date().toISOString())
     .run();
+
+  // A prepaid run whose checkout was abandoned leaves a series row with no
+  // bookings once the holds above are swept; without this it lingers forever.
+  await env.DB.prepare(
+    `DELETE FROM booking_series WHERE id IN (
+       SELECT s.id FROM booking_series s
+       LEFT JOIN bookings b ON b.series_id = s.id
+       WHERE b.id IS NULL
+     )`
+  ).run();
 }
 
 // --- Accounts ---------------------------------------------------------------
@@ -1840,7 +2052,9 @@ async function handleMe(request, env) {
         priceCents: row.price_cents
       },
       isPast: new Date(row.starts_at) <= now,
-      sameDayFeeApplies: dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO),
+      sameDayFeeApplies: row.payment_status !== "paid" && dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO),
+      changeLocked: changePolicy(row, now).locked,
+      paymentStatus: row.payment_status,
       seriesId: row.series_id ?? null,
       manageToken: await createManageToken(row.id, env.BOOKING_TOKEN_SECRET)
     }))
@@ -2285,12 +2499,30 @@ async function handleAdmin(request, env, ctx, url, path) {
     if (!row) return fail("That booking could not be found.", 404, request, env);
     if (row.status === "cancelled") return fail("That lesson is already cancelled.", 409, request, env);
 
+    // Her cancellation always refunds a paid lesson — same-day included. A
+    // student loses the change window on the lesson day; she never does, and
+    // the money follows automatically so there is nothing to remember.
+    const refunded = row.payment_status === "paid" && row.stripe_payment_intent ? 1 : 0;
+    if (refunded) {
+      try {
+        await refundPayment(env, row.stripe_payment_intent, row.amount_cents ?? undefined);
+      } catch (error) {
+        const message = String(error?.message ?? error);
+        if (!/already been refunded|charge_already_refunded/i.test(message)) {
+          console.error("stripe-refund-admin", row.reference, message);
+          return fail("The refund could not be processed, so the lesson was not cancelled. Try again in a moment.", 502, request, env);
+        }
+      }
+    }
+
     const now = new Date().toISOString();
     await env.DB.prepare(
       `UPDATE bookings SET status = 'cancelled', cancelled_at = ?, cancelled_by = 'teacher',
-         sequence = sequence + 1, same_day_change = 0, updated_at = ? WHERE id = ?`
+         sequence = sequence + 1, same_day_change = 0, updated_at = ?,
+         payment_status = CASE WHEN ? = 1 THEN 'refunded' ELSE payment_status END
+       WHERE id = ?`
     )
-      .bind(now, now, row.id)
+      .bind(now, now, refunded, row.id)
       .run();
 
     const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();

@@ -81,8 +81,59 @@ export function createCheckoutSession(env, { booking, lessonType, successUrl, ca
   });
 }
 
-export function refundPayment(env, paymentIntent) {
-  return stripeRequest(env, "/refunds", { payment_intent: paymentIntent });
+/**
+ * Refund a payment, wholly or partly.
+ *
+ * `amountCents` matters for series: one payment intent covers the whole run,
+ * so cancelling a single lesson refunds that lesson's amount against the
+ * shared intent. Omitting it refunds whatever remains refundable.
+ */
+export function refundPayment(env, paymentIntent, amountCents) {
+  return stripeRequest(env, "/refunds", {
+    payment_intent: paymentIntent,
+    ...(amountCents ? { amount: amountCents } : {})
+  });
+}
+
+/**
+ * One Checkout Session for a whole fixed run of lessons.
+ *
+ * Priced per lesson with a quantity, so her student's receipt reads
+ * "Single lesson × 4" rather than an unexplained total. The webhook finds the
+ * run again via metadata.series_id and confirms every held occurrence at once.
+ */
+export function createSeriesCheckoutSession(env, { seriesId, firstBooking, lessonType, count, successUrl, cancelUrl, customerEmail, skippedStartAts = [] }) {
+  // The webhook rebuilds the confirmation email, and the "these weeks were not
+  // free" note only survives to it through here. Metadata values cap at 500
+  // characters; a run that somehow skips more weeks than fits just drops the note.
+  const skipped = JSON.stringify(skippedStartAts);
+  return stripeRequest(env, "/checkout/sessions", {
+    mode: "payment",
+    client_reference_id: firstBooking.id,
+    customer_email: customerEmail,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+    line_items: {
+      0: {
+        quantity: count,
+        price_data: {
+          currency: "eur",
+          unit_amount: lessonType.price_cents,
+          product_data: {
+            name: lessonType.name,
+            description: `Weekly Portuguese lessons with Inês · ${lessonType.duration_minutes} minutes each`
+          }
+        }
+      }
+    },
+    metadata: {
+      series_id: seriesId,
+      booking_reference: firstBooking.reference,
+      lesson_type: lessonType.id,
+      ...(skippedStartAts.length && skipped.length <= 480 ? { skipped } : {})
+    }
+  });
 }
 
 /**

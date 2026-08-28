@@ -143,9 +143,13 @@ until they stop it.
   repeating almost always still means to attend the ones in their calendar;
   cancelling those silently would be the worse of the two mistakes. Passing
   `cancelRemaining` cancels them too.
-- **Repeats are refused while prepayment is on.** Whether twelve lessons are one
-  charge or twelve is a decision about her money that has not been made, and
-  booking a series while charging for one lesson would be worse than declining.
+- **A fixed run under prepayment is one checkout.** Priced per lesson with a
+  quantity, held as `pending_payment` until the single payment lands, and every
+  occurrence confirms together on the webhook. Only the open-ended repeat is
+  refused while prepayment is on — it cannot be priced at one checkout, and
+  charging a card later without the student present is a different contract.
+  The page offers fixed blocks instead. Cancelling one lesson of a paid run
+  refunds that lesson's amount against the run's shared payment.
 
 ### Changing your name or email
 
@@ -229,7 +233,10 @@ Email is best-effort, but "best effort" used to mean "one attempt, and silence".
 
 ### The no-show policy
 
-Not coming, without saying anything, is €10.
+For a prepaid lesson: not coming forfeits it — the lesson was paid for and the
+slot was held, so there is nothing to charge and nothing to do. For a booking
+made before prepayment (`payment_status = 'not_required'`), not coming is €10,
+the terms it was booked under.
 
 - **Nothing in the system charges it.** `payment_mode` is off and payment is
   made on the day, in person with Inês, so this is stated policy she applies or
@@ -285,25 +292,53 @@ configured:
   student ends up with a lesson they never paid for;
 - the webhook signature is verified before the payload is trusted for anything,
   and events are recorded so each is handled exactly once;
-- an abandoned checkout releases its slot when the hold expires.
+- an abandoned checkout releases its slot when the hold expires, and a series
+  whose checkout was abandoned loses its orphaned `booking_series` row in the
+  same sweep.
+
+**The prepaid change policy** (Dan, 28 August 2026, `policy.mjs` is the single
+home): money locks the lesson's own Porto day. Until that day a paid lesson
+moves freely and a cancellation is refunded in full, automatically — the refund
+is issued *before* the row is cancelled, and Stripe's "already refunded" answer
+is treated as success so a retried cancel completes rather than double-paying.
+On the day itself a student can neither move nor cancel: the lesson happens or
+it is forfeit. No same-day fee, no no-show fee, nothing to collect. Inês is
+never locked — her cancellation refunds the student in full at any hour, and
+the emails tell both sides what the money did. Bookings from before the switch
+carry `payment_status = 'not_required'` and keep the fee terms they were booked
+under until they wash through.
 
 Stripe is used because Square does not serve Portugal, and because Stripe carries
 MB WAY and Multibanco natively — between them the majority of Portuguese online
 payments. `sk_test_` keys work identically, which is how this is exercised
 before Inês has her own account.
 
+**Go-live checklist**, once her Stripe account exists (hers, with Dan as
+Administrator): put `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in as Worker
+secrets (test keys first); register the webhook for `checkout.session.completed`
+at `/stripe/webhook`; run one full test-mode journey — book, pay with a test
+card, watch the webhook confirm, cancel ahead of the day, watch the refund;
+set the `payment_mode` settings row to `prepay`; then, in the same breath, ship
+the static-copy commit (FAQ, policy band, lessons note) that states the prepaid
+terms — the page's dynamic copy follows the API on its own, the static prose
+does not. Swap to live keys and repeat the journey with a real card for one
+euro-level lesson before telling anyone.
+
 ### Same-day changes
 
-Students may move or cancel right up to the lesson start. A change made on the
-lesson's own Porto date sets `same_day_change`, which:
+Two regimes, keyed on the booking's own payment status so promises made at
+booking time are kept:
 
-- warns the student on `/booking/` *before* they act,
-- marks the confirmation they receive,
-- sends Inês a mail subjected **"Same-day change"** so she knows to collect the
-  €5 fee at the lesson.
-
-The fee is collected by her in person, not enforced by software. That is
-deliberate: there is no payment rail yet to charge against.
+- **Paid**: there are no same-day changes. `changePolicy` locks the lesson's
+  Porto day — the manage page and /my-lessons say so instead of offering the
+  buttons, and the endpoints refuse with the same words for anyone who kept an
+  old tab open. `same_day_change` is never set on a paid row.
+- **Booked before prepayment**: students may move or cancel right up to the
+  lesson start. A change on the lesson's own Porto date sets `same_day_change`,
+  which warns the student on `/booking/` before they act, marks their
+  confirmation, and sends Inês a mail subjected **"Same-day change"** so she
+  knows to collect the €5 fee at the lesson — by her in person, not enforced by
+  software, because those bookings have no payment to charge against.
 
 ## Deploying the Worker
 

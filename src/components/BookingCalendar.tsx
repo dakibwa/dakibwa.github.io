@@ -107,6 +107,9 @@ export function BookingCalendar() {
    * as it arrives, so the live table still decides names and prices.
    */
   const [lessonTypes, setLessonTypes] = useState<LessonType[]>(staticLessonTypes);
+  // Payment at booking: set from the API, so the page tells the truth in
+  // either mode without a rebuild when the switch is flipped.
+  const [prepay, setPrepay] = useState(false);
   const [lessonTypeId, setLessonTypeId] = useState("");
   const [todayKey, setTodayKey] = useState("");
   const [horizonDays, setHorizonDays] = useState(30);
@@ -133,7 +136,10 @@ export function BookingCalendar() {
     setStudentZone(browserTimeZone());
 
     listLessonTypes()
-      .then(({ lessonTypes: types }) => setLessonTypes(types))
+      .then(({ lessonTypes: types, prepay: prepayOn }) => {
+        setLessonTypes(types);
+        setPrepay(Boolean(prepayOn));
+      })
       .catch((error: Error) => setLoadError(error.message));
 
     const session = readSession();
@@ -634,7 +640,9 @@ export function BookingCalendar() {
                   <fieldset className="booking-repeat-choice">
                     <legend>How often</legend>
                     <div className="chip-choice">
-                      {REPEAT_OPTIONS.map((option) => (
+                      {/* An open-ended run can't be priced at one checkout, so
+                          it isn't offered while payment is taken up front. */}
+                      {REPEAT_OPTIONS.filter((option) => !(prepay && option.value === "open")).map((option) => (
                         <label
                           className={form.repeat === option.value ? "is-active" : ""}
                           key={String(option.value)}
@@ -725,18 +733,30 @@ export function BookingCalendar() {
                     {submitting
                       ? "Booking…"
                       : form.repeat === "once"
-                        ? "Confirm this lesson"
+                        ? prepay && lessonType
+                          ? `Confirm and pay ${formatMoneyCents(lessonType.price_cents)}`
+                          : "Confirm this lesson"
                         : seriesPreview
-                          ? `Confirm ${seriesPreview.bookable.length === 1 ? "this lesson" : `these ${seriesPreview.bookable.length} lessons`}`
+                          ? prepay && lessonType
+                            ? `Confirm and pay ${formatMoneyCents(seriesPreview.bookable.length * lessonType.price_cents)}`
+                            : `Confirm ${seriesPreview.bookable.length === 1 ? "this lesson" : `these ${seriesPreview.bookable.length} lessons`}`
                           : "Confirm these lessons"}
                   </button>
 
-                  <p className="booking-form-note">
-                    You pay on the day, in person with Inês. Change your booking any time from your{" "}
-                    <a href="/my-lessons/">lessons page</a>; changing on the same day is{" "}
-                    <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong>, not turning up is{" "}
-                    <strong>&euro;10</strong>.
-                  </p>
+                  {prepay ? (
+                    <p className="booking-form-note">
+                      You&rsquo;ll pay now, securely with Stripe. Move or cancel free until the day before from your{" "}
+                      <a href="/my-lessons/">lessons page</a> — a cancellation is refunded automatically. On the day of
+                      the lesson it&rsquo;s yours: <strong>no changes and no refunds</strong>.
+                    </p>
+                  ) : (
+                    <p className="booking-form-note">
+                      You pay on the day, in person with Inês. Change your booking any time from your{" "}
+                      <a href="/my-lessons/">lessons page</a>; changing on the same day is{" "}
+                      <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong>, not turning up is{" "}
+                      <strong>&euro;10</strong>.
+                    </p>
+                  )}
                 </form>
               )}
             </div>

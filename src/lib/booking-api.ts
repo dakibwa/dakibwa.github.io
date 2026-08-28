@@ -32,12 +32,25 @@ export type Booking = {
   notes: string;
   rescheduleCount: number;
   sameDayFeeCents: number;
+  /** 'paid' and 'refunded' exist only once prepayment is on; older bookings say 'not_required'. */
+  paymentStatus?: "not_required" | "pending" | "paid" | "refunded";
+  amountCents?: number | null;
 };
 
 export type ManagedBooking = {
   booking: Booking;
   isPast: boolean;
   sameDayFeeApplies: boolean;
+  /** A paid lesson on its own Porto day: no moves, no cancellation, no refund. */
+  changeLocked?: boolean;
+  /** Cancelling now returns the money automatically. */
+  refundOnCancel?: boolean;
+};
+
+export type LessonTypesResponse = {
+  lessonTypes: LessonType[];
+  /** True when students pay at booking — the page adapts its copy and options. */
+  prepay?: boolean;
 };
 
 export class BookingApiError extends Error {
@@ -78,7 +91,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 declare global {
   interface Window {
     /** Set by the inline script on /book, before React exists. */
-    __inesLessonTypes?: Promise<{ lessonTypes: LessonType[] } | null> | null;
+    __inesLessonTypes?: Promise<LessonTypesResponse | null> | null;
   }
 }
 
@@ -89,11 +102,11 @@ export function listLessonTypes() {
     const primed = window.__inesLessonTypes;
     window.__inesLessonTypes = null;
     return primed.then(
-      (data) => data ?? request<{ lessonTypes: LessonType[] }>("/lesson-types")
+      (data) => data ?? request<LessonTypesResponse>("/lesson-types")
     );
   }
 
-  return request<{ lessonTypes: LessonType[] }>("/lesson-types");
+  return request<LessonTypesResponse>("/lesson-types");
 }
 
 export function fetchAvailability(lessonType: string, from: string, to: string, signal?: AbortSignal) {

@@ -14,6 +14,7 @@ import { hashPassword, verifyPassword, passwordProblem } from "./auth.mjs";
 import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./ics.mjs";
 import { normaliseWeeks, occurrenceInstants, outstandingFor, slotOf, SERIES_LENGTHS } from "./series.mjs";
 import { createManageToken, readManageToken, safeEqual, bookingReference } from "./tokens.mjs";
+import { changePolicy, seriesTotalCents } from "./policy.mjs";
 import {
   addDaysToKey,
   dateKey,
@@ -625,6 +626,59 @@ await test("a single invitation is unchanged by the series refactor", () => {
   assert.ok(ics.includes("SEQUENCE:2"));
   assert.ok(ics.includes("BEGIN:VALARM"));
   assert.ok(ics.startsWith("BEGIN:VCALENDAR"));
+});
+
+// --- Prepaid change policy --------------------------------------------------
+//
+// The one-rule policy: money locks the lesson's own Porto day. These pin the
+// matrix down because every branch is customer-visible — a wrong `locked`
+// either strands a student or lets a paid slot leak, and a wrong
+// `refundOnCancel` is money.
+
+await test("a paid lesson on its own Porto day is locked, with no refund path", () => {
+  const row = { payment_status: "paid", starts_at: "2026-09-09T16:30:00.000Z" };
+  const policy = changePolicy(row, new Date("2026-09-09T08:00:00.000Z"));
+  assert.equal(policy.locked, true);
+  assert.equal(policy.refundOnCancel, false);
+});
+
+await test("a paid lesson cancelled ahead of its day refunds and is not locked", () => {
+  const row = { payment_status: "paid", starts_at: "2026-09-09T16:30:00.000Z" };
+  // Midday Porto time on the 8th — clearly the day before.
+  const policy = changePolicy(row, new Date("2026-09-08T11:00:00.000Z"));
+  assert.equal(policy.locked, false);
+  assert.equal(policy.refundOnCancel, true);
+});
+
+await test("the day boundary is Porto's, not UTC's", () => {
+  // 23:30 UTC on the 8th is already the 9th in Porto during summer (WEST).
+  const row = { payment_status: "paid", starts_at: "2026-09-09T16:30:00.000Z" };
+  const policy = changePolicy(row, new Date("2026-09-08T23:30:00.000Z"));
+  assert.equal(policy.sameDay, true);
+  assert.equal(policy.locked, true);
+});
+
+await test("an unpaid booking is never locked and never refunded", () => {
+  const row = { payment_status: "not_required", starts_at: "2026-09-09T16:30:00.000Z" };
+  const sameDay = changePolicy(row, new Date("2026-09-09T08:00:00.000Z"));
+  assert.equal(sameDay.locked, false);
+  assert.equal(sameDay.refundOnCancel, false);
+  const ahead = changePolicy(row, new Date("2026-09-01T08:00:00.000Z"));
+  assert.equal(ahead.locked, false);
+  assert.equal(ahead.refundOnCancel, false);
+});
+
+await test("a pending payment is not treated as paid", () => {
+  const row = { payment_status: "pending", starts_at: "2026-09-09T16:30:00.000Z" };
+  const policy = changePolicy(row, new Date("2026-09-09T08:00:00.000Z"));
+  assert.equal(policy.paid, false);
+  assert.equal(policy.locked, false);
+});
+
+await test("a run's checkout total is count times the lesson price", () => {
+  assert.equal(seriesTotalCents(4, 2500), 10000);
+  assert.equal(seriesTotalCents(1, 2000), 2000);
+  assert.throws(() => seriesTotalCents(0, 2500));
 });
 
 // --- Report -----------------------------------------------------------------
