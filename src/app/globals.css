@@ -3424,10 +3424,13 @@ button.text-action {
 .schedule-move,
 .schedule-cancel {
   display: block;
-  margin-top: 0.35rem;
   margin-left: auto;
   border: 0;
-  padding: 0;
+  /* Inês runs her day from a phone: these were 16px-tall text and the two
+     controls she uses most. Padded to a real thumb target, kept visually
+     word-sized by the transparent background. */
+  min-height: 44px;
+  padding: 0.7rem 0.5rem 0.7rem 1rem;
   background: transparent;
   color: var(--coral-action);
   cursor: pointer;
