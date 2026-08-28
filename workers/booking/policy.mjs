@@ -18,15 +18,21 @@ import { dateKey, PORTO } from "./time.mjs";
 
 export function changePolicy(row, now = new Date()) {
   const paid = row.payment_status === "paid";
+  // A weekly lesson on a saved card: not charged yet, but committed to charge
+  // on its own day. On that day it is as locked as a paid one — that charge
+  // going out regardless is the policy — while cancelling it ahead of its day
+  // simply means it is never charged, so there is nothing to refund.
+  const scheduled = row.payment_status === "scheduled" || row.payment_status === "payment_due";
   const sameDay = dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO);
 
   return {
     paid,
+    scheduled,
     sameDay,
-    // Students cannot move or cancel a paid lesson on its own Porto day.
+    // Students cannot move or cancel a committed lesson on its own Porto day.
     // Inês herself is never locked — teacher actions do not consult this.
-    locked: paid && sameDay,
-    // A paid lesson cancelled ahead of its day returns its money in full.
+    locked: (paid || scheduled) && sameDay,
+    // Only money actually taken comes back.
     refundOnCancel: paid && !sameDay
   };
 }

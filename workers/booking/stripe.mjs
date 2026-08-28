@@ -47,20 +47,92 @@ async function stripeRequest(env, path, body) {
   return payload;
 }
 
+async function stripeGet(env, path) {
+  const response = await fetch(`${API}${path}`, {
+    headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` }
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? `Stripe returned ${response.status}`);
+  }
+  return payload;
+}
+
+/** The payment intent behind a finished checkout — where the saved card lives. */
+export function retrievePaymentIntent(env, paymentIntentId) {
+  return stripeGet(env, `/payment_intents/${encodeURIComponent(paymentIntentId)}`);
+}
+
 /**
- * A Checkout Session for one lesson.
- *
- * `client_reference_id` carries the booking id back on the webhook. It is the
- * opaque id only — never a name, email or NIF — because Stripe's own guidance
- * warns that payment links turn up in unexpected places.
+ * Charge a saved card with nobody present — how a weekly lesson pays for
+ * itself on its own morning. `off_session` tells Stripe to use the exemption
+ * the student consented to at their first checkout; a decline throws, and the
+ * caller emails a pay-now link instead of pretending it can't happen.
  */
-export function createCheckoutSession(env, { booking, lessonType, successUrl, cancelUrl, customerEmail }) {
+export function chargeSavedCard(env, { customer, paymentMethod, amountCents, description, metadata }) {
+  return stripeRequest(env, "/payment_intents", {
+    amount: amountCents,
+    currency: "eur",
+    customer,
+    payment_method: paymentMethod,
+    off_session: "true",
+    confirm: "true",
+    description,
+    ...(metadata ? { metadata } : {})
+  });
+}
+
+/**
+ * Hosted vs embedded is env-driven (`STRIPE_UI_MODE=embedded`): embedded keeps
+ * the student on the site — Stripe's payment form mounts inside the booking
+ * page and the session answers with a client_secret instead of a redirect URL.
+ * The webhook flow is identical either way. `forceHosted` is for sessions that
+ * travel by email (a pay-now link after a declined charge), where only a URL
+ * makes sense.
+ */
+function uiModeFields(env, { successUrl, cancelUrl, forceHosted }) {
+  if (env.STRIPE_UI_MODE === "embedded" && !forceHosted) {
+    return { ui_mode: "embedded", return_url: successUrl };
+  }
+  return { success_url: successUrl, cancel_url: cancelUrl };
+}
+
+/**
+ * A Checkout Session for one lesson. `client_reference_id` carries the booking
+ * id back on the webhook — the opaque id only, never a name, email or NIF,
+ * because Stripe's own guidance warns that payment links turn up in unexpected
+ * places. With `saveCard`, the session also creates
+ * a Stripe Customer and keeps the card for later off-session charges — Stripe
+ * shows its own consent wording on the form — which is how the first lesson of
+ * a weekly run lets the rest charge themselves. `seriesId` rides in metadata so
+ * the webhook confirms the whole run off this one payment.
+ */
+export function createCheckoutSession(
+  env,
+  {
+    booking,
+    lessonType,
+    successUrl,
+    cancelUrl,
+    customerEmail,
+    saveCard = false,
+    seriesId = null,
+    forceHosted = false,
+    skippedStartAts = []
+  }
+) {
+  // The webhook rebuilds the run's confirmation email, and the "these weeks
+  // were not free" note only survives to it through here. Metadata values cap
+  // at 500 characters; a run that skips more than fits just drops the note.
+  const skipped = JSON.stringify(skippedStartAts);
   return stripeRequest(env, "/checkout/sessions", {
     mode: "payment",
     client_reference_id: booking.id,
     customer_email: customerEmail,
-    success_url: successUrl,
-    cancel_url: cancelUrl,
+    ...(saveCard
+      ? { customer_creation: "always", payment_intent_data: { setup_future_usage: "off_session" } }
+      : {}),
+    ...uiModeFields(env, { successUrl, cancelUrl, forceHosted }),
     // Stripe expires the session itself, which is the backstop for a student
     // who opens checkout and wanders off.
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
@@ -77,7 +149,12 @@ export function createCheckoutSession(env, { booking, lessonType, successUrl, ca
         }
       }
     },
-    metadata: { booking_reference: booking.reference, lesson_type: lessonType.id }
+    metadata: {
+      booking_reference: booking.reference,
+      lesson_type: lessonType.id,
+      ...(seriesId ? { series_id: seriesId } : {}),
+      ...(skippedStartAts.length && skipped.length <= 480 ? { skipped } : {})
+    }
   });
 }
 
@@ -92,47 +169,6 @@ export function refundPayment(env, paymentIntent, amountCents) {
   return stripeRequest(env, "/refunds", {
     payment_intent: paymentIntent,
     ...(amountCents ? { amount: amountCents } : {})
-  });
-}
-
-/**
- * One Checkout Session for a whole fixed run of lessons.
- *
- * Priced per lesson with a quantity, so her student's receipt reads
- * "Single lesson × 4" rather than an unexplained total. The webhook finds the
- * run again via metadata.series_id and confirms every held occurrence at once.
- */
-export function createSeriesCheckoutSession(env, { seriesId, firstBooking, lessonType, count, successUrl, cancelUrl, customerEmail, skippedStartAts = [] }) {
-  // The webhook rebuilds the confirmation email, and the "these weeks were not
-  // free" note only survives to it through here. Metadata values cap at 500
-  // characters; a run that somehow skips more weeks than fits just drops the note.
-  const skipped = JSON.stringify(skippedStartAts);
-  return stripeRequest(env, "/checkout/sessions", {
-    mode: "payment",
-    client_reference_id: firstBooking.id,
-    customer_email: customerEmail,
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-    line_items: {
-      0: {
-        quantity: count,
-        price_data: {
-          currency: "eur",
-          unit_amount: lessonType.price_cents,
-          product_data: {
-            name: lessonType.name,
-            description: `Weekly Portuguese lessons with Inês · ${lessonType.duration_minutes} minutes each`
-          }
-        }
-      }
-    },
-    metadata: {
-      series_id: seriesId,
-      booking_reference: firstBooking.reference,
-      lesson_type: lessonType.id,
-      ...(skippedStartAts.length && skipped.length <= 480 ? { skipped } : {})
-    }
   });
 }
 

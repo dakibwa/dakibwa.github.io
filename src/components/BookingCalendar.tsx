@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -46,7 +46,13 @@ import {
   type SeriesOutcome,
   type Slot
 } from "@/lib/booking-api";
-import { BOOKING_TIME_ZONE, CONTACT_WHATSAPP_URL, SAME_DAY_RESCHEDULE_FEE_CENTS, formatLessonDuration } from "@/lib/config";
+import {
+  BOOKING_TIME_ZONE,
+  CONTACT_WHATSAPP_URL,
+  SAME_DAY_RESCHEDULE_FEE_CENTS,
+  STRIPE_PUBLISHABLE_KEY,
+  formatLessonDuration
+} from "@/lib/config";
 import { staticLessonTypes } from "@/lib/lesson-products";
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -97,6 +103,41 @@ function groupSlots(slots: Slot[]) {
   return groups.filter((group) => group.slots.length);
 }
 
+/**
+ * Stripe's embedded checkout: their payment form, mounted inside this page, so
+ * paying never means leaving the site. The script is loaded only at the moment
+ * a payment actually starts — the booking page carries no Stripe weight for
+ * anyone browsing, and none at all until prepayment is switched on.
+ */
+declare global {
+  interface Window {
+    Stripe?: (publishableKey: string) => {
+      initEmbeddedCheckout: (options: { clientSecret: string }) => Promise<{
+        mount: (element: HTMLElement) => void;
+        destroy: () => void;
+      }>;
+    };
+  }
+}
+
+let stripeJs: Promise<void> | null = null;
+function loadStripeJs() {
+  if (typeof window !== "undefined" && window.Stripe) return Promise.resolve();
+  if (!stripeJs) {
+    stripeJs = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://js.stripe.com/v3/";
+      script.onload = () => resolve();
+      script.onerror = () => {
+        stripeJs = null;
+        reject(new Error("The payment form couldn't load. Please check your connection and try again."));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return stripeJs;
+}
+
 export function BookingCalendar() {
   const [step, setStep] = useState<Step>("lesson");
   /*
@@ -110,6 +151,41 @@ export function BookingCalendar() {
   // Payment at booking: set from the API, so the page tells the truth in
   // either mode without a rebuild when the switch is flipped.
   const [prepay, setPrepay] = useState(false);
+  const [payment, setPayment] = useState<{ clientSecret: string } | null>(null);
+  const [paymentError, setPaymentError] = useState("");
+  const paymentMountRef = useRef<HTMLDivElement>(null);
+
+  // Mount Stripe's embedded form when a payment starts; tear it down when the
+  // student backs out. Completion never reaches this effect — Stripe returns
+  // the student to the manage page (or their lessons) itself.
+  useEffect(() => {
+    if (!payment || !STRIPE_PUBLISHABLE_KEY) return;
+    let cancelled = false;
+    let mounted: { destroy: () => void } | null = null;
+
+    loadStripeJs()
+      .then(() => {
+        if (cancelled || !window.Stripe || !paymentMountRef.current) return;
+        return window.Stripe(STRIPE_PUBLISHABLE_KEY)
+          .initEmbeddedCheckout({ clientSecret: payment.clientSecret })
+          .then((checkout) => {
+            if (cancelled) {
+              checkout.destroy();
+              return;
+            }
+            mounted = checkout;
+            if (paymentMountRef.current) checkout.mount(paymentMountRef.current);
+          });
+      })
+      .catch((error: Error) => {
+        if (!cancelled) setPaymentError(error.message);
+      });
+
+    return () => {
+      cancelled = true;
+      mounted?.destroy();
+    };
+  }, [payment]);
   const [lessonTypeId, setLessonTypeId] = useState("");
   const [todayKey, setTodayKey] = useState("");
   const [horizonDays, setHorizonDays] = useState(30);
@@ -276,6 +352,16 @@ export function BookingCalendar() {
       });
 
       // With prepayment on, the slot is only held: Stripe finishes the booking.
+      // Embedded mode mounts the payment form right here; hosted redirects.
+      if (result.checkoutClientSecret) {
+        if (STRIPE_PUBLISHABLE_KEY) {
+          setPaymentError("");
+          setPayment({ clientSecret: result.checkoutClientSecret });
+          return;
+        }
+        setSubmitError("Payment isn't available just now. Please try again in a few minutes, or message Inês.");
+        return;
+      }
       if (result.checkoutUrl) {
         window.location.assign(result.checkoutUrl);
         return;
@@ -586,7 +672,25 @@ export function BookingCalendar() {
                 </div>
               </aside>
 
-              {checkingSession ? (
+              {payment ? (
+                <div className="booking-payment">
+                  <p className="booking-payment__summary">
+                    {lessonType?.name}
+                    {lessonType ? ` · ${formatMoneyCents(lessonType.price_cents)}` : ""}
+                    {form.repeat !== "once" ? " for your first lesson" : ""} — your time is held while you pay.
+                  </p>
+                  {paymentError ? (
+                    <div className="booking-alert" role="alert">
+                      <AlertCircle size={18} aria-hidden="true" />
+                      <p>{paymentError}</p>
+                    </div>
+                  ) : null}
+                  <div className="booking-payment__mount" ref={paymentMountRef} />
+                  <button className="text-action" onClick={() => setPayment(null)} type="button">
+                    Back — change something first
+                  </button>
+                </div>
+              ) : checkingSession ? (
                 <p className="booking-state-note">One moment…</p>
               ) : !student ? (
                 <AuthPanel
@@ -640,9 +744,7 @@ export function BookingCalendar() {
                   <fieldset className="booking-repeat-choice">
                     <legend>How often</legend>
                     <div className="chip-choice">
-                      {/* An open-ended run can't be priced at one checkout, so
-                          it isn't offered while payment is taken up front. */}
-                      {REPEAT_OPTIONS.filter((option) => !(prepay && option.value === "open")).map((option) => (
+                      {REPEAT_OPTIONS.map((option) => (
                         <label
                           className={form.repeat === option.value ? "is-active" : ""}
                           key={String(option.value)}
@@ -738,12 +840,19 @@ export function BookingCalendar() {
                           : "Confirm this lesson"
                         : seriesPreview
                           ? prepay && lessonType
-                            ? `Confirm and pay ${formatMoneyCents(seriesPreview.bookable.length * lessonType.price_cents)}`
+                            ? `Confirm and pay ${formatMoneyCents(lessonType.price_cents)} for your first lesson`
                             : `Confirm ${seriesPreview.bookable.length === 1 ? "this lesson" : `these ${seriesPreview.bookable.length} lessons`}`
                           : "Confirm these lessons"}
                   </button>
 
-                  {prepay ? (
+                  {prepay && form.repeat !== "once" ? (
+                    <p className="booking-form-note">
+                      You&rsquo;ll pay your first lesson now, securely with Stripe — each later lesson goes to the same
+                      card automatically on its own day. Move or cancel any lesson free until the day before from your{" "}
+                      <a href="/my-lessons/">lessons page</a>. On a lesson&rsquo;s own day it&rsquo;s yours:{" "}
+                      <strong>no changes and no refunds</strong>.
+                    </p>
+                  ) : prepay ? (
                     <p className="booking-form-note">
                       You&rsquo;ll pay now, securely with Stripe. Move or cancel free until the day before from your{" "}
                       <a href="/my-lessons/">lessons page</a> — a cancellation is refunded automatically. On the day of

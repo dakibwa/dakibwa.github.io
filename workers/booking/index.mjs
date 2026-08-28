@@ -10,14 +10,15 @@ import {
 import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./ics.mjs";
 import { deliver } from "./email.mjs";
 import {
+  chargeSavedCard,
   createCheckoutSession,
-  createSeriesCheckoutSession,
   isTestMode,
   refundPayment,
+  retrievePaymentIntent,
   stripeConfigured,
   verifyWebhook
 } from "./stripe.mjs";
-import { changePolicy, seriesTotalCents } from "./policy.mjs";
+import { changePolicy } from "./policy.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
 import {
   createResetToken,
@@ -193,9 +194,12 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   // A prepaid booking says "paid"; one from before prepay keeps the old terms.
   const isPaid = row.payment_status === "paid";
   const wasRefunded = row.payment_status === "refunded";
+  const isOnCard = row.payment_status === "scheduled" || row.payment_status === "payment_due";
   const priceValue = isPaid
     ? `€${(lessonType.price_cents / 100).toFixed(0)} · paid`
-    : `€${(lessonType.price_cents / 100).toFixed(0)} · pay on the day, in person`;
+    : isOnCard
+      ? `€${(lessonType.price_cents / 100).toFixed(0)} · goes to your saved card on the day`
+      : `€${(lessonType.price_cents / 100).toFixed(0)} · pay on the day, in person`;
   const studentRows =
     event === "cancelled"
       ? baseRows
@@ -266,8 +270,8 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           subject: `Your lesson has moved — ${shortWhen}`,
           heading: "Your lesson has moved",
           intro: `Olá ${row.student_name.split(" ")[0]}, that's done — your lesson is now at the time below and your calendar has been updated.`,
-          callout: isPaid ? "" : sameDayNotice,
-          footer: isPaid ? paidChangeFooter : "You can move or cancel it again from the same link."
+          callout: isPaid || isOnCard ? "" : sameDayNotice,
+          footer: isPaid || isOnCard ? paidChangeFooter : "You can move or cancel it again from the same link."
         },
     cancelled: byTeacher
       ? {
@@ -281,7 +285,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           subject: `Your lesson on ${shortWhen} is cancelled`,
           heading: "Your lesson is cancelled",
           intro: `Olá ${row.student_name.split(" ")[0]}, your lesson has been cancelled and removed from your calendar.`,
-          callout: wasRefunded ? refundNote : sameDayNotice,
+          callout: wasRefunded ? refundNote : isOnCard ? "Nothing was charged for this lesson." : sameDayNotice,
           footer: "You're welcome back any time — booking is always open on the website."
         }
   }[event];
@@ -443,23 +447,25 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
   ];
 
   // Price on the student's copy only, per lesson — Inês doesn't need her own
-  // prices repeated to her. A prepaid run says so; an older run keeps the
+  // prices repeated to her. A prepaid run's first lesson is paid and the rest
+  // charge the saved card on their own day; an older run keeps the
   // pay-on-the-day terms it was booked under.
-  const seriesPaid = first.payment_status === "paid";
+  const seriesOnCard = rows.some((row) => row.payment_status === "paid" || row.payment_status === "scheduled");
+  const seriesFirstPaid = rows.some((row) => row.payment_status === "paid");
   const studentSeriesRows = [
     ...rowsForBoth.slice(0, 2),
     {
       label: "Price",
-      value: seriesPaid
-        ? `€${(lessonType.price_cents / 100).toFixed(0)} a lesson · paid (€${(
-            seriesTotalCents(rows.length, lessonType.price_cents) / 100
-          ).toFixed(0)} for the run)`
+      value: seriesOnCard
+        ? `€${(lessonType.price_cents / 100).toFixed(0)} a lesson · ${
+            seriesFirstPaid ? "first lesson paid, the rest go" : "goes"
+          } to your saved card on the day of each lesson`
         : `€${(lessonType.price_cents / 100).toFixed(0)} a lesson · pay on the day, in person`
     },
     ...rowsForBoth.slice(2)
   ];
-  const seriesFooter = seriesPaid
-    ? "Move or cancel any single lesson free until the day before it — a cancellation is refunded automatically. On a lesson's own day it's yours — no changes and no refunds."
+  const seriesFooter = seriesOnCard
+    ? "Move or cancel any single lesson free until the day before it — a lesson not yet charged is never charged, and one already paid is refunded automatically. On a lesson's own day it's yours — no changes and no refunds."
     : `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free. Not turning up is €10.`;
 
   const sends = [
@@ -546,8 +552,14 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
  * so a 90-minute lesson at 17:00 and a 60-minute one at 17:30 collide while
  * starting at different times. A unique index on the start time would miss it.
  */
-async function claimSlot(env, { columns, values, startAt, endAt }) {
+async function claimSlot(env, { columns, values, startAt, endAt, studentId = null }) {
   const placeholders = columns.map(() => "?").join(", ");
+  /*
+   * A student's own pending hold doesn't block them: someone who starts paying,
+   * backs out to change a detail, and confirms again would otherwise be told
+   * their own slot "has just been taken" for the life of the abandoned hold.
+   * Only one checkout can complete — the other hold expires unpaid.
+   */
   const result = await env.DB.prepare(
     `INSERT INTO bookings (${columns.join(", ")})
      SELECT ${placeholders}
@@ -556,9 +568,10 @@ async function claimSlot(env, { columns, values, startAt, endAt }) {
        WHERE status IN ('confirmed', 'pending_payment')
          AND starts_at < ?
          AND ends_at > ?
+         AND NOT (status = 'pending_payment' AND student_id IS ?)
      )`
   )
-    .bind(...values, endAt, startAt)
+    .bind(...values, endAt, startAt, studentId)
     .run();
 
   return (result?.meta?.changes ?? 0) > 0;
@@ -788,9 +801,170 @@ const worker = {
    */
   async scheduled(event, env, ctx) {
     ctx.waitUntil(topUpOpenSeries(env));
+    ctx.waitUntil(chargeDueLessons(env));
     ctx.waitUntil(resendFailedEmails(env));
   }
 };
+
+/**
+ * The morning charge: every lesson happening today that booked itself onto a
+ * saved card gets charged now. This is the policy made mechanical — free to
+ * change until the day before, charged on the day regardless — and it runs at
+ * 03:10 Porto time, hours before the earliest lesson.
+ *
+ * A decline is a fact of card networks, not an exception: the lesson stays
+ * confirmed, the student gets a pay-now link, Inês gets a note, and the row
+ * is marked 'payment_due' so it is never charged twice.
+ */
+async function chargeDueLessons(env) {
+  if (!stripeConfigured(env)) return;
+
+  const todayKey = dateKey(new Date(), PORTO);
+  const { results } = await env.DB.prepare(
+    "SELECT * FROM bookings WHERE status = 'confirmed' AND payment_status = 'scheduled'"
+  ).all();
+
+  for (const row of results ?? []) {
+    if (dateKey(new Date(row.starts_at), PORTO) !== todayKey) continue;
+
+    try {
+      const student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(row.student_id).first();
+      const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+        .bind(row.lesson_type_id)
+        .first();
+      if (!student || !lessonType) continue;
+
+      if (student.stripe_customer_id && student.stripe_payment_method) {
+        try {
+          const intent = await chargeSavedCard(env, {
+            customer: student.stripe_customer_id,
+            paymentMethod: student.stripe_payment_method,
+            amountCents: row.amount_cents ?? lessonType.price_cents,
+            description: `${lessonType.name} · ${row.reference}`,
+            metadata: { booking_reference: row.reference }
+          });
+
+          await env.DB.prepare(
+            "UPDATE bookings SET payment_status = 'paid', stripe_payment_intent = ?, updated_at = ? WHERE id = ?"
+          )
+            .bind(intent.id ?? null, new Date().toISOString(), row.id)
+            .run();
+
+          await notifyLessonCharged(env, { row, lessonType });
+          continue;
+        } catch (error) {
+          console.error("auto-charge", row.reference, String(error?.message ?? error));
+        }
+      }
+
+      // No saved card, or the charge declined: same outcome either way — the
+      // lesson stands, and the money is asked for by link instead.
+      await env.DB.prepare("UPDATE bookings SET payment_status = 'payment_due', updated_at = ? WHERE id = ?")
+        .bind(new Date().toISOString(), row.id)
+        .run();
+      await notifyPaymentDue(env, { row, lessonType });
+    } catch (error) {
+      console.error("charge-due", row.reference, String(error?.message ?? error));
+    }
+  }
+}
+
+async function notifyLessonCharged(env, { row, lessonType }) {
+  const settings = await loadSettings(env);
+  const start = new Date(row.starts_at);
+  const amount = `€${((row.amount_cents ?? lessonType.price_cents) / 100).toFixed(0)}`;
+
+  await deliver(env, {
+    to: row.student_email,
+    subject: `Today's lesson is paid — ${formatShort(start, PORTO)}`,
+    kind: "student_lesson_charged",
+    bookingId: row.id,
+    dedupeKey: `charged:${row.id}`,
+    replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail || undefined,
+    content: {
+      heading: "Today's lesson is paid",
+      preheader: `${lessonType.name} · ${amount} to your saved card`,
+      intro: `Olá ${row.student_name.split(" ")[0]}, ${amount} for today's ${lessonType.name.toLowerCase()} went to your saved card, as booked. See you at ${formatInZone(start, PORTO).split(", ").pop()}, Porto time.`,
+      callout: "",
+      rows: [
+        { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
+        { label: "Reference", value: row.reference }
+      ],
+      action: null,
+      footer: "Sent automatically by the booking system on portuguesewithines.com."
+    }
+  });
+}
+
+async function notifyPaymentDue(env, { row, lessonType }) {
+  const settings = await loadSettings(env);
+  const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
+  const start = new Date(row.starts_at);
+  const amount = `€${((row.amount_cents ?? lessonType.price_cents) / 100).toFixed(0)}`;
+
+  let payUrl = "";
+  try {
+    const session = await createCheckoutSession(env, {
+      booking: row,
+      lessonType,
+      customerEmail: row.student_email,
+      forceHosted: true,
+      successUrl: siteUrl(env, "/my-lessons/?paid=1"),
+      cancelUrl: siteUrl(env, "/my-lessons/")
+    });
+    payUrl = session.url ?? "";
+    if (session.id) {
+      await env.DB.prepare("UPDATE bookings SET stripe_session_id = ? WHERE id = ?").bind(session.id, row.id).run();
+    }
+  } catch (error) {
+    console.error("payment-due-link", row.reference, String(error?.message ?? error));
+  }
+
+  await deliver(env, {
+    to: row.student_email,
+    subject: `Today's lesson — the card didn't go through`,
+    kind: "student_payment_due",
+    bookingId: row.id,
+    dedupeKey: `payment-due:${row.id}`,
+    replyTo: settings.replyToEmail || teacherEmail || undefined,
+    content: {
+      heading: "The card didn't go through",
+      preheader: `${lessonType.name} · ${amount} still to pay`,
+      intro: `Olá ${row.student_name.split(" ")[0]}, today's ${lessonType.name.toLowerCase()} couldn't be charged to your saved card — banks do this sometimes. The lesson still stands; please pay with the button below, or sort it out with Inês at the lesson.`,
+      callout: "",
+      rows: [
+        { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
+        { label: "Price", value: amount },
+        { label: "Reference", value: row.reference }
+      ],
+      action: payUrl ? { label: "Pay for this lesson", url: payUrl } : null,
+      footer: "Sent automatically by the booking system on portuguesewithines.com."
+    }
+  });
+
+  if (teacherEmail) {
+    await deliver(env, {
+      to: teacherEmail,
+      subject: `Card declined — ${row.student_name}, ${formatShort(start, PORTO)}`,
+      kind: "teacher_payment_due",
+      bookingId: row.id,
+      dedupeKey: `payment-due-teacher:${row.id}`,
+      replyTo: row.student_email,
+      content: {
+        heading: "A card didn't go through",
+        preheader: `${row.student_name} · ${lessonType.name} · ${amount}`,
+        intro: `${row.student_name}'s ${amount} for today's lesson couldn't be charged automatically. They've been sent a payment link — if it's still unpaid at the lesson, that's the one to mention.`,
+        callout: "",
+        rows: [
+          { label: "Student", value: `${row.student_name}\n${row.student_email}` },
+          { label: "Reference", value: row.reference }
+        ],
+        action: null,
+        footer: "Sent automatically by the booking system on portuguesewithines.com."
+      }
+    });
+  }
+}
 
 /**
  * Retry what the provider refused.
@@ -875,7 +1049,10 @@ async function topUpOpenSeries(env) {
         lessonType,
         fromKey: outstanding.fromKey,
         count: outstanding.count,
-        now
+        now,
+        // A prepaid run keeps its promise as it grows: each new occurrence
+        // charges the saved card on its own day. An older run stays as booked.
+        paymentState: series.prepaid ? "scheduled" : "none"
       });
 
       if (!filled.rows.length) continue;
@@ -1008,6 +1185,26 @@ async function handleCreate(request, env, ctx) {
   const lessonType = await loadLessonType(env, cleanText(body.lessonType, 40) || "single");
   if (!lessonType) return fail("That lesson type is not available.", 400, request, env);
 
+  // The trial is a first lesson, priced to make starting easy — not a discount
+  // for people already having lessons. Anyone with a booking that wasn't
+  // cancelled has started; a cancelled trial that never happened doesn't count
+  // against booking another. (Dan, 28 August 2026.)
+  if (lessonType.id === "trial") {
+    const prior = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM bookings WHERE student_id = ? AND status != 'cancelled'"
+    )
+      .bind(student.id)
+      .first();
+    if ((prior?.n ?? 0) > 0) {
+      return fail(
+        "The trial is for your first lesson with Inês — you're past that! Book a single lesson instead.",
+        400,
+        request,
+        env
+      );
+    }
+  }
+
   // `null` is the deliberate open-ended choice and `undefined` is "not asked
   // for", so the two must not be collapsed. Anything else unrecognised is a
   // refusal rather than a silent fallback to a one-off.
@@ -1048,18 +1245,11 @@ async function handleCreate(request, env, ctx) {
   const settings = await loadSettings(env);
   const prepay = settings.paymentMode === "prepay" && stripeConfigured(env);
 
-  // A fixed run is one checkout — priced per lesson, quantity by the count
-  // actually bookable. Open-ended can't be priced at a single checkout, and
-  // charging a card later without the student present is a different contract;
-  // refusing it is honest, and the page offers fixed blocks instead.
-  if (wantsRepeat && prepay && repeatWeeks === null) {
-    return fail(
-      "An open-ended weekly slot isn't available with upfront payment — book a fixed run of weeks instead.",
-      400,
-      request,
-      env
-    );
-  }
+  // A repeat under prepay charges the first lesson now — saving the card, with
+  // Stripe's own consent wording — and each later lesson charges itself on its
+  // own day. That covers the open-ended run too, so nothing is refused here.
+  // (Dan, 28 August 2026: "maybe they prepay the first but the ones after that
+  // should be automatic".)
 
   const id = crypto.randomUUID();
   const reference = bookingReference();
@@ -1098,7 +1288,8 @@ async function handleCreate(request, env, ctx) {
       prepay ? holdExpiresAt : null
     ],
     startAt: startsAt,
-    endAt: endsAt
+    endAt: endsAt,
+    studentId: student.id
   });
 
   if (!claimed) {
@@ -1130,7 +1321,17 @@ async function handleCreate(request, env, ctx) {
 
       await env.DB.prepare("UPDATE bookings SET stripe_session_id = ? WHERE id = ?").bind(session.id, id).run();
 
-      return json({ booking: publicBooking(row, lessonType, settings), checkoutUrl: session.url }, 201, request, env);
+      // Hosted checkout answers with a URL to send the student to; embedded
+      // answers with a client secret the page mounts Stripe's form from.
+      return json(
+        {
+          booking: publicBooking(row, lessonType, settings),
+          ...(session.url ? { checkoutUrl: session.url } : { checkoutClientSecret: session.client_secret })
+        },
+        201,
+        request,
+        env
+      );
     } catch (error) {
       // Never leave a dead hold behind when checkout could not even be created.
       await env.DB.prepare("DELETE FROM bookings WHERE id = ?").bind(id).run();
@@ -1179,9 +1380,9 @@ async function handleCreate(request, env, ctx) {
             fromKey: addDaysToKey(slot.dateKey, 7),
             count: remaining,
             now,
-            // Under prepay the whole run is held, not booked, until Stripe
-            // confirms the one payment that covers it.
-            pending: prepay,
+            // Under prepay the whole run is held until the first lesson's
+            // payment lands; the webhook then flips the rest to 'scheduled'.
+            paymentState: prepay ? "hold" : "none",
             holdExpiresAt: prepay ? holdExpiresAt : null
           })
         : { rows: [], skipped: [] };
@@ -1199,12 +1400,14 @@ async function handleCreate(request, env, ctx) {
 
     if (prepay) {
       try {
-        const session = await createSeriesCheckoutSession(env, {
-          seriesId,
-          firstBooking: first,
+        // The first lesson is the only charge now; paying it saves the card
+        // that every later lesson in the run charges itself to.
+        const session = await createCheckoutSession(env, {
+          booking: first,
           lessonType,
-          count: allRows.length,
           customerEmail: student.email,
+          saveCard: true,
+          seriesId,
           successUrl: siteUrl(env, "/my-lessons/?paid=1"),
           cancelUrl: siteUrl(env, "/book/?cancelled=1"),
           skippedStartAts: filled.skipped.map((occurrence) => occurrence.startAt)
@@ -1216,7 +1419,13 @@ async function handleCreate(request, env, ctx) {
 
         // Emails wait for the webhook; the run isn't real until it's paid.
         return json(
-          { booking: publicBooking(first, lessonType, settings), manageUrl, manageToken: token, series: seriesPayload, checkoutUrl: session.url },
+          {
+            booking: publicBooking(first, lessonType, settings),
+            manageUrl,
+            manageToken: token,
+            series: seriesPayload,
+            ...(session.url ? { checkoutUrl: session.url } : { checkoutClientSecret: session.client_secret })
+          },
           201,
           request,
           env
@@ -1269,7 +1478,12 @@ async function handleCreate(request, env, ctx) {
  * treats it as an ordinary lesson, which is what makes moving or cancelling a
  * single week work without any special case.
  */
-async function insertOccurrence(env, { seriesId, student, lessonType, timezone, location, notes, startAt, endAt, now, pending = false, holdExpiresAt = null }) {
+/**
+ * `paymentState` is the world the occurrence is born into: 'none' for a run
+ * from before prepay, 'hold' while its run's first checkout is still open, and
+ * 'scheduled' for a lesson that will charge the saved card on its own day.
+ */
+async function insertOccurrence(env, { seriesId, student, lessonType, timezone, location, notes, startAt, endAt, now, paymentState = "none", holdExpiresAt = null }) {
   const id = crypto.randomUUID();
   const timestamp = now.toISOString();
   const startsAt = new Date(startAt).toISOString();
@@ -1294,17 +1508,18 @@ async function insertOccurrence(env, { seriesId, student, lessonType, timezone, 
       notes,
       startsAt,
       endsAt,
-      pending ? "pending_payment" : "confirmed",
+      paymentState === "hold" ? "pending_payment" : "confirmed",
       0,
       timestamp,
       timestamp,
-      pending ? "pending" : "not_required",
-      pending ? lessonType.price_cents : null,
-      pending ? holdExpiresAt : null,
+      paymentState === "hold" ? "pending" : paymentState === "scheduled" ? "scheduled" : "not_required",
+      paymentState === "none" ? null : lessonType.price_cents,
+      paymentState === "hold" ? holdExpiresAt : null,
       seriesId
     ],
     startAt: startsAt,
-    endAt: endsAt
+    endAt: endsAt,
+    studentId: student.id
   });
 
   // Losing the race is a skipped week, not a failed booking: the rest of the
@@ -1321,7 +1536,7 @@ async function insertOccurrence(env, { seriesId, student, lessonType, timezone, 
  * a skipped week is never reconsidered on the next top-up and the run cannot
  * stall on it forever.
  */
-async function fillSeries(env, { series, student, lessonType, fromKey, count, now, pending = false, holdExpiresAt = null }) {
+async function fillSeries(env, { series, student, lessonType, fromKey, count, now, paymentState = "none", holdExpiresAt = null }) {
   const { bookable, skipped } = await planOccurrences(env, {
     fromKey,
     minuteOfDay: series.minute_of_day,
@@ -1343,7 +1558,7 @@ async function fillSeries(env, { series, student, lessonType, fromKey, count, no
       startAt: occurrence.startAt,
       endAt: occurrence.endAt,
       now,
-      pending,
+      paymentState,
       holdExpiresAt
     });
 
@@ -1515,7 +1730,7 @@ async function handleReschedule(request, env, ctx, token) {
   // A paid lesson is locked on its own Porto day: it happens or it's forfeit.
   if (changePolicy(row, now).locked) {
     return fail(
-      "This lesson is today and already paid, so it can't be moved. If something has happened, reply to your confirmation email and Inês will help.",
+      "This lesson is today, so it can't be moved. If something has happened, reply to your confirmation email and Inês will help.",
       409,
       request,
       env
@@ -1595,7 +1810,7 @@ async function handleCancel(request, env, ctx, token) {
 
   if (policy.locked) {
     return fail(
-      "This lesson is today and already paid, so it can't be cancelled. If something has happened, reply to your confirmation email and Inês will help.",
+      "This lesson is today, so it can't be cancelled. If something has happened, reply to your confirmation email and Inês will help.",
       409,
       request,
       env
@@ -1689,7 +1904,44 @@ async function handleStripeWebhook(request, env, ctx) {
 
   const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(bookingId).first();
   if (!row) return new Response("Unknown booking.", { status: 200 });
-  if (row.status === "confirmed") return new Response("Already confirmed.", { status: 200 });
+
+  // An already-confirmed lesson paying by link — after a declined automatic
+  // charge — just settles up: mark it paid and say thank you, quietly.
+  if (row.status === "confirmed") {
+    if (row.payment_status === "payment_due" || row.payment_status === "scheduled") {
+      await env.DB.prepare(
+        "UPDATE bookings SET payment_status = 'paid', stripe_payment_intent = ?, updated_at = ? WHERE id = ? AND payment_status != 'paid'"
+      )
+        .bind(session.payment_intent ?? null, new Date().toISOString(), bookingId)
+        .run();
+
+      const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+        .bind(row.lesson_type_id)
+        .first();
+      const settings = await loadSettings(env);
+      ctx.waitUntil(
+        deliver(env, {
+          to: row.student_email,
+          subject: `Paid — thank you`,
+          kind: "student_payment_received",
+          bookingId: row.id,
+          dedupeKey: `link-paid:${row.id}`,
+          replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail || undefined,
+          content: {
+            heading: "Paid — thank you",
+            preheader: `${lessonType?.name ?? "Lesson"} · ${row.reference}`,
+            intro: `Olá ${row.student_name.split(" ")[0]}, that's settled — thank you. Nothing else to do.`,
+            callout: "",
+            rows: [{ label: "Reference", value: row.reference }],
+            action: null,
+            footer: "Sent automatically by the booking system on portuguesewithines.com."
+          }
+        })
+      );
+      return new Response("ok", { status: 200 });
+    }
+    return new Response("Already confirmed.", { status: 200 });
+  }
 
   await env.DB.prepare(
     `UPDATE bookings SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?,
@@ -1732,15 +1984,51 @@ async function confirmPaidSeries(env, ctx, session) {
   if (!series) return new Response("Unknown series.", { status: 200 });
 
   const now = new Date().toISOString();
-  const updated = await env.DB.prepare(
+  const firstId = session.client_reference_id;
+
+  // Only the first lesson was charged; it confirms as paid. The rest confirm
+  // as 'scheduled' — each will charge the saved card on its own day.
+  const paidFirst = await env.DB.prepare(
     `UPDATE bookings SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?,
+       hold_expires_at = NULL, updated_at = ?
+     WHERE id = ? AND status = 'pending_payment'`
+  )
+    .bind(session.payment_intent ?? null, now, firstId)
+    .run();
+
+  if ((paidFirst?.meta?.changes ?? 0) === 0) return new Response("Already confirmed.", { status: 200 });
+
+  await env.DB.prepare(
+    `UPDATE bookings SET status = 'confirmed', payment_status = 'scheduled',
        hold_expires_at = NULL, updated_at = ?
      WHERE series_id = ? AND status = 'pending_payment'`
   )
-    .bind(session.payment_intent ?? null, now, seriesId)
+    .bind(now, seriesId)
     .run();
 
-  if ((updated?.meta?.changes ?? 0) === 0) return new Response("Already confirmed.", { status: 200 });
+  await env.DB.prepare("UPDATE booking_series SET prepaid = 1, updated_at = ? WHERE id = ?")
+    .bind(now, seriesId)
+    .run();
+
+  // The saved card lives behind the payment intent: Stripe's customer and
+  // payment-method ids go on the student so later lessons — and later runs —
+  // can charge without them present. Failure here is logged, not fatal: the
+  // run is real either way, and a missing card surfaces as a normal declined
+  // charge with a pay-now link when the first automatic charge is attempted.
+  if (session.payment_intent) {
+    try {
+      const intent = await retrievePaymentIntent(env, session.payment_intent);
+      const paymentMethod = typeof intent.payment_method === "string" ? intent.payment_method : intent.payment_method?.id;
+      const customer = typeof intent.customer === "string" ? intent.customer : intent.customer?.id;
+      if (customer && paymentMethod) {
+        await env.DB.prepare("UPDATE students SET stripe_customer_id = ?, stripe_payment_method = ? WHERE id = ?")
+          .bind(customer, paymentMethod, series.student_id)
+          .run();
+      }
+    } catch (error) {
+      console.error("save-card", seriesId, String(error?.message ?? error));
+    }
+  }
 
   const { results: rows } = await env.DB.prepare(
     "SELECT * FROM bookings WHERE series_id = ? AND status = 'confirmed' ORDER BY starts_at"

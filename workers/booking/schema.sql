@@ -74,6 +74,10 @@ CREATE TABLE IF NOT EXISTS students (
   -- 'teacher' grants the admin endpoints. Inês signs in as herself rather than
   -- pasting a shared token, though ADMIN_TOKEN remains as a way back in.
   role          TEXT NOT NULL DEFAULT 'student',
+  -- Stripe's opaque identifiers for charging a saved card again (migration
+  -- 0009). The card itself lives at Stripe; these are references, not secrets.
+  stripe_customer_id    TEXT,
+  stripe_payment_method TEXT,
   created_at    TEXT NOT NULL,
   last_login_at TEXT
 );
@@ -200,6 +204,9 @@ CREATE TABLE IF NOT EXISTS booking_series (
   occurrences    INTEGER CHECK (occurrences IS NULL OR occurrences > 0),
   status         TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ended')),
   filled_to      TEXT,
+  -- Booked under prepay: each topped-up lesson is charged on its own day to
+  -- the card saved at the first checkout (migration 0009).
+  prepaid        INTEGER NOT NULL DEFAULT 0,
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL,
   ended_at       TEXT

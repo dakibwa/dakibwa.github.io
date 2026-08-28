@@ -39,6 +39,14 @@ export const BOOKING_CONFIGURED = Boolean(BOOKING_API_BASE_URL);
 export const MANAGE_BOOKING_PATH = "/booking/";
 
 /**
+ * Stripe's publishable key — public by design, it only identifies the account;
+ * every sensitive operation needs the secret key, which lives in the Worker.
+ * Absent until Inês's account exists; the booking page falls back to hosted
+ * checkout if the Worker ever answers embedded without this being set.
+ */
+export const STRIPE_PUBLISHABLE_KEY = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").trim();
+
+/**
  * Google Sign-In client id. Public by design — it identifies the app, it is not
  * a secret, and the Worker still verifies every token against it.
  */

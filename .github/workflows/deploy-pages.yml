@@ -36,6 +36,7 @@ jobs:
       # below fails the build if it is missing or unhealthy, so a release can
       # never quietly ship a dead calendar.
       NEXT_PUBLIC_BOOKING_API_BASE_URL: ${{ vars.NEXT_PUBLIC_BOOKING_API_BASE_URL }}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
       # Public by design: it identifies the app, and the Worker verifies every
       # Google token against it. Absent simply hides the Google button.
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}

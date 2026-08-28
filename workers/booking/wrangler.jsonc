@@ -31,6 +31,9 @@
     // back to "1" stops all sending and records to email_log instead, which is
     // what to do while testing rather than pointing it at a spare address.
     "EMAIL_DRY_RUN": "0",
+    // Checkout mounts inside the booking page rather than redirecting to
+    // Stripe. Inert until the Stripe secrets exist and payment_mode is prepay.
+    "STRIPE_UI_MODE": "embedded",
     // Google Sign-In. Public by design — it identifies the app, and the Worker
     // verifies every ID token's signature and audience against it. The client
     // *secret* is not needed: this is the ID-token flow, not the server-side

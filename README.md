@@ -166,6 +166,7 @@ Copy `.env.example` to `.env.local` and point the site at the deployed Worker:
 ```bash
 NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking.<subdomain>.workers.dev
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=          # optional; absent hides the Google button
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=    # optional; needed for the embedded payment form once prepay is on
 LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=60

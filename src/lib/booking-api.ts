@@ -168,9 +168,12 @@ export function createBooking(
 ) {
   return request<{
     booking: Booking;
-    // Present only when prepayment is switched on: the student is sent to
-    // Stripe, and the booking is not confirmed until the webhook arrives.
+    // Present only when prepayment is switched on: hosted checkout answers
+    // with a URL to redirect to, embedded with a client secret to mount
+    // Stripe's payment form from — the booking is not confirmed until the
+    // webhook arrives either way.
     checkoutUrl?: string;
+    checkoutClientSecret?: string;
     manageUrl?: string;
     manageToken?: string;
     /** Present only when the lesson was booked as a repeating one. */

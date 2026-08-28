@@ -675,6 +675,20 @@ await test("a pending payment is not treated as paid", () => {
   assert.equal(policy.locked, false);
 });
 
+await test("a scheduled lesson locks on its day but refunds nothing when cancelled ahead", () => {
+  const row = { payment_status: "scheduled", starts_at: "2026-09-09T16:30:00.000Z" };
+  const onDay = changePolicy(row, new Date("2026-09-09T08:00:00.000Z"));
+  assert.equal(onDay.locked, true);
+  const ahead = changePolicy(row, new Date("2026-09-08T11:00:00.000Z"));
+  assert.equal(ahead.locked, false);
+  assert.equal(ahead.refundOnCancel, false);
+});
+
+await test("a lesson with payment due behaves like a scheduled one", () => {
+  const row = { payment_status: "payment_due", starts_at: "2026-09-09T16:30:00.000Z" };
+  assert.equal(changePolicy(row, new Date("2026-09-09T08:00:00.000Z")).locked, true);
+});
+
 await test("a run's checkout total is count times the lesson price", () => {
   assert.equal(seriesTotalCents(4, 2500), 10000);
   assert.equal(seriesTotalCents(1, 2000), 2000);

@@ -143,13 +143,15 @@ until they stop it.
   repeating almost always still means to attend the ones in their calendar;
   cancelling those silently would be the worse of the two mistakes. Passing
   `cancelRemaining` cancels them too.
-- **A fixed run under prepayment is one checkout.** Priced per lesson with a
-  quantity, held as `pending_payment` until the single payment lands, and every
-  occurrence confirms together on the webhook. Only the open-ended repeat is
-  refused while prepayment is on — it cannot be priced at one checkout, and
-  charging a card later without the student present is a different contract.
-  The page offers fixed blocks instead. Cancelling one lesson of a paid run
-  refunds that lesson's amount against the run's shared payment.
+- **A run under prepayment charges its first lesson now and the rest charge
+  themselves.** The first checkout saves the card (`setup_future_usage`, with
+  Stripe's own consent wording on the form); the whole run is held until that
+  payment lands, then the webhook confirms it — first lesson `paid`, the rest
+  `scheduled`. Each scheduled lesson is charged to the saved card by the cron
+  on the morning of its own day. Open-ended runs work the same way: every
+  topped-up occurrence of a `prepaid` series is born `scheduled`. A declined
+  charge marks the row `payment_due`, emails the student a hosted pay-now
+  link, and tells Inês — the lesson stands either way.
 
 ### Changing your name or email
 
@@ -297,16 +299,25 @@ configured:
   same sweep.
 
 **The prepaid change policy** (Dan, 28 August 2026, `policy.mjs` is the single
-home): money locks the lesson's own Porto day. Until that day a paid lesson
-moves freely and a cancellation is refunded in full, automatically — the refund
-is issued *before* the row is cancelled, and Stripe's "already refunded" answer
-is treated as success so a retried cancel completes rather than double-paying.
-On the day itself a student can neither move nor cancel: the lesson happens or
-it is forfeit. No same-day fee, no no-show fee, nothing to collect. Inês is
-never locked — her cancellation refunds the student in full at any hour, and
-the emails tell both sides what the money did. Bookings from before the switch
-carry `payment_status = 'not_required'` and keep the fee terms they were booked
-under until they wash through.
+home): commitment locks the lesson's own Porto day. A single lesson is paid at
+booking; a run pays its first lesson at booking and each later lesson goes to
+the saved card on the morning of its own day. Until that day any lesson moves
+freely; cancelling ahead refunds a paid lesson in full — the refund is issued
+*before* the row is cancelled, and Stripe's "already refunded" answer is
+treated as success so a retried cancel completes rather than double-paying —
+and a not-yet-charged lesson is simply never charged. On the day itself a
+student can neither move nor cancel: paid or scheduled, the lesson happens or
+the money goes out regardless. No same-day fee, no no-show fee, nothing to
+collect. Inês is never locked — her cancellation refunds the student in full
+at any hour, and the emails tell both sides what the money did. Bookings from
+before the switch carry `payment_status = 'not_required'` and keep the fee
+terms they were booked under until they wash through. The card itself never
+touches the database — Stripe keeps it; `students` holds only the opaque
+customer and payment-method ids (migration 0009).
+
+**Trial lessons are first lessons.** Anyone with a booking that wasn't
+cancelled is refused the trial at creation, kindly, and pointed at a single
+lesson. This is live now, independent of payment mode.
 
 Stripe is used because Square does not serve Portugal, and because Stripe carries
 MB WAY and Multibanco natively — between them the majority of Portuguese online
@@ -314,15 +325,29 @@ payments. `sk_test_` keys work identically, which is how this is exercised
 before Inês has her own account.
 
 **Go-live checklist**, once her Stripe account exists (hers, with Dan as
-Administrator): put `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in as Worker
-secrets (test keys first); register the webhook for `checkout.session.completed`
-at `/stripe/webhook`; run one full test-mode journey — book, pay with a test
-card, watch the webhook confirm, cancel ahead of the day, watch the refund;
-set the `payment_mode` settings row to `prepay`; then, in the same breath, ship
-the static-copy commit (FAQ, policy band, lessons note) that states the prepaid
-terms — the page's dynamic copy follows the API on its own, the static prose
-does not. Swap to live keys and repeat the journey with a real card for one
-euro-level lesson before telling anyone.
+Administrator):
+
+1. Apply migration 0009 to the live database (the three ALTERs in
+   `migrations/0009-saved-cards.sql`, via `wrangler d1 execute --remote`; the
+   migrations ledger was never used against the live DB, so `migrations apply`
+   would replay 0001 and fail).
+2. Put `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in as Worker secrets
+   (test keys first). `STRIPE_UI_MODE` is already `embedded` in wrangler vars.
+3. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` for the
+   Pages build, so the embedded form can mount.
+4. Register the webhook for `checkout.session.completed` at `/stripe/webhook`.
+5. Run the full test-mode journey: book a single (embedded form mounts on the
+   page), pay with a test card, watch the webhook confirm; cancel ahead of the
+   day and watch the refund. Book a weekly run: first lesson charges, the rest
+   go `scheduled`; run the cron by hand (`wrangler dev --test-scheduled`) on a
+   lesson's day and watch the saved card charge; kill the saved card in the
+   Stripe dashboard and watch the decline turn into a pay-now email.
+6. Set the `payment_mode` settings row to `prepay`, and in the same breath ship
+   the static-copy commit (FAQ, policy band, lessons note, and the README payment bullets) that states the
+   prepaid terms — the page's dynamic copy follows the API on its own, the
+   static prose does not.
+7. Swap to live keys and repeat the single-lesson journey with a real card
+   before telling anyone.
 
 ### Same-day changes
 
