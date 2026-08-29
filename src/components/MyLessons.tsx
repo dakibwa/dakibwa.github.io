@@ -336,10 +336,8 @@ export function MyLessons() {
                   role="group"
                 >
                   <div>
-                    <h3 id={`stop-series-${entry.id}`}>Are you sure you want these lessons to stop repeating?</h3>
-                    <p>
-                      The lessons already in your calendar will stay booked. This only stops any more being added.
-                    </p>
+                    <h3 id={`stop-series-${entry.id}`}>Stop repeating lessons?</h3>
+                    <p>Your booked lessons will stay. You can cancel them one at a time below.</p>
                   </div>
                   <div className="my-lessons__series-confirmation-actions">
                     <button
@@ -373,9 +371,6 @@ export function MyLessons() {
               )}
             </div>
           ))}
-          <p className="my-lessons__series-note">
-            Stopping a repeat keeps the lessons already booked — cancel any of them on its own below.
-          </p>
         </section>
       ) : null}
 

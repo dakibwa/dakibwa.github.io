@@ -2948,12 +2948,6 @@ button.text-action {
   }
 }
 
-.my-lessons__series-note {
-  margin-top: 0.6rem;
-  font-size: 0.84rem;
-  opacity: 0.78;
-}
-
 .lesson-list__repeats {
   display: flex;
   align-items: center;
