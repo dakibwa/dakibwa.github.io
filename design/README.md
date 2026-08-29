@@ -69,6 +69,14 @@ specifies a short opacity-only transition, with faster mobile timings and no
 overlay, transform, ambient loop, or decorative hero entrance. Reduced-motion
 users navigate immediately without delay or animation.
 
+## Account interaction states
+
+The editable confirmation shown before a student stops a repeating lesson is
+on `05 QA / 2026-07-24`, in the frame named
+`My lessons / Stop repeating confirmation / Desktop + mobile / 2026-08-29`.
+It records the desktop and mobile arrangements, the two explicit choices, and
+the promise that lessons already in the calendar stay booked.
+
 ## Superseded work
 
 Old green/editorial website directions, generated concept boards, mockup

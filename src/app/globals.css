@@ -2884,7 +2884,69 @@ button.text-action {
   font-size: 0.95rem;
 }
 
+.my-lessons__series-confirmation {
+  display: flex;
+  flex: 1 0 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  border: 1px solid rgba(239, 93, 60, 0.42);
+  border-radius: var(--squiggle-field);
+  padding: 1rem 1.1rem;
+  background: rgba(245, 236, 217, 0.78);
+}
 
+.my-lessons__series-confirmation h3 {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.my-lessons__series-confirmation p {
+  display: block;
+  max-width: 58ch;
+  margin-top: 0.28rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.82;
+}
+
+.my-lessons__series-confirmation-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 1rem;
+}
+
+.my-lessons__series-confirmation-actions .button {
+  min-height: 44px;
+  padding: 0.72rem 1rem;
+  white-space: nowrap;
+}
+
+.my-lessons__series-confirmation-actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+@media (max-width: 680px) {
+  .my-lessons__series-confirmation {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .my-lessons__series-confirmation-actions {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .my-lessons__series-confirmation-actions .button {
+    width: 100%;
+  }
+}
 
 .my-lessons__series-note {
   margin-top: 0.6rem;

@@ -36,6 +36,7 @@ export function MyLessons() {
   const [student, setStudent] = useState<Student | null>(null);
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [series, setSeries] = useState<LessonSeries[]>([]);
+  const [confirmingStop, setConfirmingStop] = useState("");
   const [stopping, setStopping] = useState("");
   const [editing, setEditing] = useState(false);
   const [details, setDetails] = useState({ name: "", email: "" });
@@ -155,11 +156,19 @@ export function MyLessons() {
       // "one of your weekly lessons" is still true of them.
       await load();
       setSeries((current) => current.filter((entry) => entry.id !== seriesId));
+      setConfirmingStop("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "That repeat could not be stopped.");
     } finally {
       setStopping("");
     }
+  }
+
+  function keepRepeating(seriesId: string) {
+    setConfirmingStop("");
+    // The choice that opened the confirmation reappears in the next render.
+    // Put keyboard focus back there instead of dropping it on the document.
+    window.requestAnimationFrame(() => document.getElementById(`stop-repeat-${seriesId}`)?.focus());
   }
 
   if (loading) return <p className="booking-state-note">Loading your lessons…</p>;
@@ -320,14 +329,48 @@ export function MyLessons() {
                 {entry.openEnded ? ", every week" : ""} — {entry.upcoming}{" "}
                 {entry.upcoming === 1 ? "lesson" : "lessons"} still to come.
               </p>
-              <button
-                className="text-action"
-                disabled={stopping === entry.id}
-                onClick={() => stopRepeating(entry.id)}
-                type="button"
-              >
-                {stopping === entry.id ? "Stopping…" : "Stop repeating"}
-              </button>
+              {confirmingStop === entry.id ? (
+                <div
+                  aria-labelledby={`stop-series-${entry.id}`}
+                  className="my-lessons__series-confirmation"
+                  role="group"
+                >
+                  <div>
+                    <h3 id={`stop-series-${entry.id}`}>Are you sure you want these lessons to stop repeating?</h3>
+                    <p>
+                      The lessons already in your calendar will stay booked. This only stops any more being added.
+                    </p>
+                  </div>
+                  <div className="my-lessons__series-confirmation-actions">
+                    <button
+                      autoFocus
+                      className="button button--coral"
+                      disabled={stopping === entry.id}
+                      onClick={() => stopRepeating(entry.id)}
+                      type="button"
+                    >
+                      {stopping === entry.id ? "Stopping…" : "Yes, stop repeating"}
+                    </button>
+                    <button
+                      className="text-action"
+                      disabled={stopping === entry.id}
+                      onClick={() => keepRepeating(entry.id)}
+                      type="button"
+                    >
+                      No, keep repeating
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className="text-action"
+                  id={`stop-repeat-${entry.id}`}
+                  onClick={() => setConfirmingStop(entry.id)}
+                  type="button"
+                >
+                  Stop repeating
+                </button>
+              )}
             </div>
           ))}
           <p className="my-lessons__series-note">
