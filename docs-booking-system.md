@@ -144,7 +144,7 @@ until they stop it.
   cancelling those silently would be the worse of the two mistakes. Passing
   `cancelRemaining` cancels them too. The lessons page asks for confirmation
   before it calls the stop endpoint. The confirmation says that booked lessons
-  stay and can be cancelled one at a time below.
+  stay and can be cancelled individually below.
 - **A run under prepayment charges its first lesson now and the rest charge
   themselves.** The first checkout saves the card (`setup_future_usage`, with
   Stripe's own consent wording on the form); the whole run is held until that

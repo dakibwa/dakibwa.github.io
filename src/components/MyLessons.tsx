@@ -337,7 +337,7 @@ export function MyLessons() {
                 >
                   <div>
                     <h3 id={`stop-series-${entry.id}`}>Stop repeating lessons?</h3>
-                    <p>Your booked lessons will stay. You can cancel them one at a time below.</p>
+                    <p>Your booked lessons will stay. You can cancel them individually below.</p>
                   </div>
                   <div className="my-lessons__series-confirmation-actions">
                     <button
