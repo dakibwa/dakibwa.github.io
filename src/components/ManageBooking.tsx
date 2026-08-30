@@ -16,6 +16,7 @@ import {
   portoDateKey,
   shortMonth,
   rescheduleBooking,
+  startWithFirstBookableWeek,
   type Booking,
   type Slot
 } from "@/lib/booking-api";
@@ -103,10 +104,10 @@ export function ManageBooking() {
     return () => controller.abort();
   }, [loadSlots]);
 
-  const calendarWeeks = useMemo(
-    () => (todayKey ? buildBookingWeeks(todayKey, horizonDays) : []),
-    [todayKey, horizonDays]
-  );
+  const calendarWeeks = useMemo(() => {
+    if (!todayKey || loadingSlots) return [];
+    return startWithFirstBookableWeek(buildBookingWeeks(todayKey, horizonDays), slotsByDate);
+  }, [todayKey, horizonDays, loadingSlots, slotsByDate]);
 
   async function doReschedule() {
     if (!token || !selectedSlot) return;
@@ -286,7 +287,14 @@ export function ManageBooking() {
 
           {mode === "view" && !changeLocked ? (
             <div className="manage-booking__actions">
-              <button className="button button--coral" onClick={() => setMode("reschedule")} type="button">
+              <button
+                className="button button--coral"
+                onClick={() => {
+                  setLoadingSlots(true);
+                  setMode("reschedule");
+                }}
+                type="button"
+              >
                 Move to another time
               </button>
               <button className="button button--quiet" onClick={() => setMode("confirm-cancel")} type="button">

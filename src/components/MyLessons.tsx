@@ -207,6 +207,7 @@ export function MyLessons() {
     return (
       <AuthPanel
         heading="Sign in"
+        headingLevel={2}
         intro="Your lessons, and any changes you want to make to them, all live here."
         onSignedIn={(signedIn) => {
           setStudent(signedIn);

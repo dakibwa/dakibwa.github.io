@@ -41,6 +41,7 @@ import {
   portoDateKey,
   previewSeries,
   shortMonth,
+  startWithFirstBookableWeek,
   type LessonType,
   type RepeatChoice,
   type SeriesOutcome,
@@ -286,10 +287,10 @@ export function BookingCalendar() {
     return () => controller.abort();
   }, [loadAvailability]);
 
-  const calendarWeeks = useMemo(
-    () => (todayKey ? buildBookingWeeks(todayKey, horizonDays) : []),
-    [todayKey, horizonDays]
-  );
+  const calendarWeeks = useMemo(() => {
+    if (!todayKey || loadingSlots) return [];
+    return startWithFirstBookableWeek(buildBookingWeeks(todayKey, horizonDays), slotsByDate);
+  }, [todayKey, horizonDays, loadingSlots, slotsByDate]);
   const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
 
@@ -525,6 +526,8 @@ export function BookingCalendar() {
                   className="lesson-card"
                   key={type.id}
                   onClick={() => {
+                    setLoadingSlots(true);
+                    setSlotsByDate({});
                     setLessonTypeId(type.id);
                     setSelectedSlot("");
                     goTo("day");

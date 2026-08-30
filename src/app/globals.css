@@ -1556,8 +1556,8 @@ textarea,
 }
 
 /*
- * The window rolls forward from this week rather than showing a calendar
- * month, so each week is captioned where the month changes. A single small
+ * The window rolls forward from the first week with free time rather than
+ * showing a calendar month, so each week is captioned where the month changes. A single small
  * label on the 1st was too easy to miss, which made it genuinely hard to tell
  * which month a date belonged to.
  */
@@ -2880,6 +2880,7 @@ button.text-action {
 .my-lessons__series-row p {
   display: flex;
   align-items: center;
+  margin-bottom: 0;
   gap: 0.45rem;
   font-size: 0.95rem;
 }

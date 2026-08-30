@@ -286,6 +286,10 @@ Blocked exceptions are real spans of time, so a lesson is withheld when it would
 **overlap** one rather than only when it starts inside it — which correctly
 withholds a 90-minute lesson earlier than a 60-minute one.
 
+Once availability has loaded, the date picker omits complete leading weeks with
+no free slots. That means a weekend with nothing left to book opens directly on
+the next usable week; closed weeks later in the booking window remain visible.
+
 ### Payment
 
 Off by default. `payment_mode` is `off`, every booking confirms on creation, and

@@ -21,6 +21,7 @@ export function AuthPanel({
   keepCopy = false,
   onSignedIn,
   heading,
+  headingLevel = 3,
   intro
 }: {
   initialMode?: Mode;
@@ -33,6 +34,7 @@ export function AuthPanel({
   keepCopy?: boolean;
   onSignedIn: (student: Student) => void;
   heading?: string;
+  headingLevel?: 2 | 3;
   intro?: string;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -40,6 +42,7 @@ export function AuthPanel({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const Heading = headingLevel === 2 ? "h2" : "h3";
 
   function update(patch: Partial<typeof form>) {
     setForm((current) => ({ ...current, ...patch }));
@@ -84,7 +87,9 @@ export function AuthPanel({
       {/* The heading follows the mode, or it contradicts the active tab —
           "Sign in" sat above a selected "Create an account". Forgotten password
           is its own task, so it overrides the copy either way. */}
-      <h3>{mode === "forgot" ? "Forgotten password" : mode === "register" && !keepCopy ? "Create an account" : heading}</h3>
+      <Heading>
+        {mode === "forgot" ? "Forgotten password" : mode === "register" && !keepCopy ? "Create an account" : heading}
+      </Heading>
       <p className="auth-panel__intro">
         {mode === "forgot"
           ? "Give us the email you booked with and we'll send you a link to choose a new password. It works for one hour."
