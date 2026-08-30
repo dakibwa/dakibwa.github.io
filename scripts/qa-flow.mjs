@@ -67,6 +67,30 @@ for (const route of routes) {
   }
 }
 
+// Account navigation should describe the student's lessons, not introduce a
+// second calendar alongside the booking workspace. A synthetic local session
+// is enough here because AccountLink only needs to know whether one exists.
+const signedInPage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+signedInPage.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
+signedInPage.on("console", (message) => {
+  if (message.type() === "error") logs.push(`console:${message.text()}`);
+});
+await signedInPage.addInitScript(() => {
+  window.localStorage.setItem("ines-student-session", "qa-session");
+});
+await signedInPage.goto(`${base}/`, { waitUntil: "domcontentloaded" });
+const signedInAccountLinks = signedInPage.getByRole("link", { name: "My lessons", exact: true });
+await signedInAccountLinks.first().waitFor({ timeout: 10_000 });
+if ((await signedInAccountLinks.count()) !== 2) {
+  throw new Error("Signed-in header and footer navigation should both say My lessons.");
+}
+for (const link of await signedInAccountLinks.all()) {
+  if ((await link.getAttribute("href")) !== "/book/#lesson-calendar") {
+    throw new Error("My lessons should return to the unified booking calendar.");
+  }
+}
+await signedInPage.close();
+
 await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(`${base}/`, { waitUntil: "domcontentloaded" });
 const expectedApproachUrl = new URL(`${base}/approach/`).href;
@@ -129,9 +153,14 @@ if (bookingCalendar) {
   }
 
   const bookingText = (await page.locator(".booking-composition").innerText()).toLowerCase();
-  assertIncludes(bookingText, "your lesson calendar", "unified booking heading");
   assertIncludes(bookingText, "what would you like to book?", "lesson choice heading");
   assertIncludes(bookingText, "porto time", "booking timezone note");
+  if (bookingText.includes("booked lessons and free times share the same calendar")) {
+    throw new Error("The unified calendar still repeats its own purpose above the booking controls.");
+  }
+  if ((await page.locator(".unified-booking__head .booking-step-heading").count()) !== 0) {
+    throw new Error("The unified calendar still has a redundant visible heading.");
+  }
   if ((await page.locator("#lesson-calendar").count()) !== 1) {
     throw new Error("Booking and lesson management should share one calendar.");
   }
@@ -172,6 +201,7 @@ console.log(
       results,
       bookingCalendar,
       bookingPlaceholder,
+      signedInAccountLinks: 2,
       mobileNavigation,
       externalResourceWarnings: logs.filter((entry) => entry.includes("Failed to load resource")),
       screenshots: outDir

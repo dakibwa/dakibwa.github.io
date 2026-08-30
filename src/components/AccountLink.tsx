@@ -30,7 +30,7 @@ export function AccountLink({ className, isCurrent = false }: { className?: stri
       className={className}
       href={signedIn ? "/book/#lesson-calendar" : "/book/?view=lessons#lesson-calendar"}
     >
-      {signedIn ? "My calendar" : "Sign in"}
+      {signedIn ? "My lessons" : "Sign in"}
     </Link>
   );
 }

@@ -691,10 +691,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
       <div className="booking-stage">
         <div className="unified-booking__head">
-          <div>
-            <h2 className="booking-step-heading">Your lesson calendar</h2>
-            <p>Booked lessons and free times share the same calendar.</p>
-          </div>
           {checkingSession ? (
             <p className="booking-state-note">Checking your account…</p>
           ) : student ? (

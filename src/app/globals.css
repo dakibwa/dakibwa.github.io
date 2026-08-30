@@ -1533,16 +1533,9 @@ textarea,
 .unified-booking__head {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-bottom: 1.5rem;
   gap: 1rem 1.5rem;
-}
-
-.unified-booking__head > div:first-child > p {
-  max-width: 48ch;
-  margin-top: 0.25rem;
-  font-size: 0.92rem;
-  opacity: 0.76;
 }
 
 .unified-booking__account {
