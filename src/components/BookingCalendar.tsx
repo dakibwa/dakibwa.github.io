@@ -1,8 +1,7 @@
 "use client";
 
-import { Fragment, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import {
   AlertCircle,
   ArrowLeft,
@@ -25,23 +24,29 @@ import { AssetMark } from "@/components/BrandMarks";
 const AuthPanel = dynamic(() => import("@/components/AuthPanel").then((m) => m.AuthPanel), {
   loading: () => <p className="booking-state-note">Loading…</p>
 });
+const AccountControls = dynamic(() => import("@/components/MyLessons").then((m) => m.MyLessons), {
+  loading: () => <p className="booking-state-note">Loading your account…</p>
+});
 import { LessonMark } from "@/components/LessonMarks";
-import { clearSession, fetchMe, readSession, type Student } from "@/lib/auth-api";
+import { clearSession, fetchMe, readSession, type MyBooking, type Student } from "@/lib/auth-api";
 import {
   addDaysToKey,
   browserTimeZone,
   buildBookingWeeks,
+  cancelBooking,
   createBooking,
   differingLocalTime,
   fetchAvailability,
+  fetchBooking,
   formatLongDate,
   formatMoneyCents,
   formatSlotTime,
   listLessonTypes,
   portoDateKey,
   previewSeries,
+  rescheduleBooking,
   shortMonth,
-  startWithFirstBookableWeek,
+  type ManagedBooking,
   type LessonType,
   type RepeatChoice,
   type SeriesOutcome,
@@ -82,6 +87,7 @@ type Confirmation = {
   reference: string;
   startAt: string;
   manageUrl: string;
+  manageToken: string;
   email: string;
   series?: SeriesOutcome;
 };
@@ -140,7 +146,7 @@ function loadStripeJs() {
   return stripeJs;
 }
 
-export function BookingCalendar() {
+export function BookingCalendar({ initialManageToken = "" }: { initialManageToken?: string } = {}) {
   const [step, setStep] = useState<Step>("lesson");
   /*
    * Seeded from the published lesson copy so the three cards are in the static
@@ -159,7 +165,7 @@ export function BookingCalendar() {
 
   // Mount Stripe's embedded form when a payment starts; tear it down when the
   // student backs out. Completion never reaches this effect — Stripe returns
-  // the student to the manage page (or their lessons) itself.
+  // the student back to this workspace itself.
   useEffect(() => {
     if (!payment || !STRIPE_PUBLISHABLE_KEY) return;
     let cancelled = false;
@@ -204,18 +210,47 @@ export function BookingCalendar() {
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [studentZone, setStudentZone] = useState(BOOKING_TIME_ZONE);
   const [student, setStudent] = useState<Student | null>(null);
+  const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
   const [checkingSession, setCheckingSession] = useState(true);
   // Someone with a lesson behind them shouldn't see the trial at all — the
   // server refuses it anyway, but a card you can't book is a trap, not a choice.
   const [hadLesson, setHadLesson] = useState(false);
   const [trialNotice, setTrialNotice] = useState("");
+  const [managedToken, setManagedToken] = useState("");
+  const [managed, setManaged] = useState<ManagedBooking | null>(null);
+  const [manageMode, setManageMode] = useState<"view" | "reschedule" | "confirm-cancel">("view");
+  const [manageLoading, setManageLoading] = useState(false);
+  const [manageWorking, setManageWorking] = useState(false);
+  const [manageError, setManageError] = useState("");
+  const [manageOutcome, setManageOutcome] = useState("");
+  const [showAccountSignIn, setShowAccountSignIn] = useState(false);
+  const [showAccountControls, setShowAccountControls] = useState(false);
 
   const lessonType = lessonTypes.find((type) => type.id === lessonTypeId) ?? null;
+
+  const refreshStudent = useCallback(async () => {
+    const session = readSession();
+    if (!session) {
+      setStudent(null);
+      setMyBookings([]);
+      setHadLesson(false);
+      return null;
+    }
+
+    const data = await fetchMe(session);
+    setStudent(data?.student ?? null);
+    setMyBookings(data?.bookings ?? []);
+    setHadLesson((data?.bookings ?? []).some((booking) => booking.status !== "cancelled"));
+    return data;
+  }, []);
 
   useEffect(() => {
     const key = portoDateKey(new Date());
     setTodayKey(key);
     setStudentZone(browserTimeZone());
+    if (new URLSearchParams(window.location.search).get("view") === "lessons" && !readSession()) {
+      setShowAccountSignIn(true);
+    }
 
     listLessonTypes()
       .then(({ lessonTypes: types, prepay: prepayOn }) => {
@@ -224,20 +259,10 @@ export function BookingCalendar() {
       })
       .catch((error: Error) => setLoadError(error.message));
 
-    const session = readSession();
-    if (!session) {
-      setCheckingSession(false);
-      return;
-    }
-
-    fetchMe(session)
-      .then((data) => {
-        setStudent(data?.student ?? null);
-        setHadLesson((data?.bookings ?? []).some((booking) => booking.status !== "cancelled"));
-      })
+    refreshStudent()
       .catch(() => clearSession())
       .finally(() => setCheckingSession(false));
-  }, []);
+  }, [refreshStudent]);
 
   // Signing in mid-flow can reveal a history the lesson step didn't know
   // about. If the trial is the current choice, step back rather than letting
@@ -250,9 +275,40 @@ export function BookingCalendar() {
     setTrialNotice("The trial is for a first lesson with Inês — you're past that! A single lesson is the same hour.");
   }, [hadLesson, lessonTypeId]);
 
+  const openManaged = useCallback(async (token: string) => {
+    if (!token) return;
+    setManagedToken(token);
+    setManageLoading(true);
+    setManageError("");
+    setManageOutcome("");
+    setManageMode("view");
+    setSelectedSlot("");
+    try {
+      const result = await fetchBooking(token);
+      setManaged(result);
+      setSelectedDate(portoDateKey(new Date(result.booking.startAt)));
+    } catch (caught) {
+      setManaged(null);
+      setManageError(caught instanceof Error ? caught.message : "That lesson could not be opened.");
+    } finally {
+      setManageLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialManageToken) openManaged(initialManageToken);
+  }, [initialManageToken, openManaged]);
+
+  const availabilityLessonTypeId =
+    manageMode === "reschedule" && managed ? managed.booking.lessonType.id : lessonTypeId;
+
   const loadAvailability = useCallback(
     (signal?: AbortSignal) => {
-      if (!lessonTypeId || !todayKey) return;
+      if (!availabilityLessonTypeId || !todayKey) {
+        setSlotsByDate({});
+        setLoadingSlots(false);
+        return;
+      }
 
       setLoadingSlots(true);
       setLoadError("");
@@ -265,7 +321,7 @@ export function BookingCalendar() {
        * drawn weeks of empty cells announcing "no times free", which would have
        * been a lie rather than a gap.
        */
-      fetchAvailability(lessonTypeId, todayKey, addDaysToKey(todayKey, 140), signal)
+      fetchAvailability(availabilityLessonTypeId, todayKey, addDaysToKey(todayKey, 140), signal)
         .then((data) => {
           setSlotsByDate(data.slotsByDate);
           setHorizonDays(data.horizonDays || BOOKING_HORIZON_DAYS_FALLBACK);
@@ -279,7 +335,7 @@ export function BookingCalendar() {
           if (!signal?.aborted) setLoadingSlots(false);
         });
     },
-    [lessonTypeId, todayKey]
+    [availabilityLessonTypeId, todayKey]
   );
 
   useEffect(() => {
@@ -288,12 +344,76 @@ export function BookingCalendar() {
     return () => controller.abort();
   }, [loadAvailability]);
 
-  const calendarWeeks = useMemo(() => {
-    if (!todayKey || loadingSlots) return [];
-    return startWithFirstBookableWeek(buildBookingWeeks(todayKey, horizonDays), slotsByDate);
-  }, [todayKey, horizonDays, loadingSlots, slotsByDate]);
+  const calendarBookings = myBookings
+    .filter((booking) => !booking.isPast && booking.status === "confirmed")
+    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+  if (
+    managed &&
+    !managed.isPast &&
+    managed.booking.status === "confirmed" &&
+    !calendarBookings.some((booking) => booking.reference === managed.booking.reference)
+  ) {
+    calendarBookings.push({
+      reference: managed.booking.reference,
+      status: managed.booking.status,
+      startAt: managed.booking.startAt,
+      endAt: managed.booking.endAt,
+      location: managed.booking.location,
+      notes: managed.booking.notes,
+      lessonType: managed.booking.lessonType,
+      isPast: managed.isPast,
+      sameDayFeeApplies: managed.sameDayFeeApplies,
+      changeLocked: managed.changeLocked,
+      paymentStatus: managed.booking.paymentStatus,
+      seriesId: null,
+      manageToken: managedToken
+    });
+  }
+
+  const bookingsByDate = calendarBookings.reduce<Record<string, MyBooking[]>>((dates, booking) => {
+    const key = portoDateKey(new Date(booking.startAt));
+    (dates[key] ??= []).push(booking);
+    return dates;
+  }, {});
+  const latestBookingKey = calendarBookings.length
+    ? portoDateKey(new Date(calendarBookings[calendarBookings.length - 1].startAt))
+    : todayKey;
+  const dayNumber = (key: string) => {
+    const [year, month, day] = key.split("-").map(Number);
+    return Date.UTC(year, month - 1, day) / 86_400_000;
+  };
+  const visibleHorizon =
+    todayKey && latestBookingKey
+      ? Math.max(horizonDays, dayNumber(latestBookingKey) - dayNumber(todayKey) + 1)
+      : horizonDays;
+  const allCalendarWeeks = todayKey ? buildBookingWeeks(todayKey, visibleHorizon) : [];
+  const firstRelevantWeek = allCalendarWeeks.findIndex((week) =>
+    week.cells.some((cell) => Boolean(slotsByDate[cell.key]?.length || bookingsByDate[cell.key]?.length))
+  );
+  const currentWeekHasBooking = Boolean(
+    allCalendarWeeks[0]?.cells.some((cell) => Boolean(bookingsByDate[cell.key]?.length))
+  );
+  const todayWeekday = todayKey ? new Date(`${todayKey}T12:00:00Z`).getUTCDay() : -1;
+  const startsOnClosedWeekend = (todayWeekday === 0 || todayWeekday === 6) && !currentWeekHasBooking;
+  const calendarWeeks =
+    availabilityLessonTypeId && firstRelevantWeek > 0
+      ? allCalendarWeeks.slice(firstRelevantWeek).map((week, index) =>
+          index === 0 && !week.showMonth ? { ...week, showMonth: true } : week
+        )
+      : !availabilityLessonTypeId && startsOnClosedWeekend
+        ? allCalendarWeeks.slice(1).map((week, index) =>
+            index === 0 && !week.showMonth ? { ...week, showMonth: true } : week
+          )
+      : allCalendarWeeks;
   const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
+  const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
+  const firstCalendarBookingStart = calendarBookings[0]?.startAt ?? "";
+
+  useEffect(() => {
+    if (selectedDate || !firstCalendarBookingStart) return;
+    setSelectedDate(portoDateKey(new Date(firstCalendarBookingStart)));
+  }, [firstCalendarBookingStart, selectedDate]);
 
   /*
    * Which weeks a repeat would actually take, asked for before anything is
@@ -390,10 +510,12 @@ export function BookingCalendar() {
       setConfirmation({
         reference: result.booking.reference,
         startAt: result.booking.startAt,
-        manageUrl: result.manageUrl ?? "/my-lessons/",
+        manageUrl: result.manageUrl ?? "/book/?view=lessons",
+        manageToken: result.manageToken ?? "",
         email: result.booking.studentEmail,
         series: result.series
       });
+      void refreshStudent();
     } catch (error) {
       const message = error instanceof Error ? error.message : "The booking could not be created.";
       setSubmitError(message);
@@ -403,6 +525,60 @@ export function BookingCalendar() {
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function moveManagedLesson() {
+    if (!managedToken || !selectedSlot) return;
+    setManageWorking(true);
+    setManageError("");
+    try {
+      await rescheduleBooking(managedToken, selectedSlot);
+      const refreshed = await fetchBooking(managedToken);
+      setManaged(refreshed);
+      setSelectedDate(portoDateKey(new Date(refreshed.booking.startAt)));
+      setSelectedSlot("");
+      setManageMode("view");
+      setManageOutcome("Your lesson has been moved. We’ve emailed you and updated your calendar.");
+      await refreshStudent();
+    } catch (caught) {
+      setManageError(caught instanceof Error ? caught.message : "That lesson could not be moved.");
+      loadAvailability();
+    } finally {
+      setManageWorking(false);
+    }
+  }
+
+  async function cancelManagedLesson() {
+    if (!managedToken || !managed) return;
+    setManageWorking(true);
+    setManageError("");
+    try {
+      const result = await cancelBooking(managedToken);
+      setManaged({ ...managed, booking: result.booking });
+      setManageMode("view");
+      setManageOutcome(
+        result.booking.paymentStatus === "refunded"
+          ? "Your lesson has been cancelled. Your refund is on its way back to your card."
+          : "Your lesson has been cancelled. We’ve emailed you and updated your calendar."
+      );
+      await refreshStudent();
+    } catch (caught) {
+      setManageError(caught instanceof Error ? caught.message : "That lesson could not be cancelled.");
+    } finally {
+      setManageWorking(false);
+    }
+  }
+
+  function closeManagedLesson() {
+    setManaged(null);
+    setManagedToken("");
+    setManageMode("view");
+    setManageError("");
+    setManageOutcome("");
+    setSelectedSlot("");
+    if (new URLSearchParams(window.location.search).has("manage")) {
+      window.history.replaceState({}, "", "/book/");
     }
   }
 
@@ -466,20 +642,33 @@ export function BookingCalendar() {
           <dt>Your reference</dt>
           <dd>{confirmation.reference}</dd>
         </dl>
-        {/* The email is no longer the only way back. Everything a student has
-            booked is in their own area, so that leads, and the emailed link
-            stays for this one lesson because it works without signing in. */}
         <div className="booking-success__actions">
-          <Link className="button button--coral" href="/my-lessons/">
-            Go to your lessons
-          </Link>
-          <a className="text-action" href={confirmation.manageUrl}>
+          <button
+            className="button button--coral"
+            onClick={() => {
+              setConfirmation(null);
+              setStep("day");
+              setSelectedDate(portoDateKey(new Date(confirmation.startAt)));
+            }}
+            type="button"
+          >
+            Back to your calendar
+          </button>
+          <button
+            className="text-action"
+            onClick={() => {
+              setConfirmation(null);
+              if (confirmation.manageToken) openManaged(confirmation.manageToken);
+              else window.location.assign(confirmation.manageUrl);
+            }}
+            type="button"
+          >
             Change or cancel this one
-          </a>
+          </button>
         </div>
         <p className="booking-success__note">
-          Everything you book lives in your lessons, and you can move or cancel any of it there. Changing on the day of
-          the lesson costs {formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}; any earlier is free.
+          This lesson is now marked on your calendar. You can open it there to move or cancel it. Changing on the day
+          costs {formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}; any earlier is free.
         </p>
       </section>
     );
@@ -501,159 +690,363 @@ export function BookingCalendar() {
       ) : null}
 
       <div className="booking-stage">
-        {step === "lesson" ? (
-          <>
-            <div className="booking-step-head booking-step-head--lesson">
-              <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-                Which lesson?
-              </h2>
-              <a className="button button--coral booking-existing-link" href="/my-lessons/">
-                Already booked? Sign in
-              </a>
-            </div>
-            {/* No list roles here. An explicit role replaces the implicit one,
-                so role="listitem" on a <button> destroyed the button role and
-                these announced as unnamed list items — the first step of the
-                booking flow, unusable to a screen reader. */}
-            {trialNotice ? (
-              <div className="booking-alert" role="status">
-                <AlertCircle size={18} aria-hidden="true" />
-                <p>{trialNotice}</p>
-              </div>
-            ) : null}
-            <div className="lesson-choice">
-              {(hadLesson ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes).map((type) => (
-                <button
-                  className="lesson-card"
-                  key={type.id}
-                  onClick={() => {
-                    setLoadingSlots(true);
-                    setSlotsByDate({});
-                    setLessonTypeId(type.id);
-                    setSelectedSlot("");
-                    goTo("day");
-                  }}
-                  type="button"
-                >
-                  <LessonMark className="lesson-card__mark" lessonTypeId={type.id} />
-                  <span className="lesson-card__text">
-                    <strong>{type.name}</strong>
-                    <span className="lesson-card__meta">
-                      {formatLessonDuration(type.duration_minutes)} · {formatMoneyCents(type.price_cents)}
-                    </span>
-                  </span>
-                  <ChevronRight aria-hidden="true" size={20} />
-                </button>
-              ))}
-              {!lessonTypes.length && !loadError ? <p className="booking-state-note">No lessons are listed right now.</p> : null}
-            </div>
-
-          </>
-        ) : null}
-
-        {step === "day" ? (
-          <>
-            <div className="booking-step-head">
-              <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-                Pick a day
-              </h2>
-              <button className="booking-back" onClick={() => goTo("lesson")} type="button">
-                <ArrowLeft size={16} aria-hidden="true" /> Back
-              </button>
-            </div>
-
-            <div className="calendar-panel">
-              <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
-              <div className="calendar-weekdays" aria-hidden="true">
-                {weekdayLabels.map((label) => (
-                  <span key={label}>{label}</span>
-                ))}
-              </div>
-
-              <div aria-busy={loadingSlots}>
-                {calendarWeeks.map((week) => (
-                  <Fragment key={week.key}>
-                    {week.showMonth ? <p className="calendar-month">{week.month}</p> : null}
-                    <div className="calendar-week">
-                      {week.cells.map((cell) => {
-                        const slots = slotsByDate[cell.key] ?? [];
-                        return (
-                          <button
-                            aria-label={`${formatLongDate(`${cell.key}T12:00:00Z`)}${
-                              slots.length ? `, ${slots.length} times free` : ", no times free"
-                            }`}
-                            className={`${slots.length ? "has-availability" : ""}${cell.isToday ? " is-today" : ""}`}
-                            disabled={!slots.length}
-                            key={cell.key}
-                            onClick={() => {
-                              setSelectedDate(cell.key);
-                              setSelectedSlot("");
-                              goTo("time");
-                            }}
-                            type="button"
-                          >
-                            <span>
-                              {cell.day}
-                              {cell.month !== week.monthNumber ? <em>{shortMonth(cell.month, cell.key)}</em> : null}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </Fragment>
-                ))}
-              </div>
-              {loadingSlots ? <p className="booking-state-note">Checking what&rsquo;s free…</p> : null}
-            </div>
-          </>
-        ) : null}
-
-        {step === "time" ? (
-          <>
-            <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-              {selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a time"}
-            </h2>
-            <div className="booking-step-note-row">
-              <p className="booking-step-note">
-                {lessonType ? `${lessonType.name} · ${formatLessonDuration(lessonType.duration_minutes)}` : ""} · Porto
-                time
+        <div className="unified-booking__head">
+          <div>
+            <h2 className="booking-step-heading">Your lesson calendar</h2>
+            <p>Booked lessons and free times share the same calendar.</p>
+          </div>
+          {checkingSession ? (
+            <p className="booking-state-note">Checking your account…</p>
+          ) : student ? (
+            <div className="unified-booking__account">
+              <p className="unified-booking__identity">
+                Signed in as <strong>{student.name}</strong>
               </p>
-              <button className="booking-back" onClick={() => goTo("day")} type="button">
-                <ArrowLeft size={16} aria-hidden="true" /> Back
+              <button className="text-action" onClick={() => setShowAccountControls((open) => !open)} type="button">
+                {showAccountControls ? "Close account" : "Account & repeats"}
               </button>
             </div>
+          ) : (
+            <button className="text-action" onClick={() => setShowAccountSignIn(true)} type="button">
+              Sign in to see your lessons
+            </button>
+          )}
+        </div>
 
-            {daySlots.length ? (
-              <div className="time-groups">
-                {groupSlots(daySlots).map((group) => (
-                  <div className="time-group" key={group.label}>
-                    <h3>{group.label}</h3>
-                    <div className="slot-grid">
-                      {group.slots.map((slot) => {
-                        const local = differingLocalTime(slot.startAt, studentZone);
-                        return (
+        {trialNotice ? (
+          <div className="booking-alert" role="status">
+            <AlertCircle size={18} aria-hidden="true" />
+            <p>{trialNotice}</p>
+          </div>
+        ) : null}
+
+        <div className="unified-booking__lesson-picker">
+          <p className="eyebrow">What would you like to book?</p>
+          <div className="lesson-choice">
+            {(hadLesson ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes).map((type) => (
+              <button
+                aria-pressed={lessonTypeId === type.id}
+                className={`lesson-card${lessonTypeId === type.id ? " is-selected" : ""}`}
+                key={type.id}
+                onClick={() => {
+                  if (managed) closeManagedLesson();
+                  setLoadingSlots(true);
+                  setSlotsByDate({});
+                  setLessonTypeId(type.id);
+                  setSelectedSlot("");
+                  setStep("day");
+                }}
+                type="button"
+              >
+                <LessonMark className="lesson-card__mark" lessonTypeId={type.id} />
+                <span className="lesson-card__text">
+                  <strong>{type.name}</strong>
+                  <span className="lesson-card__meta">
+                    {formatLessonDuration(type.duration_minutes)} · {formatMoneyCents(type.price_cents)}
+                  </span>
+                </span>
+                <ChevronRight aria-hidden="true" size={20} />
+              </button>
+            ))}
+            {!lessonTypes.length && !loadError ? <p className="booking-state-note">No lessons are listed right now.</p> : null}
+          </div>
+        </div>
+
+        {!calendarBookings.length ? (
+          <p className="unified-calendar__empty-summary">No lessons currently booked. Choose a lesson type to add one.</p>
+        ) : null}
+
+        <div className="unified-calendar" id="lesson-calendar">
+          <div className="calendar-panel unified-calendar__grid">
+            <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
+            <div className="unified-calendar__legend" aria-label="Calendar key">
+              <span><i className="is-booked" aria-hidden="true" /> Your lesson</span>
+              <span><i className="is-free" aria-hidden="true" /> Free to book</span>
+            </div>
+            <div className="calendar-weekdays" aria-hidden="true">
+              {weekdayLabels.map((label) => (
+                <span key={label}>{label}</span>
+              ))}
+            </div>
+
+            <div aria-busy={loadingSlots}>
+              {calendarWeeks.map((week) => (
+                <Fragment key={week.key}>
+                  {week.showMonth ? <p className="calendar-month">{week.month}</p> : null}
+                  <div className="calendar-week">
+                    {week.cells.map((cell) => {
+                      const slots = slotsByDate[cell.key] ?? [];
+                      const lessons = bookingsByDate[cell.key] ?? [];
+                      const lessonLabel = lessons.length === 1 ? "1 lesson" : `${lessons.length} lessons`;
+                      return (
+                        <button
+                          aria-label={`${formatLongDate(`${cell.key}T12:00:00Z`)}${
+                            lessons.length ? `, ${lessonLabel}` : ""
+                          }${
+                            slots.length
+                              ? `, ${slots.length} times free`
+                              : lessons.length
+                                ? ""
+                                : ", unavailable"
+                          }`}
+                          aria-pressed={selectedDate === cell.key}
+                          className={`${slots.length ? "has-availability" : ""}${
+                            lessons.length ? " has-booking" : ""
+                          }${selectedDate === cell.key ? " is-selected" : ""}${cell.isToday ? " is-today" : ""}`}
+                          disabled={!slots.length && !lessons.length}
+                          key={cell.key}
+                          onClick={() => {
+                            setSelectedDate(cell.key);
+                            setSelectedSlot("");
+                            if (step === "details") setStep("time");
+                          }}
+                          type="button"
+                        >
+                          <span>
+                            {cell.day}
+                            {cell.month !== week.monthNumber ? <em>{shortMonth(cell.month, cell.key)}</em> : null}
+                            {lessons.length ? (
+                              <small>{lessons.length === 1 ? formatSlotTime(lessons[0].startAt) : lessonLabel}</small>
+                            ) : null}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Fragment>
+              ))}
+            </div>
+            {loadingSlots ? <p className="booking-state-note">Checking what&rsquo;s free…</p> : null}
+          </div>
+
+          <aside className="unified-calendar__panel" aria-live="polite">
+            {showAccountSignIn && !student ? (
+              <AuthPanel
+                heading="Sign in"
+                headingLevel={3}
+                initialMode="signin"
+                intro="Your booked lessons will appear on this calendar."
+                onSignedIn={(signedIn) => {
+                  setStudent(signedIn);
+                  setShowAccountSignIn(false);
+                  void refreshStudent();
+                }}
+              />
+            ) : manageLoading ? (
+              <p className="booking-state-note">Opening your lesson…</p>
+            ) : managed ? (
+              <>
+                <button className="booking-back" onClick={closeManagedLesson} type="button">
+                  <ArrowLeft size={16} aria-hidden="true" /> Back to calendar
+                </button>
+                {manageOutcome ? (
+                  <div className="booking-outcome" role="status">
+                    <CheckCircle2 size={20} aria-hidden="true" />
+                    <p>{manageOutcome}</p>
+                  </div>
+                ) : null}
+                {manageError ? (
+                  <div className="booking-alert" role="alert">
+                    <AlertCircle size={18} aria-hidden="true" />
+                    <p>{manageError}</p>
+                  </div>
+                ) : null}
+                <p className="eyebrow">{managed.booking.status === "cancelled" ? "Cancelled" : "Your lesson"}</p>
+                <h3>{managed.booking.lessonType.name}</h3>
+                <dl className="unified-calendar__lesson-facts">
+                  <div>
+                    <dt>Date</dt>
+                    <dd>{formatLongDate(managed.booking.startAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>Time</dt>
+                    <dd>{formatSlotTime(managed.booking.startAt)} Porto time</dd>
+                  </div>
+                  <div>
+                    <dt>Where</dt>
+                    <dd>{managed.booking.location === "porto" ? "In Porto" : "Online"}</dd>
+                  </div>
+                </dl>
+
+                {managed.changeLocked && managed.booking.status !== "cancelled" ? (
+                  <p className="lesson-calendar__notice">
+                    This lesson is today and can&rsquo;t be moved or cancelled.
+                  </p>
+                ) : managed.sameDayFeeApplies && managed.booking.status !== "cancelled" ? (
+                  <p className="lesson-calendar__notice">
+                    Changing or cancelling today costs {formatMoneyCents(managed.booking.sameDayFeeCents)}.
+                  </p>
+                ) : null}
+
+                {manageMode === "view" &&
+                managed.booking.status !== "cancelled" &&
+                !managed.isPast &&
+                !managed.changeLocked ? (
+                  <div className="manage-booking__actions">
+                    <button
+                      className="button button--coral"
+                      onClick={() => {
+                        setManageMode("reschedule");
+                        setSelectedSlot("");
+                        setLoadingSlots(true);
+                      }}
+                      type="button"
+                    >
+                      Move this lesson
+                    </button>
+                    <button className="button button--quiet" onClick={() => setManageMode("confirm-cancel")} type="button">
+                      Cancel lesson
+                    </button>
+                  </div>
+                ) : null}
+
+                {manageMode === "confirm-cancel" ? (
+                  <div className="manage-booking__confirm">
+                    <p>
+                      Cancel this lesson?
+                      {managed.refundOnCancel && managed.booking.amountCents
+                        ? ` Your ${formatMoneyCents(managed.booking.amountCents)} comes back to your card.`
+                        : ""}
+                    </p>
+                    <div className="manage-booking__actions">
+                      <button className="button button--coral" disabled={manageWorking} onClick={cancelManagedLesson} type="button">
+                        {manageWorking ? "Cancelling…" : "Yes, cancel it"}
+                      </button>
+                      <button className="button button--quiet" onClick={() => setManageMode("view")} type="button">
+                        Keep my lesson
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {manageMode === "reschedule" ? (
+                  <div className="unified-calendar__move">
+                    <p className="eyebrow">Pick a new time on this calendar</p>
+                    <p className="booking-state-note">
+                      {selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a free day"} · Porto time
+                    </p>
+                    {daySlots.length ? (
+                      <div className="slot-grid">
+                        {daySlots.map((slot) => (
                           <button
+                            aria-pressed={selectedSlot === slot.startAt}
+                            className={selectedSlot === slot.startAt ? "is-selected" : ""}
                             key={slot.startAt}
-                            onClick={() => {
-                              setSelectedSlot(slot.startAt);
-                              goTo("details");
-                            }}
+                            onClick={() => setSelectedSlot(slot.startAt)}
                             type="button"
                           >
                             {formatSlotTime(slot.startAt)}
-                            {local ? <small>{local} your time</small> : null}
                           </button>
-                        );
-                      })}
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="booking-state-note">Choose a day marked free.</p>
+                    )}
+                    <div className="manage-booking__actions">
+                      <button
+                        className="button button--coral"
+                        disabled={!selectedSlot || manageWorking}
+                        onClick={moveManagedLesson}
+                        type="button"
+                      >
+                        {manageWorking
+                          ? "Moving…"
+                          : selectedSlot
+                            ? `Move to ${formatSlotTime(selectedSlot)}`
+                            : "Choose a time"}
+                      </button>
+                      <button className="booking-back" onClick={() => setManageMode("view")} type="button">
+                        <ArrowLeft size={16} aria-hidden="true" /> Keep current time
+                      </button>
                     </div>
                   </div>
-                ))}
+                ) : null}
+              </>
+            ) : manageError ? (
+              <div className="booking-alert" role="alert">
+                <AlertCircle size={18} aria-hidden="true" />
+                <p>{manageError}</p>
               </div>
             ) : (
-              <p className="booking-state-note">No times free on this day. Go back and pick another.</p>
+              <>
+                <p className="eyebrow">{selectedDate ? "Selected day" : "Your calendar"}</p>
+                <h3>{selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a day"}</h3>
+
+                {selectedDayBookings.length ? (
+                  <div className="unified-calendar__bookings">
+                    {selectedDayBookings.map((booking) => (
+                      <button
+                        className="lesson-calendar__lesson"
+                        key={booking.reference}
+                        onClick={() => openManaged(booking.manageToken)}
+                        type="button"
+                      >
+                        <LessonMark className="lesson-calendar__mark" lessonTypeId={booking.lessonType.id} />
+                        <span className="lesson-calendar__lesson-copy">
+                          <strong>{formatSlotTime(booking.startAt)} Porto time</strong>
+                          <span>
+                            {booking.lessonType.name} · {booking.location === "porto" ? "In Porto" : "Online"}
+                          </span>
+                        </span>
+                        <ChevronRight aria-hidden="true" size={20} />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="booking-state-note">
+                    {calendarBookings.length ? "No lesson booked on this day." : "No lessons currently booked."}
+                  </p>
+                )}
+
+                {lessonType ? (
+                  <div className="unified-calendar__availability">
+                    <div>
+                      <p className="eyebrow">Free for a {lessonType.name.toLowerCase()}</p>
+                      <p className="booking-state-note">
+                        {formatLessonDuration(lessonType.duration_minutes)} · {formatMoneyCents(lessonType.price_cents)} · Porto time
+                      </p>
+                    </div>
+                    {!selectedDate ? (
+                      <p className="booking-state-note">Choose a day marked free.</p>
+                    ) : loadingSlots ? (
+                      <p className="booking-state-note">Checking what&rsquo;s free…</p>
+                    ) : daySlots.length ? (
+                      <div className="time-groups">
+                        {groupSlots(daySlots).map((group) => (
+                          <div className="time-group" key={group.label}>
+                            <h4>{group.label}</h4>
+                            <div className="slot-grid">
+                              {group.slots.map((slot) => {
+                                const local = differingLocalTime(slot.startAt, studentZone);
+                                return (
+                                  <button
+                                    key={slot.startAt}
+                                    onClick={() => {
+                                      setSelectedSlot(slot.startAt);
+                                      goTo("details");
+                                    }}
+                                    type="button"
+                                  >
+                                    {formatSlotTime(slot.startAt)}
+                                    {local ? <small>{local} your time</small> : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="booking-state-note">No free times on this day.</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="unified-calendar__prompt">Choose a lesson type above to add free times to this calendar.</p>
+                )}
+              </>
             )}
-          </>
-        ) : null}
+          </aside>
+        </div>
 
         {step === "details" ? (
           <>
@@ -706,6 +1099,8 @@ export function BookingCalendar() {
                       onClick={() => {
                         clearSession();
                         setStudent(null);
+                        setMyBookings([]);
+                        setHadLesson(false);
                       }}
                       type="button"
                     >
@@ -743,15 +1138,7 @@ export function BookingCalendar() {
                   intro="An account keeps all your lessons in one place, so you can move or cancel any of them whenever you like."
                   onSignedIn={(signedIn) => {
                     setStudent(signedIn);
-                    // Their history decides whether the trial stays on offer.
-                    const session = readSession();
-                    if (session) {
-                      fetchMe(session)
-                        .then((data) =>
-                          setHadLesson((data?.bookings ?? []).some((booking) => booking.status !== "cancelled"))
-                        )
-                        .catch(() => {});
-                    }
+                    void refreshStudent();
                   }}
                 />
               ) : (
@@ -890,19 +1277,19 @@ export function BookingCalendar() {
                     <p className="booking-form-note">
                       You&rsquo;ll pay your first lesson now, securely with Stripe — each later lesson goes to the same
                       card automatically on its own day. Move or cancel any lesson free until the day before from your{" "}
-                      <a href="/my-lessons/">lessons page</a>. On a lesson&rsquo;s own day it&rsquo;s yours:{" "}
+                      <a href="#lesson-calendar">lesson calendar</a>. On a lesson&rsquo;s own day it&rsquo;s yours:{" "}
                       <strong>no changes and no refunds</strong>.
                     </p>
                   ) : prepay ? (
                     <p className="booking-form-note">
                       You&rsquo;ll pay now, securely with Stripe. Move or cancel free until the day before from your{" "}
-                      <a href="/my-lessons/">lessons page</a> — a cancellation is refunded automatically. On the day of
+                      <a href="#lesson-calendar">lesson calendar</a> — a cancellation is refunded automatically. On the day of
                       the lesson it&rsquo;s yours: <strong>no changes and no refunds</strong>.
                     </p>
                   ) : (
                     <p className="booking-form-note">
                       You pay on the day, in person with Inês. Change your booking any time from your{" "}
-                      <a href="/my-lessons/">lessons page</a> &mdash; free until the day before,{" "}
+                      <a href="#lesson-calendar">lesson calendar</a> &mdash; free until the day before,{" "}
                       <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong> on the day itself.
                     </p>
                   )}
@@ -912,6 +1299,20 @@ export function BookingCalendar() {
           </>
         ) : null}
       </div>
+
+      {student && showAccountControls ? (
+        <section className="unified-account-controls" aria-label="Account, repeating lessons and history">
+          <AccountControls
+            onSignedOut={() => {
+              setStudent(null);
+              setMyBookings([]);
+              setHadLesson(false);
+              setShowAccountControls(false);
+            }}
+            showCalendar={false}
+          />
+        </section>
+      ) : null}
     </section>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { readSession } from "@/lib/auth-api";
+import { readSession, SESSION_CHANGE_EVENT } from "@/lib/auth-api";
 
 /**
  * The student's own area, labelled for whichever state they are in.
@@ -18,12 +18,19 @@ export function AccountLink({ className, isCurrent = false }: { className?: stri
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
-    setSignedIn(Boolean(readSession()));
+    const update = () => setSignedIn(Boolean(readSession()));
+    update();
+    window.addEventListener(SESSION_CHANGE_EVENT, update);
+    return () => window.removeEventListener(SESSION_CHANGE_EVENT, update);
   }, []);
 
   return (
-    <Link aria-current={isCurrent ? "page" : undefined} className={className} href="/my-lessons">
-      {signedIn ? "My lessons" : "Sign in"}
+    <Link
+      aria-current={isCurrent ? "page" : undefined}
+      className={className}
+      href={signedIn ? "/book/#lesson-calendar" : "/book/?view=lessons#lesson-calendar"}
+    >
+      {signedIn ? "My calendar" : "Sign in"}
     </Link>
   );
 }

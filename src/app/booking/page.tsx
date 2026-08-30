@@ -1,29 +1,16 @@
 import type { Metadata } from "next";
-import { AccountHero } from "@/components/AccountHero";
-import { ManageBooking } from "@/components/ManageBooking";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
+import { BookingFlow } from "@/components/BookingFlow";
 
 export const metadata: Metadata = {
-  title: "Your booking · Português com a Inês",
+  title: "Your lesson · Português com a Inês",
   description: "Move or cancel your Portuguese lesson.",
-  // This page is only ever reached from a personal link in a confirmation email.
   robots: { index: false, follow: false }
 };
 
+/**
+ * Existing email links point here. They now open the same booking workspace,
+ * which immediately keeps the token and normalises the address to /book.
+ */
 export default function ManageBookingPage() {
-  return (
-    <>
-      <SiteHeader currentPage="book" />
-      <AccountHero
-        intro="Move it, or cancel it. Inês is updated automatically either way."
-        mark="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg"
-        title="Your lesson"
-      />
-      <main className="manage-page" id="main-content">
-        <ManageBooking />
-      </main>
-      <SiteFooter />
-    </>
-  );
+  return <BookingFlow initialView="manage" />;
 }

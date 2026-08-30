@@ -26,10 +26,10 @@ Student on /book                                     (browse without an account)
   → GET  /lesson-types, GET /availability            public
   → POST /auth/register | /auth/login | /auth/google → session token
   → POST /bookings                    (Bearer)       → D1 row, emails, ICS invite
-Student on /my-lessons                (Bearer)       → every lesson they have
-Student on /booking/?token=…          (email link)
-  → GET  /bookings/:token                            HMAC-signed, not guessable
+  → GET  /me                          (Bearer)       → their calendar and series
+  → GET  /bookings/:token                            one lesson; HMAC-signed token
   → POST /bookings/:token/reschedule | /cancel       → sequence++, updated ICS
+Legacy /my-lessons and /booking links resolve into /book without losing state
 Inês on /schedule                     (her own account, role=teacher)
   → GET/POST /admin/availability, /admin/exceptions
   → GET  /admin/bookings, /admin/students
@@ -106,11 +106,12 @@ depending on them having kept the right confirmation email.
   sensitive than a lesson calendar.
 - The emailed manage link still works on its own, so a forgotten password never
   blocks someone from changing a lesson.
-- **Booking confirmation leads to `/my-lessons`, not to the inbox.** Every lesson
-  a student has booked is already in their own area, and they are signed in by
-  the time they get there — telling them to keep an email was the older, thinner
-  story. The emailed link is still offered beside it for that one lesson, because
-  it is the route that survives a forgotten password.
+- **Booking, the learner's calendar, and lesson changes share one workspace.**
+  Every lesson a student has booked is marked on the calendar at `/book`; choosing
+  one opens move and cancel in place. The emailed token still opens that same
+  interface without requiring sign-in, so a forgotten password never blocks a
+  change. The old `/my-lessons` and `/booking` paths remain valid for links
+  already in the world, then normalise to `/book`.
 
 ### Repeating bookings
 
@@ -142,7 +143,7 @@ until they stop it.
 - **Stopping a repeat keeps the lessons already booked.** Someone who stops
   repeating almost always still means to attend the ones in their calendar;
   cancelling those silently would be the worse of the two mistakes. Passing
-  `cancelRemaining` cancels them too. The lessons page asks for confirmation
+  `cancelRemaining` cancels them too. The account controls beneath the unified calendar ask for confirmation
   before it calls the stop endpoint. The confirmation says that booked lessons
   stay and can be cancelled individually below.
 - **A run under prepayment charges its first lesson now and the rest charge
@@ -384,12 +385,12 @@ Two regimes, keyed on the booking's own payment status so promises made at
 booking time are kept:
 
 - **Paid**: there are no same-day changes. `changePolicy` locks the lesson's
-  Porto day — the manage page and /my-lessons say so instead of offering the
+  Porto day — the unified calendar says so instead of offering the
   buttons, and the endpoints refuse with the same words for anyone who kept an
   old tab open. `same_day_change` is never set on a paid row.
 - **Booked before prepayment**: students may move or cancel right up to the
   lesson start. A change on the lesson's own Porto date sets `same_day_change`,
-  warns the student on `/booking/` before they act, marks their confirmation,
+  warns the student in the `/book` workspace before they act, marks their confirmation,
   and subjects Inês's mail **"Same-day change"** so she collects the €5 at the
   lesson — by her in person, because those bookings have no payment to charge
   against.

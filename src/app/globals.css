@@ -1278,13 +1278,25 @@ textarea,
  * into the next rule — the anchor inherited `display: flow-root` and broke out
  * of its paragraph onto its own line, stranding the full stop behind it.
  */
-.booking-policy a {
+.booking-policy a,
+.booking-policy button.text-action {
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
   text-decoration: underline;
+  text-transform: none;
   text-underline-offset: 2px;
 }
 
 .booking-policy a:hover,
-.booking-policy a:focus-visible {
+.booking-policy a:focus-visible,
+.booking-policy button.text-action:hover,
+.booking-policy button.text-action:focus-visible {
   color: var(--coral-action);
 }
 
@@ -1472,6 +1484,12 @@ textarea,
   background: rgba(170, 164, 230, 0.16);
 }
 
+.lesson-card.is-selected {
+  border-color: var(--coral-action);
+  background: rgba(194, 58, 39, 0.12);
+  box-shadow: inset 0 -3px 0 rgba(194, 58, 39, 0.6);
+}
+
 .lesson-card__mark {
   width: 52px;
   height: 52px;
@@ -1509,6 +1527,249 @@ textarea,
 
 .lesson-card svg:last-child {
   color: var(--lavender-ink);
+}
+
+/* One workspace rather than a booking wizard beside a separate account page. */
+.unified-booking__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  gap: 1rem 1.5rem;
+}
+
+.unified-booking__head > div:first-child > p {
+  max-width: 48ch;
+  margin-top: 0.25rem;
+  font-size: 0.92rem;
+  opacity: 0.76;
+}
+
+.unified-booking__account {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 0.7rem 1rem;
+}
+
+.unified-booking__identity {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.unified-booking__lesson-picker {
+  margin-bottom: 1.6rem;
+}
+
+.unified-booking__lesson-picker .lesson-choice {
+  margin-top: 0.65rem;
+}
+
+.unified-calendar__empty-summary {
+  margin: -0.35rem 0 1rem;
+  border-left: 3px solid var(--coral-action);
+  padding: 0.55rem 0 0.55rem 0.8rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.unified-calendar {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  align-items: start;
+}
+
+.unified-calendar__grid {
+  width: 100%;
+  max-width: none;
+}
+
+.unified-calendar__legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 0.4rem;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+  font-family: var(--ui);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.unified-calendar__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.unified-calendar__legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.unified-calendar__legend .is-booked {
+  background: var(--coral-action);
+}
+
+.unified-calendar__legend .is-free {
+  background: var(--lavender);
+}
+
+/* Coral is already booked; lilac is free. A split tile truthfully carries both. */
+.unified-calendar .calendar-week button.has-booking {
+  background: rgba(194, 58, 39, 0.16);
+  color: var(--coral-action);
+  font-weight: 700;
+}
+
+.unified-calendar .calendar-week button.has-booking.has-availability {
+  background: linear-gradient(135deg, rgba(194, 58, 39, 0.2) 0 48%, rgba(170, 164, 230, 0.34) 48% 100%);
+}
+
+.unified-calendar .calendar-week button.has-booking:hover,
+.unified-calendar .calendar-week button.has-booking:focus-visible,
+.unified-calendar .calendar-week button.has-booking.is-selected {
+  background: var(--coral-action);
+  color: #fff;
+}
+
+.unified-calendar .calendar-week button small {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  margin-top: 0.12rem;
+  font-family: var(--ui);
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unified-calendar__panel {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-panel);
+  padding: clamp(1rem, 2.4vw, 1.35rem);
+  background: rgba(170, 164, 230, 0.13);
+}
+
+.unified-calendar__panel > h3 {
+  margin: 0.2rem 0 0.8rem;
+  font-family: var(--ui);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.unified-calendar__lesson-facts {
+  display: grid;
+  margin: 0 0 1.1rem;
+  gap: 0;
+}
+
+.unified-calendar__lesson-facts > div {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  border-top: 1px solid var(--rule-soft);
+  padding: 0.55rem 0;
+  gap: 0.65rem;
+}
+
+.unified-calendar__lesson-facts dt {
+  font-family: var(--ui);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.68;
+}
+
+.unified-calendar__lesson-facts dd {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.unified-calendar__bookings,
+.unified-calendar__availability,
+.unified-calendar__move {
+  margin-top: 1rem;
+}
+
+.unified-calendar__availability,
+.unified-calendar__move {
+  border-top: 1px solid var(--rule);
+  padding-top: 1rem;
+}
+
+.unified-calendar__availability .time-groups {
+  margin-top: 0.8rem;
+  gap: 1rem;
+}
+
+.time-group h4 {
+  margin-bottom: 0.7rem;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.unified-calendar__prompt {
+  margin: 1rem 0 0;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  opacity: 0.78;
+}
+
+.unified-account-controls {
+  margin-top: 2rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 1.5rem;
+}
+
+@container booking (min-width: 700px) {
+  .unified-calendar {
+    grid-template-columns: minmax(0, 1fr) minmax(245px, 0.62fr);
+  }
+
+  .unified-calendar__panel {
+    position: sticky;
+    top: 1rem;
+  }
+
+  .unified-calendar__empty-summary {
+    display: none;
+  }
+}
+
+@container booking (max-width: 520px) {
+  .unified-booking__head,
+  .unified-booking__account {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .unified-booking__identity {
+    text-align: left;
+  }
+
+  .unified-calendar__legend {
+    justify-content: flex-start;
+  }
 }
 
 
@@ -2608,6 +2869,166 @@ button.text-action {
   font-weight: 400;
 }
 
+.lesson-calendar__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 0.8rem 1.25rem;
+}
+
+.lesson-calendar__heading h2 {
+  margin-bottom: 0.15rem;
+}
+
+.lesson-calendar__heading p {
+  max-width: 48ch;
+  font-size: 0.88rem;
+  opacity: 0.76;
+}
+
+.lesson-calendar__heading .button {
+  width: auto;
+  min-height: 44px;
+  padding: 0.65rem 1.15rem;
+  font-size: 0.66rem;
+}
+
+.lesson-calendar {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  align-items: start;
+}
+
+.lesson-calendar__grid {
+  width: 100%;
+  max-width: none;
+}
+
+.lesson-calendar__week + .lesson-calendar__week {
+  margin-top: 7px;
+}
+
+/*
+ * Coral means "already yours"; lilac remains "free to book" in the booking
+ * flow. The distinction survives without relying on the tiny time label.
+ */
+.lesson-calendar .calendar-week button.has-booking {
+  background: rgba(194, 58, 39, 0.15);
+  color: var(--coral-action);
+  font-weight: 700;
+}
+
+.lesson-calendar .calendar-week button.has-booking:hover,
+.lesson-calendar .calendar-week button.has-booking:focus-visible,
+.lesson-calendar .calendar-week button.has-booking.is-selected {
+  background: var(--coral-action);
+  color: #fff;
+}
+
+.lesson-calendar .calendar-week button small {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  margin-top: 0.12rem;
+  font-family: var(--ui);
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lesson-calendar__agenda {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-panel);
+  padding: 1.2rem;
+  background: rgba(170, 164, 230, 0.13);
+}
+
+.lesson-calendar__agenda > h3 {
+  margin: 0.25rem 0 0.9rem;
+  font-family: var(--ui);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.lesson-calendar__lesson {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  border: 0;
+  border-top: 1px solid var(--rule-soft);
+  padding: 0.9rem 0.2rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.lesson-calendar__lesson:last-child {
+  padding-bottom: 0.35rem;
+}
+
+.lesson-calendar__lesson:hover,
+.lesson-calendar__lesson:focus-visible {
+  color: var(--coral-action);
+}
+
+.lesson-calendar__mark {
+  width: 42px;
+  height: 42px;
+}
+
+.lesson-calendar__lesson-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.lesson-calendar__lesson-copy > strong {
+  font-family: var(--ui);
+  font-size: 0.92rem;
+}
+
+.lesson-calendar__lesson-copy > span,
+.lesson-calendar__lesson-copy > small {
+  font-size: 0.76rem;
+  line-height: 1.35;
+  opacity: 0.76;
+}
+
+.lesson-calendar__lesson-copy > small {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.lesson-calendar__lesson-copy > .lesson-calendar__notice {
+  color: var(--coral-action);
+  font-weight: 700;
+  opacity: 1;
+}
+
+@container booking (min-width: 760px) {
+  .lesson-calendar {
+    grid-template-columns: minmax(0, 1fr) minmax(245px, 0.62fr);
+  }
+
+  .lesson-calendar__agenda {
+    position: sticky;
+    top: 1rem;
+  }
+}
+
 /* margin/padding zeroed: the UA's 40px list indent pushed every card out of
    line with the heading and panel above it. */
 .lesson-list {
@@ -3159,6 +3580,10 @@ button.text-action {
 
 .manage-booking {
   margin-top: 1.75rem;
+}
+
+.manage-booking__back {
+  margin-bottom: 1rem;
 }
 
 .manage-booking__card {

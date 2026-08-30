@@ -9,7 +9,7 @@ const routes = [
   { id: "approach", path: "/approach", heading: "No class." },
   { id: "lessons", path: "/lessons", heading: "Lessons, and" },
   { id: "faq", path: "/faq", heading: "Questions" },
-  { id: "booking", path: "/book", heading: "Book your" }
+  { id: "booking", path: "/book", heading: "Your Portuguese lessons" }
 ];
 
 await mkdir(outDir, { recursive: true });
@@ -129,8 +129,12 @@ if (bookingCalendar) {
   }
 
   const bookingText = (await page.locator(".booking-composition").innerText()).toLowerCase();
-  assertIncludes(bookingText, "which lesson?", "booking first-step heading");
+  assertIncludes(bookingText, "your lesson calendar", "unified booking heading");
+  assertIncludes(bookingText, "what would you like to book?", "lesson choice heading");
   assertIncludes(bookingText, "porto time", "booking timezone note");
+  if ((await page.locator("#lesson-calendar").count()) !== 1) {
+    throw new Error("Booking and lesson management should share one calendar.");
+  }
 
   // The mobile menu replaces the inline nav below 820px; both must work.
   await page.setViewportSize({ width: 390, height: 844 });
@@ -145,10 +149,13 @@ if (bookingCalendar) {
   await page.setViewportSize({ width: 1440, height: 1000 });
 }
 
-// The self-service management route must exist for the links in confirmation
-// emails to resolve at all.
+// Old emailed links remain valid, but now land in the same booking workspace.
 await page.goto(`${base}/booking`, { waitUntil: "domcontentloaded" });
-await page.waitForSelector(".manage-page", { timeout: 10_000 });
+await page.waitForSelector("#lesson-calendar", { timeout: 10_000 });
+await page.waitForURL((url) => url.pathname === "/book/", { timeout: 10_000 });
+if (new URL(page.url()).pathname !== "/book/") {
+  throw new Error(`The legacy management route did not normalise to /book/: ${page.url()}`);
+}
 
 await browser.close();
 

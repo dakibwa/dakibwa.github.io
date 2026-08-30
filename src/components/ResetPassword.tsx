@@ -48,7 +48,7 @@ export function ResetPassword() {
         <div>
           <strong>Your password has been changed.</strong>
           <p>
-            You&rsquo;re signed in. <a href="/my-lessons/">Go to your lessons</a>.
+            You&rsquo;re signed in. <a href="/book/?view=lessons">Go to your lessons</a>.
           </p>
         </div>
       </div>
