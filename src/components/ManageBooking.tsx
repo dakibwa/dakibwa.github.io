@@ -30,7 +30,15 @@ import {
 type Mode = "view" | "reschedule" | "confirm-cancel";
 type Outcome = { kind: "rescheduled" | "cancelled"; sameDayFee?: boolean; refunded?: boolean } | null;
 
-export function ManageBooking() {
+export function ManageBooking({
+  manageToken,
+  onBack,
+  onBook
+}: {
+  manageToken?: string;
+  onBack?: () => void;
+  onBook?: () => void;
+} = {}) {
   const [token, setToken] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isPast, setIsPast] = useState(false);
@@ -58,7 +66,7 @@ export function ManageBooking() {
     setStudentZone(browserTimeZone());
 
     const params = new URLSearchParams(window.location.search);
-    const found = params.get("token");
+    const found = manageToken || params.get("manage") || params.get("token");
     if (!found) {
       setError("This page needs the link from your confirmation email.");
       setLoading(false);
@@ -76,7 +84,7 @@ export function ManageBooking() {
       })
       .catch((caught: Error) => setError(caught.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [manageToken]);
 
   const loadSlots = useCallback(
     (signal?: AbortSignal) => {
@@ -174,6 +182,12 @@ export function ManageBooking() {
 
   return (
     <div className="manage-booking">
+      {onBack ? (
+        <button className="booking-back manage-booking__back" onClick={onBack} type="button">
+          <ArrowLeft size={16} aria-hidden="true" /> All your lessons
+        </button>
+      ) : null}
+
       {outcome ? (
         <div className="booking-outcome" role="status">
           <CheckCircle2 size={22} aria-hidden="true" />
@@ -241,24 +255,48 @@ export function ManageBooking() {
         <>
           <p className="booking-state-note">This lesson is cancelled.</p>
           <div className="manage-booking__onward">
-            <a className="button button--coral" href="/my-lessons/">
-              Go to your lessons
-            </a>
-            <a className="text-action" href="/book/">
-              Book another lesson
-            </a>
+            {onBack ? (
+              <button className="button button--coral" onClick={onBack} type="button">
+                Go to your lessons
+              </button>
+            ) : (
+              <a className="button button--coral" href="/book/?view=lessons">
+                Go to your lessons
+              </a>
+            )}
+            {onBook ? (
+              <button className="text-action" onClick={onBook} type="button">
+                Book another lesson
+              </button>
+            ) : (
+              <a className="text-action" href="/book/">
+                Book another lesson
+              </a>
+            )}
           </div>
         </>
       ) : isPast ? (
         <>
           <p className="booking-state-note">This lesson has already happened, so it can no longer be changed here.</p>
           <div className="manage-booking__onward">
-            <a className="button button--coral" href="/my-lessons/">
-              Go to your lessons
-            </a>
-            <a className="text-action" href="/book/">
-              Book another lesson
-            </a>
+            {onBack ? (
+              <button className="button button--coral" onClick={onBack} type="button">
+                Go to your lessons
+              </button>
+            ) : (
+              <a className="button button--coral" href="/book/?view=lessons">
+                Go to your lessons
+              </a>
+            )}
+            {onBook ? (
+              <button className="text-action" onClick={onBook} type="button">
+                Book another lesson
+              </button>
+            ) : (
+              <a className="text-action" href="/book/">
+                Book another lesson
+              </a>
+            )}
           </div>
         </>
       ) : (
@@ -423,9 +461,15 @@ export function ManageBooking() {
           action should always say where to go next. */}
       {outcome && !cancelled ? (
         <div className="manage-booking__onward">
-          <a className="button button--coral" href="/my-lessons/">
-            Go to your lessons
-          </a>
+          {onBack ? (
+            <button className="button button--coral" onClick={onBack} type="button">
+              Go to your lessons
+            </button>
+          ) : (
+            <a className="button button--coral" href="/book/?view=lessons">
+              Go to your lessons
+            </a>
+          )}
         </div>
       ) : null}
     </div>

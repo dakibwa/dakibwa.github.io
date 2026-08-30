@@ -41,6 +41,7 @@ export type LessonSeries = {
 };
 
 const SESSION_KEY = "ines-student-session";
+export const SESSION_CHANGE_EVENT = "ines:student-session-change";
 
 /**
  * The session lives in localStorage rather than a cookie: the site and the
@@ -59,6 +60,7 @@ export function readSession() {
 export function storeSession(token: string) {
   try {
     window.localStorage.setItem(SESSION_KEY, token);
+    window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
   } catch {
     // A student in private browsing simply signs in again next visit.
   }
@@ -67,6 +69,7 @@ export function storeSession(token: string) {
 export function clearSession() {
   try {
     window.localStorage.removeItem(SESSION_KEY);
+    window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
   } catch {
     // Nothing to clear.
   }

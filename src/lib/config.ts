@@ -38,9 +38,6 @@ function normalizePublicHttpUrl(value: string) {
 export const BOOKING_API_BASE_URL = normalizePublicHttpUrl(process.env.NEXT_PUBLIC_BOOKING_API_BASE_URL ?? "");
 export const BOOKING_CONFIGURED = Boolean(BOOKING_API_BASE_URL);
 
-/** Where a student manages an existing booking, with `?token=` from their email. */
-export const MANAGE_BOOKING_PATH = "/booking/";
-
 /**
  * Stripe's publishable key — public by design, it only identifies the account;
  * every sensitive operation needs the secret key, which lives in the Worker.

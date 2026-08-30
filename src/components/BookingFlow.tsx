@@ -1,17 +1,36 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AssetMark } from "@/components/BrandMarks";
 import { BookingCalendar } from "@/components/BookingCalendar";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BOOKING_CONFIGURED, CONTACT_WHATSAPP_URL } from "@/lib/config";
 
+type BookingView = "book" | "lessons" | "manage";
+
 /**
- * The intro is a short banner rather than a full-height column. The booking
- * flow is the work of this page, and it was being squeezed into little more
- * than half the viewport by a panel that only ever said three things.
+ * Booking, the learner's calendar and lesson management are one surface.
+ * /my-lessons and /booking remain as old entry points, then normalise here
+ * without throwing away an emailed token.
  */
-export function BookingFlow() {
+export function BookingFlow({ initialView = "book" }: { initialView?: BookingView }) {
+  const [manageToken, setManageToken] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("manage") || params.get("token") || "";
+    setManageToken(token);
+
+    if (window.location.pathname === "/book/") return;
+    const target = new URL("/book/", window.location.origin);
+    if (token) target.searchParams.set("manage", token);
+    else if (initialView === "lessons" || params.has("emailToken")) target.searchParams.set("view", "lessons");
+    const emailToken = params.get("emailToken");
+    if (emailToken) target.searchParams.set("emailToken", emailToken);
+    window.history.replaceState({}, "", `${target.pathname}${target.search}`);
+  }, [initialView]);
+
   return (
     <>
       <SiteHeader currentPage="book" />
@@ -20,21 +39,21 @@ export function BookingFlow() {
         <section className="booking-composition" aria-labelledby="booking-title">
           <aside className="booking-intro">
             <h1 id="booking-title">
-              Book your
+              Your
               <br />
               Portuguese
               <br />
-              lesson
+              lessons
             </h1>
             <div className="editorial-rule" aria-hidden="true" />
             <ul className="booking-intro__points">
               <li>
                 <AssetMark asset="/visuals/v2-splats/one-to-one-splat-v2.svg" />
-                <span>One to one</span>
+                <span>Book on your calendar</span>
               </li>
               <li>
-                <AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" />
-                <span>In Porto or online</span>
+                <AssetMark asset="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg" />
+                <span>Move or cancel here</span>
               </li>
               <li>
                 <AssetMark asset="/visuals/v2-splats/lesson-format-splat-v2.svg" />
@@ -47,9 +66,9 @@ export function BookingFlow() {
             />
           </aside>
 
-          <section className="booking-provider" aria-label="Lesson booking">
+          <section className="booking-provider" aria-label="Your lesson calendar">
             {BOOKING_CONFIGURED ? (
-              <BookingCalendar />
+              <BookingCalendar initialManageToken={manageToken} />
             ) : (
               <div className="booking-placeholder" aria-label="Booking setup placeholder">
                 <p className="eyebrow">Not yet available</p>
@@ -71,8 +90,8 @@ export function BookingFlow() {
           <div>
             <p className="eyebrow">Changing a lesson</p>
             <p>
-              Move your lesson for free until the day before using your confirmation email or the{" "}
-              <a href="/my-lessons/">lessons page</a>.
+              Move your lesson for free until the day before using your confirmation email or your{" "}
+              <a href="#lesson-calendar">lesson calendar</a>.
             </p>
           </div>
         </section>

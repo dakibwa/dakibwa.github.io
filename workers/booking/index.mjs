@@ -96,6 +96,11 @@ function siteUrl(env, path = "") {
   return `${String(env.SITE_URL ?? "https://portuguesewithines.com").replace(/\/+$/, "")}${path}`;
 }
 
+/** Every student action now opens inside the one booking workspace. */
+function studentManageUrl(env, token) {
+  return siteUrl(env, `/book/?manage=${encodeURIComponent(token)}`);
+}
+
 /*
  * Deliberately narrower than the RFC. The old pattern allowed quotes, brackets,
  * commas and semicolons in the local part — none of which Resend will send to,
@@ -487,14 +492,14 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
         heading: reason === "extended" ? "More lessons in your calendar" : "Your weekly slot is booked",
         intro:
           reason === "extended"
-            ? `Olá ${first.student_name.split(" ")[0]}, your weekly slot keeps going, so a few more lessons have been added to your calendar. Move or cancel any one of them on its own from your lessons page, or stop the repeat there whenever you like.`
-            : `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on its own from your lessons page.`,
+            ? `Olá ${first.student_name.split(" ")[0]}, your weekly slot keeps going, so a few more lessons have been added to your calendar. Move or cancel any one of them on your lesson calendar, or stop the repeat there whenever you like.`
+            : `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on your lesson calendar.`,
         callout: skippedNote,
         hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
         heroNote: differingZonedTime(new Date(first.starts_at), studentZone) ? `${differingZonedTime(new Date(first.starts_at), studentZone)} — your time` : "",
         preheader: `${lessonType.name} · ${cadence}`,
         rows: studentSeriesRows,
-        action: { label: "See all your lessons", url: siteUrl(env, "/my-lessons/") },
+        action: { label: "See all your lessons", url: siteUrl(env, "/book/?view=lessons") },
         footer: seriesFooter
       }
     })
@@ -909,8 +914,8 @@ async function notifyPaymentDue(env, { row, lessonType }) {
       lessonType,
       customerEmail: row.student_email,
       forceHosted: true,
-      successUrl: siteUrl(env, "/my-lessons/?paid=1"),
-      cancelUrl: siteUrl(env, "/my-lessons/")
+      successUrl: siteUrl(env, "/book/?view=lessons&paid=1"),
+      cancelUrl: siteUrl(env, "/book/?view=lessons")
     });
     payUrl = session.url ?? "";
     if (session.id) {
@@ -1012,7 +1017,7 @@ async function resendFailedEmails(env) {
         row,
         lessonType,
         settings,
-        manageUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`)
+        manageUrl: studentManageUrl(env, token)
       });
     } catch (error) {
       console.error("email-resend", entry.dedupe_key, String(error?.message ?? error));
@@ -1061,7 +1066,7 @@ async function topUpOpenSeries(env) {
       const manageUrls = {};
       for (const row of filled.rows) {
         const token = await createManageToken(row.id, env.BOOKING_TOKEN_SECRET);
-        manageUrls[row.id] = siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`);
+        manageUrls[row.id] = studentManageUrl(env, token);
       }
 
       await notifySeries(env, {
@@ -1303,7 +1308,7 @@ async function handleCreate(request, env, ctx) {
 
   const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
   const token = await createManageToken(id, env.BOOKING_TOKEN_SECRET);
-  const manageUrl = siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`);
+  const manageUrl = studentManageUrl(env, token);
 
   // Prepay: the slot is held, not booked, and nothing is emailed until Stripe
   // says the money arrived. Confirming first and reconciling later is how you
@@ -1315,7 +1320,7 @@ async function handleCreate(request, env, ctx) {
         booking: row,
         lessonType,
         customerEmail: student.email,
-        successUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}&paid=1`),
+        successUrl: `${studentManageUrl(env, token)}&paid=1`,
         cancelUrl: siteUrl(env, "/book/?cancelled=1")
       });
 
@@ -1408,7 +1413,7 @@ async function handleCreate(request, env, ctx) {
           customerEmail: student.email,
           saveCard: true,
           seriesId,
-          successUrl: siteUrl(env, "/my-lessons/?paid=1"),
+          successUrl: siteUrl(env, "/book/?view=lessons&paid=1"),
           cancelUrl: siteUrl(env, "/book/?cancelled=1"),
           skippedStartAts: filled.skipped.map((occurrence) => occurrence.startAt)
         });
@@ -1442,7 +1447,7 @@ async function handleCreate(request, env, ctx) {
     const manageUrls = {};
     for (const occurrence of allRows) {
       const occurrenceToken = await createManageToken(occurrence.id, env.BOOKING_TOKEN_SECRET);
-      manageUrls[occurrence.id] = siteUrl(env, `/booking/?token=${encodeURIComponent(occurrenceToken)}`);
+      manageUrls[occurrence.id] = studentManageUrl(env, occurrenceToken);
     }
 
     ctx.waitUntil(
@@ -1786,7 +1791,7 @@ async function handleReschedule(request, env, ctx, token) {
 
   const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
   const settings = await loadSettings(env);
-  const manageUrl = siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`);
+  const manageUrl = studentManageUrl(env, token);
 
   ctx.waitUntil(
     notify(env, { event: "rescheduled", row: updated, lessonType, settings, manageUrl, previousStartsAt: row.starts_at })
@@ -1963,7 +1968,7 @@ async function handleStripeWebhook(request, env, ctx) {
       row: confirmed,
       lessonType,
       settings,
-      manageUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`)
+      manageUrl: studentManageUrl(env, token)
     })
   );
 
@@ -2050,7 +2055,7 @@ async function confirmPaidSeries(env, ctx, session) {
   const manageUrls = {};
   for (const occurrence of rows) {
     const occurrenceToken = await createManageToken(occurrence.id, env.BOOKING_TOKEN_SECRET);
-    manageUrls[occurrence.id] = siteUrl(env, `/booking/?token=${encodeURIComponent(occurrenceToken)}`);
+    manageUrls[occurrence.id] = studentManageUrl(env, occurrenceToken);
   }
 
   ctx.waitUntil(notifySeries(env, { rows, lessonType, settings, series, manageUrls, skipped }));
@@ -2416,7 +2421,7 @@ async function handleRequestEmailChange(request, env, ctx) {
       .run();
 
     const settings = await loadSettings(env);
-    const confirmUrl = siteUrl(env, `/my-lessons/?emailToken=${encodeURIComponent(token)}`);
+    const confirmUrl = siteUrl(env, `/book/?view=lessons&emailToken=${encodeURIComponent(token)}`);
 
     ctx.waitUntil(
       deliver(env, {
@@ -2723,7 +2728,7 @@ async function handleAdmin(request, env, ctx, url, path) {
         row,
         lessonType,
         settings,
-        manageUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`)
+        manageUrl: studentManageUrl(env, token)
       })
     );
 
@@ -2770,7 +2775,7 @@ async function handleAdmin(request, env, ctx, url, path) {
         row: updated,
         lessonType,
         settings,
-        manageUrl: siteUrl(env, `/booking/?token=${encodeURIComponent(token)}`),
+        manageUrl: studentManageUrl(env, token),
         previousStartsAt: row.starts_at,
         // She moved it, not them. Without this the student is thanked for a
         // change they did not make, and she is told they made it.

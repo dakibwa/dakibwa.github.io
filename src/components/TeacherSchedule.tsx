@@ -153,7 +153,7 @@ export function TeacherSchedule() {
           <AlertCircle size={18} aria-hidden="true" />
           <p>
             You&rsquo;re signed in as {me.name}, and this page is Inês&rsquo;s. If it should be yours,{" "}
-            <a href="/my-lessons/">switch account</a>.
+            <a href="/book/?view=lessons">switch account</a>.
           </p>
         </div>
       );

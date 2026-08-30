@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CalendarDays, Clock3, Globe2, MapPin, Repeat } from "lucide-react";
+import { AlertCircle, CalendarDays, ChevronRight, Globe2, Repeat } from "lucide-react";
 import { AuthPanel } from "@/components/AuthPanel";
 import { LessonMark } from "@/components/LessonMarks";
 import {
@@ -17,22 +17,36 @@ import {
 } from "@/lib/auth-api";
 import {
   browserTimeZone,
+  buildBookingWeeks,
   differingLocalTime,
   formatLongDate,
   formatMoneyCents,
   formatSlotTime,
+  portoDateKey,
+  shortMonth,
   stopSeries
 } from "@/lib/booking-api";
-import { BOOKING_TIME_ZONE, formatLessonDuration } from "@/lib/config";
+import { BOOKING_HORIZON_DAYS_FALLBACK, BOOKING_TIME_ZONE, formatLessonDuration } from "@/lib/config";
 
 /** Index matches the Worker's weekday, which is 0 = Sunday. */
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function minutesToClock(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-export function MyLessons() {
+export function MyLessons({
+  onBook,
+  onManage,
+  onSignedOut,
+  showCalendar = true
+}: {
+  onBook?: () => void;
+  onManage?: (token: string) => void;
+  onSignedOut?: () => void;
+  showCalendar?: boolean;
+} = {}) {
   const [student, setStudent] = useState<Student | null>(null);
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [series, setSeries] = useState<LessonSeries[]>([]);
@@ -47,6 +61,8 @@ export function MyLessons() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [zone, setZone] = useState(BOOKING_TIME_ZONE);
+  const [todayKey, setTodayKey] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
 
   const load = useCallback(async () => {
     const session = readSession();
@@ -76,8 +92,17 @@ export function MyLessons() {
 
   useEffect(() => {
     setZone(browserTimeZone());
+    setTodayKey(portoDateKey(new Date()));
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (selectedDate) return;
+    const next = bookings
+      .filter((booking) => !booking.isPast && booking.status === "confirmed")
+      .sort((a, b) => a.startAt.localeCompare(b.startAt))[0];
+    if (next) setSelectedDate(portoDateKey(new Date(next.startAt)));
+  }, [bookings, selectedDate]);
 
   /*
    * The link mailed to the new address lands back here. It is applied only for
@@ -171,6 +196,35 @@ export function MyLessons() {
     window.requestAnimationFrame(() => document.getElementById(`stop-repeat-${seriesId}`)?.focus());
   }
 
+  const upcoming = bookings
+    .filter((booking) => !booking.isPast && booking.status === "confirmed")
+    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const past = bookings
+    .filter((booking) => booking.isPast || booking.status === "cancelled")
+    .sort((a, b) => b.startAt.localeCompare(a.startAt));
+
+  const bookingsByDate = upcoming.reduce<Record<string, MyBooking[]>>((dates, booking) => {
+    const key = portoDateKey(new Date(booking.startAt));
+    (dates[key] ??= []).push(booking);
+    return dates;
+  }, {});
+  const latestDate = upcoming.length ? portoDateKey(new Date(upcoming[upcoming.length - 1].startAt)) : todayKey;
+  const toDayNumber = (key: string) => {
+    const [year, month, day] = key.split("-").map(Number);
+    return Date.UTC(year, month - 1, day) / 86_400_000;
+  };
+  const calendarHorizon =
+    todayKey && latestDate
+      ? Math.max(BOOKING_HORIZON_DAYS_FALLBACK, toDayNumber(latestDate) - toDayNumber(todayKey) + 1)
+      : BOOKING_HORIZON_DAYS_FALLBACK;
+  const calendarWeeks = todayKey ? buildBookingWeeks(todayKey, calendarHorizon) : [];
+  const selectedBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
+
+  function manage(booking: MyBooking) {
+    if (onManage) onManage(booking.manageToken);
+    else window.location.assign(`/book/?manage=${encodeURIComponent(booking.manageToken)}`);
+  }
+
   if (loading) return <p className="booking-state-note">Loading your lessons…</p>;
 
   /*
@@ -218,20 +272,6 @@ export function MyLessons() {
     );
   }
 
-  /*
-   * Both lists come from one query sorted newest-first, which is right for what
-   * has happened and backwards for what has not: it put a student's next lesson
-   * at the bottom of "Coming up" and one much later at the top. Soonest
-   * first going forward, most recent first going back — in both cases the one
-   * you care about is the one you land on.
-   */
-  const upcoming = bookings
-    .filter((booking) => !booking.isPast && booking.status === "confirmed")
-    .sort((a, b) => a.startAt.localeCompare(b.startAt));
-  const past = bookings
-    .filter((booking) => booking.isPast || booking.status === "cancelled")
-    .sort((a, b) => b.startAt.localeCompare(a.startAt));
-
   return (
     <div className="my-lessons">
       <div className="my-lessons__header">
@@ -248,6 +288,7 @@ export function MyLessons() {
               clearSession();
               setStudent(null);
               setBookings([]);
+              onSignedOut?.();
             }}
             type="button"
           >
@@ -375,76 +416,114 @@ export function MyLessons() {
         </section>
       ) : null}
 
+      {showCalendar ? (
       <section className="my-lessons__group">
-        <h2>Coming up</h2>
+        <div className="lesson-calendar__heading">
+          <div>
+            <h2>Your calendar</h2>
+            <p>Choose a marked day to see or change the lesson.</p>
+          </div>
+          {onBook ? (
+            <button className="button button--coral" onClick={onBook} type="button">
+              Book another lesson
+            </button>
+          ) : (
+            <a className="button button--coral" href="/book/">
+              Book another lesson
+            </a>
+          )}
+        </div>
+
         {upcoming.length ? (
-          <ul className="lesson-list">
-            {upcoming.map((booking) => (
-              <li key={booking.reference}>
-                <LessonMark className="lesson-list__mark" lessonTypeId={booking.lessonType.id} />
-                <div className="lesson-list__body">
-                  {/* The date is what tells one of these apart from the next.
-                      The lesson type was the heading on every card, which on a
-                      page of eight read as the same word eight times — it is
-                      still there, in the line that carries the other details. */}
-                  <h3>
-                    {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
-                    <em> Porto time</em>
-                  </h3>
-                  {differingLocalTime(booking.startAt, zone) ? (
-                    <p>
-                      <span>
-                        <Globe2 size={16} aria-hidden="true" />
-                        {differingLocalTime(booking.startAt, zone)} your time
-                      </span>
-                    </p>
-                  ) : null}
-                  <p>
+          <div className="lesson-calendar">
+            <div className="calendar-panel lesson-calendar__grid">
+              <div className="calendar-weekdays" aria-hidden="true">
+                {WEEKDAY_LABELS.map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
+              </div>
+
+              <div>
+                {calendarWeeks.map((week) => (
+                  <div className="lesson-calendar__week" key={week.key}>
+                    {week.showMonth ? <p className="calendar-month">{week.month}</p> : null}
+                    <div className="calendar-week">
+                      {week.cells.map((cell) => {
+                        const dayBookings = bookingsByDate[cell.key] ?? [];
+                        const lessonLabel = dayBookings.length === 1 ? "1 lesson" : `${dayBookings.length} lessons`;
+                        const timeLabel =
+                          dayBookings.length === 1 ? formatSlotTime(dayBookings[0].startAt) : lessonLabel;
+                        return (
+                          <button
+                            aria-label={`${formatLongDate(`${cell.key}T12:00:00Z`)}${
+                              dayBookings.length ? `, ${lessonLabel}` : ", no lessons"
+                            }`}
+                            aria-pressed={selectedDate === cell.key}
+                            className={`${dayBookings.length ? "has-booking" : ""}${
+                              selectedDate === cell.key ? " is-selected" : ""
+                            }${cell.isToday ? " is-today" : ""}`}
+                            disabled={!dayBookings.length}
+                            key={cell.key}
+                            onClick={() => setSelectedDate(cell.key)}
+                            type="button"
+                          >
+                            <span>
+                              {cell.day}
+                              {cell.month !== week.monthNumber ? <em>{shortMonth(cell.month, cell.key)}</em> : null}
+                              {dayBookings.length ? <small>{timeLabel}</small> : null}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <aside className="lesson-calendar__agenda" aria-live="polite">
+              <p className="eyebrow">Your {selectedBookings.length === 1 ? "lesson" : "lessons"}</p>
+              <h3>{selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a day"}</h3>
+              {selectedBookings.map((booking) => (
+                <button
+                  className="lesson-calendar__lesson"
+                  key={booking.reference}
+                  onClick={() => manage(booking)}
+                  type="button"
+                >
+                  <LessonMark className="lesson-calendar__mark" lessonTypeId={booking.lessonType.id} />
+                  <span className="lesson-calendar__lesson-copy">
+                    <strong>{formatSlotTime(booking.startAt)} Porto time</strong>
                     <span>
-                      <Clock3 size={16} aria-hidden="true" />
-                      {booking.lessonType.name} · {formatLessonDuration(booking.lessonType.durationMinutes)}
-                    </span>
-                    <span>
-                      <MapPin size={16} aria-hidden="true" />
+                      {booking.lessonType.name} · {formatLessonDuration(booking.lessonType.durationMinutes)} ·{" "}
                       {booking.location === "porto" ? "In Porto" : "Online"}
                     </span>
-                  </p>
-                  {booking.seriesId && series.some((entry) => entry.id === booking.seriesId) ? (
-                    <p className="lesson-list__repeats">
-                      <Repeat size={16} aria-hidden="true" />
-                      One of your weekly lessons
-                    </p>
-                  ) : null}
-                  {booking.changeLocked ? (
-                    <p className="lesson-list__fee">
-                      This lesson is today and already paid — it can&rsquo;t be moved or cancelled on the day.
-                    </p>
-                  ) : booking.sameDayFeeApplies ? (
-                    <p className="lesson-list__fee">
-                      This lesson is today — changing or cancelling it now costs {formatMoneyCents(feeCents)}.
-                    </p>
-                  ) : null}
-                </div>
-                {/* Along the bottom rather than down the right. In a column
-                    beside the text it squeezed the date into three lines and
-                    left the rest of the card empty. */}
-                <div className="lesson-list__actions">
-                  {booking.changeLocked ? null : (
-                    <a className="button button--coral" href={`/booking/?token=${encodeURIComponent(booking.manageToken)}`}>
-                      Move or cancel
-                    </a>
-                  )}
-                  <span className="lesson-list__reference">{booking.reference}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
+                    {differingLocalTime(booking.startAt, zone) ? (
+                      <small>
+                        <Globe2 size={14} aria-hidden="true" />
+                        {differingLocalTime(booking.startAt, zone)} your time
+                      </small>
+                    ) : null}
+                    {booking.changeLocked ? (
+                      <small className="lesson-calendar__notice">
+                        This lesson is today and can&rsquo;t be changed.
+                      </small>
+                    ) : booking.sameDayFeeApplies ? (
+                      <small className="lesson-calendar__notice">
+                        Changing it today costs {formatMoneyCents(feeCents)}.
+                      </small>
+                    ) : null}
+                  </span>
+                  <ChevronRight aria-hidden="true" size={20} />
+                </button>
+              ))}
+            </aside>
+          </div>
         ) : (
-          <p className="booking-state-note">
-            Nothing booked yet. <a href="/book/">Book a lesson</a> whenever you like.
-          </p>
+          <p className="booking-state-note">Nothing booked yet.</p>
         )}
       </section>
+      ) : null}
 
       {past.length ? (
         <section className="my-lessons__group">

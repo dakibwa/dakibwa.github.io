@@ -10,10 +10,12 @@ five responsive routes:
 - `/approach` — teaching approach and confirmed credentials
 - `/lessons` — lesson formats and prices
 - `/faq` — booking, lesson, location, payment, rescheduling, and level answers
-- `/book` — the booking calendar
-- `/booking` — where a student moves or cancels one lesson (noindex, reached from
-  the link in their confirmation email)
-- `/my-lessons` — every lesson a signed-in student has (noindex)
+- `/book` — one workspace for booking, seeing every upcoming lesson on a
+  calendar, and moving or cancelling without leaving the page
+- `/booking` — backwards-compatible entry for older emailed management links;
+  it resolves into the `/book` workspace (noindex)
+- `/my-lessons` — backwards-compatible account entry; it resolves into the
+  `/book` workspace (noindex)
 - `/reset-password` — reached from a reset email (noindex)
 - `/schedule` — Inês's own view: teaching hours, days off, and what is booked
   (noindex, access key required)
