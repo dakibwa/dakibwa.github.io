@@ -199,6 +199,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [horizonDays, setHorizonDays] = useState(BOOKING_HORIZON_DAYS_FALLBACK);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
   const [selectedDate, setSelectedDate] = useState("");
+  const [calendarCompact, setCalendarCompact] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -224,7 +225,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [manageError, setManageError] = useState("");
   const [manageOutcome, setManageOutcome] = useState("");
   const [showAccountSignIn, setShowAccountSignIn] = useState(false);
-  const [showAccountControls, setShowAccountControls] = useState(false);
 
   const lessonType = lessonTypes.find((type) => type.id === lessonTypeId) ?? null;
 
@@ -277,6 +277,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
   const openManaged = useCallback(async (token: string) => {
     if (!token) return;
+    setCalendarCompact(true);
     setManagedToken(token);
     setManageLoading(true);
     setManageError("");
@@ -405,6 +406,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             index === 0 && !week.showMonth ? { ...week, showMonth: true } : week
           )
       : allCalendarWeeks;
+  const selectedCalendarWeek = selectedDate
+    ? calendarWeeks.find((week) => week.cells.some((cell) => cell.key === selectedDate))
+    : undefined;
+  const isCalendarCompact = calendarCompact && Boolean(selectedCalendarWeek);
+  const displayedCalendarWeeks =
+    isCalendarCompact && selectedCalendarWeek
+      ? [{ ...selectedCalendarWeek, showMonth: true }]
+      : calendarWeeks;
   const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
@@ -698,15 +707,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               <p className="unified-booking__identity">
                 Signed in as <strong>{student.name}</strong>
               </p>
-              <button
-                aria-controls="account-controls"
-                aria-expanded={showAccountControls}
-                className="text-action"
-                onClick={() => setShowAccountControls((open) => !open)}
-                type="button"
-              >
-                {showAccountControls ? "Close" : "Account"}
-              </button>
             </div>
           ) : (
             <button className="text-action" onClick={() => setShowAccountSignIn(true)} type="button">
@@ -715,11 +715,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           )}
         </div>
 
-        {student && showAccountControls ? (
+        {student ? (
           <section
             className="unified-account-controls"
             id="account-controls"
-            aria-label="Account, repeating lessons and history"
+            aria-label="Account and repeating lessons"
           >
             <AccountControls
               embedded
@@ -727,7 +727,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 setStudent(null);
                 setMyBookings([]);
                 setHadLesson(false);
-                setShowAccountControls(false);
               }}
               showCalendar={false}
             />
@@ -754,6 +753,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   setLoadingSlots(true);
                   setSlotsByDate({});
                   setLessonTypeId(type.id);
+                  setCalendarCompact(false);
                   setSelectedSlot("");
                   setStep("day");
                 }}
@@ -780,9 +780,20 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         <div className="unified-calendar" id="lesson-calendar">
           <div className="calendar-panel unified-calendar__grid">
             <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
-            <div className="unified-calendar__legend" aria-label="Calendar key">
-              <span><i className="is-booked" aria-hidden="true" /> Your lesson</span>
-              <span><i className="is-free" aria-hidden="true" /> Free to book</span>
+            <div className="unified-calendar__toolbar">
+              <div className="unified-calendar__legend" aria-label="Calendar key">
+                <span><i className="is-booked" aria-hidden="true" /> Your lesson</span>
+                <span><i className="is-free" aria-hidden="true" /> Free to book</span>
+              </div>
+              {isCalendarCompact ? (
+                <button
+                  className="text-action unified-calendar__expand"
+                  onClick={() => setCalendarCompact(false)}
+                  type="button"
+                >
+                  Show all dates
+                </button>
+              ) : null}
             </div>
             <div className="calendar-weekdays" aria-hidden="true">
               {weekdayLabels.map((label) => (
@@ -791,7 +802,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             </div>
 
             <div aria-busy={loadingSlots}>
-              {calendarWeeks.map((week) => (
+              {displayedCalendarWeeks.map((week) => (
                 <Fragment key={week.key}>
                   {week.showMonth ? <p className="calendar-month">{week.month}</p> : null}
                   <div className="calendar-week">
@@ -818,6 +829,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                           key={cell.key}
                           onClick={() => {
                             setSelectedDate(cell.key);
+                            setCalendarCompact(true);
                             setSelectedSlot("");
                             if (step === "details") setStep("time");
                           }}
@@ -827,7 +839,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                             {cell.day}
                             {cell.month !== week.monthNumber ? <em>{shortMonth(cell.month, cell.key)}</em> : null}
                             {lessons.length ? (
-                              <small>{lessons.length === 1 ? formatSlotTime(lessons[0].startAt) : lessonLabel}</small>
+                              <small className={lessons.length > 1 ? "calendar-booking-count" : undefined}>
+                                {lessons.length === 1 ? formatSlotTime(lessons[0].startAt) : `${lessons.length}×`}
+                              </small>
                             ) : null}
                           </span>
                         </button>

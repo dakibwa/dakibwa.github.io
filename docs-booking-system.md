@@ -108,10 +108,16 @@ depending on them having kept the right confirmation email.
   blocks someone from changing a lesson.
 - **Booking, the learner's calendar, and lesson changes share one workspace.**
   Every lesson a student has booked is marked on the calendar at `/book`; choosing
-  one opens move and cancel in place. The emailed token still opens that same
-  interface without requiring sign-in, so a forgotten password never blocks a
-  change. The old `/my-lessons` and `/booking` paths remain valid for links
-  already in the world, then normalise to `/book`.
+  a booked day or a free day reduces the eight-week overview to that one week,
+  putting the selected lesson or available times immediately beneath it on a
+  phone. `Show all dates` restores the overview. Choosing an individual booking
+  opens move and cancel in place. The emailed token still opens that same interface
+  without requiring sign-in, so a forgotten password never blocks a change. The
+  old `/my-lessons` and `/booking` paths remain valid for links already in the
+  world, then normalise to `/book`.
+- **Signed-in account and repeat controls are always on the page.** They sit above
+  the lesson choices rather than behind an Account/Close disclosure, with profile
+  editing, sign out and stopping a repeat in the same workspace.
 
 ### Repeating bookings
 
@@ -132,8 +138,8 @@ stop it.
   must not stop someone booking the other eleven.
 - **Series occurrences ignore `booking_horizon_days`.** That horizon stops a
   stranger reaching in and taking a slot months out; a student keeping their own
-  standing time is the case it is meant to allow. At the current 30 days, a
-  twelve-week booking would otherwise have quietly become a four-week one.
+  standing time is the case it is meant to allow. At the current 56 days, a
+  twelve-week booking would otherwise have quietly become an eight-week one.
 - **One initial email each way, carrying every current lesson in one calendar
   file**, each event under its own booking's UID so a later change to one week
   still matches the entry already in her calendar. Twelve lessons must not mean
@@ -146,9 +152,9 @@ stop it.
 - **Stopping a repeat keeps the lessons already booked.** Someone who stops
   repeating almost always still means to attend the ones in their calendar;
   cancelling those silently would be the worse of the two mistakes. Passing
-  `cancelRemaining` cancels them too. The account controls beneath the unified calendar ask for confirmation
-  before it calls the stop endpoint. The confirmation says that booked lessons
-  stay and can be cancelled individually below.
+  `cancelRemaining` cancels them too. The account controls above the booking
+  choices ask for confirmation before calling the stop endpoint. The confirmation
+  says that booked lessons stay and can be cancelled individually on the calendar.
 - **A run under prepayment charges its first lesson now and the rest charge
   themselves.** The first checkout saves the card (`setup_future_usage`, with
   Stripe's own consent wording on the form); the whole run is held until that
@@ -291,6 +297,9 @@ withholds a 90-minute lesson earlier than a 60-minute one.
 Once availability has loaded, the date picker omits complete leading weeks with
 no free slots. That means a weekend with nothing left to book opens directly on
 the next usable week; closed weeks later in the booking window remain visible.
+Selecting either a booked day or a free day then shows only its week, so the
+details are directly below the calendar on a phone; the student can restore the
+full window with `Show all dates`.
 
 ### Payment
 
