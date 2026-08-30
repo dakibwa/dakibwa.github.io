@@ -10,6 +10,9 @@ export const SAME_DAY_RESCHEDULE_FEE_CENTS = Number(
 /** Her teaching timezone. Every advertised time on the site is Porto time. */
 export const BOOKING_TIME_ZONE = "Europe/Lisbon";
 
+/** Used only while the API response is absent or from an older Worker. */
+export const BOOKING_HORIZON_DAYS_FALLBACK = 56;
+
 function normalizePublicHttpUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";

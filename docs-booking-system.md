@@ -180,17 +180,15 @@ until they stop it.
 
 ### How far ahead you can book
 
-`booking_horizon_days` is **90**. She reserves the right to move a lesson, so a
-student booking three months out costs her a conversation rather than a lost slot.
+`booking_horizon_days` is **56**: students can choose a lesson up to eight weeks
+ahead without browsing a full three-month calendar.
 
 - The front end asks for a window wider than the horizon and lets the Worker
   clamp it. It used to ask for a fixed 62 days while sizing the grid from whatever
   horizon the API reported, so raising the horizon past 62 would have drawn weeks
   of empty cells saying "no times free" — a lie rather than a gap.
-- **When she moves a lesson, the emails now say so.** They used to go out in the
-  student's own voice — "that's done" — and tell her the student had moved it. A
-  longer horizon means more lessons she may need to move, so this had to be right
-  before the horizon was widened, not after.
+- **When she moves a lesson, the emails say so.** They used to go out in the
+  student's own voice — "that's done" — and tell her the student had moved it.
 
 ### What stops two people booking one lesson
 
