@@ -162,6 +162,7 @@ export function TeacherSchedule() {
     return (
       <AuthPanel
         heading="Sign in"
+        headingLevel={2}
         intro="Your teaching hours, your days off, and everything that's booked."
         onSignedIn={(student) => {
           setMe(student);

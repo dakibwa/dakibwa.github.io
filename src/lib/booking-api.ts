@@ -359,6 +359,27 @@ export type DayCell = { key: string; day: number; month: number; isToday: boolea
 export type BookingWeek = { key: string; month: string; monthNumber: number; showMonth: boolean; cells: DayCell[] };
 
 /**
+ * Drop only the dead weeks at the front of the calendar. On a weekend — or
+ * whenever the rest of this week has no free time — the first thing a student
+ * sees is the next week they can actually use. Closed weeks later in the
+ * window stay visible so the calendar does not disguise real gaps.
+ */
+export function startWithFirstBookableWeek(
+  weeks: BookingWeek[],
+  slotsByDate: Record<string, Slot[]>
+): BookingWeek[] {
+  const firstBookableWeek = weeks.findIndex((week) =>
+    week.cells.some((cell) => Boolean(slotsByDate[cell.key]?.length))
+  );
+
+  if (firstBookableWeek <= 0) return weeks;
+
+  return weeks.slice(firstBookableWeek).map((week, index) =>
+    index === 0 && !week.showMonth ? { ...week, showMonth: true } : week
+  );
+}
+
+/**
  * The bookable window as whole Monday-first weeks, each tagged with the month
  * it belongs to.
  *
