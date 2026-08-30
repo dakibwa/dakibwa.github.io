@@ -221,7 +221,7 @@ export function MyLessons() {
   /*
    * Both lists come from one query sorted newest-first, which is right for what
    * has happened and backwards for what has not: it put a student's next lesson
-   * at the bottom of "Coming up" and one three months away at the top. Soonest
+   * at the bottom of "Coming up" and one much later at the top. Soonest
    * first going forward, most recent first going back — in both cases the one
    * you care about is the one you land on.
    */

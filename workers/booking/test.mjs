@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import { candidateStartMinutes } from "./availability.mjs";
+import { candidateStartMinutes, computeAvailability, DEFAULT_BOOKING_HORIZON_DAYS } from "./availability.mjs";
 import { verifyWebhook } from "./stripe.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
 import { hashPassword, verifyPassword, passwordProblem } from "./auth.mjs";
@@ -92,6 +92,38 @@ await test("date arithmetic crosses month and year boundaries", () => {
   assert.equal(addDaysToKey("2026-08-31", 1), "2026-09-01");
   assert.equal(addDaysToKey("2026-12-31", 1), "2027-01-01");
   assert.equal(addDaysToKey("2026-03-01", -1), "2026-02-28");
+});
+
+await test("the default booking window is eight weeks and clamps later availability", async () => {
+  const env = {
+    DB: {
+      prepare(sql) {
+        return {
+          bind() {
+            return this;
+          },
+          async all() {
+            if (sql.includes("FROM availability_rules")) {
+              return { results: [{ weekday: 1, start_minute: 600, last_start_minute: 600 }] };
+            }
+            return { results: [] };
+          }
+        };
+      }
+    }
+  };
+
+  const { slotsByDate, settings } = await computeAvailability(env, {
+    fromKey: "2026-08-30",
+    toKey: "2026-12-31",
+    lessonType: { duration_minutes: 60 },
+    now: new Date("2026-08-30T08:00:00.000Z")
+  });
+
+  assert.equal(DEFAULT_BOOKING_HORIZON_DAYS, 56);
+  assert.equal(settings.bookingHorizonDays, 56);
+  assert.ok(slotsByDate["2026-10-19"]?.length, "the final Monday inside eight weeks should be offered");
+  assert.equal(slotsByDate["2026-10-26"], undefined, "the first Monday outside eight weeks must stay closed");
 });
 
 await test("eachDateKey is inclusive and refuses to run away", () => {

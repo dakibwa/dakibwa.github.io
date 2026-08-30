@@ -20,7 +20,12 @@ import {
   type Booking,
   type Slot
 } from "@/lib/booking-api";
-import { BOOKING_TIME_ZONE, CONTACT_WHATSAPP_URL, formatLessonDuration } from "@/lib/config";
+import {
+  BOOKING_HORIZON_DAYS_FALLBACK,
+  BOOKING_TIME_ZONE,
+  CONTACT_WHATSAPP_URL,
+  formatLessonDuration
+} from "@/lib/config";
 
 type Mode = "view" | "reschedule" | "confirm-cancel";
 type Outcome = { kind: "rescheduled" | "cancelled"; sameDayFee?: boolean; refunded?: boolean } | null;
@@ -41,7 +46,7 @@ export function ManageBooking() {
   const [studentZone, setStudentZone] = useState(BOOKING_TIME_ZONE);
 
   const [todayKey, setTodayKey] = useState("");
-  const [horizonDays, setHorizonDays] = useState(30);
+  const [horizonDays, setHorizonDays] = useState(BOOKING_HORIZON_DAYS_FALLBACK);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -85,7 +90,7 @@ export function ManageBooking() {
       fetchAvailability(booking.lessonType.id, todayKey, addDaysToKey(todayKey, 140), signal)
         .then((data) => {
           setSlotsByDate(data.slotsByDate);
-          setHorizonDays(data.horizonDays || 90);
+          setHorizonDays(data.horizonDays || BOOKING_HORIZON_DAYS_FALLBACK);
           setSelectedDate((current) =>
             current && data.slotsByDate[current]?.length ? current : Object.keys(data.slotsByDate).sort()[0] ?? ""
           );

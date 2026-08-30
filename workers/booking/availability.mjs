@@ -23,6 +23,8 @@ function overlaps(startA, endA, startB, endB) {
   return startA < endB && startB < endA;
 }
 
+export const DEFAULT_BOOKING_HORIZON_DAYS = 56;
+
 function mergeStartRanges(ranges) {
   const sorted = [...ranges].sort((a, b) => a.start - b.start);
   const merged = [];
@@ -68,7 +70,7 @@ export async function loadSettings(env) {
     minimumNoticeHours: Number(settings.minimum_notice_hours ?? 12),
     // Matches what seed.sql writes. The two disagreed for a while, which meant
     // a database missing the row behaved differently from every real one.
-    bookingHorizonDays: Number(settings.booking_horizon_days ?? 90),
+    bookingHorizonDays: Number(settings.booking_horizon_days ?? DEFAULT_BOOKING_HORIZON_DAYS),
     slotIntervalMinutes: Number(settings.slot_interval_minutes ?? 30),
     sameDayChangeFeeCents: Number(settings.same_day_change_fee_cents ?? 500),
     // 'off' keeps every booking confirmed on creation, as it was before

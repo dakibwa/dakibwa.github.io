@@ -48,6 +48,7 @@ import {
   type Slot
 } from "@/lib/booking-api";
 import {
+  BOOKING_HORIZON_DAYS_FALLBACK,
   BOOKING_TIME_ZONE,
   CONTACT_WHATSAPP_URL,
   SAME_DAY_RESCHEDULE_FEE_CENTS,
@@ -189,7 +190,7 @@ export function BookingCalendar() {
   }, [payment]);
   const [lessonTypeId, setLessonTypeId] = useState("");
   const [todayKey, setTodayKey] = useState("");
-  const [horizonDays, setHorizonDays] = useState(30);
+  const [horizonDays, setHorizonDays] = useState(BOOKING_HORIZON_DAYS_FALLBACK);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -267,7 +268,7 @@ export function BookingCalendar() {
       fetchAvailability(lessonTypeId, todayKey, addDaysToKey(todayKey, 140), signal)
         .then((data) => {
           setSlotsByDate(data.slotsByDate);
-          setHorizonDays(data.horizonDays || 90);
+          setHorizonDays(data.horizonDays || BOOKING_HORIZON_DAYS_FALLBACK);
         })
         .catch((error: Error) => {
           if (signal?.aborted) return;
