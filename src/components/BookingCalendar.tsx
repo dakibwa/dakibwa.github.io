@@ -698,8 +698,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               <p className="unified-booking__identity">
                 Signed in as <strong>{student.name}</strong>
               </p>
-              <button className="text-action" onClick={() => setShowAccountControls((open) => !open)} type="button">
-                {showAccountControls ? "Close account" : "Account & repeats"}
+              <button
+                aria-controls="account-controls"
+                aria-expanded={showAccountControls}
+                className="text-action"
+                onClick={() => setShowAccountControls((open) => !open)}
+                type="button"
+              >
+                {showAccountControls ? "Close" : "Account"}
               </button>
             </div>
           ) : (
@@ -708,6 +714,25 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             </button>
           )}
         </div>
+
+        {student && showAccountControls ? (
+          <section
+            className="unified-account-controls"
+            id="account-controls"
+            aria-label="Account, repeating lessons and history"
+          >
+            <AccountControls
+              embedded
+              onSignedOut={() => {
+                setStudent(null);
+                setMyBookings([]);
+                setHadLesson(false);
+                setShowAccountControls(false);
+              }}
+              showCalendar={false}
+            />
+          </section>
+        ) : null}
 
         {trialNotice ? (
           <div className="booking-alert" role="status">
@@ -1296,19 +1321,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         ) : null}
       </div>
 
-      {student && showAccountControls ? (
-        <section className="unified-account-controls" aria-label="Account, repeating lessons and history">
-          <AccountControls
-            onSignedOut={() => {
-              setStudent(null);
-              setMyBookings([]);
-              setHadLesson(false);
-              setShowAccountControls(false);
-            }}
-            showCalendar={false}
-          />
-        </section>
-      ) : null}
     </section>
   );
 }

@@ -37,11 +37,13 @@ function minutesToClock(minutes: number) {
 }
 
 export function MyLessons({
+  embedded = false,
   onBook,
   onManage,
   onSignedOut,
   showCalendar = true
 }: {
+  embedded?: boolean;
   onBook?: () => void;
   onManage?: (token: string) => void;
   onSignedOut?: () => void;
@@ -274,16 +276,24 @@ export function MyLessons({
 
   return (
     <div className="my-lessons">
-      <div className="my-lessons__header">
-        <p>
-          Signed in as <strong>{student.name}</strong> ({student.email})
-        </p>
+      <div className={`my-lessons__header${embedded ? " my-lessons__header--embedded" : ""}`}>
+        {embedded ? (
+          <h2>Account</h2>
+        ) : (
+          <p>
+            Signed in as <strong>{student.name}</strong> ({student.email})
+          </p>
+        )}
         <div className="my-lessons__header-actions">
-          <button className="button button--coral" onClick={() => setEditing((open) => !open)} type="button">
+          <button
+            className={embedded ? "text-action" : "button button--coral"}
+            onClick={() => setEditing((open) => !open)}
+            type="button"
+          >
             {editing ? "Done" : "Edit details"}
           </button>
           <button
-            className="button button--quiet"
+            className={embedded ? "text-action text-action--muted" : "button button--quiet"}
             onClick={() => {
               clearSession();
               setStudent(null);

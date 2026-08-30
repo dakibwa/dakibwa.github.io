@@ -178,6 +178,227 @@ if (bookingCalendar) {
   await page.setViewportSize({ width: 1440, height: 1000 });
 }
 
+// The signed-in account disclosure lives immediately beside the booking
+// controls. Mock only private account calls so this can cover the real UI
+// without using a student's session or changing a real repeating series.
+let repeatStopped = false;
+let stopRepeatCalls = 0;
+const accountRequestMethods = [];
+const qaStart = new Date(Date.now() + 7 * 86_400_000);
+qaStart.setUTCHours(17, 0, 0, 0);
+const qaEnd = new Date(qaStart.getTime() + 60 * 60_000);
+const accountPage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+accountPage.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
+accountPage.on("console", (message) => {
+  if (message.type() === "error") logs.push(`console:${message.text()}`);
+});
+await accountPage.addInitScript(() => {
+  window.localStorage.setItem("ines-student-session", "qa-session");
+});
+await accountPage.route("**/lesson-types", async (route) => {
+  await route.fulfill({
+    contentType: "application/json",
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({
+      lessonTypes: [
+        {
+          id: "single-60",
+          slug: "single-lesson",
+          name: "Single lesson",
+          description: "One hour of Portuguese practice.",
+          duration_minutes: 60,
+          price_cents: 2500
+        },
+        {
+          id: "longer-90",
+          slug: "longer-lesson",
+          name: "Longer lesson",
+          description: "Ninety minutes when you want more time.",
+          duration_minutes: 90,
+          price_cents: 3500
+        }
+      ],
+      prepay: false
+    })
+  });
+});
+await accountPage.route("**/me", async (route) => {
+  accountRequestMethods.push(route.request().method());
+  if (route.request().method() === "OPTIONS") {
+    await route.fulfill({
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, content-type",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+      }
+    });
+    return;
+  }
+  await route.fulfill({
+    contentType: "application/json",
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({
+      student: {
+        id: "student-qa",
+        email: "student@example.com",
+        name: "Ana Martins",
+        phone: "",
+        timezone: "Europe/Lisbon",
+        role: "student"
+      },
+      bookings: [
+        {
+          reference: "INES-QA01",
+          status: "confirmed",
+          startAt: qaStart.toISOString(),
+          endAt: qaEnd.toISOString(),
+          location: "online",
+          notes: "",
+          lessonType: { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 },
+          isPast: false,
+          sameDayFeeApplies: false,
+          seriesId: "series-qa",
+          manageToken: "manage-qa"
+        }
+      ],
+      series: repeatStopped
+        ? []
+        : [
+            {
+              id: "series-qa",
+              weekday: 1,
+              minuteOfDay: 1080,
+              occurrences: null,
+              openEnded: true,
+              upcoming: 4
+            }
+          ],
+      sameDayFeeCents: 500
+    })
+  });
+});
+await accountPage.route("**/series/series-qa/stop", async (route) => {
+  if (route.request().method() === "OPTIONS") {
+    await route.fulfill({
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, content-type",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+      }
+    });
+    return;
+  }
+  stopRepeatCalls += 1;
+  repeatStopped = true;
+  await route.fulfill({
+    contentType: "application/json",
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({ ok: true, stopped: true, cancelled: 0 })
+  });
+});
+
+await accountPage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
+const accountToggle = accountPage.getByRole("button", { name: "Account", exact: true });
+try {
+  await accountToggle.waitFor({ timeout: 10_000 });
+} catch {
+  const pageText = (await accountPage.locator("body").innerText()).replace(/\s+/g, " ").trim().slice(0, 600);
+  throw new Error(
+    `The synthetic signed-in account did not load. /me methods: ${accountRequestMethods.join(", ") || "none"}. ` +
+      `Page text: ${pageText}`
+  );
+}
+await accountToggle.click();
+const accountPanel = accountPage.locator("#account-controls");
+await accountPanel.waitFor({ state: "visible", timeout: 10_000 });
+const closeAccountToggle = accountPage.getByRole("button", { name: "Close", exact: true });
+if ((await closeAccountToggle.getAttribute("aria-expanded")) !== "true") {
+  throw new Error("The account control did not expose its open state.");
+}
+if (await accountPage.getByRole("button", { name: "Close account", exact: true }).count()) {
+  throw new Error("The account disclosure still reads like an account-deletion action.");
+}
+await closeAccountToggle.click();
+await accountPanel.waitFor({ state: "detached" });
+if ((await accountToggle.getAttribute("aria-expanded")) !== "false") {
+  throw new Error("Closing the account controls did not expose its closed state.");
+}
+await accountToggle.click();
+await accountPanel.waitFor({ state: "visible" });
+await accountPage.getByRole("button", { name: "Sign out", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: "Stop repeating", exact: true }).waitFor();
+
+const desktopAccountLayout = await accountPage.evaluate(() => {
+  const bounds = (selector) => {
+    const rectangle = document.querySelector(selector)?.getBoundingClientRect();
+    return rectangle ? { top: rectangle.top, bottom: rectangle.bottom } : null;
+  };
+  return {
+    head: bounds(".unified-booking__head"),
+    panel: bounds("#account-controls"),
+    lessonPicker: bounds(".unified-booking__lesson-picker")
+  };
+});
+if (
+  !desktopAccountLayout.head ||
+  !desktopAccountLayout.panel ||
+  !desktopAccountLayout.lessonPicker ||
+  desktopAccountLayout.panel.top < desktopAccountLayout.head.bottom - 1 ||
+  desktopAccountLayout.panel.bottom > desktopAccountLayout.lessonPicker.top + 1
+) {
+  throw new Error("The account panel should open directly between its toggle and the booking choices.");
+}
+await accountPage.screenshot({ path: path.join(outDir, "booking-account-desktop.png"), fullPage: true });
+
+await accountPage.setViewportSize({ width: 390, height: 844 });
+await accountPage.waitForTimeout(300);
+const mobileAccountLayout = await accountPage.evaluate(() => {
+  const identity = document.querySelector(".unified-booking__identity")?.getBoundingClientRect();
+  const toggle = document.querySelector('.unified-booking__account > button')?.getBoundingClientRect();
+  const repeatCopy = document.querySelector(".my-lessons__series-row > p")?.getBoundingClientRect();
+  const repeatAction = document.querySelector(".my-lessons__series-row > button")?.getBoundingClientRect();
+  return {
+    identityBottom: identity?.bottom ?? 0,
+    toggleTop: toggle?.top ?? 0,
+    repeatCopyBottom: repeatCopy?.bottom ?? 0,
+    repeatActionTop: repeatAction?.top ?? 0,
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth
+  };
+});
+if (mobileAccountLayout.toggleTop < mobileAccountLayout.identityBottom - 1) {
+  throw new Error("The mobile account toggle still crowds the signed-in identity.");
+}
+if (mobileAccountLayout.repeatActionTop < mobileAccountLayout.repeatCopyBottom - 1) {
+  throw new Error("The mobile stop-repeating control still crowds the repeat description.");
+}
+if (mobileAccountLayout.scrollWidth > mobileAccountLayout.clientWidth + 1) {
+  throw new Error("The open mobile account controls cause horizontal overflow.");
+}
+await accountPage.screenshot({ path: path.join(outDir, "booking-account-mobile.png"), fullPage: true });
+
+const stopRepeating = accountPage.getByRole("button", { name: "Stop repeating", exact: true });
+await stopRepeating.click();
+await accountPage.getByRole("heading", { name: "Stop repeating lessons?", exact: true }).waitFor();
+if (stopRepeatCalls !== 0) throw new Error("Opening the repeat confirmation called the stop endpoint.");
+await accountPage.screenshot({
+  path: path.join(outDir, "booking-account-repeat-confirm-mobile.png"),
+  fullPage: true
+});
+await accountPage.getByRole("button", { name: "No, keep repeating", exact: true }).click();
+if (stopRepeatCalls !== 0) throw new Error("Keeping the repeat called the stop endpoint.");
+await stopRepeating.click();
+await accountPage.getByRole("button", { name: "Yes, stop repeating", exact: true }).click();
+await stopRepeating.waitFor({ state: "hidden" });
+if (stopRepeatCalls !== 1) throw new Error(`Expected one confirmed stop call; received ${stopRepeatCalls}.`);
+
+await accountPage.getByRole("button", { name: "Sign out", exact: true }).click();
+await accountPage.getByRole("button", { name: "Sign in to see your lessons", exact: true }).waitFor();
+await accountPanel.waitFor({ state: "detached" });
+await accountPage.close();
+
 // Old emailed links remain valid, but now land in the same booking workspace.
 await page.goto(`${base}/booking`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector("#lesson-calendar", { timeout: 10_000 });
@@ -202,6 +423,13 @@ console.log(
       bookingCalendar,
       bookingPlaceholder,
       signedInAccountLinks: 2,
+      accountControls: {
+        desktopLayout: desktopAccountLayout,
+        mobileLayout: mobileAccountLayout,
+        stopRepeatCalls,
+        accountRequestMethods,
+        signedOut: true
+      },
       mobileNavigation,
       externalResourceWarnings: logs.filter((entry) => entry.includes("Failed to load resource")),
       screenshots: outDir
