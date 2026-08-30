@@ -15,6 +15,7 @@ import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./i
 import { normaliseWeeks, occurrenceInstants, outstandingFor, slotOf, SERIES_LENGTHS } from "./series.mjs";
 import { createManageToken, readManageToken, safeEqual, bookingReference } from "./tokens.mjs";
 import { changePolicy, seriesTotalCents } from "./policy.mjs";
+import { notifySeries } from "./index.mjs";
 import {
   addDaysToKey,
   dateKey,
@@ -638,6 +639,120 @@ await test("one calendar file carries every lesson, each under its own booking's
   assert.ok(ics.includes(`UID:${calendarUid("a")}`));
   assert.ok(ics.includes(`UID:${calendarUid("b")}`));
   assert.ok(ics.trimEnd().endsWith("END:VCALENDAR"));
+});
+
+function seriesEmailFixture() {
+  const emailLog = [];
+  const env = {
+    EMAIL_DRY_RUN: "1",
+    TEACHER_EMAIL: "ines@example.com",
+    MAIL_SENDER_ADDRESS: "bookings@portuguesewithines.com",
+    SITE_URL: "https://portuguesewithines.com",
+    DB: {
+      prepare(sql) {
+        let values = [];
+        return {
+          bind(...next) {
+            values = next;
+            return this;
+          },
+          async run() {
+            if (sql.startsWith("INSERT INTO email_log")) {
+              emailLog.push({ bookingId: values[0], kind: values[1], recipient: values[2], dedupeKey: values[3] });
+            }
+            return { success: true };
+          }
+        };
+      }
+    }
+  };
+
+  const row = (id, startsAt, endsAt) => ({
+    id,
+    reference: `PT-${id.toUpperCase()}`,
+    sequence: 0,
+    student_name: "Ana Silva",
+    student_email: "ana@example.com",
+    student_phone: "",
+    student_timezone: "Europe/Lisbon",
+    location: "online",
+    notes: "",
+    starts_at: startsAt,
+    ends_at: endsAt,
+    payment_status: "not_required"
+  });
+
+  return {
+    env,
+    emailLog,
+    rows: [
+      row("one", "2026-09-03T16:30:00.000Z", "2026-09-03T17:30:00.000Z"),
+      row("two", "2026-09-10T16:30:00.000Z", "2026-09-10T17:30:00.000Z"),
+      row("three", "2026-09-17T16:30:00.000Z", "2026-09-17T17:30:00.000Z")
+    ],
+    lessonType: { name: "Single lesson", duration_minutes: 60, price_cents: 3000 },
+    settings: {
+      teacherName: "Inês Dias Baía",
+      teacherEmail: "ines@example.com",
+      replyToEmail: "ines@example.com",
+      sameDayChangeFeeCents: 500
+    },
+    manageUrls: {
+      one: "https://portuguesewithines.com/book/?manage=one",
+      two: "https://portuguesewithines.com/book/?manage=two",
+      three: "https://portuguesewithines.com/book/?manage=three"
+    }
+  };
+}
+
+await test("a repeating booking sends one consolidated email to the client", async () => {
+  const fixture = seriesEmailFixture();
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    await notifySeries(fixture.env, {
+      rows: fixture.rows,
+      lessonType: fixture.lessonType,
+      settings: fixture.settings,
+      series: { id: "series-fixed", occurrences: 4 },
+      manageUrls: fixture.manageUrls,
+      skipped: []
+    });
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.deepEqual(
+    fixture.emailLog.map(({ kind, recipient }) => ({ kind, recipient })),
+    [
+      { kind: "student_series_booked", recipient: "ana@example.com" },
+      { kind: "teacher_series_booked", recipient: "ines@example.com" }
+    ]
+  );
+});
+
+await test("automatic open-ended top-ups do not send another client email", async () => {
+  const fixture = seriesEmailFixture();
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    await notifySeries(fixture.env, {
+      rows: [fixture.rows[0]],
+      lessonType: fixture.lessonType,
+      settings: fixture.settings,
+      series: { id: "series-open", occurrences: null },
+      manageUrls: fixture.manageUrls,
+      skipped: [],
+      reason: "extended"
+    });
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.deepEqual(
+    fixture.emailLog.map(({ kind, recipient }) => ({ kind, recipient })),
+    [{ kind: "teacher_series_extended", recipient: "ines@example.com" }]
+  );
 });
 
 await test("a single invitation is unchanged by the series refactor", () => {

@@ -398,13 +398,15 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
 /**
  * A whole run of lessons, in one email each way.
  *
- * Twelve bookings must not mean twelve emails, but each lesson still has to
- * reach Inês's calendar as its own entry — so one message carries one calendar
- * file holding every occurrence, each under its own booking's UID. Changing a
- * single week later goes out through the ordinary per-lesson path and matches
- * the event already sitting in her calendar.
+ * Twelve bookings must not mean twelve emails. The student gets one initial
+ * confirmation for the run, while Inês gets one message carrying one calendar
+ * file holding every occurrence, each under its own booking's UID. Automatic
+ * top-ups are silent for the student because the new lessons already appear in
+ * their booking workspace; Inês still needs the top-up attachment to reserve
+ * the added time in her external calendar. Changing a single week later goes
+ * out through the ordinary per-lesson path and matches that event by UID.
  */
-async function notifySeries(env, { rows, lessonType, settings, series, manageUrls, skipped, reason = "booked" }) {
+export async function notifySeries(env, { rows, lessonType, settings, series, manageUrls, skipped, reason = "booked" }) {
   if (!rows.length) return [];
 
   const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
@@ -473,37 +475,39 @@ async function notifySeries(env, { rows, lessonType, settings, series, manageUrl
     ? "Move or cancel any single lesson free until the day before it — a lesson not yet charged is never charged, and one already paid is refunded automatically. On a lesson's own day it's yours — no changes and no refunds."
     : `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free.`;
 
-  const sends = [
-    deliver(env, {
-      to: first.student_email,
-      subject:
-        reason === "extended"
-          ? `More of your weekly lessons are in the calendar — from ${formatShort(new Date(first.starts_at), PORTO)}`
-          : `Your weekly Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
-      kind: reason === "extended" ? "student_series_extended" : "student_series_booked",
-      bookingId: first.id,
-      // Keyed on the occurrences it describes, not how many there are. A count
-      // collides every week for an open-ended series, so after the first top-up
-      // every later one was silently swallowed as a duplicate.
-      dedupeKey: `student:series:${series.id}:${rows[0].id}`,
-      replyTo,
-      calendar: { body: invite({ name: first.student_name, email: first.student_email }), method: "REQUEST" },
-      content: {
-        heading: reason === "extended" ? "More lessons in your calendar" : "Your weekly slot is booked",
-        intro:
-          reason === "extended"
-            ? `Olá ${first.student_name.split(" ")[0]}, your weekly slot keeps going, so a few more lessons have been added to your calendar. Move or cancel any one of them on your lesson calendar, or stop the repeat there whenever you like.`
-            : `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on your lesson calendar.`,
-        callout: skippedNote,
-        hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
-        heroNote: differingZonedTime(new Date(first.starts_at), studentZone) ? `${differingZonedTime(new Date(first.starts_at), studentZone)} — your time` : "",
-        preheader: `${lessonType.name} · ${cadence}`,
-        rows: studentSeriesRows,
-        action: { label: "See all your lessons", url: siteUrl(env, "/book/?view=lessons") },
-        footer: seriesFooter
-      }
-    })
-  ];
+  const sends = [];
+
+  // An open-ended run is topped up automatically, normally one lesson each
+  // week. Those lessons are already visible in the unified booking calendar;
+  // emailing the student on every top-up would turn one booking into a weekly
+  // stream of confirmations. A move, cancellation or payment remains a real
+  // lifecycle event and continues through its own notification path.
+  if (reason !== "extended") {
+    sends.push(
+      deliver(env, {
+        to: first.student_email,
+        subject: `Your weekly Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
+        kind: "student_series_booked",
+        bookingId: first.id,
+        dedupeKey: `student:series:${series.id}:${rows[0].id}`,
+        replyTo,
+        calendar: { body: invite({ name: first.student_name, email: first.student_email }), method: "REQUEST" },
+        content: {
+          heading: "Your weekly slot is booked",
+          intro: series.occurrences
+            ? `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on your lesson calendar.`
+            : `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Your current lessons are in the calendar attachment, and new weeks will appear automatically on your lesson calendar without extra confirmation emails.`,
+          callout: skippedNote,
+          hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
+          heroNote: differingZonedTime(new Date(first.starts_at), studentZone) ? `${differingZonedTime(new Date(first.starts_at), studentZone)} — your time` : "",
+          preheader: `${lessonType.name} · ${cadence}`,
+          rows: studentSeriesRows,
+          action: { label: "See all your lessons", url: siteUrl(env, "/book/?view=lessons") },
+          footer: seriesFooter
+        }
+      })
+    );
+  }
 
   if (teacherEmail) {
     sends.push(
@@ -1076,9 +1080,9 @@ async function topUpOpenSeries(env) {
         series,
         manageUrls,
         skipped: filled.skipped,
-        // Not a new booking — this slot was already theirs. Telling an existing
-        // student it "is now held for you each week" every month reads as a
-        // duplicate of something they did in September.
+        // Not a new booking — this slot was already theirs. The student sees
+        // the added lesson in the booking workspace without another email;
+        // Inês still receives its external-calendar attachment.
         reason: "extended"
       });
     } catch (error) {
