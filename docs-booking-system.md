@@ -115,8 +115,8 @@ depending on them having kept the right confirmation email.
 
 ### Repeating bookings
 
-A student can hold the same slot every week: 4, 8 or 12 weeks, or open-ended
-until they stop it.
+A student can hold the same slot every week: 4 weeks, or open-ended until they
+stop it.
 
 - **The occurrences are ordinary rows in `bookings`.** A series is only the
   recipe that made them. That is what puts the time in Ines's calendar for real,
@@ -134,9 +134,12 @@ until they stop it.
   stranger reaching in and taking a slot months out; a student keeping their own
   standing time is the case it is meant to allow. At the current 30 days, a
   twelve-week booking would otherwise have quietly become a four-week one.
-- **One email each way, carrying every lesson in one calendar file**, each event
-  under its own booking's UID so a later change to one week still matches the
-  entry already in her calendar. Twelve lessons must not mean twelve emails.
+- **One initial email each way, carrying every current lesson in one calendar
+  file**, each event under its own booking's UID so a later change to one week
+  still matches the entry already in her calendar. Twelve lessons must not mean
+  twelve emails. When an open-ended run is topped up, the new lesson appears in
+  the student's booking calendar without another confirmation email; Inês gets
+  one calendar update so the added time reaches her external calendar.
 - **Open-ended series are topped up by a nightly cron**, not on a page view: her
   calendar has to be right whether or not anyone has opened the site, and a read
   path that quietly writes bookings is impossible to reason about later.
