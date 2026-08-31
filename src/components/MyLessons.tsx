@@ -44,7 +44,8 @@ export function MyLessons({
   onSignedOut,
   onTransition,
   showCalendar = true,
-  showHistory = true
+  showHistory = true,
+  showSeries = true
 }: {
   calendarHorizonDays?: number;
   embedded?: boolean;
@@ -54,6 +55,7 @@ export function MyLessons({
   onTransition?: (update: () => void) => void;
   showCalendar?: boolean;
   showHistory?: boolean;
+  showSeries?: boolean;
 } = {}) {
   const [student, setStudent] = useState<Student | null>(null);
   const [bookings, setBookings] = useState<MyBooking[]>([]);
@@ -61,7 +63,7 @@ export function MyLessons({
   const [confirmingStop, setConfirmingStop] = useState("");
   const [stopping, setStopping] = useState("");
   const [editing, setEditing] = useState(false);
-  const [accountSection, setAccountSection] = useState<"history" | "later" | "">("");
+  const [accountSection, setAccountSection] = useState<"history" | "upcoming" | "">("");
   const [details, setDetails] = useState({ name: "", email: "" });
   const [savingName, setSavingName] = useState(false);
   const [emailPending, setEmailPending] = useState("");
@@ -238,16 +240,10 @@ export function MyLessons({
     const [year, month, day] = key.split("-").map(Number);
     return Date.UTC(year, month - 1, day) / 86_400_000;
   };
-  const later = todayKey
-    ? upcoming.filter(
-        (booking) =>
-          toDayNumber(portoDateKey(new Date(booking.startAt))) - toDayNumber(todayKey) > calendarHorizonDays
-      )
-    : [];
   const calendarHorizon =
     todayKey && latestDate
-      ? Math.max(BOOKING_HORIZON_DAYS_FALLBACK, toDayNumber(latestDate) - toDayNumber(todayKey) + 1)
-      : BOOKING_HORIZON_DAYS_FALLBACK;
+      ? Math.max(calendarHorizonDays, toDayNumber(latestDate) - toDayNumber(todayKey) + 1)
+      : calendarHorizonDays;
   const calendarWeeks = todayKey ? buildBookingWeeks(todayKey, calendarHorizon) : [];
   const selectedBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
 
@@ -256,7 +252,7 @@ export function MyLessons({
     else window.location.assign(`/book/?manage=${encodeURIComponent(booking.manageToken)}`);
   }
 
-  function toggleAccountSection(section: "history" | "later") {
+  function toggleAccountSection(section: "history" | "upcoming") {
     applyTransition(() => {
       setEditing(false);
       setAccountSection((current) => (current === section ? "" : section));
@@ -324,15 +320,15 @@ export function MyLessons({
           </p>
         )}
         <div className="my-lessons__header-actions">
-          {embedded && later.length ? (
+          {embedded && showHistory && upcoming.length ? (
             <button
-              aria-controls="account-later-lessons"
-              aria-expanded={accountSection === "later"}
+              aria-controls="account-upcoming-lessons"
+              aria-expanded={accountSection === "upcoming"}
               className="text-action"
-              onClick={() => toggleAccountSection("later")}
+              onClick={() => toggleAccountSection("upcoming")}
               type="button"
             >
-              Later lessons <span aria-hidden="true">{later.length}</span>
+              Upcoming lessons <span aria-hidden="true">{upcoming.length}</span>
             </button>
           ) : null}
           {embedded && showHistory && past.length ? (
@@ -378,42 +374,46 @@ export function MyLessons({
 
       {editing ? (
         <section className="my-lessons__details">
-          <label>
-            <span>Your name</span>
-            <input
-              autoComplete="name"
-              onChange={(event) => setDetails((current) => ({ ...current, name: event.target.value }))}
-              value={details.name}
-            />
-          </label>
-          <button
-            className="button button--coral"
-            disabled={savingName || !details.name.trim() || details.name.trim() === student.name}
-            onClick={saveName}
-            type="button"
-          >
-            {savingName ? "Saving…" : "Save name"}
-          </button>
+          <div className="my-lessons__details-row">
+            <label>
+              <span>Your name</span>
+              <input
+                autoComplete="name"
+                onChange={(event) => setDetails((current) => ({ ...current, name: event.target.value }))}
+                value={details.name}
+              />
+            </label>
+            <button
+              className="button button--coral"
+              disabled={savingName || !details.name.trim() || details.name.trim() === student.name}
+              onClick={saveName}
+              type="button"
+            >
+              {savingName ? "Saving…" : "Save name"}
+            </button>
+          </div>
 
-          <label>
-            <span>Email address</span>
-            <input
-              autoComplete="email"
-              onChange={(event) => setDetails((current) => ({ ...current, email: event.target.value }))}
-              type="email"
-              value={details.email}
-            />
-          </label>
-          {/* Changing the address you sign in with is deliberately the slower of
-              the two: nothing moves until the new address answers. */}
-          <button
-            className="button button--coral"
-            disabled={!details.email.trim() || details.email.trim() === student.email}
-            onClick={changeEmail}
-            type="button"
-          >
-            Send a confirmation link
-          </button>
+          <div className="my-lessons__details-row">
+            <label>
+              <span>Email address</span>
+              <input
+                autoComplete="email"
+                onChange={(event) => setDetails((current) => ({ ...current, email: event.target.value }))}
+                type="email"
+                value={details.email}
+              />
+            </label>
+            {/* Changing the address you sign in with is deliberately the slower
+                of the two: nothing moves until the new address answers. */}
+            <button
+              className="button button--coral"
+              disabled={!details.email.trim() || details.email.trim() === student.email}
+              onClick={changeEmail}
+              type="button"
+            >
+              Send confirmation link
+            </button>
+          </div>
 
           {emailPending ? (
             <p className="my-lessons__details-note">
@@ -439,16 +439,16 @@ export function MyLessons({
         </div>
       ) : null}
 
-      {embedded && accountSection === "later" ? (
-        <section className="my-lessons__account-section" id="account-later-lessons" aria-labelledby="later-lessons-heading">
+      {embedded && accountSection === "upcoming" ? (
+        <section className="my-lessons__account-section" id="account-upcoming-lessons" aria-labelledby="upcoming-lessons-heading">
           <div className="my-lessons__account-section-heading">
             <div>
-              <h3 className="eyebrow" id="later-lessons-heading">Later booked lessons</h3>
-              <p>These stay booked after the eight-week booking calendar ends.</p>
+              <h3 className="eyebrow" id="upcoming-lessons-heading">Upcoming lessons</h3>
+              <p>Every lesson you have booked, including dates after this eight-week calendar.</p>
             </div>
           </div>
           <div className="my-lessons__account-bookings">
-            {later.map((booking) => (
+            {upcoming.map((booking) => (
               <button
                 className="lesson-calendar__lesson lesson-calendar__lesson--booked"
                 key={booking.reference}
@@ -493,7 +493,7 @@ export function MyLessons({
         </section>
       ) : null}
 
-      {series.length ? (
+      {showSeries && series.length ? (
         <section className="my-lessons__series">
           <h2>Repeating</h2>
           {series.map((entry) => (

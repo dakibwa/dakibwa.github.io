@@ -107,22 +107,25 @@ depending on them having kept the right confirmation email.
 - The emailed manage link still works on its own, so a forgotten password never
   blocks someone from changing a lesson.
 - **Booking, the learner's calendar, and lesson changes share one workspace.**
-  Every lesson a student has booked is marked on the calendar at `/book`; choosing
-  a booked day or a free day reduces the eight-week overview to that one week,
-  putting the selected lesson or available times immediately beneath it on a
-  phone. Each completed choice then becomes a compact summary: the lesson cards
-  collapse after a type is chosen, the calendar collapses after a time is chosen,
-  and the page moves the next decision into view. `Show all dates` restores the
-  overview. Choosing an individual booking opens move and cancel in place. The
-  emailed token still opens that same interface without requiring sign-in, so a
-  forgotten password never blocks a change. The old `/my-lessons` and `/booking`
-  paths remain valid for links already in the world, then normalise to `/book`.
-- **Signed-in account and repeat controls are always on the page.** They sit above
-  the lesson choices rather than behind an Account/Close disclosure. The account
-  bar names the student once and keeps later booked lessons, past lessons, profile
-  editing and sign out together; stopping a repeat sits immediately beneath it.
-  There is only one `Booking` destination in the site navigation — no separate
-  `My lessons` tab — because booking and managing lessons are the same workspace.
+  The first screen at `/book` asks only whether the student wants to book a new
+  lesson or view existing lessons. Booking asks for the lesson type and then
+  reveals the calendar; viewing lessons goes directly to that calendar without
+  free-time choices. Every booked lesson is marked there. Choosing a booked day
+  or a free day reduces the eight-week overview to that one week, putting the
+  selected lesson or available times immediately beneath it on a phone. Each
+  completed choice becomes a compact summary and the page moves the next
+  decision into view. `Show all dates` restores the overview. Choosing an
+  individual booking opens move and cancel in place. The emailed token still
+  opens that same interface without requiring sign-in, so a forgotten password
+  never blocks a change. The old `/my-lessons` and `/booking` paths remain valid
+  for links already in the world, then normalise to `/book`.
+- **Signed-in account controls stay in the shared workspace.** They sit above
+  the active workflow rather than behind an Account/Close disclosure. The account
+  bar names the student once and keeps upcoming lessons, past lessons, profile
+  editing and sign out together. Repeating controls appear when the student has
+  chosen to view lessons, where they are relevant. There is only one `Booking`
+  destination in the site navigation — no separate `My lessons` tab — because
+  booking and managing lessons are the same workspace.
 
 ### Repeating bookings
 
@@ -202,10 +205,16 @@ ahead without browsing a full three-month calendar.
   clamp it. It used to ask for a fixed 62 days while sizing the grid from whatever
   horizon the API reported, so raising the horizon past 62 would have drawn weeks
   of empty cells saying "no times free" — a lie rather than a gap.
-- The visible calendar is also capped at the Worker's 56-day horizon. A repeating
-  series may already own lessons beyond that window, but those later lessons no
-  longer stretch the booking calendar; they remain available from `Later lessons`
-  in the account bar and still open the same in-place move/cancel interface.
+- The visible calendar contains exactly eight Monday-to-Sunday rows at most.
+  The Worker's inclusive 56-day boundary can mathematically touch a ninth row;
+  that padding row is not shown. A repeating series may already own lessons
+  beyond the visible window, but those lessons no longer stretch the calendar;
+  they remain available from `Upcoming lessons` in the account bar and still
+  open the same in-place move/cancel interface.
+- A signed-in student who has already attended a lesson is never offered the
+  trial. If that eligibility becomes known after the trial was selected (for
+  example after signing in at confirmation), the trial choice dissolves and the
+  valid lesson choices return without a warning banner or a failed booking.
 - **When she moves a lesson, the emails say so.** They used to go out in the
   student's own voice — "that's done" — and tell her the student had moved it.
 

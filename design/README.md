@@ -103,18 +103,27 @@ Preserve these desktop and mobile states:
 - on desktop the blue introduction is a supporting rail, clamped between 300
   and 440 px at roughly 29% of the viewport; the cream booking workspace owns
   the remaining width;
-- the signed-in identity appears once, inside the account bar. `Later lessons`,
-  `Past lessons`, `Edit details`, and `Sign out` are its compact right-aligned
-  actions; there is no second `My lessons` navigation destination. The account
-  bar, lesson choices, calendar, and selected-day workspace share the same left
-  and right edges. Two lesson types divide the row evenly rather than reserving
-  an empty third column;
+- the workspace opens with one decision: `Book a new lesson` or `View your
+  lessons`. Booking then asks for the lesson type before showing the calendar;
+  viewing lessons goes straight to the same calendar without displaying free
+  times. Completed decisions collapse into a compact row, so account tools,
+  lesson cards, the calendar, and confirmation never compete at once;
+- the signed-in identity appears once, inside a generously padded account bar.
+  `Upcoming lessons`, `Past lessons`, `Edit details`, and `Sign out` are compact
+  right-aligned actions when the learner is viewing lessons; only the account
+  actions remain while booking. Repeating controls belong to the view-lessons
+  state. There is no second `My lessons` navigation destination. The account
+  bar, workflow choices, calendar, and selected-day workspace share the same
+  left and right edges. Profile-field actions sit beside their field whenever
+  the available width permits;
 - the calendar is the stable surface. A selected day reduces it to one week,
   with the day or lesson detail beside it on desktop and immediately below it
   on mobile. Its overview stops at the API's eight-week horizon even when a
-  repeating series already holds a later lesson; those later lessons and past
+  repeating series already holds a later lesson; those future lessons and past
   lessons open from the account bar instead of extending or sitting below the
-  calendar. The full overview says `Next 8 weeks` explicitly;
+  calendar. The full overview says `Next 8 weeks` explicitly and contains no
+  more than eight Monday-to-Sunday rows; the inclusive 56-day API boundary must
+  not create a ninth visible row;
 - days with two bookings show both booked times on separate lines. Do not use a
   small `2x` count badge beside the date. Each selected existing lesson uses a
   coral-tinted card with an explicit `Booked` status;

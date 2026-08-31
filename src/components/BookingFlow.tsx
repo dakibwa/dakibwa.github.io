@@ -90,8 +90,8 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
           <div>
             <p className="eyebrow">Changing a lesson</p>
             <p>
-              Move your lesson for free until the day before using your confirmation email or your{" "}
-              <a href="#lesson-calendar">lesson calendar</a>.
+              Move your lesson for free until the day before using your confirmation email or by choosing{" "}
+              <strong>View your lessons</strong> above.
             </p>
           </div>
         </section>
