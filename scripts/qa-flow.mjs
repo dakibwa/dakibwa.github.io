@@ -300,6 +300,8 @@ const qaExtraSeriesBookings = Array.from({ length: 8 }, (_, index) => {
     manageToken: `manage-later-${index + 2}`
   };
 });
+let qaCreatedBookings = [];
+let qaCreatedSeries = [];
 const accountBrowser = await chromium.launch({ headless: true });
 const accountPage = await accountBrowser.newPage({ viewport: { width: 1440, height: 1000 } });
 accountPage.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
@@ -356,6 +358,89 @@ await accountPage.route("**/availability?*", async (route) => {
       minimumNoticeHours: 24,
       horizonDays: 56,
       lessonType: { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 }
+    })
+  });
+});
+await accountPage.route("**/bookings/series/preview", async (route) => {
+  if (route.request().method() === "OPTIONS") {
+    await route.fulfill({
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, content-type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS"
+      }
+    });
+    return;
+  }
+  const bookable = Array.from({ length: 4 }, (_, index) =>
+    new Date(qaFreeStart.getTime() + index * 7 * 24 * 60 * 60_000).toISOString()
+  );
+  await route.fulfill({
+    contentType: "application/json",
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({ weeks: 4, openEnded: false, bookable, skipped: [] })
+  });
+});
+await accountPage.route("**/bookings", async (route) => {
+  if (route.request().method() === "OPTIONS") {
+    await route.fulfill({
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, content-type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS"
+      }
+    });
+    return;
+  }
+
+  const payload = route.request().postDataJSON();
+  const isRecurring = payload.repeat === 4;
+  const starts = Array.from({ length: isRecurring ? 4 : 1 }, (_, index) =>
+    new Date(qaFreeStart.getTime() + index * 7 * 24 * 60 * 60_000)
+  );
+  const seriesId = isRecurring ? "series-created-qa" : null;
+  qaCreatedBookings = starts.map((start, index) => ({
+    reference: isRecurring ? `INES-CREATED-R${index + 1}` : "INES-CREATED-ONE",
+    status: "confirmed",
+    startAt: start.toISOString(),
+    endAt: new Date(start.getTime() + 60 * 60_000).toISOString(),
+    location: payload.location,
+    notes: "",
+    lessonType: { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 },
+    isPast: false,
+    sameDayFeeApplies: false,
+    seriesId,
+    manageToken: isRecurring ? `manage-created-r${index + 1}` : "manage-created-one"
+  }));
+  qaCreatedSeries = isRecurring
+    ? [{ id: seriesId, weekday: starts[0].getUTCDay(), minuteOfDay: 1020, occurrences: 4, openEnded: false, upcoming: 4 }]
+    : [];
+
+  await route.fulfill({
+    contentType: "application/json",
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({
+      booking: {
+        ...qaCreatedBookings[0],
+        studentName: "Ana Martins",
+        studentEmail: "student@example.com",
+        studentTimezone: "Europe/Lisbon"
+      },
+      manageUrl: `/book/?manage=${qaCreatedBookings[0].manageToken}`,
+      manageToken: qaCreatedBookings[0].manageToken,
+      ...(isRecurring
+        ? {
+            series: {
+              id: seriesId,
+              weeks: 4,
+              openEnded: false,
+              booked: starts.map((start) => start.toISOString()),
+              skipped: []
+            }
+          }
+        : {})
     })
   });
 });
@@ -450,11 +535,13 @@ await accountPage.route("**/me", async (route) => {
           seriesId: null,
           manageToken: "manage-later-one-off"
         },
-        ...qaExtraSeriesBookings
+        ...qaExtraSeriesBookings,
+        ...qaCreatedBookings
       ],
-      series: repeatStopped
-        ? []
-        : [
+      series: [
+        ...(repeatStopped
+          ? []
+          : [
             {
               id: "series-qa",
               weekday: 1,
@@ -463,7 +550,9 @@ await accountPage.route("**/me", async (route) => {
               openEnded: true,
               upcoming: 10
             }
-          ],
+          ]),
+        ...qaCreatedSeries
+      ],
       sameDayFeeCents: 500
     })
   });
@@ -597,6 +686,52 @@ for (const oldToggleName of ["Account", "Close", "Close account"]) {
 }
 const accountMenuButton = accountPanel.getByRole("button", { name: "Menu", exact: true });
 await accountMenuButton.waitFor();
+
+async function bookQaLessonAndReturnToUpcoming({ recurring }) {
+  await accountPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
+  await accountPage.getByRole("button", { name: "Single lesson 60 minutes · €25", exact: true }).click();
+  await accountPage.getByRole("button", { name: /1 times free/ }).first().click();
+  await accountPage.locator("#lesson-calendar .unified-calendar__availability .slot-grid button").first().click();
+  await accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true }).waitFor();
+
+  if (recurring) {
+    await accountPage.getByRole("radio", { name: "4 weeks", exact: true }).check();
+    await accountPage.getByText("4 lessons at this time", { exact: false }).waitFor();
+  }
+
+  await accountPage
+    .getByRole("button", { name: recurring ? "Confirm these 4 lessons" : "Confirm this lesson", exact: true })
+    .click();
+  await accountPage.getByRole("heading", { name: /booked in/i }).waitFor();
+  if (recurring) {
+    await accountPage.getByText("4 lessons booked", { exact: false }).waitFor();
+  }
+
+  await accountPage.getByRole("button", { name: "Back to upcoming lessons", exact: true }).click();
+  await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+  await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
+  const createdGroups = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group");
+  if ((await createdGroups.count()) !== 4) {
+    throw new Error(`A completed ${recurring ? "recurring" : "one-off"} booking should appear in Upcoming lessons.`);
+  }
+  const expectedKindCount = await accountPanel
+    .locator(`#account-upcoming-lessons .upcoming-lesson-group--${recurring ? "series" : "single"}`)
+    .count();
+  if (expectedKindCount !== (recurring ? 2 : 3)) {
+    throw new Error(`The new ${recurring ? "recurring sequence" : "one-off lesson"} was not grouped correctly after returning.`);
+  }
+  await accountPage.screenshot({
+    path: path.join(outDir, recurring ? "booking-confirm-back-recurring-mobile.png" : "booking-confirm-back-once-mobile.png"),
+    fullPage: true
+  });
+
+  qaCreatedBookings = [];
+  qaCreatedSeries = [];
+  await accountPage.reload({ waitUntil: "domcontentloaded" });
+  await accountPanel.waitFor({ state: "visible" });
+  await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+}
+
 if ((await accountPanel.getByText("Ana Martins", { exact: true }).count()) !== 1) {
   throw new Error("The signed-in identity should appear once, inside the account bar.");
 }
@@ -1333,6 +1468,8 @@ await backToEightWeeks.click();
 await changeLesson.click();
 await accountPage.getByRole("heading", { name: "Choose a lesson", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Back", exact: true }).click();
+await bookQaLessonAndReturnToUpcoming({ recurring: false });
+await bookQaLessonAndReturnToUpcoming({ recurring: true });
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });

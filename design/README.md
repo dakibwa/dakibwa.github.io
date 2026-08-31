@@ -129,6 +129,8 @@ Preserve these desktop and mobile states:
   the same left and right edges. Profile fields open directly inside the account
   bar, without a second framed card; their actions sit beside the field whenever
   the available width permits;
+- after a successful one-off or recurring booking, the confirmation's primary
+  back action opens `Upcoming lessons` so the new booking is immediately visible;
 - the calendar is the stable visual surface beneath the lesson-management
   content. Viewing lessons owns a fixed four-week overview; it never expands to
   absorb later booked dates because the complete list lives above it. Selecting
