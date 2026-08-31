@@ -227,7 +227,7 @@ function transitionBooking(update: () => void) {
  * frames let the browser measure the final position before deciding whether a
  * scroll is actually needed. Reduced-motion preferences are respected.
  */
-function orientTo(id: string, focus = false) {
+function orientTo(id: string, focus = false, forceOnMobile = false) {
   const orient = () => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -237,7 +237,8 @@ function orientTo(id: string, focus = false) {
         const bounds = target.getBoundingClientRect();
         const visibleHeight = Math.max(0, Math.min(bounds.bottom, window.innerHeight) - Math.max(bounds.top, 0));
         const enoughVisible = bounds.top >= 12 && visibleHeight >= Math.min(bounds.height, 160);
-        if (enoughVisible) return;
+        const shouldGuideMobile = forceOnMobile && window.matchMedia("(max-width: 699px)").matches;
+        if (enoughVisible && !shouldGuideMobile) return;
         target.scrollIntoView({
           behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
           block: "start"
@@ -493,6 +494,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       manageToken: managedToken
     });
   }
+  const upcomingLessonCount = new Set(
+    calendarBookings.map((booking) => booking.seriesId ? `series:${booking.seriesId}` : `booking:${booking.reference}`)
+  ).size;
 
   const allBookingsByDate = calendarBookings.reduce<Record<string, MyBooking[]>>((dates, booking) => {
     const key = portoDateKey(new Date(booking.startAt));
@@ -526,7 +530,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const calendarWindowBookings = calendarBookings.filter((booking) =>
     visibleCalendarDates.has(portoDateKey(new Date(booking.startAt)))
   );
-  const laterBookingCount = calendarBookings.length - calendarWindowBookings.length;
   const bookingsByDate = calendarWindowBookings.reduce<Record<string, MyBooking[]>>((dates, booking) => {
     const key = portoDateKey(new Date(booking.startAt));
     (dates[key] ??= []).push(booking);
@@ -566,7 +569,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   useEffect(() => {
     if (intent !== "lessons" || selectedDate || !firstCalendarBookingStart) return;
     setSelectedDate(portoDateKey(new Date(firstCalendarBookingStart)));
-    setCalendarCompact(true);
+    setCalendarCompact(false);
   }, [firstCalendarBookingStart, intent, selectedDate]);
 
   /*
@@ -655,7 +658,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setIntent("lessons");
       setLessonTypeId("");
       setSelectedSlot("");
-      setCalendarCompact(Boolean(firstCalendarBookingStart));
+      setCalendarCompact(false);
       setStep("day");
       setShowAccountSignIn(!student);
       if (firstCalendarBookingStart) {
@@ -930,6 +933,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 })
               }
               onTransition={transitionBooking}
+              onViewUpcoming={() => setCalendarCompact(false)}
               onSignedOut={() => {
                 setStudent(null);
                 setMyBookings([]);
@@ -965,9 +969,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   <CheckCircle2 size={24} />
                 </span>
                 <strong>View your lessons</strong>
-                {student && calendarBookings.length ? (
-                  <span className="booking-intent-card__count" aria-label={`${calendarBookings.length} upcoming lessons`}>
-                    {calendarBookings.length}
+                {student && upcomingLessonCount ? (
+                  <span className="booking-intent-card__count" aria-label={`${upcomingLessonCount} upcoming lessons`}>
+                    {upcomingLessonCount}
                   </span>
                 ) : null}
                 <ChevronRight aria-hidden="true" size={20} />
@@ -1081,7 +1085,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           <div className="booking-workflow-context" aria-label="Viewing your lessons">
             <div>
               <span className="eyebrow">Your calendar</span>
-              <strong>{calendarBookings.length ? `${calendarBookings.length} upcoming` : "Nothing booked yet"}</strong>
+              <strong>{upcomingLessonCount ? `${upcomingLessonCount} upcoming` : "Nothing booked yet"}</strong>
             </div>
             <button className="text-action" onClick={startBookingJourney} type="button">
               Book a new lesson
@@ -1098,13 +1102,15 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 <span><i className="is-booked" aria-hidden="true" /> Booked lesson</span>
                 {intent === "book" ? <span><i className="is-free" aria-hidden="true" /> Free to book</span> : null}
               </div>
-              {isCalendarCompact ? (
+              {selectedCalendarWeek ? (
                 <button
+                  aria-controls="booking-calendar-weeks"
+                  aria-expanded={!isCalendarCompact}
                   className="text-action unified-calendar__expand"
-                  onClick={() => transitionBooking(() => setCalendarCompact(false))}
+                  onClick={() => transitionBooking(() => setCalendarCompact((compact) => !compact))}
                   type="button"
                 >
-                  Show all dates
+                  {isCalendarCompact ? "Show all" : "Hide all"}
                 </button>
               ) : (
                 <span className="unified-calendar__range">Next 8 weeks</span>
@@ -1119,6 +1125,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             <div
               aria-busy={loadingSlots}
               className="calendar-weeks"
+              id="booking-calendar-weeks"
               key={isCalendarCompact && selectedCalendarWeek ? `compact-${selectedCalendarWeek.key}` : "overview"}
             >
               {displayedCalendarWeeks.map((week) => (
@@ -1147,15 +1154,18 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                           data-date-key={cell.key}
                           disabled={!slots.length && !lessons.length}
                           key={cell.key}
-                          onClick={() =>
+                          onClick={() => {
                             transitionBooking(() => {
                               setSelectedDate(cell.key);
                               setCalendarCompact(true);
                               setSelectedSlot("");
-                              if (lessonType && !managed) goTo("time");
-                              else orientTo("booking-next-step");
-                            })
-                          }
+                              if (lessonType && !managed) {
+                                setStep("time");
+                                setSubmitError("");
+                              }
+                            });
+                            orientTo("booking-next-step", false, true);
+                          }}
                           type="button"
                         >
                           <span>
@@ -1359,7 +1369,15 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             ) : (
               <>
                 <p className="eyebrow">
-                  {selectedDate ? "Selected day" : intent === "lessons" ? "Upcoming lessons" : "Choose a day"}
+                  {selectedDate
+                    ? selectedDayBookings.length
+                      ? "Selected day"
+                      : lessonType
+                        ? "Choose a time"
+                        : "Selected day"
+                    : intent === "lessons"
+                      ? "Upcoming lessons"
+                      : "Choose a day"}
                 </p>
                 <h3>
                   {selectedDate
@@ -1396,24 +1414,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       </button>
                     ))}
                   </div>
-                ) : (
-                  <p className="booking-state-note">
-                    {calendarWindowBookings.length
-                      ? "No lesson booked on this day."
-                      : laterBookingCount
-                        ? "Your next booked dates are in Upcoming lessons above."
-                        : "No lessons booked in these eight weeks."}
-                  </p>
-                )}
+                ) : null}
 
                 {lessonType ? (
                   <div className="unified-calendar__availability">
-                    <div>
-                      <p className="eyebrow">Free for a {lessonType.name.toLowerCase()}</p>
-                      <p className="booking-state-note">
-                        {formatLessonDuration(lessonType.duration_minutes)} · {formatMoneyCents(lessonType.price_cents)} · Porto time
-                      </p>
-                    </div>
                     {!selectedDate ? (
                       <p className="booking-state-note">Choose a day marked free.</p>
                     ) : loadingSlots ? (

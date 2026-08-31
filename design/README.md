@@ -109,16 +109,23 @@ Preserve these desktop and mobile states:
   times. Completed decisions collapse into a compact row, so account tools,
   lesson cards, the calendar, and confirmation never compete at once;
 - the signed-in identity appears once, inside a generously padded account bar.
-  `Upcoming lessons`, `Past lessons`, `Edit details`, and `Sign out` are compact
-  right-aligned actions when the learner is viewing lessons; only the account
-  actions remain while booking. Repeating controls belong to the view-lessons
-  state. There is no second `My lessons` navigation destination. The account
-  bar, workflow choices, calendar, and selected-day workspace share the same
-  left and right edges. Profile-field actions sit beside their field whenever
-  the available width permits;
-- the calendar is the stable surface. A selected day reduces it to one week,
-  with the day or lesson detail beside it on desktop and immediately below it
-  on mobile. Its overview stops at the API's eight-week horizon even when a
+  `Upcoming lessons` remains a compact right-aligned action, while a small
+  `Menu` contains `Past lessons`, `Edit details`, and `Sign out`; only the
+  relevant account actions remain while booking. Repeating controls belong to
+  the view-lessons state. `Upcoming lessons` represents each repeating schedule once, led by its
+  soonest booked date; a quiet reveal exposes every later occurrence, and each
+  date opens the same move/cancel panel as the calendar. One-off lessons remain
+  individual entries. There is no second `My lessons` navigation destination.
+  The account bar, workflow choices, calendar, and selected-day workspace share
+  the same left and right edges. Profile-field actions sit beside their field
+  whenever the available width permits;
+- the calendar is the stable surface. Viewing lessons opens the full eight-week
+  overview, with `Hide all` reducing it to the selected week and `Show all`
+  restoring the overview. Selecting a day while booking reduces it to one week,
+  with the time or lesson detail beside it on desktop and immediately below it
+  on mobile. A free day shows the available times without redundant “no lesson
+  booked” or lesson-summary copy; booked days retain their lesson details. The
+  overview stops at the API's eight-week horizon even when a
   repeating series already holds a later lesson; those future lessons and past
   lessons open from the account bar instead of extending or sitting below the
   calendar. The full overview says `Next 8 weeks` explicitly and contains no

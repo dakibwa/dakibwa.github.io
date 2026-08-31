@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CalendarDays, CheckCircle2, ChevronRight, Globe2, Repeat } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertCircle, CalendarDays, CheckCircle2, ChevronRight, Globe2, Menu as MenuIcon, Repeat } from "lucide-react";
 import { AuthPanel } from "@/components/AuthPanel";
 import { LessonMark } from "@/components/LessonMarks";
 import {
@@ -32,6 +32,12 @@ import { BOOKING_HORIZON_DAYS_FALLBACK, BOOKING_TIME_ZONE, formatLessonDuration 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+type UpcomingLessonGroup = {
+  id: string;
+  seriesId: string | null;
+  bookings: MyBooking[];
+};
+
 function minutesToClock(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
@@ -43,6 +49,7 @@ export function MyLessons({
   onManage,
   onSignedOut,
   onTransition,
+  onViewUpcoming,
   showCalendar = true,
   showHistory = true,
   showSeries = true
@@ -53,6 +60,7 @@ export function MyLessons({
   onManage?: (token: string) => void;
   onSignedOut?: () => void;
   onTransition?: (update: () => void) => void;
+  onViewUpcoming?: () => void;
   showCalendar?: boolean;
   showHistory?: boolean;
   showSeries?: boolean;
@@ -63,7 +71,9 @@ export function MyLessons({
   const [confirmingStop, setConfirmingStop] = useState("");
   const [stopping, setStopping] = useState("");
   const [editing, setEditing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [accountSection, setAccountSection] = useState<"history" | "upcoming" | "">("");
+  const [expandedUpcomingGroup, setExpandedUpcomingGroup] = useState("");
   const [details, setDetails] = useState({ name: "", email: "" });
   const [savingName, setSavingName] = useState(false);
   const [emailPending, setEmailPending] = useState("");
@@ -74,6 +84,7 @@ export function MyLessons({
   const [zone, setZone] = useState(BOOKING_TIME_ZONE);
   const [todayKey, setTodayKey] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const applyTransition = useCallback(
     (update: () => void) => {
@@ -119,6 +130,24 @@ export function MyLessons({
     setTodayKey(portoDateKey(new Date()));
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      window.requestAnimationFrame(() => document.getElementById("account-menu-button")?.focus());
+    };
+    document.addEventListener("pointerdown", closeOnPointerDown);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnPointerDown);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (selectedDate) return;
@@ -226,6 +255,17 @@ export function MyLessons({
   const upcoming = bookings
     .filter((booking) => !booking.isPast && booking.status === "confirmed")
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const upcomingGroups = Array.from(
+    upcoming
+      .reduce<Map<string, UpcomingLessonGroup>>((groups, booking) => {
+        const id = booking.seriesId ? `series:${booking.seriesId}` : `booking:${booking.reference}`;
+        const group = groups.get(id) ?? { id, seriesId: booking.seriesId, bookings: [] };
+        group.bookings.push(booking);
+        groups.set(id, group);
+        return groups;
+      }, new Map())
+      .values()
+  );
   const past = bookings
     .filter((booking) => booking.isPast || booking.status === "cancelled")
     .sort((a, b) => b.startAt.localeCompare(a.startAt));
@@ -248,14 +288,23 @@ export function MyLessons({
   const selectedBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
 
   function manage(booking: MyBooking) {
+    // The chosen lesson replaces this drawer in the shared workspace. Closing
+    // it here prevents a long list remaining above the move/cancel decision.
+    setAccountSection("");
+    setExpandedUpcomingGroup("");
+    setMenuOpen(false);
     if (onManage) onManage(booking.manageToken);
     else window.location.assign(`/book/?manage=${encodeURIComponent(booking.manageToken)}`);
   }
 
   function toggleAccountSection(section: "history" | "upcoming") {
     applyTransition(() => {
+      const isOpening = accountSection !== section;
+      setMenuOpen(false);
       setEditing(false);
+      setExpandedUpcomingGroup("");
       setAccountSection((current) => (current === section ? "" : section));
+      if (section === "upcoming" && isOpening) onViewUpcoming?.();
     });
   }
 
@@ -322,53 +371,95 @@ export function MyLessons({
         <div className="my-lessons__header-actions">
           {embedded && showHistory && upcoming.length ? (
             <button
+              aria-label={`Upcoming lessons, ${upcomingGroups.length} ${upcomingGroups.length === 1 ? "entry" : "entries"}`}
               aria-controls="account-upcoming-lessons"
               aria-expanded={accountSection === "upcoming"}
               className="text-action"
               onClick={() => toggleAccountSection("upcoming")}
               type="button"
             >
-              Upcoming lessons <span aria-hidden="true">{upcoming.length}</span>
+              Upcoming lessons <span aria-hidden="true">{upcomingGroups.length}</span>
             </button>
           ) : null}
-          {embedded && showHistory && past.length ? (
-            <button
-              aria-controls="account-past-lessons"
-              aria-expanded={accountSection === "history"}
-              className="text-action"
-              onClick={() => toggleAccountSection("history")}
-              type="button"
-            >
-              Past lessons <span aria-hidden="true">{past.length}</span>
-            </button>
-          ) : null}
-          <button
-            className={embedded ? "text-action" : "button button--coral"}
-            onClick={() =>
-              applyTransition(() => {
-                setAccountSection("");
-                setEditing((open) => !open);
-              })
-            }
-            type="button"
-          >
-            {editing ? "Done" : "Edit details"}
-          </button>
-          <button
-            className={embedded ? "text-action text-action--muted" : "button button--quiet"}
-            onClick={() =>
-              applyTransition(() => {
-                clearSession();
-                setStudent(null);
-                setBookings([]);
-                setAccountSection("");
-                onSignedOut?.();
-              })
-            }
-            type="button"
-          >
-            Sign out
-          </button>
+          {embedded ? (
+            <div className="my-lessons__menu" ref={menuRef}>
+              <button
+                aria-controls="account-menu"
+                aria-expanded={menuOpen}
+                className="my-lessons__menu-toggle"
+                id="account-menu-button"
+                onClick={() => setMenuOpen((open) => !open)}
+                type="button"
+              >
+                <MenuIcon size={16} aria-hidden="true" /> Menu
+              </button>
+              {menuOpen ? (
+                <div className="my-lessons__menu-panel" id="account-menu">
+                  {showHistory && past.length ? (
+                    <button
+                      aria-controls="account-past-lessons"
+                      aria-expanded={accountSection === "history"}
+                      onClick={() => toggleAccountSection("history")}
+                      type="button"
+                    >
+                      Past lessons <span>{past.length}</span>
+                    </button>
+                  ) : null}
+                  <button
+                    onClick={() =>
+                      applyTransition(() => {
+                        setMenuOpen(false);
+                        setAccountSection("");
+                        setExpandedUpcomingGroup("");
+                        setEditing((open) => !open);
+                      })
+                    }
+                    type="button"
+                  >
+                    {editing ? "Done editing" : "Edit details"}
+                  </button>
+                  <button
+                    onClick={() =>
+                      applyTransition(() => {
+                        setMenuOpen(false);
+                        clearSession();
+                        setStudent(null);
+                        setBookings([]);
+                        setAccountSection("");
+                        setExpandedUpcomingGroup("");
+                        onSignedOut?.();
+                      })
+                    }
+                    type="button"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <button
+                className="button button--coral"
+                onClick={() => setEditing((open) => !open)}
+                type="button"
+              >
+                {editing ? "Done" : "Edit details"}
+              </button>
+              <button
+                className="button button--quiet"
+                onClick={() => {
+                  clearSession();
+                  setStudent(null);
+                  setBookings([]);
+                  onSignedOut?.();
+                }}
+                type="button"
+              >
+                Sign out
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -444,28 +535,99 @@ export function MyLessons({
           <div className="my-lessons__account-section-heading">
             <div>
               <h3 className="eyebrow" id="upcoming-lessons-heading">Upcoming lessons</h3>
-              <p>Every lesson you have booked, including dates after this eight-week calendar.</p>
+              <p>Repeating lessons appear once. Open later dates to manage any week.</p>
             </div>
           </div>
           <div className="my-lessons__account-bookings">
-            {upcoming.map((booking) => (
-              <button
-                className="lesson-calendar__lesson lesson-calendar__lesson--booked"
-                key={booking.reference}
-                onClick={() => manage(booking)}
-                type="button"
-              >
-                <LessonMark className="lesson-calendar__mark" lessonTypeId={booking.lessonType.id} />
-                <span className="lesson-calendar__lesson-copy">
-                  <span className="lesson-calendar__status">
-                    <CheckCircle2 size={13} aria-hidden="true" /> Booked
-                  </span>
-                  <strong>{formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}</strong>
-                  <span>{booking.lessonType.name} · {booking.location === "porto" ? "In Porto" : "Online"}</span>
-                </span>
-                <ChevronRight aria-hidden="true" size={20} />
-              </button>
-            ))}
+            {upcomingGroups.map((group) => {
+              const [nextBooking, ...laterBookings] = group.bookings;
+              if (!group.seriesId) {
+                return (
+                  <button
+                    className="lesson-calendar__lesson lesson-calendar__lesson--booked upcoming-lesson-group upcoming-lesson-group--single"
+                    key={group.id}
+                    onClick={() => manage(nextBooking)}
+                    type="button"
+                  >
+                    <LessonMark className="lesson-calendar__mark" lessonTypeId={nextBooking.lessonType.id} />
+                    <span className="lesson-calendar__lesson-copy">
+                      <span className="lesson-calendar__status">
+                        <CheckCircle2 size={13} aria-hidden="true" /> Booked
+                      </span>
+                      <strong>{formatLongDate(nextBooking.startAt)}, {formatSlotTime(nextBooking.startAt)}</strong>
+                      <span>{nextBooking.lessonType.name} · {nextBooking.location === "porto" ? "In Porto" : "Online"}</span>
+                    </span>
+                    <span className="upcoming-lesson-group__action">
+                      Manage <ChevronRight aria-hidden="true" size={17} />
+                    </span>
+                  </button>
+                );
+              }
+
+              const isExpanded = expandedUpcomingGroup === group.id;
+              const datesId = `upcoming-series-dates-${group.seriesId}`;
+              const isActive = series.some((entry) => entry.id === group.seriesId);
+              return (
+                <article className="upcoming-lesson-group upcoming-lesson-group--series" key={group.id}>
+                  <button
+                    className="lesson-calendar__lesson upcoming-lesson-group__next"
+                    onClick={() => manage(nextBooking)}
+                    type="button"
+                  >
+                    <LessonMark className="lesson-calendar__mark" lessonTypeId={nextBooking.lessonType.id} />
+                    <span className="lesson-calendar__lesson-copy">
+                      <span className="lesson-calendar__status lesson-calendar__status--repeat">
+                        <Repeat size={13} aria-hidden="true" /> {isActive ? "Repeating" : "Booked dates"}
+                      </span>
+                      <strong>Next: {formatLongDate(nextBooking.startAt)}, {formatSlotTime(nextBooking.startAt)}</strong>
+                      <span>
+                        {nextBooking.lessonType.name} · {nextBooking.location === "porto" ? "In Porto" : "Online"} · {group.bookings.length} {group.bookings.length === 1 ? "booked date" : "booked dates"}
+                      </span>
+                    </span>
+                    <span className="upcoming-lesson-group__action">
+                      Manage next <ChevronRight aria-hidden="true" size={17} />
+                    </span>
+                  </button>
+
+                  {laterBookings.length ? (
+                    <div className="upcoming-lesson-group__more">
+                      <button
+                        aria-controls={datesId}
+                        aria-expanded={isExpanded}
+                        className="text-action"
+                        onClick={() =>
+                          applyTransition(() => setExpandedUpcomingGroup((current) => current === group.id ? "" : group.id))
+                        }
+                        type="button"
+                      >
+                        {isExpanded ? "Hide dates" : "View all dates"}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {isExpanded ? (
+                    <div className="upcoming-lesson-group__dates" id={datesId}>
+                      {laterBookings.map((booking) => (
+                        <button
+                          className="upcoming-lesson-group__date"
+                          key={booking.reference}
+                          onClick={() => manage(booking)}
+                          type="button"
+                        >
+                          <span>
+                            <strong>{formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}</strong>
+                            <small>{booking.lessonType.name} · {booking.location === "porto" ? "In Porto" : "Online"}</small>
+                          </span>
+                          <span className="upcoming-lesson-group__action">
+                            Manage <ChevronRight aria-hidden="true" size={17} />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         </section>
       ) : null}

@@ -2078,21 +2078,154 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   gap: 0.55rem;
 }
 
-.lesson-calendar__lesson--booked {
+.lesson-calendar__lesson.lesson-calendar__lesson--booked {
   border: 1px solid rgba(194, 58, 39, 0.26);
   border-radius: var(--squiggle-field);
   padding: 0.75rem;
   background: rgba(194, 58, 39, 0.09);
 }
 
-.lesson-calendar__lesson--booked:last-child {
+.lesson-calendar__lesson.lesson-calendar__lesson--booked:last-child {
   padding-bottom: 0.75rem;
 }
 
-.lesson-calendar__lesson--booked:hover,
-.lesson-calendar__lesson--booked:focus-visible {
+.lesson-calendar__lesson.lesson-calendar__lesson--booked:hover,
+.lesson-calendar__lesson.lesson-calendar__lesson--booked:focus-visible {
   border-color: var(--coral-action);
   background: rgba(194, 58, 39, 0.14);
+}
+
+/* A recurring schedule is one commitment, even though the Worker holds every
+   booked occurrence separately. The account drawer mirrors that mental model:
+   the nearest date leads, and later dates stay quiet until they are needed. */
+.upcoming-lesson-group--series {
+  overflow: hidden;
+  border: 1px solid rgba(194, 58, 39, 0.26);
+  border-radius: var(--squiggle-field);
+  background: rgba(194, 58, 39, 0.075);
+}
+
+.lesson-calendar__lesson.upcoming-lesson-group__next {
+  border: 0;
+  padding: 0.8rem;
+  background: transparent;
+}
+
+.lesson-calendar__lesson.upcoming-lesson-group__next:last-child {
+  padding-bottom: 0.8rem;
+}
+
+.lesson-calendar__lesson.upcoming-lesson-group__next:hover,
+.lesson-calendar__lesson.upcoming-lesson-group__next:focus-visible {
+  background: rgba(194, 58, 39, 0.08);
+}
+
+.lesson-calendar__status.lesson-calendar__status--repeat {
+  background: var(--lavender-ink);
+}
+
+.upcoming-lesson-group__action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--coral-action);
+  gap: 0.18rem;
+  font-family: var(--ui);
+  font-size: 0.61rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.upcoming-lesson-group__more {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--rule-soft);
+  padding: 0.12rem 0.75rem;
+}
+
+.upcoming-lesson-group__more .text-action {
+  min-height: 38px;
+  font-size: 0.62rem;
+}
+
+.upcoming-lesson-group__dates {
+  border-top: 1px solid var(--rule-soft);
+  padding: 0 0.75rem 0.35rem;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.upcoming-lesson-group__date {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid var(--rule-soft);
+  padding: 0.72rem 0.05rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.upcoming-lesson-group__date:last-child {
+  border-bottom: 0;
+}
+
+.upcoming-lesson-group__date:hover,
+.upcoming-lesson-group__date:focus-visible {
+  color: var(--coral-action);
+}
+
+.upcoming-lesson-group__date > span:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.16rem;
+}
+
+.upcoming-lesson-group__date strong {
+  font-family: var(--ui);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.upcoming-lesson-group__date small {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  opacity: 0.72;
+}
+
+@container booking (max-width: 480px) {
+  .upcoming-lesson-group__next,
+  .upcoming-lesson-group--single {
+    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-areas:
+      "mark copy"
+      ". action";
+  }
+
+  .upcoming-lesson-group__next .lesson-calendar__mark,
+  .upcoming-lesson-group--single .lesson-calendar__mark {
+    grid-area: mark;
+  }
+
+  .upcoming-lesson-group__next .lesson-calendar__lesson-copy,
+  .upcoming-lesson-group--single .lesson-calendar__lesson-copy {
+    grid-area: copy;
+  }
+
+  .upcoming-lesson-group__next .upcoming-lesson-group__action,
+  .upcoming-lesson-group--single .upcoming-lesson-group__action {
+    grid-area: action;
+    justify-self: end;
+    margin-top: 0.28rem;
+  }
 }
 
 .lesson-calendar__status {
@@ -2144,6 +2277,8 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 }
 
 .unified-account-controls {
+  position: relative;
+  z-index: 4;
   width: 100%;
   margin: 0 0 1.6rem;
   border: 1px solid var(--rule);
@@ -2223,6 +2358,7 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
     margin-left: auto;
     justify-content: flex-end;
     gap: 0.45rem 0.85rem;
+    flex-wrap: nowrap;
   }
 
   .booking-choice-summary {
@@ -2245,19 +2381,28 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 }
 
 @container booking (max-width: 480px) {
+  .my-lessons__header--embedded {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.5rem;
+  }
+
   .my-lessons__header--embedded .my-lessons__header-actions {
-    display: grid;
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-left: 0;
-    gap: 0.25rem 0.8rem;
+    display: contents;
   }
 
   .my-lessons__header--embedded .my-lessons__header-actions .text-action {
-    width: 100%;
+    grid-row: 2;
+    grid-column: 1 / -1;
+    width: auto;
     justify-content: flex-end;
+    justify-self: end;
     font-size: 0.62rem;
     letter-spacing: 0.08em;
+  }
+
+  .my-lessons__header--embedded .my-lessons__menu {
+    grid-row: 1;
+    grid-column: 2;
   }
 }
 
@@ -3259,6 +3404,9 @@ button.text-action {
 }
 
 .my-lessons__header--embedded {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   margin-bottom: 1.25rem;
 }
 
@@ -3294,6 +3442,94 @@ button.text-action {
   place-items: center;
   border-radius: 50%;
   margin-left: 0.25rem;
+  background: rgba(194, 58, 39, 0.12);
+  color: var(--coral-action);
+  font-size: 0.62rem;
+  letter-spacing: 0;
+}
+
+.my-lessons__menu {
+  position: relative;
+  flex: none;
+}
+
+.my-lessons__menu-toggle {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-pill);
+  padding: 0.45rem 0.75rem;
+  background: rgba(255, 255, 255, 0.24);
+  color: var(--coral-action);
+  cursor: pointer;
+  gap: 0.35rem;
+  font-family: var(--ui);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.my-lessons__menu-toggle:hover,
+.my-lessons__menu-toggle:focus-visible,
+.my-lessons__menu-toggle[aria-expanded="true"] {
+  border-color: var(--coral-action);
+  background: rgba(194, 58, 39, 0.08);
+}
+
+.my-lessons__menu-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  display: grid;
+  overflow: hidden;
+  width: min(220px, calc(100vw - 4rem));
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-field);
+  background-color: var(--paper-light);
+  background-image: var(--paper-texture);
+  box-shadow: 0 14px 26px rgba(32, 62, 130, 0.09);
+}
+
+.my-lessons__menu-panel > button {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-bottom: 1px solid var(--rule-soft);
+  padding: 0.7rem 0.85rem;
+  background: transparent;
+  color: var(--navy);
+  cursor: pointer;
+  gap: 0.75rem;
+  font-family: var(--ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.my-lessons__menu-panel > button:last-child {
+  border-bottom: 0;
+}
+
+.my-lessons__menu-panel > button:hover,
+.my-lessons__menu-panel > button:focus-visible {
+  background: rgba(194, 58, 39, 0.08);
+  color: var(--coral-action);
+}
+
+.my-lessons__menu-panel > button > span {
+  display: inline-grid;
+  min-width: 1.35rem;
+  min-height: 1.35rem;
+  place-items: center;
+  border-radius: 50%;
   background: rgba(194, 58, 39, 0.12);
   color: var(--coral-action);
   font-size: 0.62rem;
