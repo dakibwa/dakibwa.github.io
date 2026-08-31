@@ -24,6 +24,11 @@ Every route carries a booking action within reach of its closing content, not
 only in the header: the home page closes on one, and the FAQ ends with a route
 to booking alongside the WhatsApp option.
 
+`Booking` is deliberately the only learner-calendar destination in the site
+navigation. Once signed in, the same page shows the student's account, booked
+lessons, later repeating lessons and past lessons without introducing a second
+`My lessons` tab.
+
 The website's canonical visual and interaction contract is
 [design/README.md](./design/README.md). It records the current visual rules,
 responsive states, retained business-card references, production-asset

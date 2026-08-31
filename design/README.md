@@ -103,20 +103,28 @@ Preserve these desktop and mobile states:
 - on desktop the blue introduction is a supporting rail, clamped between 300
   and 440 px at roughly 29% of the viewport; the cream booking workspace owns
   the remaining width;
-- the signed-in identity, account controls, lesson choices, calendar, and
-  selected-day workspace share the same left and right edges. Two lesson types
-  divide the row evenly rather than reserving an empty third column;
+- the signed-in identity appears once, inside the account bar. `Later lessons`,
+  `Past lessons`, `Edit details`, and `Sign out` are its compact right-aligned
+  actions; there is no second `My lessons` navigation destination. The account
+  bar, lesson choices, calendar, and selected-day workspace share the same left
+  and right edges. Two lesson types divide the row evenly rather than reserving
+  an empty third column;
 - the calendar is the stable surface. A selected day reduces it to one week,
   with the day or lesson detail beside it on desktop and immediately below it
-  on mobile. Collapsed history remains below the compact calendar instead of
-  being pushed down by the height of the detail card;
+  on mobile. Its overview stops at the API's eight-week horizon even when a
+  repeating series already holds a later lesson; those later lessons and past
+  lessons open from the account bar instead of extending or sitting below the
+  calendar. The full overview says `Next 8 weeks` explicitly;
 - days with two bookings show both booked times on separate lines. Do not use a
-  small `2x` count badge beside the date;
+  small `2x` count badge beside the date. Each selected existing lesson uses a
+  coral-tinted card with an explicit `Booked` status;
 - primary coral and secondary outline actions share a 52 px height, Montserrat
   0.7 rem labels, 0.12 em tracking, and the same hand-drawn button radius.
-  Tertiary text actions use the same type at 40 px minimum height. `Back to
-  calendar` is tertiary; `Move this lesson` and `Cancel lesson` are the paired
-  primary and secondary actions;
+  Tertiary text actions use the same type at 40 px minimum height and align to
+  the right wherever the label fits, on mobile as well as desktop. The selected
+  lesson header pairs a `Booked lesson` status with a compact `Calendar` action;
+  `Move lesson` and `Cancel lesson` are compact right-aligned primary and
+  secondary actions rather than full-panel bars;
 - transitions belong to the account, choice, calendar, detail, and confirmation
   surfaces individually. The page scrolls only when the next decision is not
   already comfortably visible. Reduced motion removes both the transitions and

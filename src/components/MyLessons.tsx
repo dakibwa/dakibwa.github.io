@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CalendarDays, ChevronRight, Globe2, Repeat } from "lucide-react";
+import { AlertCircle, CalendarDays, CheckCircle2, ChevronRight, Globe2, Repeat } from "lucide-react";
 import { AuthPanel } from "@/components/AuthPanel";
 import { LessonMark } from "@/components/LessonMarks";
 import {
@@ -37,6 +37,7 @@ function minutesToClock(minutes: number) {
 }
 
 export function MyLessons({
+  calendarHorizonDays = BOOKING_HORIZON_DAYS_FALLBACK,
   embedded = false,
   onBook,
   onManage,
@@ -45,6 +46,7 @@ export function MyLessons({
   showCalendar = true,
   showHistory = true
 }: {
+  calendarHorizonDays?: number;
   embedded?: boolean;
   onBook?: () => void;
   onManage?: (token: string) => void;
@@ -59,6 +61,7 @@ export function MyLessons({
   const [confirmingStop, setConfirmingStop] = useState("");
   const [stopping, setStopping] = useState("");
   const [editing, setEditing] = useState(false);
+  const [accountSection, setAccountSection] = useState<"history" | "later" | "">("");
   const [details, setDetails] = useState({ name: "", email: "" });
   const [savingName, setSavingName] = useState(false);
   const [emailPending, setEmailPending] = useState("");
@@ -235,6 +238,12 @@ export function MyLessons({
     const [year, month, day] = key.split("-").map(Number);
     return Date.UTC(year, month - 1, day) / 86_400_000;
   };
+  const later = todayKey
+    ? upcoming.filter(
+        (booking) =>
+          toDayNumber(portoDateKey(new Date(booking.startAt))) - toDayNumber(todayKey) > calendarHorizonDays
+      )
+    : [];
   const calendarHorizon =
     todayKey && latestDate
       ? Math.max(BOOKING_HORIZON_DAYS_FALLBACK, toDayNumber(latestDate) - toDayNumber(todayKey) + 1)
@@ -245,6 +254,13 @@ export function MyLessons({
   function manage(booking: MyBooking) {
     if (onManage) onManage(booking.manageToken);
     else window.location.assign(`/book/?manage=${encodeURIComponent(booking.manageToken)}`);
+  }
+
+  function toggleAccountSection(section: "history" | "later") {
+    applyTransition(() => {
+      setEditing(false);
+      setAccountSection((current) => (current === section ? "" : section));
+    });
   }
 
   if (loading) return <p className="booking-state-note">Loading your lessons…</p>;
@@ -298,16 +314,46 @@ export function MyLessons({
     <div className="my-lessons">
       <div className={`my-lessons__header${embedded ? " my-lessons__header--embedded" : ""}`}>
         {embedded ? (
-          <h2>Account</h2>
+          <div className="my-lessons__account-name">
+            <span>Account</span>
+            <strong>{student.name}</strong>
+          </div>
         ) : (
           <p>
-            Signed in as <strong>{student.name}</strong> ({student.email})
+            <strong>{student.name}</strong> · {student.email}
           </p>
         )}
         <div className="my-lessons__header-actions">
+          {embedded && later.length ? (
+            <button
+              aria-controls="account-later-lessons"
+              aria-expanded={accountSection === "later"}
+              className="text-action"
+              onClick={() => toggleAccountSection("later")}
+              type="button"
+            >
+              Later lessons <span aria-hidden="true">{later.length}</span>
+            </button>
+          ) : null}
+          {embedded && showHistory && past.length ? (
+            <button
+              aria-controls="account-past-lessons"
+              aria-expanded={accountSection === "history"}
+              className="text-action"
+              onClick={() => toggleAccountSection("history")}
+              type="button"
+            >
+              Past lessons <span aria-hidden="true">{past.length}</span>
+            </button>
+          ) : null}
           <button
             className={embedded ? "text-action" : "button button--coral"}
-            onClick={() => applyTransition(() => setEditing((open) => !open))}
+            onClick={() =>
+              applyTransition(() => {
+                setAccountSection("");
+                setEditing((open) => !open);
+              })
+            }
             type="button"
           >
             {editing ? "Done" : "Edit details"}
@@ -319,6 +365,7 @@ export function MyLessons({
                 clearSession();
                 setStudent(null);
                 setBookings([]);
+                setAccountSection("");
                 onSignedOut?.();
               })
             }
@@ -390,6 +437,60 @@ export function MyLessons({
           <AlertCircle size={18} aria-hidden="true" />
           <p>{error}</p>
         </div>
+      ) : null}
+
+      {embedded && accountSection === "later" ? (
+        <section className="my-lessons__account-section" id="account-later-lessons" aria-labelledby="later-lessons-heading">
+          <div className="my-lessons__account-section-heading">
+            <div>
+              <h3 className="eyebrow" id="later-lessons-heading">Later booked lessons</h3>
+              <p>These stay booked after the eight-week booking calendar ends.</p>
+            </div>
+          </div>
+          <div className="my-lessons__account-bookings">
+            {later.map((booking) => (
+              <button
+                className="lesson-calendar__lesson lesson-calendar__lesson--booked"
+                key={booking.reference}
+                onClick={() => manage(booking)}
+                type="button"
+              >
+                <LessonMark className="lesson-calendar__mark" lessonTypeId={booking.lessonType.id} />
+                <span className="lesson-calendar__lesson-copy">
+                  <span className="lesson-calendar__status">
+                    <CheckCircle2 size={13} aria-hidden="true" /> Booked
+                  </span>
+                  <strong>{formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}</strong>
+                  <span>{booking.lessonType.name} · {booking.location === "porto" ? "In Porto" : "Online"}</span>
+                </span>
+                <ChevronRight aria-hidden="true" size={20} />
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {embedded && accountSection === "history" ? (
+        <section className="my-lessons__account-section" id="account-past-lessons" aria-labelledby="past-lessons-heading">
+          <h3 className="eyebrow" id="past-lessons-heading">Past lessons</h3>
+          <ul className="lesson-list lesson-list--past">
+            {past.map((booking) => (
+              <li key={booking.reference}>
+                <div className="lesson-list__body">
+                  <h3>
+                    {booking.lessonType.name}
+                    {booking.status === "cancelled" ? <em> · cancelled</em> : null}
+                  </h3>
+                  <p>
+                    <CalendarDays size={16} aria-hidden="true" />
+                    {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
+                  </p>
+                </div>
+                <span className="lesson-list__reference">{booking.reference}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       {series.length ? (
@@ -557,7 +658,7 @@ export function MyLessons({
       </section>
       ) : null}
 
-      {showHistory && past.length ? (
+      {!embedded && showHistory && past.length ? (
         <section className="my-lessons__group">
           <h2>History</h2>
           <ul className="lesson-list lesson-list--past">

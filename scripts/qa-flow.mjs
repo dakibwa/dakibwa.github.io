@@ -119,9 +119,9 @@ for (const route of routes) {
   }
 }
 
-// Account navigation should describe the student's lessons, not introduce a
-// second calendar alongside the booking workspace. A synthetic local session
-// is enough here because AccountLink only needs to know whether one exists.
+// Booking is the one destination whether the visitor is signed in or not. The
+// account itself belongs inside that workspace, not as a second navigation
+// destination that changes label after hydration.
 const signedInBrowser = await chromium.launch({ headless: true });
 const signedInPage = await signedInBrowser.newPage({ viewport: { width: 1440, height: 1000 } });
 signedInPage.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
@@ -132,15 +132,13 @@ await signedInPage.addInitScript(() => {
   window.localStorage.setItem("ines-student-session", "qa-session");
 });
 await signedInPage.goto(`${base}/`, { waitUntil: "domcontentloaded" });
-const signedInAccountLinks = signedInPage.getByRole("link", { name: "My lessons", exact: true });
-await signedInAccountLinks.first().waitFor({ timeout: 10_000 });
-if ((await signedInAccountLinks.count()) !== 2) {
-  throw new Error("Signed-in header and footer navigation should both say My lessons.");
+const signedInBookingLinks = signedInPage.getByRole("link", { name: "Booking", exact: true });
+await signedInBookingLinks.first().waitFor({ timeout: 10_000 });
+if ((await signedInBookingLinks.count()) !== 2) {
+  throw new Error("Signed-in header and footer navigation should both keep the single Booking destination.");
 }
-for (const link of await signedInAccountLinks.all()) {
-  if ((await link.getAttribute("href")) !== "/book/#lesson-calendar") {
-    throw new Error("My lessons should return to the unified booking calendar.");
-  }
+if (await signedInPage.getByRole("link", { name: "My lessons", exact: true }).count()) {
+  throw new Error("My lessons should not appear as a second navigation destination.");
 }
 await signedInPage.close();
 await signedInBrowser.close();
@@ -250,7 +248,9 @@ if (bookingCalendar) {
   await toggle.click();
   await page.waitForTimeout(400);
   if ((await toggle.getAttribute("aria-expanded")) !== "true") throw new Error("The mobile menu did not open.");
-  if ((await page.locator("#site-nav-mobile a").count()) < 5) throw new Error("The mobile menu is missing links.");
+  if ((await page.locator("#site-nav-mobile a").count()) !== 4) {
+    throw new Error("The mobile menu should contain the four primary destinations once each.");
+  }
   await page.setViewportSize({ width: 1440, height: 1000 });
 }
 
@@ -271,6 +271,10 @@ const qaFreeDate = qaFreeStart.toISOString().slice(0, 10);
 const qaPastStart = new Date(Date.now() - 7 * 24 * 60 * 60_000);
 qaPastStart.setUTCHours(15, 0, 0, 0);
 const qaPastEnd = new Date(qaPastStart.getTime() + 60 * 60_000);
+const qaLaterStart = new Date(Date.now() + 84 * 24 * 60 * 60_000);
+qaLaterStart.setUTCHours(17, 0, 0, 0);
+const qaLaterEnd = new Date(qaLaterStart.getTime() + 60 * 60_000);
+const qaLaterDate = qaLaterStart.toISOString().slice(0, 10);
 const accountBrowser = await chromium.launch({ headless: true });
 const accountPage = await accountBrowser.newPage({ viewport: { width: 1440, height: 1000 } });
 accountPage.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
@@ -386,6 +390,19 @@ await accountPage.route("**/me", async (route) => {
           sameDayFeeApplies: false,
           seriesId: null,
           manageToken: "manage-old"
+        },
+        {
+          reference: "INES-LATER",
+          status: "confirmed",
+          startAt: qaLaterStart.toISOString(),
+          endAt: qaLaterEnd.toISOString(),
+          location: "online",
+          notes: "",
+          lessonType: { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 },
+          isPast: false,
+          sameDayFeeApplies: false,
+          seriesId: null,
+          manageToken: "manage-later"
         }
       ],
       series: repeatStopped
@@ -414,6 +431,34 @@ await accountPage.route("**/bookings/manage-qa", async (route) => {
         status: "confirmed",
         startAt: qaStart.toISOString(),
         endAt: qaEnd.toISOString(),
+        location: "online",
+        studentName: "Ana Martins",
+        studentEmail: "student@example.com",
+        studentTimezone: "Europe/Lisbon",
+        notes: "",
+        rescheduleCount: 0,
+        sameDayFeeCents: 500,
+        paymentStatus: "not_required",
+        amountCents: null,
+        lessonType: { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 }
+      },
+      isPast: false,
+      sameDayFeeApplies: false,
+      changeLocked: false,
+      refundOnCancel: false
+    })
+  });
+});
+await accountPage.route("**/bookings/manage-later", async (route) => {
+  await route.fulfill({
+    contentType: "application/json",
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({
+      booking: {
+        reference: "INES-LATER",
+        status: "confirmed",
+        startAt: qaLaterStart.toISOString(),
+        endAt: qaLaterEnd.toISOString(),
         location: "online",
         studentName: "Ana Martins",
         studentEmail: "student@example.com",
@@ -471,20 +516,51 @@ for (const oldToggleName of ["Account", "Close", "Close account"]) {
 }
 await accountPage.getByRole("button", { name: "Sign out", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Stop repeating", exact: true }).waitFor();
-if (await accountPanel.getByText("History", { exact: true }).count()) {
-  throw new Error("History should not be rendered inside the account controls at the top of the page.");
+if ((await accountPanel.getByText("Ana Martins", { exact: true }).count()) !== 1) {
+  throw new Error("The signed-in identity should appear once, inside the account bar.");
 }
-const bookingHistory = accountPage.locator(".booking-history");
-await bookingHistory.waitFor({ state: "visible" });
-if (await bookingHistory.evaluate((node) => node.open)) {
-  throw new Error("Past lessons should be collapsed by default.");
+for (const duplicateIdentity of ["Signed in as", "Booking as", "Not you?"]) {
+  if (await accountPage.getByText(duplicateIdentity, { exact: false }).count()) {
+    throw new Error(`The booking flow still repeats the account identity as “${duplicateIdentity}”.`);
+  }
 }
-const historyFollowsCalendar = await accountPage.evaluate(() => {
-  const calendar = document.querySelector("#lesson-calendar");
-  const history = document.querySelector(".booking-history");
-  return Boolean(calendar && history && calendar.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING);
-});
-if (!historyFollowsCalendar) throw new Error("History should sit after the booking calendar, not above it.");
+if (await accountPage.locator(".booking-history").count()) {
+  throw new Error("The old detached history disclosure is still rendered below the calendar.");
+}
+const pastLessonsToggle = accountPanel.getByRole("button", { name: /Past lessons/ });
+await pastLessonsToggle.click();
+await accountPanel.getByRole("heading", { name: "Past lessons", exact: true }).waitFor();
+if (!(await accountPanel.getByText("INES-OLD1", { exact: true }).isVisible())) {
+  throw new Error("Past lessons should open inside the account bar.");
+}
+await pastLessonsToggle.click();
+
+const laterLessonsToggle = accountPanel.getByRole("button", { name: /Later lessons/ });
+await laterLessonsToggle.click();
+const laterLessonButton = accountPanel.getByRole("button", { name: /Booked.*Single lesson/ });
+await laterLessonButton.waitFor({ state: "visible" });
+if (!(await accountPanel.getByText(/eight-week booking calendar ends/i).isVisible())) {
+  throw new Error("Later lessons should explain why they are outside the booking calendar.");
+}
+await laterLessonButton.click();
+const laterManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
+try {
+  await laterManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor({ timeout: 10_000 });
+} catch {
+  const panelText = (await laterManagePanel.innerText().catch(() => "missing panel")).replace(/\s+/g, " ").trim();
+  throw new Error(`A later lesson did not open in the shared management panel. Panel: ${panelText}`);
+}
+await laterManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
+await laterManagePanel.getByRole("button", { name: "Back to calendar", exact: true }).click();
+await accountPage.locator(".unified-booking__lesson-picker").waitFor({ state: "visible" });
+if ((await laterLessonsToggle.getAttribute("aria-expanded")) === "true") {
+  await laterLessonsToggle.click();
+  await accountPanel.locator("#account-later-lessons").waitFor({ state: "detached" });
+}
+await waitForOrientation(accountPage);
+if (await accountPage.locator(`#lesson-calendar [data-date-key="${qaLaterDate}"]`).count()) {
+  throw new Error("A later recurring lesson stretched the visible calendar beyond eight weeks.");
+}
 
 const desktopAccountLayout = await accountPage.evaluate(() => {
   const bounds = (selector) => {
@@ -503,7 +579,6 @@ const desktopAccountLayout = await accountPage.evaluate(() => {
     composition: bounds(".booking-composition"),
     intro: bounds(".booking-intro"),
     provider: bounds(".booking-provider"),
-    head: bounds(".unified-booking__head"),
     panel: bounds("#account-controls"),
     lessonPicker: bounds(".unified-booking__lesson-picker"),
     lessonCards: [...document.querySelectorAll(".unified-booking__lesson-picker .lesson-card")].map((card) =>
@@ -515,17 +590,15 @@ if (
   !desktopAccountLayout.composition ||
   !desktopAccountLayout.intro ||
   !desktopAccountLayout.provider ||
-  !desktopAccountLayout.head ||
   !desktopAccountLayout.panel ||
   !desktopAccountLayout.lessonPicker ||
-  desktopAccountLayout.panel.top < desktopAccountLayout.head.bottom - 1 ||
   desktopAccountLayout.panel.bottom > desktopAccountLayout.lessonPicker.top + 1 ||
   Math.abs(desktopAccountLayout.panel.left - desktopAccountLayout.lessonPicker.left) > 2 ||
-  Math.abs(desktopAccountLayout.panel.right - desktopAccountLayout.lessonPicker.right) > 2 ||
-  Math.abs(desktopAccountLayout.head.left - desktopAccountLayout.panel.left) > 2 ||
-  Math.abs(desktopAccountLayout.head.right - desktopAccountLayout.panel.right) > 2
+  Math.abs(desktopAccountLayout.panel.right - desktopAccountLayout.lessonPicker.right) > 2
 ) {
-  throw new Error("The account controls and booking choices should share one aligned workspace.");
+  throw new Error(
+    `The account controls and booking choices should share one aligned workspace: ${JSON.stringify(desktopAccountLayout)}.`
+  );
 }
 if (
   desktopAccountLayout.intro.width / desktopAccountLayout.composition.width > 0.34 ||
@@ -557,23 +630,20 @@ if (Math.abs(desktopScrollAfterSelection - desktopScrollBeforeSelection) > 8) {
 }
 const desktopCalendarStack = await accountPage.evaluate(() => {
   const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
-  const history = document.querySelector("#lesson-calendar > .booking-history")?.getBoundingClientRect();
   const panel = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
   return {
-    calendarBottom: calendar?.bottom ?? 0,
-    historyTop: history?.top ?? Infinity,
     panelTop: panel?.top ?? Infinity,
     calendarTop: calendar?.top ?? Infinity
   };
 });
 await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-selected-desktop.png"), fullPage: true });
-if (
-  desktopCalendarStack.historyTop - desktopCalendarStack.calendarBottom > 32 ||
-  Math.abs(desktopCalendarStack.panelTop - desktopCalendarStack.calendarTop) > 2
-) {
+if (Math.abs(desktopCalendarStack.panelTop - desktopCalendarStack.calendarTop) > 2) {
   throw new Error(
-    `The compact calendar, history and selected-day panel should remain one aligned workspace: ${JSON.stringify(desktopCalendarStack)}.`
+    `The compact calendar and selected-day panel should remain one aligned workspace: ${JSON.stringify(desktopCalendarStack)}.`
   );
+}
+if ((await accountPage.locator("#lesson-calendar .lesson-calendar__status", { hasText: "Booked" }).count()) !== 2) {
+  throw new Error("Each existing lesson should be explicitly labelled Booked in the selected-day panel.");
 }
 await accountPage
   .locator("#lesson-calendar .unified-calendar__bookings .lesson-calendar__lesson")
@@ -581,18 +651,25 @@ await accountPage
   .click();
 const desktopManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
 await desktopManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor();
+await desktopManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
+if (await desktopManagePanel.getByText("Your lesson", { exact: true }).count()) {
+  throw new Error("The selected-lesson header still stacks the redundant “Your lesson” label.");
+}
+await waitForOrientation(accountPage);
 const desktopManageControls = await desktopManagePanel.evaluate((panel) => {
   const bounds = [...panel.querySelectorAll(".manage-booking__actions .button")].map((button) => {
     const rectangle = button.getBoundingClientRect();
-    return { width: rectangle.width, height: rectangle.height };
+    return { left: rectangle.left, right: rectangle.right, width: rectangle.width, height: rectangle.height };
   });
   const back = panel.querySelector(".booking-back--tertiary")?.getBoundingClientRect();
-  return { bounds, backHeight: back?.height ?? Infinity };
+  const rectangle = panel.getBoundingClientRect();
+  return { bounds, backHeight: back?.height ?? Infinity, panelRight: rectangle.right, panelWidth: rectangle.width };
 });
 if (
   desktopManageControls.bounds.length !== 2 ||
-  Math.abs(desktopManageControls.bounds[0].width - desktopManageControls.bounds[1].width) > 2 ||
   Math.abs(desktopManageControls.bounds[0].height - desktopManageControls.bounds[1].height) > 2 ||
+  desktopManageControls.bounds.some((button) => button.width >= desktopManageControls.panelWidth * 0.75) ||
+  desktopManageControls.panelRight - desktopManageControls.bounds.at(-1).right > 40 ||
   desktopManageControls.backHeight > 44
 ) {
   throw new Error(
@@ -609,14 +686,17 @@ await accountPage.waitForTimeout(300);
 const mobileAccountLayout = await accountPage.evaluate(() => {
   const repeatCopy = document.querySelector(".my-lessons__series-row > p")?.getBoundingClientRect();
   const repeatAction = document.querySelector(".my-lessons__series-row > button")?.getBoundingClientRect();
+  const repeatRow = document.querySelector(".my-lessons__series-row")?.getBoundingClientRect();
   const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid");
   const calendarBounds = calendar?.getBoundingClientRect();
   const firstWeekday = calendar?.querySelector(".calendar-weekdays span:first-child")?.getBoundingClientRect();
   const lastWeekday = calendar?.querySelector(".calendar-weekdays span:last-child")?.getBoundingClientRect();
   const legend = calendar?.querySelector(".unified-calendar__legend")?.getBoundingClientRect();
   return {
-    repeatCopyBottom: repeatCopy?.bottom ?? 0,
-    repeatActionTop: repeatAction?.top ?? 0,
+    repeatCopyRight: repeatCopy?.right ?? 0,
+    repeatActionLeft: repeatAction?.left ?? Infinity,
+    repeatActionRight: repeatAction?.right ?? 0,
+    repeatRowRight: repeatRow?.right ?? 0,
     calendarLeft: calendarBounds?.left ?? 0,
     calendarRight: calendarBounds?.right ?? 0,
     firstWeekdayLeft: firstWeekday?.left ?? -Infinity,
@@ -628,8 +708,11 @@ const mobileAccountLayout = await accountPage.evaluate(() => {
     scrollWidth: document.documentElement.scrollWidth
   };
 });
-if (mobileAccountLayout.repeatActionTop < mobileAccountLayout.repeatCopyBottom - 1) {
-  throw new Error("The mobile stop-repeating control still crowds the repeat description.");
+if (
+  mobileAccountLayout.repeatActionLeft < mobileAccountLayout.repeatCopyRight - 1 ||
+  mobileAccountLayout.repeatRowRight - mobileAccountLayout.repeatActionRight > 3
+) {
+  throw new Error("The mobile stop-repeating control should sit cleanly at the right of the repeat description.");
 }
 if (mobileAccountLayout.scrollWidth > mobileAccountLayout.clientWidth + 1) {
   throw new Error("The open mobile account controls cause horizontal overflow.");
@@ -658,6 +741,10 @@ await accountPage.evaluate(() => {
 
 const fullCalendarWeekCount = await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count();
 if (fullCalendarWeekCount <= 1) throw new Error("The calendar overview should show more than one week.");
+if (fullCalendarWeekCount > 9) {
+  throw new Error(`The eight-week booking window rendered ${fullCalendarWeekCount} calendar rows.`);
+}
+await accountPage.getByText("Next 8 weeks", { exact: true }).waitFor({ state: "visible" });
 const bookingTimes = accountPage.locator("#lesson-calendar .calendar-booking-times span");
 if ((await bookingTimes.count()) !== 2) {
   throw new Error("The mobile booked day should show both lesson times.");
@@ -684,6 +771,39 @@ const selectedLessonCount = await accountPage
 if (selectedLessonCount !== 2) {
   throw new Error(`The selected day should show both lessons below the compact calendar; found ${selectedLessonCount}.`);
 }
+if ((await accountPage.locator("#lesson-calendar .lesson-calendar__status", { hasText: "Booked" }).count()) !== 2) {
+  throw new Error("Booked lessons need an explicit status label on mobile too.");
+}
+await accountPage
+  .locator("#lesson-calendar .unified-calendar__bookings .lesson-calendar__lesson")
+  .first()
+  .click();
+const mobileManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
+await mobileManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor();
+await mobileManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
+await waitForOrientation(accountPage);
+const mobileManageControls = await mobileManagePanel.evaluate((panel) => {
+  const bounds = [...panel.querySelectorAll(".manage-booking__actions .button")].map((button) => {
+    const rectangle = button.getBoundingClientRect();
+    return { right: rectangle.right, width: rectangle.width, height: rectangle.height };
+  });
+  const rectangle = panel.getBoundingClientRect();
+  return { bounds, panelRight: rectangle.right, panelWidth: rectangle.width };
+});
+if (
+  mobileManageControls.bounds.length !== 2 ||
+  Math.abs(mobileManageControls.bounds[0].height - mobileManageControls.bounds[1].height) > 2 ||
+  mobileManageControls.bounds.some((button) => button.width >= mobileManageControls.panelWidth * 0.75) ||
+  mobileManageControls.panelRight - mobileManageControls.bounds.at(-1).right > 40
+) {
+  throw new Error(
+    `Mobile lesson actions should stay compact and right-aligned: ${JSON.stringify(mobileManageControls)}.`
+  );
+}
+await accountPage.screenshot({ path: path.join(outDir, "booking-manage-mobile.png"), fullPage: true });
+await mobileManagePanel.getByRole("button", { name: "Back to calendar", exact: true }).click();
+await mobileManagePanel.getByText("Selected day", { exact: true }).waitFor();
+await waitForOrientation(accountPage);
 const compactCalendarLayout = await accountPage.evaluate(() => {
   const grid = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
   const details = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
@@ -717,6 +837,23 @@ if (await accountPage.locator(".unified-booking__lesson-picker .lesson-card").co
   throw new Error("Choosing a lesson type should collapse the large lesson cards.");
 }
 const changeLesson = accountPage.getByRole("button", { name: "Change lesson", exact: true });
+const lessonSummaryLayout = await lessonSummary.evaluate((summary) => {
+  const copy = summary.querySelector(".booking-choice-summary__copy")?.getBoundingClientRect();
+  const action = summary.querySelector(".booking-choice-summary__change")?.getBoundingClientRect();
+  const rectangle = summary.getBoundingClientRect();
+  return {
+    copyRight: copy?.right ?? 0,
+    actionLeft: action?.left ?? Infinity,
+    actionRight: action?.right ?? 0,
+    summaryRight: rectangle.right
+  };
+});
+if (
+  lessonSummaryLayout.actionLeft < lessonSummaryLayout.copyRight - 1 ||
+  lessonSummaryLayout.summaryRight - lessonSummaryLayout.actionRight > 18
+) {
+  throw new Error(`Change lesson should stay aligned on the right: ${JSON.stringify(lessonSummaryLayout)}.`);
+}
 await changeLesson.click();
 await accountPage.getByRole("button", { name: "Single lesson 60 minutes · €25", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Single lesson 60 minutes · €25", exact: true }).click();
@@ -761,6 +898,11 @@ await accountPage
   .click();
 const confirmHeading = accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true });
 await confirmHeading.waitFor({ state: "visible" });
+for (const duplicateIdentity of ["Signed in as", "Booking as", "Not you?"]) {
+  if (await accountPage.getByText(duplicateIdentity, { exact: false }).count()) {
+    throw new Error(`Confirmation still repeats the account identity as “${duplicateIdentity}”.`);
+  }
+}
 await accountPage.waitForFunction(
   () => {
     const heading = document.querySelector("#booking-step-heading")?.getBoundingClientRect();
@@ -842,7 +984,7 @@ console.log(
       results,
       bookingCalendar,
       bookingPlaceholder,
-      signedInAccountLinks: 2,
+      unifiedBookingLinks: 2,
       accountControls: {
         desktopLayout: desktopAccountLayout,
         mobileLayout: mobileAccountLayout,
