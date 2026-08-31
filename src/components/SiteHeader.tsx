@@ -19,7 +19,7 @@ export function SiteHeader({ currentPage = "home" }: SiteHeaderProps) {
           href="/"
           className="site-header__brand"
           aria-current={currentPage === "home" ? "page" : undefined}
-          aria-label="Português com a Inês — home"
+          aria-label="Português com a Inês, home"
         >
           <BrandWordmark priority className="header-wordmark" />
         </Link>

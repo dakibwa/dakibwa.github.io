@@ -380,7 +380,7 @@ export function TeacherSchedule() {
       <section className="schedule-block">
         <h2>When you teach</h2>
         <p className="booking-state-note">
-          These are the first and last times a lesson can <em>start</em>, in Porto time — so a 90-minute lesson
+          These are the first and last times a lesson can <em>start</em>, in Porto time. A 90-minute lesson
           booked at your last start time runs past it. Leave a day empty to keep it free.
         </p>
 
@@ -482,7 +482,7 @@ export function TeacherSchedule() {
                 <CalendarOff size={16} aria-hidden="true" />
                 <span>
                   {formatLongDate(`${exception.date}T12:00:00Z`)}
-                  {exception.note ? ` — ${exception.note}` : ""}
+                  {exception.note ? `: ${exception.note}` : ""}
                 </span>
                 <button
                   aria-label={`Unblock ${exception.date}`}

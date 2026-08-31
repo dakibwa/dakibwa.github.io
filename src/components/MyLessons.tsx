@@ -350,7 +350,7 @@ export function MyLessons({
 
           {emailPending ? (
             <p className="my-lessons__details-note">
-              Check <strong>{emailPending}</strong> — it only becomes your address once that link is used. Until then
+              Check <strong>{emailPending}</strong>. It only becomes your address once that link is used. Until then
               you sign in with {student.email}.
             </p>
           ) : (
@@ -380,7 +380,7 @@ export function MyLessons({
               <p>
                 <Repeat size={16} aria-hidden="true" />
                 <strong>{WEEKDAYS[entry.weekday]}s at {minutesToClock(entry.minuteOfDay)}</strong> Porto time
-                {entry.openEnded ? ", every week" : ""} — {entry.upcoming}{" "}
+                {entry.openEnded ? ", every week" : ""}. {entry.upcoming}{" "}
                 {entry.upcoming === 1 ? "lesson" : "lessons"} still to come.
               </p>
               {confirmingStop === entry.id ? (
