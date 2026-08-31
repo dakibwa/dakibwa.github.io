@@ -2,7 +2,7 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "ines-booking",
   "main": "index.mjs",
-  "compatibility_date": "2026-06-19",
+  "compatibility_date": "2026-08-31",
   // Nightly, so an open-ended weekly booking always has a run of lessons in
   // front of it and her calendar is blocked that far ahead. 03:10 UTC is well
   // clear of the evening lessons.
@@ -34,12 +34,6 @@
     // Checkout mounts inside the booking page rather than redirecting to
     // Stripe. Inert until the Stripe secrets exist and payment_mode is prepay.
     "STRIPE_UI_MODE": "embedded",
-    // Inês's Express connected account (acct_…): set it and every charge
-    // becomes a destination charge — the money routes to her automatically and
-    // Stripe pays out to her own bank, with her name on students' statements.
-    // Empty: funds stay on the platform account. (Dan, 28 August 2026: his
-    // account as platform, hers connected via Express.)
-    "STRIPE_CONNECTED_ACCOUNT": "",
     // Google Sign-In. Public by design — it identifies the app, and the Worker
     // verifies every ID token's signature and audience against it. The client
     // *secret* is not needed: this is the ID-token flow, not the server-side
@@ -49,7 +43,8 @@
   "secrets": {
     // wrangler secret put <NAME> --config workers/booking/wrangler.jsonc
     //
-    // STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are deliberately NOT required:
+    // STRIPE_SECRET_KEY is a least-privilege restricted key (rk_…), not the
+    // account's general secret key. Both Stripe secrets remain optional here:
     // payment_mode defaults to 'off', so booking works fully without them, and
     // the site must not be blocked from shipping on a payment rail that does not
     // exist yet.

@@ -83,10 +83,10 @@ request only competes with the fonts for no gain.
   Portugal, so the account this site pointed at — Dan's UK account, set up as a
   test — could never have been hers.
 - There is no live payment rail yet — students pay Inês directly — but the
-  Stripe integration is fully built and dormant. The decided structure (28
-  August 2026): Inês's own Stripe account with Dan as Administrator — signup
-  scheduled for 29 August 2026. docs-booking-system.md has the model, the
-  dormant Connect alternative, and the go-live checklist.
+  Stripe integration is fully built and dormant. Inês's own Stripe account now
+  exists, with Dan as Administrator; the sandbox endpoint and least-privilege
+  restricted API key are provisioned while `payment_mode` remains `off`.
+  docs-booking-system.md has the security model and remaining go-live checks.
 - The approved product display is trial lesson €20 / 60 minutes, single lessons
   at €25 / 60 minutes or €35 / 1 hour 30 minutes. Bundles are not part of the
   public launch offer. Existing students retain their individually agreed
