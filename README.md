@@ -148,10 +148,14 @@ Each destination arrives with a short opacity-only dissolve: 190 ms on mobile
 and 240 ms on wider screens. Navigation itself starts immediately; there is no
 click interception, exit delay, overlay, movement, scale, or staggered hero
 animation. Booking decisions use a 220–260 ms same-document surface transition
-where supported, so the lesson picker, calendar, and next-step panel resize and
-replace their contents as one workspace. Older browsers keep the working flow
-and use a small content fade instead. Orientation scrolling waits for that
-surface change to settle rather than moving underneath it.
+where supported. The account, lesson choice, calendar, detail, and confirmation
+surfaces each keep their place while their own geometry and content change, so
+the page no longer dissolves as one oversized snapshot. Older browsers keep the
+working flow and use a small content fade instead. Orientation scrolling waits
+for the surface change to settle and runs only when less than 160 px of the next
+decision is visible; an already visible desktop choice does not move the page.
+Interrupted transitions from a quick second choice are treated as normal input,
+not as browser errors.
 
 `prefers-reduced-motion: reduce` removes route and booking transitions, smooth
 scrolling, and the button and navigation hover transforms, keeping colour

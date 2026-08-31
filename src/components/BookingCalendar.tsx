@@ -202,6 +202,12 @@ function transitionBooking(update: () => void) {
     return;
   }
   bookingTransition = transition;
+  // A quick second choice deliberately aborts the first transition. Chromium
+  // rejects `ready`/`updateCallbackDone` for that interrupted visual snapshot
+  // even though the state update itself succeeded, so consume those expected
+  // rejections rather than surfacing a false page error.
+  void transition.ready.catch(() => undefined);
+  void transition.updateCallbackDone.catch(() => undefined);
   void transition.finished
     .catch(() => undefined)
     .finally(() => {
@@ -214,9 +220,11 @@ function transitionBooking(update: () => void) {
 
 /**
  * A decision should hand the student to the next decision, especially on a
- * phone where the next panel sits below what they just chose. The view change
- * settles first, then two animation frames let the browser measure the final
- * position before scrolling. Reduced-motion preferences are respected.
+ * phone where the next panel sits below what they just chose. If that decision
+ * is already comfortably visible, however, moving the page only makes the
+ * workspace feel unstable. The view change settles first, then two animation
+ * frames let the browser measure the final position before deciding whether a
+ * scroll is actually needed. Reduced-motion preferences are respected.
  */
 function orientTo(id: string, focus = false) {
   const orient = () => {
@@ -225,6 +233,10 @@ function orientTo(id: string, focus = false) {
         const target = document.getElementById(id);
         if (!target) return;
         if (focus) target.focus({ preventScroll: true });
+        const bounds = target.getBoundingClientRect();
+        const visibleHeight = Math.max(0, Math.min(bounds.bottom, window.innerHeight) - Math.max(bounds.top, 0));
+        const enoughVisible = bounds.top >= 12 && visibleHeight >= Math.min(bounds.height, 160);
+        if (enoughVisible) return;
         target.scrollIntoView({
           behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
           block: "start"
@@ -719,6 +731,35 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     }
   }
 
+  const bookingHistoryPanel =
+    student && bookingHistory.length ? (
+      <details className="booking-history">
+        <summary>
+          <span>History</span>
+          <small>
+            {bookingHistory.length} {bookingHistory.length === 1 ? "booking" : "bookings"}
+          </small>
+        </summary>
+        <ul className="booking-history__list">
+          {bookingHistory.map((booking) => (
+            <li key={booking.reference}>
+              <div>
+                <strong>
+                  {booking.lessonType.name}
+                  {booking.status === "cancelled" ? <em> · cancelled</em> : null}
+                </strong>
+                <span>
+                  <CalendarDays size={16} aria-hidden="true" />
+                  {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
+                </span>
+              </div>
+              <small>{booking.reference}</small>
+            </li>
+          ))}
+        </ul>
+      </details>
+    ) : null;
+
   if (confirmation) {
     const localTime = differingLocalTime(confirmation.startAt, studentZone);
     return (
@@ -1023,8 +1064,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                             {cell.day}
                             {cell.month !== week.monthNumber ? <em>{shortMonth(cell.month, cell.key)}</em> : null}
                             {lessons.length ? (
-                              <small className={lessons.length > 1 ? "calendar-booking-count" : undefined}>
-                                {lessons.length === 1 ? formatSlotTime(lessons[0].startAt) : `${lessons.length}×`}
+                              <small className="calendar-booking-times">
+                                {(lessons.length <= 2 ? lessons : lessons.slice(0, 1)).map((booking) => (
+                                  <span key={booking.reference}>{formatSlotTime(booking.startAt)}</span>
+                                ))}
+                                {lessons.length > 2 ? <span>+{lessons.length - 1} more</span> : null}
                               </small>
                             ) : null}
                           </span>
@@ -1059,7 +1103,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             ) : managed ? (
               <>
                 <button
-                  className="booking-back"
+                  className="booking-back booking-back--tertiary"
                   onClick={() => transitionBooking(closeManagedLesson)}
                   type="button"
                 >
@@ -1293,6 +1337,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             )}
             </div>
           </aside>
+          {bookingHistoryPanel}
           </div>
         ) : null}
 
@@ -1571,34 +1616,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             </div>
           </div>
         ) : null}
-
-        {student && bookingHistory.length ? (
-          <details className="booking-history">
-            <summary>
-              <span>History</span>
-              <small>
-                {bookingHistory.length} {bookingHistory.length === 1 ? "booking" : "bookings"}
-              </small>
-            </summary>
-            <ul className="booking-history__list">
-              {bookingHistory.map((booking) => (
-                <li key={booking.reference}>
-                  <div>
-                    <strong>
-                      {booking.lessonType.name}
-                      {booking.status === "cancelled" ? <em> · cancelled</em> : null}
-                    </strong>
-                    <span>
-                      <CalendarDays size={16} aria-hidden="true" />
-                      {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
-                    </span>
-                  </div>
-                  <small>{booking.reference}</small>
-                </li>
-              ))}
-            </ul>
-          </details>
-        ) : null}
+        {isConfirmingBooking ? bookingHistoryPanel : null}
       </div>
 
     </section>
