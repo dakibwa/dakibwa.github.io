@@ -137,8 +137,10 @@ depending on them having kept the right confirmation email.
   booking and managing lessons are the same workspace.
 - **Upcoming lessons groups a repeating schedule as one thing.** It opens first
   when a signed-in student chooses `View your lessons` and remains available as
-  a menu shortcut. Recurring schedules use a distinct lilac treatment and lead
-  with their next occurrence; one-off bookings remain coral cards. `View next 4
+  a menu shortcut. After a successful booking, `Back to upcoming lessons` opens
+  this same list rather than returning to the generic start choice. Recurring
+  schedules use a distinct lilac treatment and lead with their next occurrence;
+  one-off bookings remain coral cards. `View next 4
   lessons` reveals at most four booked occurrences with individual `Manage`
   actions. An accessible tooltip explains the four-week individual-change
   window. The calendar remains underneath as supporting context. Opening an

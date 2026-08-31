@@ -544,6 +544,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const calendarWeeks = uncappedCalendarWeeks.slice(0, 8);
   const fourWeekCalendarWeeks = calendarWeeks.slice(0, 4);
   const overviewCalendarWeeks = intent === "lessons" ? fourWeekCalendarWeeks : calendarWeeks;
+  const fourWeekCalendarDates = new Set(fourWeekCalendarWeeks.flatMap((week) => week.cells.map((cell) => cell.key)));
   const visibleCalendarDates = new Set(overviewCalendarWeeks.flatMap((week) => week.cells.map((cell) => cell.key)));
   const calendarWindowBookings = calendarBookings.filter((booking) =>
     visibleCalendarDates.has(portoDateKey(new Date(booking.startAt)))
@@ -876,6 +877,32 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     });
   }
 
+  function returnFromConfirmationToUpcoming() {
+    if (!confirmation) return;
+    const bookedDate = portoDateKey(new Date(confirmation.startAt));
+
+    transitionBooking(() => {
+      setConfirmation(null);
+      setIntent("lessons");
+      setLessonTypeId("");
+      setSelectedSlot("");
+      setCalendarWeekCount(4);
+      setSelectedDate(
+        fourWeekCalendarDates.has(bookedDate)
+          ? bookedDate
+          : firstCalendarBookingStart
+            ? portoDateKey(new Date(firstCalendarBookingStart))
+            : ""
+      );
+      setStep("day");
+      setForm(emptyForm);
+      setSeriesPreview(null);
+      setPayment(null);
+      setPaymentError("");
+      setUpcomingRequestKey((current) => current + 1);
+    });
+  }
+
   if (confirmation) {
     const localTime = differingLocalTime(confirmation.startAt, studentZone);
     return (
@@ -939,16 +966,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         <div className="booking-success__actions">
           <button
             className="button button--coral"
-            onClick={() =>
-              transitionBooking(() => {
-                setConfirmation(null);
-                setStep("day");
-                setSelectedDate(portoDateKey(new Date(confirmation.startAt)));
-              })
-            }
+            onClick={returnFromConfirmationToUpcoming}
             type="button"
           >
-            Back to your calendar
+            Back to upcoming lessons
           </button>
           <button
             className="text-action"
