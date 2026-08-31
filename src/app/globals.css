@@ -615,6 +615,7 @@ p {
   font-size: clamp(1.1rem, 1.7vw, 1.45rem);
   letter-spacing: 0.09em;
   line-height: 1.2;
+  text-wrap: balance;
   text-transform: uppercase;
 }
 
@@ -630,7 +631,12 @@ p {
     background-color: var(--lavender-soft);
     background-image: var(--paper-texture);
   }
+}
 
+/* There is room for the long labels on one line from here upwards. Between
+   the stacked mobile layout and this width, wrapping keeps the two-column
+   composition intact without letting text disappear under overflow:hidden. */
+@media (min-width: 1000px) {
   .approach-item h2 {
     white-space: nowrap;
   }
