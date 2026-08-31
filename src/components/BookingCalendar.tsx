@@ -13,7 +13,8 @@ import {
   Globe2,
   MapPin,
   MessageSquareText,
-  Repeat
+  Repeat,
+  X
 } from "lucide-react";
 import { AssetMark } from "@/components/BrandMarks";
 /*
@@ -348,6 +349,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [manageOutcome, setManageOutcome] = useState("");
   const [showAccountSignIn, setShowAccountSignIn] = useState(false);
   const [upcomingRequestKey, setUpcomingRequestKey] = useState(0);
+  const manageDialogRef = useRef<HTMLDivElement>(null);
 
   const lessonType = lessonTypes.find((type) => type.id === lessonTypeId) ?? null;
 
@@ -410,7 +412,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const openManaged = useCallback(async (token: string, seriesId: string | null = null) => {
     if (!token) return;
     setIntent("lessons");
-    setCalendarWeekCount(1);
     setManagedToken(token);
     setManagedSeriesId(seriesId);
     setManageLoading(true);
@@ -425,7 +426,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         setSelectedDate(portoDateKey(new Date(result.booking.startAt)));
         setManageLoading(false);
       });
-      window.requestAnimationFrame(() => orientTo("booking-next-step", true));
     } catch (caught) {
       transitionBooking(() => {
         setManaged(null);
@@ -560,6 +560,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const selectedCalendarWeek = selectedDate
     ? overviewCalendarWeeks.find((week) => week.cells.some((cell) => cell.key === selectedDate))
     : undefined;
+  const selectedDateInOverview = Boolean(selectedCalendarWeek);
   const standardCalendarWeekCount: Exclude<CalendarWeekCount, 1> = intent === "lessons" ? 4 : 8;
   const visibleCalendarWeekCount = calendarWeekCount === 1 && !selectedCalendarWeek
     ? standardCalendarWeekCount
@@ -580,21 +581,17 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     !isConfirmingBooking &&
     !needsLessonsSignIn &&
     (intent === "lessons" || Boolean(intent === "book" && lessonType && step !== "lesson") || Boolean(managed));
-  const managedPanelIsPrimary = Boolean(managedToken || manageLoading || managed || manageError);
   const resolvedManagedSeriesId = managedSeriesId ?? myBookings.find((booking) => booking.manageToken === managedToken)?.seriesId ?? null;
   const activeManagedSeries = resolvedManagedSeriesId
     ? lessonSeries.find((entry) => entry.id === resolvedManagedSeriesId) ?? null
     : null;
+  const manageDialogOpen = Boolean(manageLoading || manageError || (managed && manageMode !== "reschedule"));
   const visibleLessonTypes = hasPriorBooking ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes;
   const panelMotionKey = showAccountSignIn && !student
     ? "sign-in"
-    : manageLoading
-      ? "manage-loading"
-      : managed
-        ? `managed-${managed.booking.reference}-${manageMode}`
-        : manageError
-          ? "manage-error"
-          : `calendar-${selectedDate || "none"}-${lessonTypeId || "none"}`;
+    : managed && manageMode === "reschedule"
+      ? `managed-${managed.booking.reference}-reschedule`
+      : `calendar-${selectedDate || "none"}-${lessonTypeId || "none"}`;
 
   useEffect(() => {
     if (intent !== "lessons" || selectedDate || !firstCalendarBookingStart) return;
@@ -854,7 +851,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     }
   }
 
-  function closeManagedLesson() {
+  const closeManagedLesson = useCallback(() => {
     setManaged(null);
     setManagedToken("");
     setManagedSeriesId(null);
@@ -862,19 +859,59 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setManageError("");
     setManageOutcome("");
     setSelectedSlot("");
-    if (selectedDate && !overviewCalendarWeeks.some((week) => week.cells.some((cell) => cell.key === selectedDate))) {
+    if (selectedDate && !selectedDateInOverview) {
       setSelectedDate(firstCalendarBookingStart ? portoDateKey(new Date(firstCalendarBookingStart)) : "");
     }
     if (new URLSearchParams(window.location.search).has("manage")) {
       window.history.replaceState({}, "", "/book/");
     }
-  }
+  }, [firstCalendarBookingStart, selectedDate, selectedDateInOverview]);
 
-  function returnFromManagedLesson() {
+  const returnFromManagedLesson = useCallback(() => {
     transitionBooking(() => {
       closeManagedLesson();
       setUpcomingRequestKey((current) => current + 1);
     });
+  }, [closeManagedLesson]);
+
+  const dismissManagedDialog = useCallback(() => {
+    if (manageWorking) return;
+    if (manageOutcome && student) {
+      returnFromManagedLesson();
+      return;
+    }
+    transitionBooking(closeManagedLesson);
+  }, [closeManagedLesson, manageOutcome, manageWorking, returnFromManagedLesson, student]);
+
+  useEffect(() => {
+    if (!manageDialogOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = requestAnimationFrame(() => manageDialogRef.current?.focus());
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismissManagedDialog();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [dismissManagedDialog, manageDialogOpen, manageMode]);
+
+  function beginManagedReschedule() {
+    if (!managed) return;
+    const managedDate = portoDateKey(new Date(managed.booking.startAt));
+    const isInCalendar = overviewCalendarWeeks.some((week) => week.cells.some((cell) => cell.key === managedDate));
+    transitionBooking(() => {
+      setManageMode("reschedule");
+      setSelectedDate(isInCalendar ? managedDate : "");
+      setSelectedSlot("");
+      setCalendarWeekCount(isInCalendar ? 1 : 4);
+      setManageError("");
+      setLoadingSlots(true);
+    });
+    orientTo("lesson-calendar", false, true);
   }
 
   function returnFromConfirmationToUpcoming() {
@@ -1052,6 +1089,206 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           </section>
         ) : null}
 
+        {manageDialogOpen ? (
+          <div
+            className="lesson-manage-overlay"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) dismissManagedDialog();
+            }}
+            role="presentation"
+          >
+            <div
+              aria-labelledby="lesson-manage-heading"
+              aria-modal="true"
+              className="lesson-manage-dialog"
+              ref={manageDialogRef}
+              role="dialog"
+              tabIndex={-1}
+            >
+              <button
+                aria-label="Close lesson management"
+                className="lesson-manage-dialog__close"
+                disabled={manageWorking}
+                onClick={dismissManagedDialog}
+                type="button"
+              >
+                <X aria-hidden="true" size={19} />
+              </button>
+
+              {manageLoading ? (
+                <div className="lesson-manage-dialog__loading">
+                  <p className="eyebrow">One moment</p>
+                  <h2 id="lesson-manage-heading">Opening your lesson…</h2>
+                </div>
+              ) : managed ? (
+                <>
+                  <p className={`lesson-calendar__status${resolvedManagedSeriesId ? " lesson-calendar__status--recurring" : ""}`}>
+                    {resolvedManagedSeriesId ? <Repeat size={13} aria-hidden="true" /> : <CheckCircle2 size={13} aria-hidden="true" />}
+                    {managed.booking.status === "cancelled"
+                      ? "Cancelled"
+                      : resolvedManagedSeriesId
+                        ? "Recurring lesson"
+                        : "Booked"}
+                  </p>
+                  <h2 id="lesson-manage-heading">
+                    {manageMode === "confirm-cancel"
+                      ? "Cancel this lesson?"
+                      : manageMode === "sequence" || manageMode === "confirm-stop-sequence"
+                        ? "Manage recurring lesson"
+                        : manageOutcome
+                          ? "All sorted"
+                          : "Manage this lesson"}
+                  </h2>
+
+                  {manageOutcome ? (
+                    <div className="booking-outcome" role="status">
+                      <CheckCircle2 size={20} aria-hidden="true" />
+                      <p>{manageOutcome}</p>
+                    </div>
+                  ) : null}
+                  {manageError ? (
+                    <div className="booking-alert" role="alert">
+                      <AlertCircle size={18} aria-hidden="true" />
+                      <p>{manageError}</p>
+                    </div>
+                  ) : null}
+
+                  <div className="lesson-manage-dialog__lesson">
+                    <strong>{formatLongDate(managed.booking.startAt)}, {formatSlotTime(managed.booking.startAt)}</strong>
+                    <span>{managed.booking.lessonType.name} · {managed.booking.location === "porto" ? "In Porto" : "Online"}</span>
+                  </div>
+
+                  {!manageOutcome && manageMode === "view" ? (
+                    <>
+                      {managed.changeLocked && managed.booking.status !== "cancelled" ? (
+                        <p className="lesson-calendar__notice">This lesson is today and can&rsquo;t be changed or cancelled.</p>
+                      ) : managed.sameDayFeeApplies && managed.booking.status !== "cancelled" ? (
+                        <p className="lesson-calendar__notice">
+                          Changing or cancelling today costs {formatMoneyCents(managed.booking.sameDayFeeCents)}.
+                        </p>
+                      ) : null}
+
+                      {managed.booking.status === "confirmed" && !managed.isPast && !managed.changeLocked ? (
+                        <>
+                          <p className="lesson-manage-dialog__question">Would you like to change or cancel it?</p>
+                          <div className="lesson-manage-dialog__actions">
+                            <button className="button button--coral" onClick={beginManagedReschedule} type="button">
+                              Change
+                            </button>
+                            <button
+                              className="button button--quiet"
+                              onClick={() => transitionBooking(() => setManageMode("confirm-cancel"))}
+                              type="button"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : null}
+
+                      {resolvedManagedSeriesId ? (
+                        <div className="lesson-manage-dialog__series">
+                          <Repeat aria-hidden="true" size={17} />
+                          <div>
+                            <strong>Part of a recurring sequence</strong>
+                            <span>
+                              {activeManagedSeries
+                                ? `${weekdayNames[activeManagedSeries.weekday]} at ${minutesToClock(activeManagedSeries.minuteOfDay)} Porto time`
+                                : "This sequence is no longer adding lessons."}
+                            </span>
+                          </div>
+                          {activeManagedSeries ? (
+                            <button className="text-action" onClick={() => transitionBooking(() => setManageMode("sequence"))} type="button">
+                              Manage sequence
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+
+                  {manageMode === "confirm-cancel" ? (
+                    <div className="lesson-manage-dialog__decision">
+                      <p>
+                        This only cancels the lesson on this date.
+                        {managed.refundOnCancel && managed.booking.amountCents
+                          ? ` Your ${formatMoneyCents(managed.booking.amountCents)} comes back to your card.`
+                          : ""}
+                      </p>
+                      <div className="lesson-manage-dialog__actions">
+                        <button className="button button--coral" disabled={manageWorking} onClick={cancelManagedLesson} type="button">
+                          {manageWorking ? "Cancelling…" : "Yes, cancel it"}
+                        </button>
+                        <button
+                          className="button button--quiet"
+                          disabled={manageWorking}
+                          onClick={() => transitionBooking(() => setManageMode("view"))}
+                          type="button"
+                        >
+                          Keep lesson
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeManagedSeries && manageMode === "sequence" ? (
+                    <div className="lesson-manage-dialog__decision">
+                      <p>
+                        Stop new weekly lessons being added. Every date already booked stays in your calendar and can still be changed or cancelled individually.
+                      </p>
+                      <div className="lesson-manage-dialog__actions">
+                        <button className="button button--quiet" onClick={() => transitionBooking(() => setManageMode("confirm-stop-sequence"))} type="button">
+                          Stop repeating
+                        </button>
+                        <button className="text-action" onClick={() => transitionBooking(() => setManageMode("view"))} type="button">
+                          Back
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeManagedSeries && manageMode === "confirm-stop-sequence" ? (
+                    <div className="lesson-manage-dialog__decision">
+                      <p><strong>Stop this recurring sequence?</strong> Your booked lessons will stay.</p>
+                      <div className="lesson-manage-dialog__actions">
+                        <button className="button button--coral" disabled={manageWorking} onClick={stopManagedSequence} type="button">
+                          {manageWorking ? "Stopping…" : "Yes, stop repeating"}
+                        </button>
+                        <button
+                          className="button button--quiet"
+                          disabled={manageWorking}
+                          onClick={() => transitionBooking(() => setManageMode("view"))}
+                          type="button"
+                        >
+                          Keep repeating
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {manageOutcome || managed.booking.status === "cancelled" || managed.isPast || managed.changeLocked ? (
+                    <button className="button button--quiet lesson-manage-dialog__done" onClick={dismissManagedDialog} type="button">
+                      Done
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <p className="eyebrow">Your lesson</p>
+                  <h2 id="lesson-manage-heading">That lesson couldn&rsquo;t be opened</h2>
+                  <div className="booking-alert" role="alert">
+                    <AlertCircle size={18} aria-hidden="true" />
+                    <p>{manageError || "Please try again."}</p>
+                  </div>
+                  <button className="button button--quiet lesson-manage-dialog__done" onClick={dismissManagedDialog} type="button">
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : null}
+
         {showStartChoice ? (
           <section className="booking-journey-start" id="booking-journey-start" tabIndex={-1}>
             <div className="booking-journey-start__heading">
@@ -1183,7 +1420,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           </div>
         ) : null}
 
-        {intent === "lessons" && !needsLessonsSignIn && !managed && !isConfirmingBooking ? (
+        {intent === "lessons" && !needsLessonsSignIn && !isConfirmingBooking ? (
           <div className="booking-workflow-context" aria-label="Viewing your lessons">
             <div>
               <span className="eyebrow">Your calendar</span>
@@ -1196,13 +1433,15 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         ) : null}
 
         {showWorkflowCalendar ? (
-          <div className={`unified-calendar${managedPanelIsPrimary ? " unified-calendar--managed" : ""}`} id="lesson-calendar">
+          <div className="unified-calendar" id="lesson-calendar">
           <div className="calendar-panel unified-calendar__grid">
             <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
             <div className="unified-calendar__toolbar">
               <div className="unified-calendar__legend" aria-label="Calendar key">
                 <span><i className="is-booked" aria-hidden="true" /> Booked lesson</span>
-                {intent === "book" ? <span><i className="is-free" aria-hidden="true" /> Free to book</span> : null}
+                {intent === "book" || manageMode === "reschedule" ? (
+                  <span><i className="is-free" aria-hidden="true" /> Free to book</span>
+                ) : null}
               </div>
               <div className="unified-calendar__range-actions">
                 <span className="unified-calendar__range">
@@ -1312,222 +1551,73 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   void refreshStudent();
                 }}
               />
-            ) : manageLoading ? (
-              <p className="booking-state-note">Opening your lesson…</p>
-            ) : managed ? (
-              <>
+            ) : managed && manageMode === "reschedule" ? (
+              <div className="unified-calendar__move">
                 <div className="managed-lesson__header">
                   <div>
-                    <p className="lesson-calendar__status">
-                      {managed.booking.status === "cancelled" ? "Cancelled lesson" : "Booked lesson"}
-                    </p>
-                    <h3>{managed.booking.lessonType.name}</h3>
+                    <p className="eyebrow">Change this lesson</p>
+                    <h3>Choose a new time</h3>
                   </div>
                   <button
-                    aria-label={student ? "Back to upcoming lessons" : "Back to calendar"}
                     className="booking-back booking-back--tertiary"
-                    onClick={student ? returnFromManagedLesson : () => transitionBooking(closeManagedLesson)}
+                    onClick={() => transitionBooking(() => setManageMode("view"))}
                     type="button"
                   >
-                    <ArrowLeft size={16} aria-hidden="true" /> {student ? "Lessons" : "Calendar"}
+                    <ArrowLeft size={16} aria-hidden="true" /> Back
                   </button>
                 </div>
-                {manageOutcome ? (
-                  <div className="booking-outcome" role="status">
-                    <CheckCircle2 size={20} aria-hidden="true" />
-                    <p>{manageOutcome}</p>
-                  </div>
-                ) : null}
+                <p className="booking-state-note managed-lesson__current-time">
+                  Currently {formatLongDate(managed.booking.startAt)}, {formatSlotTime(managed.booking.startAt)}
+                </p>
                 {manageError ? (
                   <div className="booking-alert" role="alert">
                     <AlertCircle size={18} aria-hidden="true" />
                     <p>{manageError}</p>
                   </div>
                 ) : null}
-                <dl className="unified-calendar__lesson-facts">
-                  <div>
-                    <dt>Date</dt>
-                    <dd>{formatLongDate(managed.booking.startAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>Time</dt>
-                    <dd>{formatSlotTime(managed.booking.startAt)} Porto time</dd>
-                  </div>
-                  <div>
-                    <dt>Where</dt>
-                    <dd>{managed.booking.location === "porto" ? "In Porto" : "Online"}</dd>
-                  </div>
-                </dl>
-
-                {managed.changeLocked && managed.booking.status !== "cancelled" ? (
-                  <p className="lesson-calendar__notice">
-                    This lesson is today and can&rsquo;t be moved or cancelled.
-                  </p>
-                ) : managed.sameDayFeeApplies && managed.booking.status !== "cancelled" ? (
-                  <p className="lesson-calendar__notice">
-                    Changing or cancelling today costs {formatMoneyCents(managed.booking.sameDayFeeCents)}.
-                  </p>
-                ) : null}
-
-                {manageMode === "view" &&
-                managed.booking.status !== "cancelled" &&
-                !managed.isPast &&
-                !managed.changeLocked ? (
-                  <div className="manage-booking__actions">
-                    <button
-                      className="button button--coral"
-                      onClick={() =>
-                        transitionBooking(() => {
-                          setManageMode("reschedule");
-                          setSelectedSlot("");
-                          setLoadingSlots(true);
-                        })
-                      }
-                      type="button"
-                    >
-                      Move this lesson
-                    </button>
-                    <button
-                      className="button button--quiet"
-                      onClick={() => transitionBooking(() => setManageMode("confirm-cancel"))}
-                      type="button"
-                    >
-                      Cancel this lesson
-                    </button>
-                  </div>
-                ) : null}
-
-                {manageMode === "confirm-cancel" ? (
-                  <div className="manage-booking__confirm">
-                    <p>
-                      Cancel this lesson?
-                      {managed.refundOnCancel && managed.booking.amountCents
-                        ? ` Your ${formatMoneyCents(managed.booking.amountCents)} comes back to your card.`
-                        : ""}
-                    </p>
-                    <div className="manage-booking__actions">
-                      <button className="button button--coral" disabled={manageWorking} onClick={cancelManagedLesson} type="button">
-                        {manageWorking ? "Cancelling…" : "Yes, cancel it"}
-                      </button>
+                <p className="booking-state-note">
+                  {selectedDate ? `${formatLongDate(`${selectedDate}T12:00:00Z`)} · Porto time` : "Choose a free day on the calendar."}
+                </p>
+                {loadingSlots ? (
+                  <p className="booking-state-note">Checking what&rsquo;s free…</p>
+                ) : daySlots.length ? (
+                  <div className="slot-grid">
+                    {daySlots.map((slot) => (
                       <button
-                        className="button button--quiet"
-                        onClick={() => transitionBooking(() => setManageMode("view"))}
+                        aria-pressed={selectedSlot === slot.startAt}
+                        className={selectedSlot === slot.startAt ? "is-selected" : ""}
+                        key={slot.startAt}
+                        onClick={() => setSelectedSlot(slot.startAt)}
                         type="button"
                       >
-                        Keep my lesson
+                        {formatSlotTime(slot.startAt)}
                       </button>
-                    </div>
+                    ))}
                   </div>
-                ) : null}
-
-                {manageMode === "reschedule" ? (
-                  <div className="unified-calendar__move">
-                    <p className="eyebrow">Pick a new time on this calendar</p>
-                    <p className="booking-state-note">
-                      {selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a free day"} · Porto time
-                    </p>
-                    {daySlots.length ? (
-                      <div className="slot-grid">
-                        {daySlots.map((slot) => (
-                          <button
-                            aria-pressed={selectedSlot === slot.startAt}
-                            className={selectedSlot === slot.startAt ? "is-selected" : ""}
-                            key={slot.startAt}
-                            onClick={() => setSelectedSlot(slot.startAt)}
-                            type="button"
-                          >
-                            {formatSlotTime(slot.startAt)}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="booking-state-note">Choose a day marked free.</p>
-                    )}
-                    <div className="manage-booking__actions">
-                      <button
-                        className="button button--coral"
-                        disabled={!selectedSlot || manageWorking}
-                        onClick={moveManagedLesson}
-                        type="button"
-                      >
-                        {manageWorking
-                          ? "Moving…"
-                          : selectedSlot
-                            ? `Move to ${formatSlotTime(selectedSlot)}`
-                            : "Choose a time"}
-                      </button>
-                      <button
-                        className="button button--quiet"
-                        onClick={() => transitionBooking(() => setManageMode("view"))}
-                        type="button"
-                      >
-                        Keep time
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
-                {resolvedManagedSeriesId &&
-                manageMode !== "reschedule" &&
-                manageMode !== "confirm-cancel" ? (
-                  <section className="managed-lesson__series-context" aria-labelledby="managed-sequence-heading">
-                    <div className="managed-lesson__series-heading">
-                      <Repeat size={18} aria-hidden="true" />
-                      <div>
-                        <h3 className="eyebrow" id="managed-sequence-heading">Part of a recurring sequence</h3>
-                        {activeManagedSeries ? (
-                          <p>
-                            {weekdayNames[activeManagedSeries.weekday]} at {minutesToClock(activeManagedSeries.minuteOfDay)} Porto time
-                            {activeManagedSeries.openEnded ? ", every week" : ""}. {activeManagedSeries.upcoming} {activeManagedSeries.upcoming === 1 ? "lesson is" : "lessons are"} already booked.
-                          </p>
-                        ) : (
-                          <p>This sequence is no longer adding lessons. This booked occurrence is still yours.</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {activeManagedSeries && manageMode === "view" ? (
-                      <button className="text-action" onClick={() => transitionBooking(() => setManageMode("sequence"))} type="button">
-                        Manage sequence <ChevronRight size={17} aria-hidden="true" />
-                      </button>
-                    ) : null}
-
-                    {activeManagedSeries && manageMode === "sequence" ? (
-                      <div className="managed-lesson__series-manage">
-                        <p>
-                          You can stop new weekly lessons being added. Every date already booked stays in your calendar and can still be moved or cancelled individually.
-                        </p>
-                        <div className="manage-booking__actions">
-                          <button className="button button--quiet" onClick={() => transitionBooking(() => setManageMode("confirm-stop-sequence"))} type="button">
-                            Stop repeating
-                          </button>
-                          <button className="text-action" onClick={() => transitionBooking(() => setManageMode("view"))} type="button">
-                            Back to this lesson
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {activeManagedSeries && manageMode === "confirm-stop-sequence" ? (
-                      <div className="managed-lesson__series-manage">
-                        <p><strong>Stop this recurring sequence?</strong> Your booked lessons will stay.</p>
-                        <div className="manage-booking__actions">
-                          <button className="button button--coral" disabled={manageWorking} onClick={stopManagedSequence} type="button">
-                            {manageWorking ? "Stopping…" : "Yes, stop repeating"}
-                          </button>
-                          <button className="button button--quiet" disabled={manageWorking} onClick={() => transitionBooking(() => setManageMode("view"))} type="button">
-                            Keep repeating
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </section>
-                ) : null}
-              </>
-            ) : manageError ? (
-              <div className="booking-alert" role="alert">
-                <AlertCircle size={18} aria-hidden="true" />
-                <p>{manageError}</p>
+                ) : (
+                  <p className="booking-state-note">Choose a day marked free.</p>
+                )}
+                <div className="manage-booking__actions">
+                  <button
+                    className="button button--coral"
+                    disabled={!selectedSlot || manageWorking}
+                    onClick={moveManagedLesson}
+                    type="button"
+                  >
+                    {manageWorking
+                      ? "Changing…"
+                      : selectedSlot
+                        ? `Change to ${formatSlotTime(selectedSlot)}`
+                        : "Choose a time"}
+                  </button>
+                  <button
+                    className="button button--quiet"
+                    onClick={() => transitionBooking(() => setManageMode("view"))}
+                    type="button"
+                  >
+                    Keep current time
+                  </button>
+                </div>
               </div>
             ) : (
               <>
