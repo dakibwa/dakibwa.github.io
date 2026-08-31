@@ -83,6 +83,15 @@ specifies a short opacity-only transition, with faster mobile timings and no
 overlay, transform, ambient loop, or decorative hero entrance. Reduced-motion
 users navigate immediately without delay or animation.
 
+Dan approved a production refinement on 2026-08-31: use that restrained
+opacity treatment on every completed route change without delaying the click,
+and let decisions inside the booking flow resize and dissolve the existing
+calendar workspace rather than abruptly replacing the page. The code keeps the
+rest of the page fixed and removes both effects under reduced motion. The Figma
+frame still needs this refinement recorded when its Starter-plan tool-call
+limit clears; until then this note and the implementation are the source for
+the approved interaction behaviour.
+
 ## Account interaction states
 
 The editable confirmation shown before a student stops a repeating lesson is

@@ -24,6 +24,58 @@ page.on("console", (message) => {
   if (message.type() === "error") logs.push(`console:${message.text()}`);
 });
 
+// Some browsers expose the view-transition CSS property without exposing the
+// JavaScript API. Force that exact capability gap and make sure the booking
+// flow uses its local content fade rather than snapping between states. Run
+// this before the route matrix so its client bundle is tested from a clean
+// browser cache rather than behind ten screenshot navigations.
+const fallbackMotionPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+await fallbackMotionPage.addInitScript(() => {
+  Object.defineProperty(Document.prototype, "startViewTransition", {
+    configurable: true,
+    value: undefined
+  });
+});
+await fallbackMotionPage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
+await fallbackMotionPage
+  .getByRole("button", { name: "Sign in to see your lessons", exact: true })
+  .waitFor({ state: "visible", timeout: 10_000 });
+const fallbackSingleLesson = fallbackMotionPage.getByRole("button", {
+  name: "Single lesson 60 minutes · €25",
+  exact: true
+});
+await fallbackSingleLesson.waitFor({ state: "visible", timeout: 10_000 });
+await fallbackMotionPage.evaluate(() => {
+  document.documentElement.dataset.qaFallbackTransitionSeen = "false";
+  const observer = new MutationObserver(() => {
+    if (!document.documentElement.classList.contains("booking-fallback-transitioning")) return;
+    requestAnimationFrame(() => {
+      const summary = document.querySelector(".booking-choice-summary");
+      const style = summary ? getComputedStyle(summary) : null;
+      document.documentElement.dataset.qaFallbackTransitionSeen = "true";
+      document.documentElement.dataset.qaFallbackAnimationName = style?.animationName ?? "";
+      document.documentElement.dataset.qaFallbackAnimationDuration = style?.animationDuration ?? "";
+      observer.disconnect();
+    });
+  });
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+});
+await fallbackSingleLesson.click();
+await fallbackMotionPage.locator(".booking-choice-summary").waitFor({ state: "visible" });
+const fallbackBookingMotion = await fallbackMotionPage.evaluate(() => ({
+  animationDuration: document.documentElement.dataset.qaFallbackAnimationDuration,
+  animationName: document.documentElement.dataset.qaFallbackAnimationName,
+  seen: document.documentElement.dataset.qaFallbackTransitionSeen === "true"
+}));
+if (
+  !fallbackBookingMotion.seen ||
+  !fallbackBookingMotion.animationName?.includes("booking-flow-in") ||
+  fallbackBookingMotion.animationDuration === "0s"
+) {
+  throw new Error("Browsers without the view-transition API should receive the local booking fade.");
+}
+await fallbackMotionPage.close();
+
 for (const route of routes) {
   for (const viewport of [
     { id: "desktop", width: 1440, height: 1000 },
@@ -70,7 +122,8 @@ for (const route of routes) {
 // Account navigation should describe the student's lessons, not introduce a
 // second calendar alongside the booking workspace. A synthetic local session
 // is enough here because AccountLink only needs to know whether one exists.
-const signedInPage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const signedInBrowser = await chromium.launch({ headless: true });
+const signedInPage = await signedInBrowser.newPage({ viewport: { width: 1440, height: 1000 } });
 signedInPage.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
 signedInPage.on("console", (message) => {
   if (message.type() === "error") logs.push(`console:${message.text()}`);
@@ -90,6 +143,7 @@ for (const link of await signedInAccountLinks.all()) {
   }
 }
 await signedInPage.close();
+await signedInBrowser.close();
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(`${base}/`, { waitUntil: "domcontentloaded" });
@@ -104,6 +158,8 @@ await page.locator("#site-nav-mobile a", { hasText: "Approach" }).first().click(
 await page.waitForURL(expectedApproachUrl, { timeout: 10_000 });
 const mobileNavigation = await page.evaluate(() => ({
   overlayCount: document.querySelectorAll(".route-transition-wash").length,
+  animationDuration: getComputedStyle(document.querySelector(".route-fade")).animationDuration,
+  animationName: getComputedStyle(document.querySelector(".route-fade")).animationName,
   transform: getComputedStyle(document.querySelector(".route-fade")).transform,
   url: window.location.href
 }));
@@ -117,6 +173,26 @@ if (mobileNavigation.url !== expectedApproachUrl) {
 if (mobileNavigation.overlayCount !== 0 || mobileNavigation.transform !== "none") {
   throw new Error("Mobile route navigation should use opacity only, with no overlay or transform.");
 }
+
+if (
+  !mobileNavigation.animationName.includes("route-fade-in") ||
+  mobileNavigation.animationDuration === "0s"
+) {
+  throw new Error("Mobile route navigation should dissolve the destination without delaying the click.");
+}
+
+const reducedMotionPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+await reducedMotionPage.emulateMedia({ reducedMotion: "reduce" });
+await reducedMotionPage.goto(`${base}/faq/`, { waitUntil: "domcontentloaded" });
+await reducedMotionPage.locator("h1").waitFor({ timeout: 10_000 });
+const reducedRouteMotion = await reducedMotionPage.evaluate(() => {
+  const style = getComputedStyle(document.querySelector(".route-fade"));
+  return { animationDuration: style.animationDuration, animationName: style.animationName };
+});
+if (reducedRouteMotion.animationName !== "none" && reducedRouteMotion.animationDuration !== "0s") {
+  throw new Error("Reduced-motion users should not receive a route transition.");
+}
+await reducedMotionPage.close();
 
 await page.setViewportSize({ width: 1440, height: 1000 });
 await page.goto(`${base}/faq`, { waitUntil: "domcontentloaded" });
@@ -195,7 +271,8 @@ const qaFreeDate = qaFreeStart.toISOString().slice(0, 10);
 const qaPastStart = new Date(Date.now() - 7 * 24 * 60 * 60_000);
 qaPastStart.setUTCHours(15, 0, 0, 0);
 const qaPastEnd = new Date(qaPastStart.getTime() + 60 * 60_000);
-const accountPage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const accountBrowser = await chromium.launch({ headless: true });
+const accountPage = await accountBrowser.newPage({ viewport: { width: 1440, height: 1000 } });
 accountPage.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
 accountPage.on("console", (message) => {
   if (message.type() === "error") logs.push(`console:${message.text()}`);
@@ -433,6 +510,17 @@ if (mobileAccountLayout.scrollWidth > mobileAccountLayout.clientWidth + 1) {
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-account-mobile.png"), fullPage: true });
 
+await accountPage.evaluate(() => {
+  document.documentElement.dataset.qaBookingTransitionSeen = "false";
+  const observer = new MutationObserver(() => {
+    if (document.documentElement.classList.contains("booking-transitioning")) {
+      document.documentElement.dataset.qaBookingTransitionSeen = "true";
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+});
+
 const fullCalendarWeekCount = await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count();
 if (fullCalendarWeekCount <= 1) throw new Error("The calendar overview should show more than one week.");
 const bookingCount = accountPage.locator("#lesson-calendar .calendar-booking-count", { hasText: "2×" });
@@ -441,6 +529,12 @@ const bookedDay = accountPage.getByRole("button", { name: /2 lessons/ }).first()
 await bookedDay.click();
 const showAllDates = accountPage.getByRole("button", { name: "Show all dates", exact: true });
 await showAllDates.waitFor({ state: "visible" });
+const bookingTransitionSeen = await accountPage.evaluate(
+  () => document.documentElement.dataset.qaBookingTransitionSeen === "true"
+);
+if ((await accountPage.evaluate(() => typeof document.startViewTransition === "function")) && !bookingTransitionSeen) {
+  throw new Error("A supported browser should animate booking decisions as one calendar workspace.");
+}
 const compactCalendarWeekCount = await accountPage
   .locator("#lesson-calendar .unified-calendar__grid .calendar-week")
   .count();
@@ -461,10 +555,20 @@ const compactCalendarLayout = await accountPage.evaluate(() => {
 if (compactCalendarLayout.detailsTop - compactCalendarLayout.gridBottom > 24) {
   throw new Error("The selected lesson details are not directly below the compact mobile calendar.");
 }
+await waitForOrientation(accountPage);
 await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-selected-mobile.png"), fullPage: true });
 await showAllDates.click();
-if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count()) !== fullCalendarWeekCount) {
-  throw new Error("Show all dates did not restore the complete calendar overview.");
+await accountPage.waitForFunction(
+  (expected) => document.querySelectorAll("#lesson-calendar .unified-calendar__grid .calendar-week").length === expected,
+  fullCalendarWeekCount
+);
+const restoredCalendarWeekCount = await accountPage
+  .locator("#lesson-calendar .unified-calendar__grid .calendar-week")
+  .count();
+if (restoredCalendarWeekCount !== fullCalendarWeekCount) {
+  throw new Error(
+    `Show all dates restored ${restoredCalendarWeekCount} weeks instead of ${fullCalendarWeekCount}.`
+  );
 }
 
 const lessonCardCount = await accountPage.locator(".unified-booking__lesson-picker .lesson-card").count();
@@ -484,7 +588,14 @@ const freeDay = accountPage.getByRole("button", { name: /1 times free/ }).first(
 await freeDay.waitFor({ state: "visible" });
 await freeDay.click();
 await showAllDates.waitFor({ state: "visible" });
-await accountPage.waitForTimeout(450);
+await accountPage.waitForFunction(
+  () => {
+    const panel = document.querySelector("#booking-next-step")?.getBoundingClientRect();
+    return Boolean(panel && panel.top < window.innerHeight && panel.bottom > 0);
+  },
+  null,
+  { timeout: 2_000 }
+);
 const freeCompactWeekCount = await accountPage
   .locator("#lesson-calendar .unified-calendar__grid .calendar-week")
   .count();
@@ -504,6 +615,7 @@ const nextStepOrientation = await accountPage.evaluate(() => {
 if (nextStepOrientation.top >= nextStepOrientation.viewportHeight || nextStepOrientation.bottom <= 0) {
   throw new Error("Choosing a day did not bring the available times into the mobile viewport.");
 }
+await waitForOrientation(accountPage);
 await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-free-day-mobile.png"), fullPage: true });
 
 await accountPage
@@ -512,7 +624,14 @@ await accountPage
   .click();
 const confirmHeading = accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true });
 await confirmHeading.waitFor({ state: "visible" });
-await accountPage.waitForTimeout(450);
+await accountPage.waitForFunction(
+  () => {
+    const heading = document.querySelector("#booking-step-heading")?.getBoundingClientRect();
+    return Boolean(heading && heading.top < window.innerHeight && heading.bottom > 0);
+  },
+  null,
+  { timeout: 2_000 }
+);
 if (await accountPage.locator("#lesson-calendar").count()) {
   throw new Error("Choosing a time should collapse the calendar before the confirmation step.");
 }
@@ -526,6 +645,7 @@ const confirmOrientation = await confirmHeading.evaluate((heading) => {
 if (confirmOrientation.top >= confirmOrientation.viewportHeight || confirmOrientation.bottom <= 0) {
   throw new Error("Choosing a time did not bring the confirmation step into the mobile viewport.");
 }
+await waitForOrientation(accountPage);
 await accountPage.screenshot({ path: path.join(outDir, "booking-confirm-mobile.png"), fullPage: true });
 
 await accountPage.getByRole("button", { name: "Change time", exact: true }).click();
@@ -540,6 +660,7 @@ const stopRepeating = accountPage.getByRole("button", { name: "Stop repeating", 
 await stopRepeating.click();
 await accountPage.getByRole("heading", { name: "Stop repeating lessons?", exact: true }).waitFor();
 if (stopRepeatCalls !== 0) throw new Error("Opening the repeat confirmation called the stop endpoint.");
+await waitForOrientation(accountPage);
 await accountPage.screenshot({
   path: path.join(outDir, "booking-account-repeat-confirm-mobile.png"),
   fullPage: true
@@ -555,14 +676,19 @@ await accountPage.getByRole("button", { name: "Sign out", exact: true }).click()
 await accountPage.getByRole("button", { name: "Sign in to see your lessons", exact: true }).waitFor();
 await accountPanel.waitFor({ state: "detached" });
 await accountPage.close();
+await accountBrowser.close();
 
 // Old emailed links remain valid, but now land in the same booking workspace.
-await page.goto(`${base}/booking`, { waitUntil: "domcontentloaded" });
-await page.waitForSelector("#lesson-calendar", { timeout: 10_000 });
-await page.waitForURL((url) => url.pathname === "/book/", { timeout: 10_000 });
-if (new URL(page.url()).pathname !== "/book/") {
-  throw new Error(`The legacy management route did not normalise to /book/: ${page.url()}`);
+const legacyBrowser = await chromium.launch({ headless: true });
+const legacyPage = await legacyBrowser.newPage({ viewport: { width: 390, height: 844 } });
+await legacyPage.goto(`${base}/booking`, { waitUntil: "domcontentloaded" });
+await legacyPage.waitForSelector("#lesson-calendar", { timeout: 10_000 });
+await legacyPage.waitForFunction(() => window.location.pathname === "/book/", null, { timeout: 10_000 });
+if (new URL(legacyPage.url()).pathname !== "/book/") {
+  throw new Error(`The legacy management route did not normalise to /book/: ${legacyPage.url()}`);
 }
+await legacyPage.close();
+await legacyBrowser.close();
 
 await browser.close();
 
@@ -596,6 +722,9 @@ console.log(
         signedOut: true
       },
       mobileNavigation,
+      reducedRouteMotion,
+      fallbackBookingMotion,
+      bookingTransitionSeen,
       externalResourceWarnings: logs.filter((entry) => entry.includes("Failed to load resource")),
       screenshots: outDir
     },
@@ -608,4 +737,29 @@ function assertIncludes(value, expected, label) {
   if (!value.includes(expected)) {
     throw new Error(`Missing ${label}: ${expected}`);
   }
+}
+
+async function waitForOrientation(targetPage) {
+  await targetPage.waitForFunction(
+    () => !document.documentElement.classList.contains("booking-transitioning"),
+    null,
+    { timeout: 2_000 }
+  );
+  await targetPage.evaluate(
+    () =>
+      new Promise((resolve) => {
+        let previousY = window.scrollY;
+        let stableFrames = 0;
+        let frames = 0;
+        const check = () => {
+          const currentY = window.scrollY;
+          stableFrames = Math.abs(currentY - previousY) < 0.5 ? stableFrames + 1 : 0;
+          previousY = currentY;
+          frames += 1;
+          if (stableFrames >= 4 || frames >= 120) resolve();
+          else requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+      })
+  );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import dynamic from "next/dynamic";
 import {
   AlertCircle,
@@ -146,24 +147,100 @@ function loadStripeJs() {
   return stripeJs;
 }
 
+let bookingTransition: ViewTransition | null = null;
+let bookingFallbackTimer: number | null = null;
+let bookingFallbackFinished: Promise<void> | null = null;
+let resolveBookingFallback: (() => void) | null = null;
+
+function finishBookingFallback() {
+  if (bookingFallbackTimer !== null) window.clearTimeout(bookingFallbackTimer);
+  document.documentElement.classList.remove("booking-fallback-transitioning");
+  bookingFallbackTimer = null;
+  const resolve = resolveBookingFallback;
+  resolveBookingFallback = null;
+  bookingFallbackFinished = null;
+  resolve?.();
+}
+
+function fallbackBookingTransition(update: () => void) {
+  if (bookingFallbackFinished) finishBookingFallback();
+  bookingFallbackFinished = new Promise((resolve) => {
+    resolveBookingFallback = resolve;
+  });
+  document.documentElement.classList.add("booking-fallback-transitioning");
+  flushSync(update);
+  bookingFallbackTimer = window.setTimeout(finishBookingFallback, 280);
+}
+
+/**
+ * The calendar changes shape as choices are made. Where the browser supports
+ * same-document view transitions, let it blend the old and new geometry
+ * instead of flashing between two layouts. The state update stays synchronous
+ * so the new snapshot is reliable; older browsers get the same working flow
+ * with the small CSS entrance fades below it.
+ */
+function transitionBooking(update: () => void) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    update();
+    return;
+  }
+
+  if (typeof document.startViewTransition !== "function") {
+    fallbackBookingTransition(update);
+    return;
+  }
+
+  bookingTransition?.skipTransition();
+  document.documentElement.classList.add("booking-transitioning");
+  let transition: ViewTransition;
+  try {
+    transition = document.startViewTransition(() => flushSync(update));
+  } catch {
+    bookingTransition = null;
+    document.documentElement.classList.remove("booking-transitioning");
+    fallbackBookingTransition(update);
+    return;
+  }
+  bookingTransition = transition;
+  void transition.finished
+    .catch(() => undefined)
+    .finally(() => {
+      if (bookingTransition === transition) {
+        bookingTransition = null;
+        document.documentElement.classList.remove("booking-transitioning");
+      }
+    });
+}
+
 /**
  * A decision should hand the student to the next decision, especially on a
- * phone where the next panel sits below what they just chose. Two animation
- * frames let React commit the collapsed state before the browser measures the
- * new position. Reduced-motion preferences are respected.
+ * phone where the next panel sits below what they just chose. The view change
+ * settles first, then two animation frames let the browser measure the final
+ * position before scrolling. Reduced-motion preferences are respected.
  */
 function orientTo(id: string, focus = false) {
-  requestAnimationFrame(() => {
+  const orient = () => {
     requestAnimationFrame(() => {
-      const target = document.getElementById(id);
-      if (!target) return;
-      if (focus) target.focus({ preventScroll: true });
-      target.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-        block: "start"
+      requestAnimationFrame(() => {
+        const target = document.getElementById(id);
+        if (!target) return;
+        if (focus) target.focus({ preventScroll: true });
+        target.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+          block: "start"
+        });
       });
     });
-  });
+  };
+
+  const activeTransition = bookingTransition;
+  if (activeTransition) {
+    void activeTransition.finished.catch(() => undefined).then(orient);
+  } else if (bookingFallbackFinished) {
+    void bookingFallbackFinished.then(orient);
+  } else {
+    orient();
+  }
 }
 
 export function BookingCalendar({ initialManageToken = "" }: { initialManageToken?: string } = {}) {
@@ -306,13 +383,17 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setSelectedSlot("");
     try {
       const result = await fetchBooking(token);
-      setManaged(result);
-      setSelectedDate(portoDateKey(new Date(result.booking.startAt)));
+      transitionBooking(() => {
+        setManaged(result);
+        setSelectedDate(portoDateKey(new Date(result.booking.startAt)));
+        setManageLoading(false);
+      });
     } catch (caught) {
-      setManaged(null);
-      setManageError(caught instanceof Error ? caught.message : "That lesson could not be opened.");
-    } finally {
-      setManageLoading(false);
+      transitionBooking(() => {
+        setManaged(null);
+        setManageError(caught instanceof Error ? caught.message : "That lesson could not be opened.");
+        setManageLoading(false);
+      });
     }
   }, []);
 
@@ -442,6 +523,15 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
   const firstCalendarBookingStart = calendarBookings[0]?.startAt ?? "";
   const isConfirmingBooking = step === "details" && Boolean(lessonType && chosen) && !managed;
+  const panelMotionKey = showAccountSignIn && !student
+    ? "sign-in"
+    : manageLoading
+      ? "manage-loading"
+      : managed
+        ? `managed-${managed.booking.reference}-${manageMode}`
+        : manageError
+          ? "manage-error"
+          : `calendar-${selectedDate || "none"}-${lessonTypeId || "none"}`;
 
   useEffect(() => {
     if (selectedDate || !firstCalendarBookingStart) return;
@@ -548,14 +638,16 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         return;
       }
 
-      setConfirmation({
-        reference: result.booking.reference,
-        startAt: result.booking.startAt,
-        manageUrl: result.manageUrl ?? "/book/?view=lessons",
-        manageToken: result.manageToken ?? "",
-        email: result.booking.studentEmail,
-        series: result.series
-      });
+      transitionBooking(() =>
+        setConfirmation({
+          reference: result.booking.reference,
+          startAt: result.booking.startAt,
+          manageUrl: result.manageUrl ?? "/book/?view=lessons",
+          manageToken: result.manageToken ?? "",
+          email: result.booking.studentEmail,
+          series: result.series
+        })
+      );
       void refreshStudent();
     } catch (error) {
       const message = error instanceof Error ? error.message : "The booking could not be created.";
@@ -576,11 +668,13 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     try {
       await rescheduleBooking(managedToken, selectedSlot);
       const refreshed = await fetchBooking(managedToken);
-      setManaged(refreshed);
-      setSelectedDate(portoDateKey(new Date(refreshed.booking.startAt)));
-      setSelectedSlot("");
-      setManageMode("view");
-      setManageOutcome("Your lesson has been moved. We’ve emailed you and updated your calendar.");
+      transitionBooking(() => {
+        setManaged(refreshed);
+        setSelectedDate(portoDateKey(new Date(refreshed.booking.startAt)));
+        setSelectedSlot("");
+        setManageMode("view");
+        setManageOutcome("Your lesson has been moved. We’ve emailed you and updated your calendar.");
+      });
       await refreshStudent();
     } catch (caught) {
       setManageError(caught instanceof Error ? caught.message : "That lesson could not be moved.");
@@ -596,13 +690,15 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setManageError("");
     try {
       const result = await cancelBooking(managedToken);
-      setManaged({ ...managed, booking: result.booking });
-      setManageMode("view");
-      setManageOutcome(
-        result.booking.paymentStatus === "refunded"
-          ? "Your lesson has been cancelled. Your refund is on its way back to your card."
-          : "Your lesson has been cancelled. We’ve emailed you and updated your calendar."
-      );
+      transitionBooking(() => {
+        setManaged({ ...managed, booking: result.booking });
+        setManageMode("view");
+        setManageOutcome(
+          result.booking.paymentStatus === "refunded"
+            ? "Your lesson has been cancelled. Your refund is on its way back to your card."
+            : "Your lesson has been cancelled. We’ve emailed you and updated your calendar."
+        );
+      });
       await refreshStudent();
     } catch (caught) {
       setManageError(caught instanceof Error ? caught.message : "That lesson could not be cancelled.");
@@ -686,11 +782,13 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         <div className="booking-success__actions">
           <button
             className="button button--coral"
-            onClick={() => {
-              setConfirmation(null);
-              setStep("day");
-              setSelectedDate(portoDateKey(new Date(confirmation.startAt)));
-            }}
+            onClick={() =>
+              transitionBooking(() => {
+                setConfirmation(null);
+                setStep("day");
+                setSelectedDate(portoDateKey(new Date(confirmation.startAt)));
+              })
+            }
             type="button"
           >
             Back to your calendar
@@ -698,9 +796,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           <button
             className="text-action"
             onClick={() => {
-              setConfirmation(null);
-              if (confirmation.manageToken) openManaged(confirmation.manageToken);
-              else window.location.assign(confirmation.manageUrl);
+              if (confirmation.manageToken) {
+                transitionBooking(() => {
+                  setConfirmation(null);
+                  void openManaged(confirmation.manageToken);
+                });
+              } else {
+                window.location.assign(confirmation.manageUrl);
+              }
             }}
             type="button"
           >
@@ -741,7 +844,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               </p>
             </div>
           ) : (
-            <button className="text-action" onClick={() => setShowAccountSignIn(true)} type="button">
+            <button
+              className="text-action"
+              onClick={() => transitionBooking(() => setShowAccountSignIn(true))}
+              type="button"
+            >
               Sign in to see your lessons
             </button>
           )}
@@ -755,6 +862,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           >
             <AccountControls
               embedded
+              onTransition={transitionBooking}
               onSignedOut={() => {
                 setStudent(null);
                 setMyBookings([]);
@@ -787,11 +895,13 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 </span>
                 <button
                   className="text-action booking-choice-summary__change"
-                  onClick={() => {
-                    setSelectedSlot("");
-                    setCalendarCompact(false);
-                    goTo("lesson");
-                  }}
+                  onClick={() =>
+                    transitionBooking(() => {
+                      setSelectedSlot("");
+                      setCalendarCompact(false);
+                      goTo("lesson");
+                    })
+                  }
                   type="button"
                 >
                   Change lesson
@@ -806,16 +916,18 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       aria-pressed={lessonTypeId === type.id}
                       className={`lesson-card${lessonTypeId === type.id ? " is-selected" : ""}`}
                       key={type.id}
-                      onClick={() => {
-                        if (type.id !== lessonTypeId) {
-                          setLoadingSlots(true);
-                          setSlotsByDate({});
-                        }
-                        setLessonTypeId(type.id);
-                        setCalendarCompact(false);
-                        setSelectedSlot("");
-                        goTo("day");
-                      }}
+                      onClick={() =>
+                        transitionBooking(() => {
+                          if (type.id !== lessonTypeId) {
+                            setLoadingSlots(true);
+                            setSlotsByDate({});
+                          }
+                          setLessonTypeId(type.id);
+                          setCalendarCompact(false);
+                          setSelectedSlot("");
+                          goTo("day");
+                        })
+                      }
                       type="button"
                     >
                       <LessonMark className="lesson-card__mark" lessonTypeId={type.id} />
@@ -853,7 +965,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               {isCalendarCompact ? (
                 <button
                   className="text-action unified-calendar__expand"
-                  onClick={() => setCalendarCompact(false)}
+                  onClick={() => transitionBooking(() => setCalendarCompact(false))}
                   type="button"
                 >
                   Show all dates
@@ -866,7 +978,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               ))}
             </div>
 
-            <div aria-busy={loadingSlots}>
+            <div
+              aria-busy={loadingSlots}
+              className="calendar-weeks"
+              key={isCalendarCompact && selectedCalendarWeek ? `compact-${selectedCalendarWeek.key}` : "overview"}
+            >
               {displayedCalendarWeeks.map((week) => (
                 <Fragment key={week.key}>
                   {week.showMonth ? <p className="calendar-month">{week.month}</p> : null}
@@ -892,13 +1008,15 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                           }${selectedDate === cell.key ? " is-selected" : ""}${cell.isToday ? " is-today" : ""}`}
                           disabled={!slots.length && !lessons.length}
                           key={cell.key}
-                          onClick={() => {
-                            setSelectedDate(cell.key);
-                            setCalendarCompact(true);
-                            setSelectedSlot("");
-                            if (lessonType && !managed) goTo("time");
-                            else orientTo("booking-next-step");
-                          }}
+                          onClick={() =>
+                            transitionBooking(() => {
+                              setSelectedDate(cell.key);
+                              setCalendarCompact(true);
+                              setSelectedSlot("");
+                              if (lessonType && !managed) goTo("time");
+                              else orientTo("booking-next-step");
+                            })
+                          }
                           type="button"
                         >
                           <span>
@@ -921,6 +1039,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           </div>
 
           <aside className="unified-calendar__panel" id="booking-next-step" aria-live="polite" tabIndex={-1}>
+            <div className="unified-calendar__panel-content" key={panelMotionKey}>
             {showAccountSignIn && !student ? (
               <AuthPanel
                 heading="Sign in"
@@ -928,8 +1047,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 initialMode="signin"
                 intro="Your booked lessons will appear on this calendar."
                 onSignedIn={(signedIn) => {
-                  setStudent(signedIn);
-                  setShowAccountSignIn(false);
+                  transitionBooking(() => {
+                    setStudent(signedIn);
+                    setShowAccountSignIn(false);
+                  });
                   void refreshStudent();
                 }}
               />
@@ -937,7 +1058,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               <p className="booking-state-note">Opening your lesson…</p>
             ) : managed ? (
               <>
-                <button className="booking-back" onClick={closeManagedLesson} type="button">
+                <button
+                  className="booking-back"
+                  onClick={() => transitionBooking(closeManagedLesson)}
+                  type="button"
+                >
                   <ArrowLeft size={16} aria-hidden="true" /> Back to calendar
                 </button>
                 {manageOutcome ? (
@@ -986,16 +1111,22 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   <div className="manage-booking__actions">
                     <button
                       className="button button--coral"
-                      onClick={() => {
-                        setManageMode("reschedule");
-                        setSelectedSlot("");
-                        setLoadingSlots(true);
-                      }}
+                      onClick={() =>
+                        transitionBooking(() => {
+                          setManageMode("reschedule");
+                          setSelectedSlot("");
+                          setLoadingSlots(true);
+                        })
+                      }
                       type="button"
                     >
                       Move this lesson
                     </button>
-                    <button className="button button--quiet" onClick={() => setManageMode("confirm-cancel")} type="button">
+                    <button
+                      className="button button--quiet"
+                      onClick={() => transitionBooking(() => setManageMode("confirm-cancel"))}
+                      type="button"
+                    >
                       Cancel lesson
                     </button>
                   </div>
@@ -1013,7 +1144,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       <button className="button button--coral" disabled={manageWorking} onClick={cancelManagedLesson} type="button">
                         {manageWorking ? "Cancelling…" : "Yes, cancel it"}
                       </button>
-                      <button className="button button--quiet" onClick={() => setManageMode("view")} type="button">
+                      <button
+                        className="button button--quiet"
+                        onClick={() => transitionBooking(() => setManageMode("view"))}
+                        type="button"
+                      >
                         Keep my lesson
                       </button>
                     </div>
@@ -1056,7 +1191,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                             ? `Move to ${formatSlotTime(selectedSlot)}`
                             : "Choose a time"}
                       </button>
-                      <button className="booking-back" onClick={() => setManageMode("view")} type="button">
+                      <button
+                        className="booking-back"
+                        onClick={() => transitionBooking(() => setManageMode("view"))}
+                        type="button"
+                      >
                         <ArrowLeft size={16} aria-hidden="true" /> Keep current time
                       </button>
                     </div>
@@ -1079,7 +1218,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       <button
                         className="lesson-calendar__lesson"
                         key={booking.reference}
-                        onClick={() => openManaged(booking.manageToken)}
+                        onClick={() =>
+                          transitionBooking(() => {
+                            void openManaged(booking.manageToken);
+                          })
+                        }
                         type="button"
                       >
                         <LessonMark className="lesson-calendar__mark" lessonTypeId={booking.lessonType.id} />
@@ -1112,7 +1255,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     ) : loadingSlots ? (
                       <p className="booking-state-note">Checking what&rsquo;s free…</p>
                     ) : daySlots.length ? (
-                      <div className="time-groups">
+                      <div className="time-groups" key={selectedDate}>
                         {groupSlots(daySlots).map((group) => (
                           <div className="time-group" key={group.label}>
                             <h4>{group.label}</h4>
@@ -1122,10 +1265,12 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                                 return (
                                   <button
                                     key={slot.startAt}
-                                    onClick={() => {
-                                      setSelectedSlot(slot.startAt);
-                                      goTo("details");
-                                    }}
+                                    onClick={() =>
+                                      transitionBooking(() => {
+                                        setSelectedSlot(slot.startAt);
+                                        goTo("details");
+                                      })
+                                    }
                                     type="button"
                                   >
                                     {formatSlotTime(slot.startAt)}
@@ -1146,12 +1291,13 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 )}
               </>
             )}
+            </div>
           </aside>
           </div>
         ) : null}
 
         {isConfirmingBooking ? (
-          <>
+          <div className="booking-confirmation-stage">
             <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
               {student ? "Confirm your lesson" : "Sign in to confirm"}
             </h2>
@@ -1187,7 +1333,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   {lessonType ? <strong>{formatMoneyCents(lessonType.price_cents)}</strong> : null}
                   {/* The only way back from this step now, so it reads as a
                       control rather than as a footnote. */}
-                  <button className="booking-recap__change" onClick={() => goTo("time")} type="button">
+                  <button
+                    className="booking-recap__change"
+                    onClick={() => transitionBooking(() => goTo("time"))}
+                    type="button"
+                  >
                     <ArrowLeft size={14} aria-hidden="true" />
                     Change time
                   </button>
@@ -1379,7 +1529,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     <p className="booking-form-note">
                       You&rsquo;ll pay for your first lesson now, securely with Stripe. Each later lesson goes to the same
                       card automatically on its own day. Move or cancel any lesson free until the day before from your{" "}
-                      <button className="booking-form-note__calendar" onClick={() => goTo("time")} type="button">
+                      <button
+                        className="booking-form-note__calendar"
+                        onClick={() => transitionBooking(() => goTo("time"))}
+                        type="button"
+                      >
                         lesson calendar
                       </button>
                       . On a lesson&rsquo;s own day it&rsquo;s yours:{" "}
@@ -1388,7 +1542,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   ) : prepay ? (
                     <p className="booking-form-note">
                       You&rsquo;ll pay now, securely with Stripe. Move or cancel free until the day before from your{" "}
-                      <button className="booking-form-note__calendar" onClick={() => goTo("time")} type="button">
+                      <button
+                        className="booking-form-note__calendar"
+                        onClick={() => transitionBooking(() => goTo("time"))}
+                        type="button"
+                      >
                         lesson calendar
                       </button>
                       . A cancellation is refunded automatically. On the day of
@@ -1397,7 +1555,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   ) : (
                     <p className="booking-form-note">
                       You pay on the day, in person with Inês. Change your booking any time from your{" "}
-                      <button className="booking-form-note__calendar" onClick={() => goTo("time")} type="button">
+                      <button
+                        className="booking-form-note__calendar"
+                        onClick={() => transitionBooking(() => goTo("time"))}
+                        type="button"
+                      >
                         lesson calendar
                       </button>
                       . It is free until the day before, with{" "}
@@ -1407,7 +1569,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 </form>
               )}
             </div>
-          </>
+          </div>
         ) : null}
 
         {student && bookingHistory.length ? (

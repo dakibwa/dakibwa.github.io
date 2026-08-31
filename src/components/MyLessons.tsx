@@ -41,6 +41,7 @@ export function MyLessons({
   onBook,
   onManage,
   onSignedOut,
+  onTransition,
   showCalendar = true,
   showHistory = true
 }: {
@@ -48,6 +49,7 @@ export function MyLessons({
   onBook?: () => void;
   onManage?: (token: string) => void;
   onSignedOut?: () => void;
+  onTransition?: (update: () => void) => void;
   showCalendar?: boolean;
   showHistory?: boolean;
 } = {}) {
@@ -68,7 +70,15 @@ export function MyLessons({
   const [todayKey, setTodayKey] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
 
-  const load = useCallback(async () => {
+  const applyTransition = useCallback(
+    (update: () => void) => {
+      if (onTransition) onTransition(update);
+      else update();
+    },
+    [onTransition]
+  );
+
+  const load = useCallback(async (animate = false, after?: () => void) => {
     const session = readSession();
     if (!session) {
       setStudent(null);
@@ -82,17 +92,22 @@ export function MyLessons({
         setStudent(null);
         return;
       }
-      setStudent(data.student);
-      setDetails({ name: data.student.name, email: data.student.email });
-      setBookings(data.bookings);
-      setSeries(data.series ?? []);
-      setFeeCents(data.sameDayFeeCents);
+      const update = () => {
+        setStudent(data.student);
+        setDetails({ name: data.student.name, email: data.student.email });
+        setBookings(data.bookings);
+        setSeries(data.series ?? []);
+        setFeeCents(data.sameDayFeeCents);
+        after?.();
+      };
+      if (animate) applyTransition(update);
+      else update();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load your lessons.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyTransition]);
 
   useEffect(() => {
     setZone(browserTimeZone());
@@ -183,9 +198,10 @@ export function MyLessons({
       // Reload rather than patching state: the lessons keep their series_id in
       // the database, and it is the *active* series list that decides whether
       // "one of your weekly lessons" is still true of them.
-      await load();
-      setSeries((current) => current.filter((entry) => entry.id !== seriesId));
-      setConfirmingStop("");
+      await load(true, () => {
+        setSeries((current) => current.filter((entry) => entry.id !== seriesId));
+        setConfirmingStop("");
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "That repeat could not be stopped.");
     } finally {
@@ -194,10 +210,12 @@ export function MyLessons({
   }
 
   function keepRepeating(seriesId: string) {
-    setConfirmingStop("");
-    // The choice that opened the confirmation reappears in the next render.
-    // Put keyboard focus back there instead of dropping it on the document.
-    window.requestAnimationFrame(() => document.getElementById(`stop-repeat-${seriesId}`)?.focus());
+    applyTransition(() => {
+      setConfirmingStop("");
+      // The choice that opened the confirmation reappears in the next render.
+      // Put keyboard focus back there instead of dropping it on the document.
+      window.requestAnimationFrame(() => document.getElementById(`stop-repeat-${seriesId}`)?.focus());
+    });
   }
 
   const upcoming = bookings
@@ -289,19 +307,21 @@ export function MyLessons({
         <div className="my-lessons__header-actions">
           <button
             className={embedded ? "text-action" : "button button--coral"}
-            onClick={() => setEditing((open) => !open)}
+            onClick={() => applyTransition(() => setEditing((open) => !open))}
             type="button"
           >
             {editing ? "Done" : "Edit details"}
           </button>
           <button
             className={embedded ? "text-action text-action--muted" : "button button--quiet"}
-            onClick={() => {
-              clearSession();
-              setStudent(null);
-              setBookings([]);
-              onSignedOut?.();
-            }}
+            onClick={() =>
+              applyTransition(() => {
+                clearSession();
+                setStudent(null);
+                setBookings([]);
+                onSignedOut?.();
+              })
+            }
             type="button"
           >
             Sign out
@@ -417,7 +437,7 @@ export function MyLessons({
                 <button
                   className="text-action"
                   id={`stop-repeat-${entry.id}`}
-                  onClick={() => setConfirmingStop(entry.id)}
+                  onClick={() => applyTransition(() => setConfirmingStop(entry.id))}
                   type="button"
                 >
                   Stop repeating

@@ -144,13 +144,16 @@ body text on lavender.
 
 ## Motion and loading
 
-The entrance fade — opacity only, 170 ms on mobile, 220 ms on wider screens —
-runs once, on first arrival. Internal navigation is instant: the old
-click-interception that held every route change for 80–110 ms to play an exit
-fade was removed in August 2026 as felt lag, and `RouteMotion` now only marks
-the first in-app navigation so the CSS can skip the entrance animation from
-then on. There is no overlay, movement, scale, or staggered hero animation.
-`prefers-reduced-motion: reduce` removes the entrance animation, smooth
+Each destination arrives with a short opacity-only dissolve: 190 ms on mobile
+and 240 ms on wider screens. Navigation itself starts immediately; there is no
+click interception, exit delay, overlay, movement, scale, or staggered hero
+animation. Booking decisions use a 220–260 ms same-document surface transition
+where supported, so the lesson picker, calendar, and next-step panel resize and
+replace their contents as one workspace. Older browsers keep the working flow
+and use a small content fade instead. Orientation scrolling waits for that
+surface change to settle rather than moving underneath it.
+
+`prefers-reduced-motion: reduce` removes route and booking transitions, smooth
 scrolling, and the button and navigation hover transforms, keeping colour
 changes so states stay distinguishable.
 
