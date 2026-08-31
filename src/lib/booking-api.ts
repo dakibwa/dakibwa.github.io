@@ -227,6 +227,20 @@ export function browserTimeZone() {
   }
 }
 
+/**
+ * Once a lesson is booked, its duration is more useful than repeating the
+ * product name on every compact calendar row. Trials stay named because that
+ * distinction matters; ordinary and longer lessons become “60 mins” or
+ * “90 mins”.
+ */
+export function formatBookedLessonLabel(lessonType: {
+  id: string;
+  name: string;
+  durationMinutes: number;
+}) {
+  return lessonType.id === "trial" ? lessonType.name : `${lessonType.durationMinutes} mins`;
+}
+
 export function portoDateKey(date: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: BOOKING_TIME_ZONE,

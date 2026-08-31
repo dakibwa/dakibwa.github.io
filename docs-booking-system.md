@@ -143,7 +143,11 @@ depending on them having kept the right confirmation email.
   one-off bookings remain coral cards. A recurring card's single `Manage`
   action reveals at most four booked occurrences with individual `Manage`
   actions. An accessible tooltip explains the four-week individual-change
-  window. The calendar remains underneath as supporting context. Opening an
+  window. Once booked, ordinary lessons use the compact duration label (`60
+  mins` or `90 mins`) instead of repeating the product name; trial lessons keep
+  their name. Recurring summaries show the weekly time or `Sequence ended`
+  without repeating a booked-date count. The calendar remains underneath as
+  supporting context. Opening an
   occurrence leaves the list and calendar where they are and shows a compact
   `Change` or `Cancel` overlay. `Change` reuses the existing calendar time
   picker; `Cancel` stays in the overlay for explicit confirmation. Recurring

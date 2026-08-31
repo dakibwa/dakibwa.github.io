@@ -41,6 +41,7 @@ import {
   differingLocalTime,
   fetchAvailability,
   fetchBooking,
+  formatBookedLessonLabel,
   formatLongDate,
   formatMoneyCents,
   formatSlotTime,
@@ -1155,7 +1156,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
                   <div className="lesson-manage-dialog__lesson">
                     <strong>{formatLongDate(managed.booking.startAt)}, {formatSlotTime(managed.booking.startAt)}</strong>
-                    <span>{managed.booking.lessonType.name} · {managed.booking.location === "porto" ? "In Porto" : "Online"}</span>
+                    <span>{formatBookedLessonLabel(managed.booking.lessonType)} · {managed.booking.location === "porto" ? "In Porto" : "Online"}</span>
                   </div>
 
                   {!manageOutcome && manageMode === "view" ? (
@@ -1660,7 +1661,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                           </span>
                           <strong>{formatSlotTime(booking.startAt)} Porto time</strong>
                           <span>
-                            {booking.lessonType.name} · {booking.location === "porto" ? "In Porto" : "Online"}
+                            {formatBookedLessonLabel(booking.lessonType)} · {booking.location === "porto" ? "In Porto" : "Online"}
                           </span>
                         </span>
                         <ChevronRight aria-hidden="true" size={20} />

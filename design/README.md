@@ -123,7 +123,11 @@ Preserve these desktop and mobile states:
   lilac recurring treatment. Its single `Manage` action reveals no more than four
   booked occurrences, each with its own `Manage` action. A small accessible
   tooltip explains that individual lessons can be modified up to four weeks in
-  advance. One-off lessons remain individual entries.
+  advance. In these already-booked summaries, ordinary lesson product names are
+  replaced by their useful compact duration (`60 mins` or `90 mins`), while a
+  trial stays named. The recurring line states its weekly time or `Sequence
+  ended` without repeating the number of booked dates. One-off lessons remain
+  individual entries.
   There is no second `My lessons` navigation destination.
   The account bar, workflow choices, calendar, and selected-day workspace share
   the same left and right edges. Profile fields open directly inside the account
