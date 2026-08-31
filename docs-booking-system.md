@@ -118,10 +118,11 @@ depending on them having kept the right confirmation email.
   forgotten password never blocks a change. The old `/my-lessons` and `/booking`
   paths remain valid for links already in the world, then normalise to `/book`.
 - **Signed-in account and repeat controls are always on the page.** They sit above
-  the lesson choices as a compact right-aligned block rather than behind an
-  Account/Close disclosure, with profile editing, sign out and stopping a repeat
-  in the same workspace. Past lessons live in a collapsed History section at the
-  bottom, so they do not interrupt the next booking.
+  the lesson choices rather than behind an Account/Close disclosure. The account
+  bar names the student once and keeps later booked lessons, past lessons, profile
+  editing and sign out together; stopping a repeat sits immediately beneath it.
+  There is only one `Booking` destination in the site navigation — no separate
+  `My lessons` tab — because booking and managing lessons are the same workspace.
 
 ### Repeating bookings
 
@@ -201,6 +202,10 @@ ahead without browsing a full three-month calendar.
   clamp it. It used to ask for a fixed 62 days while sizing the grid from whatever
   horizon the API reported, so raising the horizon past 62 would have drawn weeks
   of empty cells saying "no times free" — a lie rather than a gap.
+- The visible calendar is also capped at the Worker's 56-day horizon. A repeating
+  series may already own lessons beyond that window, but those later lessons no
+  longer stretch the booking calendar; they remain available from `Later lessons`
+  in the account bar and still open the same in-place move/cancel interface.
 - **When she moves a lesson, the emails say so.** They used to go out in the
   student's own voice — "that's done" — and tell her the student had moved it.
 

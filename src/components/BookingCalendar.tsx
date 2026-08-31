@@ -461,9 +461,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const calendarBookings = myBookings
     .filter((booking) => !booking.isPast && booking.status === "confirmed")
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
-  const bookingHistory = myBookings
-    .filter((booking) => booking.isPast || booking.status === "cancelled")
-    .sort((a, b) => b.startAt.localeCompare(a.startAt));
   if (
     managed &&
     !managed.isPast &&
@@ -487,23 +484,22 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     });
   }
 
-  const bookingsByDate = calendarBookings.reduce<Record<string, MyBooking[]>>((dates, booking) => {
-    const key = portoDateKey(new Date(booking.startAt));
-    (dates[key] ??= []).push(booking);
-    return dates;
-  }, {});
-  const latestBookingKey = calendarBookings.length
-    ? portoDateKey(new Date(calendarBookings[calendarBookings.length - 1].startAt))
-    : todayKey;
   const dayNumber = (key: string) => {
     const [year, month, day] = key.split("-").map(Number);
     return Date.UTC(year, month - 1, day) / 86_400_000;
   };
-  const visibleHorizon =
-    todayKey && latestBookingKey
-      ? Math.max(horizonDays, dayNumber(latestBookingKey) - dayNumber(todayKey) + 1)
-      : horizonDays;
-  const allCalendarWeeks = todayKey ? buildBookingWeeks(todayKey, visibleHorizon) : [];
+  const calendarWindowBookings = todayKey
+    ? calendarBookings.filter(
+        (booking) => dayNumber(portoDateKey(new Date(booking.startAt))) - dayNumber(todayKey) <= horizonDays
+      )
+    : [];
+  const laterBookingCount = calendarBookings.length - calendarWindowBookings.length;
+  const bookingsByDate = calendarWindowBookings.reduce<Record<string, MyBooking[]>>((dates, booking) => {
+    const key = portoDateKey(new Date(booking.startAt));
+    (dates[key] ??= []).push(booking);
+    return dates;
+  }, {});
+  const allCalendarWeeks = todayKey ? buildBookingWeeks(todayKey, horizonDays) : [];
   const firstRelevantWeek = allCalendarWeeks.findIndex((week) =>
     week.cells.some((cell) => Boolean(slotsByDate[cell.key]?.length || bookingsByDate[cell.key]?.length))
   );
@@ -533,7 +529,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
-  const firstCalendarBookingStart = calendarBookings[0]?.startAt ?? "";
+  const firstCalendarBookingStart = calendarWindowBookings[0]?.startAt ?? "";
   const isConfirmingBooking = step === "details" && Boolean(lessonType && chosen) && !managed;
   const panelMotionKey = showAccountSignIn && !student
     ? "sign-in"
@@ -726,39 +722,13 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setManageError("");
     setManageOutcome("");
     setSelectedSlot("");
+    if (selectedDate && !calendarWeeks.some((week) => week.cells.some((cell) => cell.key === selectedDate))) {
+      setSelectedDate(firstCalendarBookingStart ? portoDateKey(new Date(firstCalendarBookingStart)) : "");
+    }
     if (new URLSearchParams(window.location.search).has("manage")) {
       window.history.replaceState({}, "", "/book/");
     }
   }
-
-  const bookingHistoryPanel =
-    student && bookingHistory.length ? (
-      <details className="booking-history">
-        <summary>
-          <span>History</span>
-          <small>
-            {bookingHistory.length} {bookingHistory.length === 1 ? "booking" : "bookings"}
-          </small>
-        </summary>
-        <ul className="booking-history__list">
-          {bookingHistory.map((booking) => (
-            <li key={booking.reference}>
-              <div>
-                <strong>
-                  {booking.lessonType.name}
-                  {booking.status === "cancelled" ? <em> · cancelled</em> : null}
-                </strong>
-                <span>
-                  <CalendarDays size={16} aria-hidden="true" />
-                  {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
-                </span>
-              </div>
-              <small>{booking.reference}</small>
-            </li>
-          ))}
-        </ul>
-      </details>
-    ) : null;
 
   if (confirmation) {
     const localTime = differingLocalTime(confirmation.startAt, studentZone);
@@ -875,34 +845,36 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       ) : null}
 
       <div className="booking-stage">
-        <div className="unified-booking__head">
-          {checkingSession ? (
-            <p className="booking-state-note">Checking your account…</p>
-          ) : student ? (
-            <div className="unified-booking__account">
-              <p className="unified-booking__identity">
-                Signed in as <strong>{student.name}</strong>
-              </p>
-            </div>
-          ) : (
-            <button
-              className="text-action"
-              onClick={() => transitionBooking(() => setShowAccountSignIn(true))}
-              type="button"
-            >
-              Sign in to see your lessons
-            </button>
-          )}
-        </div>
+        {!student ? (
+          <div className="unified-booking__head">
+            {checkingSession ? (
+              <p className="booking-state-note">Checking your account…</p>
+            ) : (
+              <button
+                className="text-action"
+                onClick={() => transitionBooking(() => setShowAccountSignIn(true))}
+                type="button"
+              >
+                Sign in to see your lessons
+              </button>
+            )}
+          </div>
+        ) : null}
 
         {student ? (
           <section
             className="unified-account-controls"
             id="account-controls"
-            aria-label="Account and repeating lessons"
+            aria-label="Account, repeating and past lessons"
           >
             <AccountControls
+              calendarHorizonDays={horizonDays}
               embedded
+              onManage={(token) =>
+                transitionBooking(() => {
+                  void openManaged(token);
+                })
+              }
               onTransition={transitionBooking}
               onSignedOut={() => {
                 setStudent(null);
@@ -910,7 +882,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 setHadLesson(false);
               }}
               showCalendar={false}
-              showHistory={false}
+              showHistory
             />
           </section>
         ) : null}
@@ -990,8 +962,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           </div>
         ) : null}
 
-        {!isConfirmingBooking && !calendarBookings.length ? (
-          <p className="unified-calendar__empty-summary">No lessons currently booked. Choose a lesson type to add one.</p>
+        {!isConfirmingBooking && !calendarWindowBookings.length ? (
+          <p className="unified-calendar__empty-summary">
+            No lessons booked in the next eight weeks.
+            {laterBookingCount ? " Later booked lessons are in your account above." : " Choose a lesson type to add one."}
+          </p>
         ) : null}
 
         {!isConfirmingBooking ? (
@@ -1000,7 +975,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
             <div className="unified-calendar__toolbar">
               <div className="unified-calendar__legend" aria-label="Calendar key">
-                <span><i className="is-booked" aria-hidden="true" /> Your lesson</span>
+                <span><i className="is-booked" aria-hidden="true" /> Booked lesson</span>
                 <span><i className="is-free" aria-hidden="true" /> Free to book</span>
               </div>
               {isCalendarCompact ? (
@@ -1011,7 +986,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 >
                   Show all dates
                 </button>
-              ) : null}
+              ) : (
+                <span className="unified-calendar__range">Next 8 weeks</span>
+              )}
             </div>
             <div className="calendar-weekdays" aria-hidden="true">
               {weekdayLabels.map((label) => (
@@ -1047,6 +1024,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                           className={`${slots.length ? "has-availability" : ""}${
                             lessons.length ? " has-booking" : ""
                           }${selectedDate === cell.key ? " is-selected" : ""}${cell.isToday ? " is-today" : ""}`}
+                          data-date-key={cell.key}
                           disabled={!slots.length && !lessons.length}
                           key={cell.key}
                           onClick={() =>
@@ -1102,13 +1080,22 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               <p className="booking-state-note">Opening your lesson…</p>
             ) : managed ? (
               <>
-                <button
-                  className="booking-back booking-back--tertiary"
-                  onClick={() => transitionBooking(closeManagedLesson)}
-                  type="button"
-                >
-                  <ArrowLeft size={16} aria-hidden="true" /> Back to calendar
-                </button>
+                <div className="managed-lesson__header">
+                  <div>
+                    <p className="lesson-calendar__status">
+                      {managed.booking.status === "cancelled" ? "Cancelled lesson" : "Booked lesson"}
+                    </p>
+                    <h3>{managed.booking.lessonType.name}</h3>
+                  </div>
+                  <button
+                    aria-label="Back to calendar"
+                    className="booking-back booking-back--tertiary"
+                    onClick={() => transitionBooking(closeManagedLesson)}
+                    type="button"
+                  >
+                    <ArrowLeft size={16} aria-hidden="true" /> Calendar
+                  </button>
+                </div>
                 {manageOutcome ? (
                   <div className="booking-outcome" role="status">
                     <CheckCircle2 size={20} aria-hidden="true" />
@@ -1121,8 +1108,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     <p>{manageError}</p>
                   </div>
                 ) : null}
-                <p className="eyebrow">{managed.booking.status === "cancelled" ? "Cancelled" : "Your lesson"}</p>
-                <h3>{managed.booking.lessonType.name}</h3>
                 <dl className="unified-calendar__lesson-facts">
                   <div>
                     <dt>Date</dt>
@@ -1164,7 +1149,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       }
                       type="button"
                     >
-                      Move this lesson
+                      Move lesson
                     </button>
                     <button
                       className="button button--quiet"
@@ -1236,11 +1221,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                             : "Choose a time"}
                       </button>
                       <button
-                        className="booking-back"
+                        className="button button--quiet"
                         onClick={() => transitionBooking(() => setManageMode("view"))}
                         type="button"
                       >
-                        <ArrowLeft size={16} aria-hidden="true" /> Keep current time
+                        Keep time
                       </button>
                     </div>
                   </div>
@@ -1260,7 +1245,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   <div className="unified-calendar__bookings">
                     {selectedDayBookings.map((booking) => (
                       <button
-                        className="lesson-calendar__lesson"
+                        className="lesson-calendar__lesson lesson-calendar__lesson--booked"
                         key={booking.reference}
                         onClick={() =>
                           transitionBooking(() => {
@@ -1271,6 +1256,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       >
                         <LessonMark className="lesson-calendar__mark" lessonTypeId={booking.lessonType.id} />
                         <span className="lesson-calendar__lesson-copy">
+                          <span className="lesson-calendar__status">
+                            <CheckCircle2 size={13} aria-hidden="true" /> Booked
+                          </span>
                           <strong>{formatSlotTime(booking.startAt)} Porto time</strong>
                           <span>
                             {booking.lessonType.name} · {booking.location === "porto" ? "In Porto" : "Online"}
@@ -1282,7 +1270,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   </div>
                 ) : (
                   <p className="booking-state-note">
-                    {calendarBookings.length ? "No lesson booked on this day." : "No lessons currently booked."}
+                    {calendarWindowBookings.length ? "No lesson booked on this day." : "No lessons booked in the next eight weeks."}
                   </p>
                 )}
 
@@ -1337,7 +1325,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             )}
             </div>
           </aside>
-          {bookingHistoryPanel}
           </div>
         ) : null}
 
@@ -1387,24 +1374,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     Change time
                   </button>
                 </div>
-                {/* Who the booking is for lives with the rest of the recap, not
-                    at the top of the form it was crowding. */}
-                {student ? (
-                  <p className="booking-identity">
-                    Booking as <strong>{student.name}</strong> ({student.email}){" "}
-                    <button
-                      onClick={() => {
-                        clearSession();
-                        setStudent(null);
-                        setMyBookings([]);
-                        setHadLesson(false);
-                      }}
-                      type="button"
-                    >
-                      Not you?
-                    </button>
-                  </p>
-                ) : null}
               </aside>
 
               {payment ? (
@@ -1616,7 +1585,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             </div>
           </div>
         ) : null}
-        {isConfirmingBooking ? bookingHistoryPanel : null}
       </div>
 
     </section>

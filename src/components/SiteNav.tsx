@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AccountLink } from "@/components/AccountLink";
 import type { SitePage } from "@/components/SiteHeader";
 
 type NavItem = { href: string; id: SitePage; label: string };
@@ -56,8 +55,6 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
-  const isAccountPage = currentPage === "my-lessons";
-
   return (
     <>
       <nav className="site-nav" aria-label="Main navigation">
@@ -71,7 +68,6 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
             {item.label}
           </Link>
         ))}
-        <AccountLink className="site-nav__link site-nav__link--account" isCurrent={isAccountPage} />
       </nav>
 
       <button
@@ -105,7 +101,6 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
               {item.label}
             </Link>
           ))}
-          <AccountLink className="nav-mobile__link nav-mobile__link--account" isCurrent={isAccountPage} />
         </div>
       </div>
     </>
