@@ -41,13 +41,15 @@ export function MyLessons({
   onBook,
   onManage,
   onSignedOut,
-  showCalendar = true
+  showCalendar = true,
+  showHistory = true
 }: {
   embedded?: boolean;
   onBook?: () => void;
   onManage?: (token: string) => void;
   onSignedOut?: () => void;
   showCalendar?: boolean;
+  showHistory?: boolean;
 } = {}) {
   const [student, setStudent] = useState<Student | null>(null);
   const [bookings, setBookings] = useState<MyBooking[]>([]);
@@ -535,7 +537,7 @@ export function MyLessons({
       </section>
       ) : null}
 
-      {past.length ? (
+      {showHistory && past.length ? (
         <section className="my-lessons__group">
           <h2>History</h2>
           <ul className="lesson-list lesson-list--past">

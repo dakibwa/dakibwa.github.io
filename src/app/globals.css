@@ -1533,8 +1533,9 @@ textarea,
 .unified-booking__head {
   display: flex;
   align-items: flex-start;
-  justify-content: flex-start;
-  margin-bottom: 0.65rem;
+  justify-content: flex-end;
+  width: min(100%, 700px);
+  margin: 0 0 0.65rem auto;
   gap: 1rem 1.5rem;
 }
 
@@ -1542,7 +1543,7 @@ textarea,
   display: flex;
   flex: 1 1 auto;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   min-width: 0;
   width: 100%;
   gap: 0.7rem 1rem;
@@ -1553,7 +1554,7 @@ textarea,
   margin: 0;
   font-size: 0.82rem;
   line-height: 1.35;
-  text-align: left;
+  text-align: right;
   overflow-wrap: anywhere;
 }
 
@@ -1563,6 +1564,50 @@ textarea,
 
 .unified-booking__lesson-picker .lesson-choice {
   margin-top: 0.65rem;
+}
+
+.booking-choice-summary {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-field);
+  padding: 0.7rem 0.9rem;
+  background: rgba(170, 164, 230, 0.11);
+  gap: 0.75rem;
+}
+
+.booking-choice-summary__mark {
+  width: 44px;
+  height: 44px;
+}
+
+.booking-choice-summary__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+.booking-choice-summary__copy .eyebrow {
+  margin: 0;
+  font-size: 0.6rem;
+}
+
+.booking-choice-summary__copy strong {
+  font-family: var(--ui);
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.booking-choice-summary__copy small {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  opacity: 0.72;
+}
+
+.booking-choice-summary__change {
+  white-space: nowrap;
 }
 
 .unified-calendar__empty-summary {
@@ -1689,6 +1734,13 @@ textarea,
   background: rgba(170, 164, 230, 0.13);
 }
 
+#booking-lesson-choice,
+#lesson-calendar,
+#booking-next-step,
+#booking-step-heading {
+  scroll-margin-top: 1rem;
+}
+
 .unified-calendar__panel > h3 {
   margin: 0.2rem 0 0.8rem;
   font-family: var(--ui);
@@ -1762,7 +1814,8 @@ textarea,
 }
 
 .unified-account-controls {
-  margin: 0 0 1.6rem;
+  width: min(100%, 700px);
+  margin: 0 0 1.6rem auto;
   border: 1px solid var(--rule);
   border-radius: var(--squiggle-panel);
   padding: 1.1rem 1.25rem;
@@ -1780,6 +1833,100 @@ textarea,
   border-radius: 0;
   padding: 0.9rem 0 0;
   background: transparent;
+}
+
+.booking-history {
+  margin-top: clamp(1.8rem, 4vw, 3rem);
+  border-top: 1px solid var(--rule);
+}
+
+.booking-history summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0.15rem;
+  color: var(--lavender-ink);
+  cursor: pointer;
+  gap: 1rem;
+  font-family: var(--ui);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  list-style: none;
+  text-transform: uppercase;
+}
+
+.booking-history summary::-webkit-details-marker {
+  display: none;
+}
+
+.booking-history summary::after {
+  content: "+";
+  margin-left: 0.2rem;
+  color: var(--coral-action);
+  font-size: 1rem;
+}
+
+.booking-history[open] summary::after {
+  content: "−";
+}
+
+.booking-history summary small {
+  margin-left: auto;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  opacity: 0.65;
+  text-transform: none;
+}
+
+.booking-history__list {
+  margin: 0;
+  padding: 0 0 0.4rem;
+  list-style: none;
+}
+
+.booking-history__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--rule-soft);
+  padding: 0.85rem 0.15rem;
+  gap: 1rem;
+}
+
+.booking-history__list li > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.booking-history__list strong {
+  font-family: var(--ui);
+  font-size: 0.88rem;
+}
+
+.booking-history__list strong em {
+  font-size: 0.72rem;
+  font-style: normal;
+  opacity: 0.65;
+}
+
+.booking-history__list span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  opacity: 0.75;
+}
+
+.booking-history__list li > small {
+  flex: none;
+  font-family: var(--ui);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  opacity: 0.5;
 }
 
 @container booking (min-width: 700px) {
@@ -1801,6 +1948,8 @@ textarea,
   .unified-booking__head {
     align-items: flex-start;
     flex-direction: column;
+    width: 100%;
+    margin-left: 0;
   }
 
   .unified-booking__identity {
@@ -1808,7 +1957,29 @@ textarea,
   }
 
   .unified-account-controls {
+    width: 100%;
+    margin-left: 0;
     padding: 1rem;
+  }
+
+  .booking-choice-summary {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .booking-choice-summary__mark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .booking-choice-summary__change {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .booking-history__list li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
   }
 
   .unified-calendar__toolbar {
@@ -3468,12 +3639,21 @@ button.text-action {
   opacity: 0.86;
 }
 
-.booking-form-note a {
+.booking-form-note a,
+.booking-form-note__calendar {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.booking-form-note a:hover {
+.booking-form-note a:hover,
+.booking-form-note__calendar:hover,
+.booking-form-note__calendar:focus-visible {
   color: var(--coral-action);
 }
 
