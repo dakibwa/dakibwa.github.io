@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 
 const approachItems = [
   {
-    title: "The Portuguese of Portugal",
-    body: "The way people speak here, including all the vowels we swallow.",
+    title: "Any Portuguese is welcome",
+    body: "Whatever variety you already know, we start from there.",
     asset: "/visuals/v2-splats/european-portuguese-splat-v2.svg"
   },
   {
@@ -23,7 +23,7 @@ const approachItems = [
   {
     title: "Talk first",
     body: "We talk. I correct you as we go, and explain the grammar when it’s the thing tripping you up.",
-    asset: "/visuals/v2-splats/relaxed-practical-splat-v2.svg"
+    asset: "/visuals/v2-splats/conversation-splat-generated-v2.webp"
   }
 ];
 
@@ -80,8 +80,8 @@ export default function ApproachPage() {
           <p className="eyebrow">Any level</p>
           <h2>Nervous beginners welcome.</h2>
           <p>
-            If you’ve never said a word of Portuguese, that’s a normal place to start. If you’ve been stuck at the
-            same level for years, that’s normal too.
+            If you’ve never said a word of Portuguese, we can start there. If you’ve been stuck at the same level for
+            years, we can start there too.
           </p>
           <Link className="button button--coral" href="/book">Book a trial lesson</Link>
         </section>

@@ -406,7 +406,7 @@ html.route-arrived .route-fade {
 
 .home-hero {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   min-height: min(660px, calc(100vh - var(--header-height)));
 }
 
@@ -460,24 +460,6 @@ html.route-arrived .route-fade {
   margin-bottom: 1.7rem;
   font-size: clamp(1.35rem, 2vw, 1.8rem);
   line-height: 1.25;
-}
-
-.home-hero__art {
-  position: relative;
-  overflow: hidden;
-  background-color: var(--green-deep);
-  background-image: var(--paper-texture);
-}
-
-.home-hero__burst {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.home-hero__burst .asset-mark__image {
-  object-fit: cover;
 }
 
 .principles-strip {
@@ -892,43 +874,22 @@ html.route-arrived .route-fade {
 /* FAQ */
 
 .faq-hero {
-  position: relative;
-  display: grid;
-  grid-template-columns: 68% 32%;
-  min-height: 350px;
+  display: flex;
+  align-items: center;
+  min-height: 280px;
   overflow: hidden;
+  padding: 3.5rem var(--page-pad);
   background-color: var(--lavender);
   background-image: var(--paper-texture);
 }
 
-.faq-hero > div {
-  padding: 3.5rem var(--page-pad);
-}
-
 .faq-hero h1 {
-  margin: 0 0 2rem;
+  margin: 0;
   font-family: var(--display);
   font-size: clamp(3rem, 5.6vw, 5.8rem);
   font-weight: 400;
   letter-spacing: -0.035em;
   line-height: 1.08;
-}
-
-.faq-hero > div > p:last-child {
-  max-width: 520px;
-  margin: 0;
-  font-size: 1.3rem;
-}
-
-.faq-hero .eyebrow {
-  color: var(--ink);
-}
-
-.faq-hero > .faq-hero__mark {
-  align-self: center;
-  width: min(70%, 360px);
-  aspect-ratio: 1;
-  transform: none;
 }
 
 .faq-reference {
@@ -4505,15 +4466,11 @@ button.text-action {
   }
 
   .home-hero {
-    grid-template-columns: 1fr;
+    min-height: auto;
   }
 
   .home-hero__copy {
     min-height: 470px;
-  }
-
-  .home-hero__art {
-    min-height: 360px;
   }
 
   .principles-strip {
@@ -4635,10 +4592,6 @@ button.text-action {
 
   .lesson-product:last-child {
     border-bottom: 0;
-  }
-
-  .faq-hero {
-    grid-template-columns: 1fr;
   }
 
   .faq-reference {
@@ -4826,10 +4779,6 @@ button.text-action {
     font-size: 1.2rem;
   }
 
-  .home-hero__art {
-    min-height: 290px;
-  }
-
   .principle {
     grid-template-columns: 62px 1fr;
     gap: 1.2rem;
@@ -4900,7 +4849,7 @@ button.text-action {
   }
 
   .faq-hero {
-    min-height: 330px;
+    min-height: 230px;
   }
 
   .faq-hero h1 {

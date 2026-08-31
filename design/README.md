@@ -34,13 +34,22 @@ accessibility fixes and still need reconciling into the canonical Figma file:
 The `--blue`, `--blue-deep`, `--lavender`, `--paper`, and `--coral` fill
 colours are unchanged.
 
+## Figma reconciliation pending — 2026-08-31
+
+Production now reflects Inês's 31 August feedback: the home hero no longer
+contains the business-card artwork; the “Slow is fine” and “Talk first” marks
+have generated replacements; the approved Home, Approach, Lessons, and FAQ
+copy is in place; and the FAQ banner contains only its heading. The canonical
+desktop and mobile frames still need the same updates because the authenticated
+Figma Starter workspace had reached its MCP tool-call limit. A one-time
+follow-up is scheduled for 1 September 2026.
+
 ## References retained in this repository
 
 `design/business-cards/` contains the original business-card exports. They are
-historical brand references, not competing website specifications. The blue
-business-card splat is the source motif for the current homepage artwork; use
-the cleaned production asset rather than placing the card image or its
-horizontal rules into the interface.
+historical brand references, not competing website specifications. The cleaned
+blue business-card splat is retained for the generated social share image, but
+the card artwork itself does not appear in the homepage interface.
 
 `design/stickers/` contains the historical sticker sheet. Do not cut new
 production assets from it unless a new asset is deliberately reviewed and
@@ -51,10 +60,10 @@ approved.
 `public/visuals/` is production-only. Every file there must be referenced by
 the current site:
 
-- the homepage business-card-derived splat and the approved page fields live
-  in `public/visuals/generated-splats/`;
-- the small splatty V2 emblems live as SVGs in
-  `public/visuals/v2-splats/`;
+- the social share-card splat and the approved page fields live in
+  `public/visuals/generated-splats/`;
+- the small splatty V2 emblems live in `public/visuals/v2-splats/` as SVGs or
+  size-matched generated WebPs;
 - the wordmark and paper texture support the shared site shell.
 
 Do not keep contact sheets, rejected generations, alternate raster exports,

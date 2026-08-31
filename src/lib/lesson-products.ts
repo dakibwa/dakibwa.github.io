@@ -27,7 +27,7 @@ export const lessonProducts: LessonProduct[] = [
     title: "Trial lesson",
     price: "\u20ac20",
     duration: "60 minutes",
-    description: "A full hour, not a sales call. We find out where your Portuguese is and what you want to do with it.",
+    description: "We find out where your Portuguese is and what you want to do with it.",
     note: "Start here"
   },
   {
