@@ -1906,12 +1906,10 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 }
 
 .unified-calendar__expand {
-  margin-left: auto;
   white-space: nowrap;
 }
 
 .unified-calendar__range {
-  margin-left: auto;
   color: var(--lavender-ink);
   font-family: var(--ui);
   font-size: 0.63rem;
@@ -1919,6 +1917,14 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   letter-spacing: 0.08em;
   line-height: 1.3;
   text-transform: uppercase;
+}
+
+.unified-calendar__range-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+  gap: 0.35rem 0.8rem;
 }
 
 .unified-calendar__legend span {
@@ -2276,16 +2282,20 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   opacity: 0.78;
 }
 
-.unified-account-controls {
+.unified-account-area {
   position: relative;
   z-index: 4;
   width: 100%;
   margin: 0 0 1.6rem;
+  view-transition-name: booking-account;
+}
+
+.unified-account-controls {
+  width: 100%;
   border: 1px solid var(--rule);
   border-radius: var(--squiggle-panel);
   padding: 1.2rem clamp(1.2rem, 2.6vw, 1.65rem) 1.3rem;
   background: rgba(170, 164, 230, 0.1);
-  view-transition-name: booking-account;
 }
 
 .unified-account-controls .my-lessons__header--embedded {
@@ -3540,6 +3550,13 @@ button.text-action {
   margin: 0.9rem 0 0;
   border-top: 1px solid var(--rule-soft);
   padding: 0.95rem 0 0;
+}
+
+.my-lessons__account-section--detached {
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-panel);
+  padding: clamp(1rem, 2.4vw, 1.35rem);
+  background: rgba(170, 164, 230, 0.09);
 }
 
 .my-lessons__account-section > .eyebrow,

@@ -67,6 +67,7 @@ const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 type Step = "lesson" | "day" | "time" | "details";
 type BookingIntent = "choose" | "book" | "lessons";
+type CalendarWeekCount = 1 | 4 | 8;
 
 /** "once" is a real choice, not the absence of one, so it lives in the union. */
 type RepeatOption = "once" | 4 | "open";
@@ -311,7 +312,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [horizonDays, setHorizonDays] = useState(BOOKING_HORIZON_DAYS_FALLBACK);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
   const [selectedDate, setSelectedDate] = useState("");
-  const [calendarCompact, setCalendarCompact] = useState(false);
+  const [calendarWeekCount, setCalendarWeekCount] = useState<CalendarWeekCount>(4);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -388,7 +389,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setLessonTypeId("");
       setSelectedDate("");
       setSelectedSlot("");
-      setCalendarCompact(false);
+      setCalendarWeekCount(8);
       setStep("lesson");
     });
     orientTo("booking-lesson-choice");
@@ -397,7 +398,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const openManaged = useCallback(async (token: string) => {
     if (!token) return;
     setIntent("lessons");
-    setCalendarCompact(true);
+    setCalendarWeekCount(1);
     setManagedToken(token);
     setManageLoading(true);
     setManageError("");
@@ -538,11 +539,18 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const selectedCalendarWeek = selectedDate
     ? calendarWeeks.find((week) => week.cells.some((cell) => cell.key === selectedDate))
     : undefined;
-  const isCalendarCompact = calendarCompact && Boolean(selectedCalendarWeek);
-  const displayedCalendarWeeks =
-    isCalendarCompact && selectedCalendarWeek
-      ? [{ ...selectedCalendarWeek, showMonth: true }]
-      : calendarWeeks;
+  const standardCalendarWeekCount: Exclude<CalendarWeekCount, 1> = intent === "lessons" ? 4 : 8;
+  const visibleCalendarWeekCount = calendarWeekCount === 1 && !selectedCalendarWeek
+    ? standardCalendarWeekCount
+    : calendarWeekCount;
+  const displayedCalendarWeeks = visibleCalendarWeekCount === 1 && selectedCalendarWeek
+    ? [{ ...selectedCalendarWeek, showMonth: true }]
+    : calendarWeeks.slice(0, visibleCalendarWeekCount);
+  const nextCalendarWeekCount: Exclude<CalendarWeekCount, 1> = visibleCalendarWeekCount === 4
+    ? 8
+    : standardCalendarWeekCount === 4
+      ? 4
+      : 8;
   const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
@@ -569,7 +577,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   useEffect(() => {
     if (intent !== "lessons" || selectedDate || !firstCalendarBookingStart) return;
     setSelectedDate(portoDateKey(new Date(firstCalendarBookingStart)));
-    setCalendarCompact(false);
+    setCalendarWeekCount(4);
   }, [firstCalendarBookingStart, intent, selectedDate]);
 
   /*
@@ -647,7 +655,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setLessonTypeId("");
       setSelectedDate("");
       setSelectedSlot("");
-      setCalendarCompact(false);
+      setCalendarWeekCount(8);
       setStep("lesson");
     });
     orientTo("booking-lesson-choice", true);
@@ -658,7 +666,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setIntent("lessons");
       setLessonTypeId("");
       setSelectedSlot("");
-      setCalendarCompact(false);
+      setCalendarWeekCount(4);
       setStep("day");
       setShowAccountSignIn(!student);
       if (firstCalendarBookingStart) {
@@ -678,7 +686,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setLessonTypeId("");
       setSelectedDate("");
       setSelectedSlot("");
-      setCalendarCompact(false);
+      setCalendarWeekCount(4);
       setStep("lesson");
     });
     orientTo("booking-journey-start", true);
@@ -920,7 +928,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       <div className="booking-stage">
         {student && !isConfirmingBooking ? (
           <section
-            className="unified-account-controls"
+            className="unified-account-area"
             id="account-controls"
             aria-label="Account, repeating and past lessons"
           >
@@ -933,7 +941,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 })
               }
               onTransition={transitionBooking}
-              onViewUpcoming={() => setCalendarCompact(false)}
+              onViewUpcoming={() => setCalendarWeekCount(4)}
               onSignedOut={() => {
                 setStudent(null);
                 setMyBookings([]);
@@ -1021,7 +1029,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   onClick={() =>
                     transitionBooking(() => {
                       setSelectedSlot("");
-                      setCalendarCompact(false);
+                      setCalendarWeekCount(8);
                       goTo("lesson");
                     })
                   }
@@ -1054,7 +1062,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                             setSlotsByDate({});
                           }
                           setLessonTypeId(type.id);
-                          setCalendarCompact(false);
+                          setCalendarWeekCount(8);
                           setSelectedSlot("");
                           goTo("day");
                         })
@@ -1102,19 +1110,20 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 <span><i className="is-booked" aria-hidden="true" /> Booked lesson</span>
                 {intent === "book" ? <span><i className="is-free" aria-hidden="true" /> Free to book</span> : null}
               </div>
-              {selectedCalendarWeek ? (
+              <div className="unified-calendar__range-actions">
+                <span className="unified-calendar__range">
+                  {visibleCalendarWeekCount === 1 ? "Selected week" : `Next ${visibleCalendarWeekCount} weeks`}
+                </span>
                 <button
                   aria-controls="booking-calendar-weeks"
-                  aria-expanded={!isCalendarCompact}
+                  aria-expanded={visibleCalendarWeekCount === 8}
                   className="text-action unified-calendar__expand"
-                  onClick={() => transitionBooking(() => setCalendarCompact((compact) => !compact))}
+                  onClick={() => transitionBooking(() => setCalendarWeekCount(nextCalendarWeekCount))}
                   type="button"
                 >
-                  {isCalendarCompact ? "Show all" : "Hide all"}
+                  Show {nextCalendarWeekCount} weeks
                 </button>
-              ) : (
-                <span className="unified-calendar__range">Next 8 weeks</span>
-              )}
+              </div>
             </div>
             <div className="calendar-weekdays" aria-hidden="true">
               {weekdayLabels.map((label) => (
@@ -1126,7 +1135,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               aria-busy={loadingSlots}
               className="calendar-weeks"
               id="booking-calendar-weeks"
-              key={isCalendarCompact && selectedCalendarWeek ? `compact-${selectedCalendarWeek.key}` : "overview"}
+              key={visibleCalendarWeekCount === 1 && selectedCalendarWeek
+                ? `compact-${selectedCalendarWeek.key}`
+                : `overview-${visibleCalendarWeekCount}`}
             >
               {displayedCalendarWeeks.map((week) => (
                 <Fragment key={week.key}>
@@ -1157,7 +1168,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                           onClick={() => {
                             transitionBooking(() => {
                               setSelectedDate(cell.key);
-                              setCalendarCompact(true);
+                              setCalendarWeekCount(1);
                               setSelectedSlot("");
                               if (lessonType && !managed) {
                                 setStep("time");

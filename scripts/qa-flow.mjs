@@ -620,10 +620,10 @@ await accountPanel.locator(".my-lessons__details").waitFor({ state: "detached" }
 
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
-if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 8) {
-  throw new Error("Viewing existing lessons should open the full eight-week calendar.");
+if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4) {
+  throw new Error("Viewing existing lessons should open the quieter four-week calendar.");
 }
-await accountPage.getByRole("button", { name: "Hide all", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: "Show 8 weeks", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Stop repeating", exact: true }).waitFor();
 await accountMenuButton.click();
 const lessonsAccountMenu = accountPanel.locator("#account-menu");
@@ -635,10 +635,20 @@ const pastLessonsToggle = lessonsAccountMenu.getByRole("button", { name: /Past l
 await pastLessonsToggle.click();
 await accountPanel.getByRole("heading", { name: "Past lessons", exact: true }).waitFor();
 if (!(await accountPanel.getByText("INES-OLD1", { exact: true }).isVisible())) {
-  throw new Error("Past lessons should open inside the account bar.");
+  throw new Error("Past lessons should open from the account menu.");
 }
+const pastLessonPlacement = await accountPanel.evaluate((panel) => {
+  const account = panel.querySelector(".unified-account-controls")?.getBoundingClientRect();
+  const history = panel.querySelector("#account-past-lessons")?.getBoundingClientRect();
+  return { accountBottom: account?.bottom ?? Infinity, historyTop: history?.top ?? -Infinity };
+});
+if (pastLessonPlacement.historyTop <= pastLessonPlacement.accountBottom + 4) {
+  throw new Error(`Past lessons should live in a separate panel below the account bar: ${JSON.stringify(pastLessonPlacement)}.`);
+}
+await accountPage.screenshot({ path: path.join(outDir, "booking-past-lessons-desktop.png"), fullPage: true });
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: /Past lessons/ }).click();
+await accountPanel.locator("#account-past-lessons").waitFor({ state: "detached" });
 
 const upcomingLessonsToggle = accountPanel.getByRole("button", { name: /Upcoming lessons/ });
 if (!/2\s*$/.test((await upcomingLessonsToggle.innerText()).trim())) {
@@ -660,8 +670,8 @@ if (
 if (!(await recurringUpcomingGroup.getByText(/10 booked dates/i).isVisible())) {
   throw new Error("A repeating lesson should report every already-booked occurrence.");
 }
-if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 8) {
-  throw new Error("Opening the grouped upcoming list should keep all eight calendar weeks visible.");
+if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4) {
+  throw new Error("Opening the grouped upcoming list should keep the four-week default visible.");
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-grouped-desktop.png"), fullPage: true });
 
@@ -810,7 +820,7 @@ if (
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-manage-desktop.png"), fullPage: true });
 await desktopManagePanel.getByRole("button", { name: "Back to calendar", exact: true }).click();
-await accountPage.getByRole("button", { name: "Show all", exact: true }).click();
+await accountPage.getByRole("button", { name: "Show 4 weeks", exact: true }).click();
 await waitForOrientation(accountPage);
 
 await accountPage.setViewportSize({ width: 390, height: 844 });
@@ -822,6 +832,22 @@ const mobileAccountName = await accountPanel.locator(".my-lessons__account-name 
 if (mobileAccountName.scrollWidth > mobileAccountName.clientWidth + 1) {
   throw new Error("The account name should remain readable beside the compact mobile menu.");
 }
+await accountMenuButton.click();
+await accountPanel.getByRole("button", { name: /Past lessons/ }).click();
+await accountPanel.locator("#account-past-lessons").waitFor({ state: "visible" });
+await accountPanel.locator("#account-menu").waitFor({ state: "detached" });
+await waitForOrientation(accountPage);
+const mobilePastLessonsLayout = await accountPage.evaluate(() => ({
+  clientWidth: document.documentElement.clientWidth,
+  scrollWidth: document.documentElement.scrollWidth
+}));
+if (mobilePastLessonsLayout.scrollWidth > mobilePastLessonsLayout.clientWidth + 1) {
+  throw new Error("The separate past-lessons panel overflows on a phone.");
+}
+await accountPanel.screenshot({ path: path.join(outDir, "booking-past-lessons-mobile.png") });
+await accountMenuButton.click();
+await accountPanel.getByRole("button", { name: /Past lessons/ }).click();
+await accountPanel.locator("#account-past-lessons").waitFor({ state: "detached" });
 await upcomingLessonsToggle.click();
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await accountPanel.getByRole("button", { name: "View all dates", exact: true }).click();
@@ -893,22 +919,22 @@ await accountPage.evaluate(() => {
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 });
 
-const fullCalendarWeekCount = await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count();
-if (fullCalendarWeekCount !== 8) {
-  throw new Error(`The eight-week booking window rendered ${fullCalendarWeekCount} calendar rows.`);
+const defaultCalendarWeekCount = await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count();
+if (defaultCalendarWeekCount !== 4) {
+  throw new Error(`The default upcoming-lessons calendar rendered ${defaultCalendarWeekCount} rows instead of four.`);
 }
-const hideAll = accountPage.getByRole("button", { name: "Hide all", exact: true });
-const showAll = accountPage.getByRole("button", { name: "Show all", exact: true });
-await hideAll.waitFor({ state: "visible" });
-await hideAll.click();
-await waitForOrientation(accountPage);
-if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count()) !== 1) {
-  throw new Error("Hide all should minimise the calendar to the selected week.");
-}
-await showAll.click();
+const showEightWeeks = accountPage.getByRole("button", { name: "Show 8 weeks", exact: true });
+const showFourWeeks = accountPage.getByRole("button", { name: "Show 4 weeks", exact: true });
+await showEightWeeks.waitFor({ state: "visible" });
+await showEightWeeks.click();
 await waitForOrientation(accountPage);
 if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count()) !== 8) {
-  throw new Error("Show all should restore all eight calendar weeks.");
+  throw new Error("Show 8 weeks should extend the upcoming-lessons calendar to its full horizon.");
+}
+await showFourWeeks.click();
+await waitForOrientation(accountPage);
+if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count()) !== 4) {
+  throw new Error("Show 4 weeks should restore the quieter default.");
 }
 const bookingTimes = accountPage.locator("#lesson-calendar .calendar-booking-times span");
 if ((await bookingTimes.count()) !== 2) {
@@ -916,7 +942,7 @@ if ((await bookingTimes.count()) !== 2) {
 }
 const bookedDay = accountPage.getByRole("button", { name: /2 lessons/ }).first();
 await bookedDay.click();
-await showAll.waitFor({ state: "visible" });
+await showFourWeeks.waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
 const bookedDayOrientation = await accountPage.evaluate(() => {
   const panel = document.querySelector("#booking-next-step")?.getBoundingClientRect();
@@ -1007,17 +1033,17 @@ if (compactCalendarLayout.detailsTop - compactCalendarLayout.gridBottom > 24) {
 }
 await waitForOrientation(accountPage);
 await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-selected-mobile.png"), fullPage: true });
-await showAll.click();
+await showFourWeeks.click();
 await accountPage.waitForFunction(
   (expected) => document.querySelectorAll("#lesson-calendar .unified-calendar__grid .calendar-week").length === expected,
-  fullCalendarWeekCount
+  defaultCalendarWeekCount
 );
 const restoredCalendarWeekCount = await accountPage
   .locator("#lesson-calendar .unified-calendar__grid .calendar-week")
   .count();
-if (restoredCalendarWeekCount !== fullCalendarWeekCount) {
+if (restoredCalendarWeekCount !== defaultCalendarWeekCount) {
   throw new Error(
-    `Show all restored ${restoredCalendarWeekCount} weeks instead of ${fullCalendarWeekCount}.`
+    `Show 4 weeks restored ${restoredCalendarWeekCount} weeks instead of ${defaultCalendarWeekCount}.`
   );
 }
 
@@ -1065,7 +1091,7 @@ await lessonSummary.waitFor({ state: "visible" });
 const freeDay = accountPage.getByRole("button", { name: /1 times free/ }).first();
 await freeDay.waitFor({ state: "visible" });
 await freeDay.click();
-await showAll.waitFor({ state: "visible" });
+await showEightWeeks.waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
 await accountPage.waitForFunction(
   () => {
@@ -1143,12 +1169,12 @@ await waitForOrientation(accountPage);
 await accountPage.screenshot({ path: path.join(outDir, "booking-confirm-mobile.png"), fullPage: true });
 
 await accountPage.getByRole("button", { name: "Change time", exact: true }).click();
-await showAll.waitFor({ state: "visible" });
+await showEightWeeks.waitFor({ state: "visible" });
 if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count()) !== 1) {
   throw new Error("Changing the time should restore the selected week, not the full calendar.");
 }
 await lessonSummary.waitFor({ state: "visible" });
-await showAll.click();
+await showEightWeeks.click();
 
 await changeLesson.click();
 await accountPage.getByRole("heading", { name: "Choose a lesson", exact: true }).waitFor();
@@ -1210,8 +1236,8 @@ console.log(
       accountControls: {
         desktopLayout: desktopAccountLayout,
         mobileLayout: mobileAccountLayout,
-        calendarCompact: {
-          fullWeekCount: fullCalendarWeekCount,
+        calendarRange: {
+          defaultWeekCount: defaultCalendarWeekCount,
           compactWeekCount: compactCalendarWeekCount,
           selectedLessonCount,
           freeCompactWeekCount,

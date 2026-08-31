@@ -355,8 +355,65 @@ export function MyLessons({
     );
   }
 
+  const seriesControls = showSeries && series.length ? (
+    <section className="my-lessons__series">
+      <h2>Repeating</h2>
+      {series.map((entry) => (
+        <div className="my-lessons__series-row" key={entry.id}>
+          <p>
+            <Repeat size={16} aria-hidden="true" />
+            <strong>{WEEKDAYS[entry.weekday]}s at {minutesToClock(entry.minuteOfDay)}</strong> Porto time
+            {entry.openEnded ? ", every week" : ""}. {entry.upcoming}{" "}
+            {entry.upcoming === 1 ? "lesson" : "lessons"} still to come.
+          </p>
+          {confirmingStop === entry.id ? (
+            <div
+              aria-labelledby={`stop-series-${entry.id}`}
+              className="my-lessons__series-confirmation"
+              role="group"
+            >
+              <div>
+                <h3 id={`stop-series-${entry.id}`}>Stop repeating lessons?</h3>
+                <p>Your booked lessons will stay. You can cancel them individually below.</p>
+              </div>
+              <div className="my-lessons__series-confirmation-actions">
+                <button
+                  autoFocus
+                  className="button button--coral"
+                  disabled={stopping === entry.id}
+                  onClick={() => stopRepeating(entry.id)}
+                  type="button"
+                >
+                  {stopping === entry.id ? "Stopping…" : "Yes, stop repeating"}
+                </button>
+                <button
+                  className="text-action"
+                  disabled={stopping === entry.id}
+                  onClick={() => keepRepeating(entry.id)}
+                  type="button"
+                >
+                  No, keep repeating
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="text-action"
+              id={`stop-repeat-${entry.id}`}
+              onClick={() => applyTransition(() => setConfirmingStop(entry.id))}
+              type="button"
+            >
+              Stop repeating
+            </button>
+          )}
+        </div>
+      ))}
+    </section>
+  ) : null;
+
   return (
-    <div className="my-lessons">
+    <div className={`my-lessons${embedded ? " my-lessons--embedded" : ""}`}>
+      <div className={embedded ? "unified-account-controls" : undefined}>
       <div className={`my-lessons__header${embedded ? " my-lessons__header--embedded" : ""}`}>
         {embedded ? (
           <div className="my-lessons__account-name">
@@ -530,8 +587,11 @@ export function MyLessons({
         </div>
       ) : null}
 
+      {seriesControls}
+      </div>
+
       {embedded && accountSection === "upcoming" ? (
-        <section className="my-lessons__account-section" id="account-upcoming-lessons" aria-labelledby="upcoming-lessons-heading">
+        <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-upcoming-lessons" aria-labelledby="upcoming-lessons-heading">
           <div className="my-lessons__account-section-heading">
             <div>
               <h3 className="eyebrow" id="upcoming-lessons-heading">Upcoming lessons</h3>
@@ -633,7 +693,7 @@ export function MyLessons({
       ) : null}
 
       {embedded && accountSection === "history" ? (
-        <section className="my-lessons__account-section" id="account-past-lessons" aria-labelledby="past-lessons-heading">
+        <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-past-lessons" aria-labelledby="past-lessons-heading">
           <h3 className="eyebrow" id="past-lessons-heading">Past lessons</h3>
           <ul className="lesson-list lesson-list--past">
             {past.map((booking) => (
@@ -652,62 +712,6 @@ export function MyLessons({
               </li>
             ))}
           </ul>
-        </section>
-      ) : null}
-
-      {showSeries && series.length ? (
-        <section className="my-lessons__series">
-          <h2>Repeating</h2>
-          {series.map((entry) => (
-            <div className="my-lessons__series-row" key={entry.id}>
-              <p>
-                <Repeat size={16} aria-hidden="true" />
-                <strong>{WEEKDAYS[entry.weekday]}s at {minutesToClock(entry.minuteOfDay)}</strong> Porto time
-                {entry.openEnded ? ", every week" : ""}. {entry.upcoming}{" "}
-                {entry.upcoming === 1 ? "lesson" : "lessons"} still to come.
-              </p>
-              {confirmingStop === entry.id ? (
-                <div
-                  aria-labelledby={`stop-series-${entry.id}`}
-                  className="my-lessons__series-confirmation"
-                  role="group"
-                >
-                  <div>
-                    <h3 id={`stop-series-${entry.id}`}>Stop repeating lessons?</h3>
-                    <p>Your booked lessons will stay. You can cancel them individually below.</p>
-                  </div>
-                  <div className="my-lessons__series-confirmation-actions">
-                    <button
-                      autoFocus
-                      className="button button--coral"
-                      disabled={stopping === entry.id}
-                      onClick={() => stopRepeating(entry.id)}
-                      type="button"
-                    >
-                      {stopping === entry.id ? "Stopping…" : "Yes, stop repeating"}
-                    </button>
-                    <button
-                      className="text-action"
-                      disabled={stopping === entry.id}
-                      onClick={() => keepRepeating(entry.id)}
-                      type="button"
-                    >
-                      No, keep repeating
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  className="text-action"
-                  id={`stop-repeat-${entry.id}`}
-                  onClick={() => applyTransition(() => setConfirmingStop(entry.id))}
-                  type="button"
-                >
-                  Stop repeating
-                </button>
-              )}
-            </div>
-          ))}
         </section>
       ) : null}
 
