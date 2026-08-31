@@ -110,14 +110,18 @@ depending on them having kept the right confirmation email.
   Every lesson a student has booked is marked on the calendar at `/book`; choosing
   a booked day or a free day reduces the eight-week overview to that one week,
   putting the selected lesson or available times immediately beneath it on a
-  phone. `Show all dates` restores the overview. Choosing an individual booking
-  opens move and cancel in place. The emailed token still opens that same interface
-  without requiring sign-in, so a forgotten password never blocks a change. The
-  old `/my-lessons` and `/booking` paths remain valid for links already in the
-  world, then normalise to `/book`.
+  phone. Each completed choice then becomes a compact summary: the lesson cards
+  collapse after a type is chosen, the calendar collapses after a time is chosen,
+  and the page moves the next decision into view. `Show all dates` restores the
+  overview. Choosing an individual booking opens move and cancel in place. The
+  emailed token still opens that same interface without requiring sign-in, so a
+  forgotten password never blocks a change. The old `/my-lessons` and `/booking`
+  paths remain valid for links already in the world, then normalise to `/book`.
 - **Signed-in account and repeat controls are always on the page.** They sit above
-  the lesson choices rather than behind an Account/Close disclosure, with profile
-  editing, sign out and stopping a repeat in the same workspace.
+  the lesson choices as a compact right-aligned block rather than behind an
+  Account/Close disclosure, with profile editing, sign out and stopping a repeat
+  in the same workspace. Past lessons live in a collapsed History section at the
+  bottom, so they do not interrupt the next booking.
 
 ### Repeating bookings
 

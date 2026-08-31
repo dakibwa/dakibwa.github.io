@@ -146,6 +146,26 @@ function loadStripeJs() {
   return stripeJs;
 }
 
+/**
+ * A decision should hand the student to the next decision, especially on a
+ * phone where the next panel sits below what they just chose. Two animation
+ * frames let React commit the collapsed state before the browser measures the
+ * new position. Reduced-motion preferences are respected.
+ */
+function orientTo(id: string, focus = false) {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const target = document.getElementById(id);
+      if (!target) return;
+      if (focus) target.focus({ preventScroll: true });
+      target.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start"
+      });
+    });
+  });
+}
+
 export function BookingCalendar({ initialManageToken = "" }: { initialManageToken?: string } = {}) {
   const [step, setStep] = useState<Step>("lesson");
   /*
@@ -348,6 +368,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const calendarBookings = myBookings
     .filter((booking) => !booking.isPast && booking.status === "confirmed")
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const bookingHistory = myBookings
+    .filter((booking) => booking.isPast || booking.status === "cancelled")
+    .sort((a, b) => b.startAt.localeCompare(a.startAt));
   if (
     managed &&
     !managed.isPast &&
@@ -418,6 +441,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
   const firstCalendarBookingStart = calendarBookings[0]?.startAt ?? "";
+  const isConfirmingBooking = step === "details" && Boolean(lessonType && chosen) && !managed;
 
   useEffect(() => {
     if (selectedDate || !firstCalendarBookingStart) return;
@@ -476,9 +500,17 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   function goTo(next: Step) {
     setStep(next);
     setSubmitError("");
-    // Moving focus to the heading is what makes a stepped flow usable with a
-    // screen reader; without it the change is silent.
-    requestAnimationFrame(() => document.getElementById("booking-step-heading")?.focus());
+    if (next === "details") {
+      // Moving focus to the heading is what makes a stepped flow usable with a
+      // screen reader; without it the change is silent.
+      orientTo("booking-step-heading", true);
+    } else if (next === "time") {
+      orientTo("booking-next-step");
+    } else if (next === "day") {
+      orientTo("lesson-calendar");
+    } else if (next === "lesson") {
+      orientTo("booking-lesson-choice");
+    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -729,6 +761,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 setHadLesson(false);
               }}
               showCalendar={false}
+              showHistory={false}
             />
           </section>
         ) : null}
@@ -740,44 +773,76 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           </div>
         ) : null}
 
-        <div className="unified-booking__lesson-picker">
-          <p className="eyebrow">What would you like to book?</p>
-          <div className="lesson-choice">
-            {(hadLesson ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes).map((type) => (
-              <button
-                aria-pressed={lessonTypeId === type.id}
-                className={`lesson-card${lessonTypeId === type.id ? " is-selected" : ""}`}
-                key={type.id}
-                onClick={() => {
-                  if (managed) closeManagedLesson();
-                  setLoadingSlots(true);
-                  setSlotsByDate({});
-                  setLessonTypeId(type.id);
-                  setCalendarCompact(false);
-                  setSelectedSlot("");
-                  setStep("day");
-                }}
-                type="button"
-              >
-                <LessonMark className="lesson-card__mark" lessonTypeId={type.id} />
-                <span className="lesson-card__text">
-                  <strong>{type.name}</strong>
-                  <span className="lesson-card__meta">
-                    {formatLessonDuration(type.duration_minutes)} · {formatMoneyCents(type.price_cents)}
-                  </span>
+        {!managed && !isConfirmingBooking ? (
+          <div className="unified-booking__lesson-picker" id="booking-lesson-choice">
+            {lessonType && step !== "lesson" ? (
+              <div className="booking-choice-summary" aria-label="Chosen lesson type">
+                <LessonMark className="booking-choice-summary__mark" lessonTypeId={lessonType.id} />
+                <span className="booking-choice-summary__copy">
+                  <span className="eyebrow">Booking</span>
+                  <strong>{lessonType.name}</strong>
+                  <small>
+                    {formatLessonDuration(lessonType.duration_minutes)} · {formatMoneyCents(lessonType.price_cents)}
+                  </small>
                 </span>
-                <ChevronRight aria-hidden="true" size={20} />
-              </button>
-            ))}
-            {!lessonTypes.length && !loadError ? <p className="booking-state-note">No lessons are listed right now.</p> : null}
+                <button
+                  className="text-action booking-choice-summary__change"
+                  onClick={() => {
+                    setSelectedSlot("");
+                    setCalendarCompact(false);
+                    goTo("lesson");
+                  }}
+                  type="button"
+                >
+                  Change lesson
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="eyebrow">What would you like to book?</p>
+                <div className="lesson-choice">
+                  {(hadLesson ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes).map((type) => (
+                    <button
+                      aria-pressed={lessonTypeId === type.id}
+                      className={`lesson-card${lessonTypeId === type.id ? " is-selected" : ""}`}
+                      key={type.id}
+                      onClick={() => {
+                        if (type.id !== lessonTypeId) {
+                          setLoadingSlots(true);
+                          setSlotsByDate({});
+                        }
+                        setLessonTypeId(type.id);
+                        setCalendarCompact(false);
+                        setSelectedSlot("");
+                        goTo("day");
+                      }}
+                      type="button"
+                    >
+                      <LessonMark className="lesson-card__mark" lessonTypeId={type.id} />
+                      <span className="lesson-card__text">
+                        <strong>{type.name}</strong>
+                        <span className="lesson-card__meta">
+                          {formatLessonDuration(type.duration_minutes)} · {formatMoneyCents(type.price_cents)}
+                        </span>
+                      </span>
+                      <ChevronRight aria-hidden="true" size={20} />
+                    </button>
+                  ))}
+                  {!lessonTypes.length && !loadError ? (
+                    <p className="booking-state-note">No lessons are listed right now.</p>
+                  ) : null}
+                </div>
+              </>
+            )}
           </div>
-        </div>
+        ) : null}
 
-        {!calendarBookings.length ? (
+        {!isConfirmingBooking && !calendarBookings.length ? (
           <p className="unified-calendar__empty-summary">No lessons currently booked. Choose a lesson type to add one.</p>
         ) : null}
 
-        <div className="unified-calendar" id="lesson-calendar">
+        {!isConfirmingBooking ? (
+          <div className="unified-calendar" id="lesson-calendar">
           <div className="calendar-panel unified-calendar__grid">
             <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
             <div className="unified-calendar__toolbar">
@@ -831,7 +896,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                             setSelectedDate(cell.key);
                             setCalendarCompact(true);
                             setSelectedSlot("");
-                            if (step === "details") setStep("time");
+                            if (lessonType && !managed) goTo("time");
+                            else orientTo("booking-next-step");
                           }}
                           type="button"
                         >
@@ -854,7 +920,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             {loadingSlots ? <p className="booking-state-note">Checking what&rsquo;s free…</p> : null}
           </div>
 
-          <aside className="unified-calendar__panel" aria-live="polite">
+          <aside className="unified-calendar__panel" id="booking-next-step" aria-live="polite" tabIndex={-1}>
             {showAccountSignIn && !student ? (
               <AuthPanel
                 heading="Sign in"
@@ -1081,9 +1147,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               </>
             )}
           </aside>
-        </div>
+          </div>
+        ) : null}
 
-        {step === "details" ? (
+        {isConfirmingBooking ? (
           <>
             <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
               {student ? "Confirm your lesson" : "Sign in to confirm"}
@@ -1312,19 +1379,28 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     <p className="booking-form-note">
                       You&rsquo;ll pay your first lesson now, securely with Stripe — each later lesson goes to the same
                       card automatically on its own day. Move or cancel any lesson free until the day before from your{" "}
-                      <a href="#lesson-calendar">lesson calendar</a>. On a lesson&rsquo;s own day it&rsquo;s yours:{" "}
+                      <button className="booking-form-note__calendar" onClick={() => goTo("time")} type="button">
+                        lesson calendar
+                      </button>
+                      . On a lesson&rsquo;s own day it&rsquo;s yours:{" "}
                       <strong>no changes and no refunds</strong>.
                     </p>
                   ) : prepay ? (
                     <p className="booking-form-note">
                       You&rsquo;ll pay now, securely with Stripe. Move or cancel free until the day before from your{" "}
-                      <a href="#lesson-calendar">lesson calendar</a> — a cancellation is refunded automatically. On the day of
+                      <button className="booking-form-note__calendar" onClick={() => goTo("time")} type="button">
+                        lesson calendar
+                      </button>{" "}
+                      — a cancellation is refunded automatically. On the day of
                       the lesson it&rsquo;s yours: <strong>no changes and no refunds</strong>.
                     </p>
                   ) : (
                     <p className="booking-form-note">
                       You pay on the day, in person with Inês. Change your booking any time from your{" "}
-                      <a href="#lesson-calendar">lesson calendar</a> &mdash; free until the day before,{" "}
+                      <button className="booking-form-note__calendar" onClick={() => goTo("time")} type="button">
+                        lesson calendar
+                      </button>{" "}
+                      &mdash; free until the day before,{" "}
                       <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong> on the day itself.
                     </p>
                   )}
@@ -1332,6 +1408,34 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               )}
             </div>
           </>
+        ) : null}
+
+        {student && bookingHistory.length ? (
+          <details className="booking-history">
+            <summary>
+              <span>History</span>
+              <small>
+                {bookingHistory.length} {bookingHistory.length === 1 ? "booking" : "bookings"}
+              </small>
+            </summary>
+            <ul className="booking-history__list">
+              {bookingHistory.map((booking) => (
+                <li key={booking.reference}>
+                  <div>
+                    <strong>
+                      {booking.lessonType.name}
+                      {booking.status === "cancelled" ? <em> · cancelled</em> : null}
+                    </strong>
+                    <span>
+                      <CalendarDays size={16} aria-hidden="true" />
+                      {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
+                    </span>
+                  </div>
+                  <small>{booking.reference}</small>
+                </li>
+              ))}
+            </ul>
+          </details>
         ) : null}
       </div>
 
