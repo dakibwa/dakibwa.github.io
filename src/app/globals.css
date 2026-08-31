@@ -1329,6 +1329,162 @@ textarea,
   display: flow-root;
 }
 
+/* The booking page opens with one decision, not four sections competing for
+   attention. These two routes occupy the same calm surface the lesson picker
+   and calendar replace, so the journey feels continuous rather than like a
+   collection of pages stacked on top of each other. */
+.booking-journey-start,
+.booking-workflow-sign-in {
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-panel);
+  padding: clamp(1.35rem, 3.2vw, 2.35rem);
+  background: rgba(170, 164, 230, 0.1);
+  view-transition-name: booking-choice;
+}
+
+.booking-journey-start__heading {
+  margin-bottom: 1.25rem;
+}
+
+.booking-journey-start__heading .eyebrow {
+  margin-bottom: 0.35rem;
+}
+
+.booking-journey-start__heading h2,
+.booking-workflow-step-head h2 {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: clamp(1.05rem, 2.3vw, 1.35rem);
+  line-height: 1.3;
+}
+
+.booking-journey-start__choices {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.booking-intent-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto auto;
+  align-items: center;
+  min-height: 84px;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-tile);
+  padding: 0.9rem 1rem;
+  background: rgba(245, 236, 217, 0.5);
+  color: var(--ink);
+  cursor: pointer;
+  gap: 0.75rem;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.booking-intent-card--book {
+  border-color: rgba(194, 58, 39, 0.38);
+  background: rgba(194, 58, 39, 0.08);
+}
+
+.booking-intent-card:hover,
+.booking-intent-card:focus-visible {
+  border-color: var(--coral-action);
+  background: rgba(194, 58, 39, 0.12);
+}
+
+.booking-intent-card__icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: var(--squiggle-pill);
+  background: rgba(170, 164, 230, 0.24);
+  color: var(--lavender-ink);
+}
+
+.booking-intent-card--book .booking-intent-card__icon {
+  background: rgba(194, 58, 39, 0.12);
+  color: var(--coral-action);
+}
+
+.booking-intent-card strong {
+  font-family: var(--ui);
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.booking-intent-card__count {
+  display: grid;
+  min-width: 1.65rem;
+  min-height: 1.65rem;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(194, 58, 39, 0.12);
+  color: var(--coral-action);
+  font-family: var(--ui);
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.booking-intent-card > svg {
+  color: var(--lavender-ink);
+}
+
+.booking-workflow-step-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+  gap: 0.75rem 1rem;
+}
+
+.booking-workflow-step-head .booking-back {
+  flex: none;
+  margin-left: auto;
+}
+
+.booking-workflow-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-field);
+  padding: 0.72rem 0.95rem;
+  background: rgba(170, 164, 230, 0.1);
+  gap: 0.75rem 1rem;
+  view-transition-name: booking-choice;
+}
+
+.booking-workflow-context > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.booking-workflow-context .eyebrow {
+  margin: 0;
+  font-size: 0.58rem;
+}
+
+.booking-workflow-context strong {
+  font-family: var(--ui);
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.booking-workflow-context .text-action {
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+@container booking (min-width: 540px) {
+  .booking-journey-start__choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* A booking choice changes the size and content of one workspace. The native
    view-transition snapshot lets that workspace resize and dissolve as one
    surface, while the rest of the page stays still. There is no artificial
@@ -1388,6 +1544,9 @@ html.booking-fallback-transitioning .booking-stage {
    specific content that changed. The class is applied only around a booking
    decision, so this never adds a second entrance on initial page load. */
 html.booking-fallback-transitioning .booking-choice-summary,
+html.booking-fallback-transitioning .booking-journey-start,
+html.booking-fallback-transitioning .booking-workflow-context,
+html.booking-fallback-transitioning .booking-workflow-sign-in,
 html.booking-fallback-transitioning .calendar-weeks,
 html.booking-fallback-transitioning .unified-account-controls,
 html.booking-fallback-transitioning .unified-calendar__panel-content,
@@ -1989,7 +2148,7 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   margin: 0 0 1.6rem;
   border: 1px solid var(--rule);
   border-radius: var(--squiggle-panel);
-  padding: 0.9rem 1.1rem;
+  padding: 1.2rem clamp(1.2rem, 2.6vw, 1.65rem) 1.3rem;
   background: rgba(170, 164, 230, 0.1);
   view-transition-name: booking-account;
 }
@@ -2057,11 +2216,11 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   .unified-account-controls {
     width: 100%;
     margin-left: 0;
-    padding: 1rem;
+    padding: 1.15rem;
   }
 
   .my-lessons__header--embedded .my-lessons__header-actions {
-    width: 100%;
+    margin-left: auto;
     justify-content: flex-end;
     gap: 0.45rem 0.85rem;
   }
@@ -2082,6 +2241,23 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 
   .unified-calendar__toolbar {
     align-items: flex-start;
+  }
+}
+
+@container booking (max-width: 480px) {
+  .my-lessons__header--embedded .my-lessons__header-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-left: 0;
+    gap: 0.25rem 0.8rem;
+  }
+
+  .my-lessons__header--embedded .my-lessons__header-actions .text-action {
+    width: 100%;
+    justify-content: flex-end;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
   }
 }
 
@@ -3165,20 +3341,24 @@ button.text-action {
 /* Deliberately quiet. It is a thing a student changes once, sitting above the
    lessons they came to the page for. */
 .my-lessons__details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: grid;
   margin-bottom: 1.75rem;
   border: 1px solid var(--rule);
   border-radius: var(--squiggle-panel);
   padding: 1.2rem 1.3rem;
   background: rgba(170, 164, 230, 0.14);
-  gap: 0.5rem;
+  gap: 0.85rem;
+}
+
+.my-lessons__details-row {
+  display: grid;
+  align-items: end;
+  gap: 0.65rem 0.8rem;
 }
 
 .my-lessons__details label {
   display: block;
-  width: min(360px, 100%);
+  width: 100%;
 }
 
 .my-lessons__details label > span {
@@ -3203,6 +3383,21 @@ button.text-action {
 .my-lessons__details button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.my-lessons__details-row .button {
+  width: auto;
+  min-height: 46px;
+  justify-self: end;
+  padding-right: 1rem;
+  padding-left: 1rem;
+  white-space: nowrap;
+}
+
+@container booking (min-width: 520px) {
+  .my-lessons__details-row {
+    grid-template-columns: minmax(220px, 1fr) auto;
+  }
 }
 
 .my-lessons__details-note {
@@ -5142,6 +5337,9 @@ button.text-action {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .booking-journey-start,
+  .booking-workflow-context,
+  .booking-workflow-sign-in,
   .unified-account-controls,
   .unified-booking__lesson-picker,
   .unified-calendar__grid,
@@ -5197,6 +5395,9 @@ button.text-action {
   }
 
   .booking-choice-summary,
+  .booking-journey-start,
+  .booking-workflow-context,
+  .booking-workflow-sign-in,
   .calendar-weeks,
   .unified-account-controls,
   .unified-calendar__panel-content,

@@ -66,6 +66,7 @@ import { staticLessonTypes } from "@/lib/lesson-products";
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 type Step = "lesson" | "day" | "time" | "details";
+type BookingIntent = "choose" | "book" | "lessons";
 
 /** "once" is a real choice, not the absence of one, so it lives in the union. */
 type RepeatOption = "once" | 4 | "open";
@@ -257,6 +258,7 @@ function orientTo(id: string, focus = false) {
 
 export function BookingCalendar({ initialManageToken = "" }: { initialManageToken?: string } = {}) {
   const [step, setStep] = useState<Step>("lesson");
+  const [intent, setIntent] = useState<BookingIntent>("choose");
   /*
    * Seeded from the published lesson copy so the three cards are in the static
    * HTML and on screen at first paint. Before this the first step was an empty
@@ -325,7 +327,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   // Someone with a lesson behind them shouldn't see the trial at all — the
   // server refuses it anyway, but a card you can't book is a trap, not a choice.
   const [hadLesson, setHadLesson] = useState(false);
-  const [trialNotice, setTrialNotice] = useState("");
   const [managedToken, setManagedToken] = useState("");
   const [managed, setManaged] = useState<ManagedBooking | null>(null);
   const [manageMode, setManageMode] = useState<"view" | "reschedule" | "confirm-cancel">("view");
@@ -349,7 +350,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     const data = await fetchMe(session);
     setStudent(data?.student ?? null);
     setMyBookings(data?.bookings ?? []);
-    setHadLesson((data?.bookings ?? []).some((booking) => booking.status !== "cancelled"));
+    setHadLesson((data?.bookings ?? []).some((booking) => booking.isPast && booking.status !== "cancelled"));
     return data;
   }, []);
 
@@ -357,8 +358,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     const key = portoDateKey(new Date());
     setTodayKey(key);
     setStudentZone(browserTimeZone());
-    if (new URLSearchParams(window.location.search).get("view") === "lessons" && !readSession()) {
-      setShowAccountSignIn(true);
+    if (new URLSearchParams(window.location.search).get("view") === "lessons") {
+      setIntent("lessons");
+      if (!readSession()) setShowAccountSignIn(true);
     }
 
     listLessonTypes()
@@ -374,18 +376,25 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   }, [refreshStudent]);
 
   // Signing in mid-flow can reveal a history the lesson step didn't know
-  // about. If the trial is the current choice, step back rather than letting
-  // the confirm button walk into the server's refusal.
+  // about. If the trial is the current choice, dissolve it and put the real
+  // choices back in the same place. A large warning makes an eligibility rule
+  // feel like the student's mistake; the unavailable option simply leaves.
   useEffect(() => {
     if (!hadLesson || lessonTypeId !== "trial") return;
-    setLessonTypeId("");
-    setSelectedSlot("");
-    goTo("lesson");
-    setTrialNotice("The trial is for a first lesson with Inês. You've already had a lesson, so choose a single lesson instead.");
+    transitionBooking(() => {
+      setIntent("book");
+      setLessonTypeId("");
+      setSelectedDate("");
+      setSelectedSlot("");
+      setCalendarCompact(false);
+      setStep("lesson");
+    });
+    orientTo("booking-lesson-choice");
   }, [hadLesson, lessonTypeId]);
 
   const openManaged = useCallback(async (token: string) => {
     if (!token) return;
+    setIntent("lessons");
     setCalendarCompact(true);
     setManagedToken(token);
     setManageLoading(true);
@@ -484,31 +493,21 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     });
   }
 
-  const dayNumber = (key: string) => {
-    const [year, month, day] = key.split("-").map(Number);
-    return Date.UTC(year, month - 1, day) / 86_400_000;
-  };
-  const calendarWindowBookings = todayKey
-    ? calendarBookings.filter(
-        (booking) => dayNumber(portoDateKey(new Date(booking.startAt))) - dayNumber(todayKey) <= horizonDays
-      )
-    : [];
-  const laterBookingCount = calendarBookings.length - calendarWindowBookings.length;
-  const bookingsByDate = calendarWindowBookings.reduce<Record<string, MyBooking[]>>((dates, booking) => {
+  const allBookingsByDate = calendarBookings.reduce<Record<string, MyBooking[]>>((dates, booking) => {
     const key = portoDateKey(new Date(booking.startAt));
     (dates[key] ??= []).push(booking);
     return dates;
   }, {});
   const allCalendarWeeks = todayKey ? buildBookingWeeks(todayKey, horizonDays) : [];
   const firstRelevantWeek = allCalendarWeeks.findIndex((week) =>
-    week.cells.some((cell) => Boolean(slotsByDate[cell.key]?.length || bookingsByDate[cell.key]?.length))
+    week.cells.some((cell) => Boolean(slotsByDate[cell.key]?.length || allBookingsByDate[cell.key]?.length))
   );
   const currentWeekHasBooking = Boolean(
-    allCalendarWeeks[0]?.cells.some((cell) => Boolean(bookingsByDate[cell.key]?.length))
+    allCalendarWeeks[0]?.cells.some((cell) => Boolean(allBookingsByDate[cell.key]?.length))
   );
   const todayWeekday = todayKey ? new Date(`${todayKey}T12:00:00Z`).getUTCDay() : -1;
   const startsOnClosedWeekend = (todayWeekday === 0 || todayWeekday === 6) && !currentWeekHasBooking;
-  const calendarWeeks =
+  const uncappedCalendarWeeks =
     availabilityLessonTypeId && firstRelevantWeek > 0
       ? allCalendarWeeks.slice(firstRelevantWeek).map((week, index) =>
           index === 0 && !week.showMonth ? { ...week, showMonth: true } : week
@@ -518,6 +517,20 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             index === 0 && !week.showMonth ? { ...week, showMonth: true } : week
           )
       : allCalendarWeeks;
+  // A 56-day inclusive range can touch a ninth Monday–Sunday row. The product
+  // promise is eight visible weeks, so the interface shows eight rows exactly;
+  // anything already booked after them stays reachable from Upcoming lessons.
+  const calendarWeeks = uncappedCalendarWeeks.slice(0, 8);
+  const visibleCalendarDates = new Set(calendarWeeks.flatMap((week) => week.cells.map((cell) => cell.key)));
+  const calendarWindowBookings = calendarBookings.filter((booking) =>
+    visibleCalendarDates.has(portoDateKey(new Date(booking.startAt)))
+  );
+  const laterBookingCount = calendarBookings.length - calendarWindowBookings.length;
+  const bookingsByDate = calendarWindowBookings.reduce<Record<string, MyBooking[]>>((dates, booking) => {
+    const key = portoDateKey(new Date(booking.startAt));
+    (dates[key] ??= []).push(booking);
+    return dates;
+  }, {});
   const selectedCalendarWeek = selectedDate
     ? calendarWeeks.find((week) => week.cells.some((cell) => cell.key === selectedDate))
     : undefined;
@@ -531,6 +544,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
   const firstCalendarBookingStart = calendarWindowBookings[0]?.startAt ?? "";
   const isConfirmingBooking = step === "details" && Boolean(lessonType && chosen) && !managed;
+  const needsLessonsSignIn = intent === "lessons" && showAccountSignIn && !student;
+  const showStartChoice = intent === "choose" && !managed && !isConfirmingBooking;
+  const showLessonChoice = intent === "book" && !managed && !isConfirmingBooking;
+  const showWorkflowCalendar =
+    !isConfirmingBooking &&
+    !needsLessonsSignIn &&
+    (intent === "lessons" || Boolean(intent === "book" && lessonType && step !== "lesson") || Boolean(managed));
+  const visibleLessonTypes = hadLesson ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes;
   const panelMotionKey = showAccountSignIn && !student
     ? "sign-in"
     : manageLoading
@@ -542,9 +563,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           : `calendar-${selectedDate || "none"}-${lessonTypeId || "none"}`;
 
   useEffect(() => {
-    if (selectedDate || !firstCalendarBookingStart) return;
+    if (intent !== "lessons" || selectedDate || !firstCalendarBookingStart) return;
     setSelectedDate(portoDateKey(new Date(firstCalendarBookingStart)));
-  }, [firstCalendarBookingStart, selectedDate]);
+    setCalendarCompact(true);
+  }, [firstCalendarBookingStart, intent, selectedDate]);
 
   /*
    * Which weeks a repeat would actually take, asked for before anything is
@@ -609,6 +631,53 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     } else if (next === "lesson") {
       orientTo("booking-lesson-choice");
     }
+  }
+
+  function startBookingJourney() {
+    transitionBooking(() => {
+      setIntent("book");
+      setShowAccountSignIn(false);
+      setManaged(null);
+      setManagedToken("");
+      setManageMode("view");
+      setLessonTypeId("");
+      setSelectedDate("");
+      setSelectedSlot("");
+      setCalendarCompact(false);
+      setStep("lesson");
+    });
+    orientTo("booking-lesson-choice", true);
+  }
+
+  function openLessonsJourney() {
+    transitionBooking(() => {
+      setIntent("lessons");
+      setLessonTypeId("");
+      setSelectedSlot("");
+      setCalendarCompact(Boolean(firstCalendarBookingStart));
+      setStep("day");
+      setShowAccountSignIn(!student);
+      if (firstCalendarBookingStart) {
+        setSelectedDate(portoDateKey(new Date(firstCalendarBookingStart)));
+      } else {
+        setSelectedDate("");
+      }
+    });
+    orientTo(student ? "lesson-calendar" : "booking-lessons-sign-in", true);
+  }
+
+  function returnToJourneyStart() {
+    transitionBooking(() => {
+      closeManagedLesson();
+      setIntent("choose");
+      setShowAccountSignIn(false);
+      setLessonTypeId("");
+      setSelectedDate("");
+      setSelectedSlot("");
+      setCalendarCompact(false);
+      setStep("lesson");
+    });
+    orientTo("booking-journey-start", true);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -845,23 +914,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       ) : null}
 
       <div className="booking-stage">
-        {!student ? (
-          <div className="unified-booking__head">
-            {checkingSession ? (
-              <p className="booking-state-note">Checking your account…</p>
-            ) : (
-              <button
-                className="text-action"
-                onClick={() => transitionBooking(() => setShowAccountSignIn(true))}
-                type="button"
-              >
-                Sign in to see your lessons
-              </button>
-            )}
-          </div>
-        ) : null}
-
-        {student ? (
+        {student && !isConfirmingBooking ? (
           <section
             className="unified-account-controls"
             id="account-controls"
@@ -880,22 +933,74 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 setStudent(null);
                 setMyBookings([]);
                 setHadLesson(false);
+                setIntent("choose");
+                setLessonTypeId("");
+                setSelectedDate("");
+                setSelectedSlot("");
               }}
               showCalendar={false}
-              showHistory
+              showHistory={intent === "lessons"}
+              showSeries={intent === "lessons"}
             />
           </section>
         ) : null}
 
-        {trialNotice ? (
-          <div className="booking-alert" role="status">
-            <AlertCircle size={18} aria-hidden="true" />
-            <p>{trialNotice}</p>
-          </div>
+        {showStartChoice ? (
+          <section className="booking-journey-start" id="booking-journey-start" tabIndex={-1}>
+            <div className="booking-journey-start__heading">
+              <p className="eyebrow">Start here</p>
+              <h2>What would you like to do?</h2>
+            </div>
+            <div className="booking-journey-start__choices">
+              <button className="booking-intent-card booking-intent-card--book" onClick={startBookingJourney} type="button">
+                <span className="booking-intent-card__icon" aria-hidden="true">
+                  <CalendarDays size={24} />
+                </span>
+                <strong>Book a new lesson</strong>
+                <ChevronRight aria-hidden="true" size={20} />
+              </button>
+              <button className="booking-intent-card" onClick={openLessonsJourney} type="button">
+                <span className="booking-intent-card__icon" aria-hidden="true">
+                  <CheckCircle2 size={24} />
+                </span>
+                <strong>View your lessons</strong>
+                {student && calendarBookings.length ? (
+                  <span className="booking-intent-card__count" aria-label={`${calendarBookings.length} upcoming lessons`}>
+                    {calendarBookings.length}
+                  </span>
+                ) : null}
+                <ChevronRight aria-hidden="true" size={20} />
+              </button>
+            </div>
+          </section>
         ) : null}
 
-        {!managed && !isConfirmingBooking ? (
-          <div className="unified-booking__lesson-picker" id="booking-lesson-choice">
+        {needsLessonsSignIn ? (
+          <section className="booking-workflow-sign-in" id="booking-lessons-sign-in" tabIndex={-1}>
+            <div className="booking-workflow-step-head">
+              <h2>Sign in to view your lessons</h2>
+              <button className="booking-back booking-back--tertiary" onClick={returnToJourneyStart} type="button">
+                <ArrowLeft size={16} aria-hidden="true" /> Back
+              </button>
+            </div>
+            <AuthPanel
+              heading="Your account"
+              headingLevel={3}
+              initialMode="signin"
+              intro="Your upcoming lessons will appear on the calendar."
+              onSignedIn={(signedIn) => {
+                transitionBooking(() => {
+                  setStudent(signedIn);
+                  setShowAccountSignIn(false);
+                });
+                void refreshStudent();
+              }}
+            />
+          </section>
+        ) : null}
+
+        {showLessonChoice ? (
+          <div className="unified-booking__lesson-picker" id="booking-lesson-choice" tabIndex={-1}>
             {lessonType && step !== "lesson" ? (
               <div className="booking-choice-summary" aria-label="Chosen lesson type">
                 <LessonMark className="booking-choice-summary__mark" lessonTypeId={lessonType.id} />
@@ -922,9 +1027,17 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               </div>
             ) : (
               <>
-                <p className="eyebrow">What would you like to book?</p>
-                <div className="lesson-choice">
-                  {(hadLesson ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes).map((type) => (
+                <div className="booking-workflow-step-head">
+                  <h2>Choose a lesson</h2>
+                  <button className="booking-back booking-back--tertiary" onClick={returnToJourneyStart} type="button">
+                    <ArrowLeft size={16} aria-hidden="true" /> Back
+                  </button>
+                </div>
+                {checkingSession ? (
+                  <p className="booking-state-note">Checking which lessons are available to you…</p>
+                ) : (
+                  <div className="lesson-choice">
+                  {visibleLessonTypes.map((type) => (
                     <button
                       aria-pressed={lessonTypeId === type.id}
                       className={`lesson-card${lessonTypeId === type.id ? " is-selected" : ""}`}
@@ -956,27 +1069,33 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   {!lessonTypes.length && !loadError ? (
                     <p className="booking-state-note">No lessons are listed right now.</p>
                   ) : null}
-                </div>
+                  </div>
+                )}
               </>
             )}
           </div>
         ) : null}
 
-        {!isConfirmingBooking && !calendarWindowBookings.length ? (
-          <p className="unified-calendar__empty-summary">
-            No lessons booked in the next eight weeks.
-            {laterBookingCount ? " Later booked lessons are in your account above." : " Choose a lesson type to add one."}
-          </p>
+        {intent === "lessons" && !needsLessonsSignIn && !managed && !isConfirmingBooking ? (
+          <div className="booking-workflow-context" aria-label="Viewing your lessons">
+            <div>
+              <span className="eyebrow">Your calendar</span>
+              <strong>{calendarBookings.length ? `${calendarBookings.length} upcoming` : "Nothing booked yet"}</strong>
+            </div>
+            <button className="text-action" onClick={startBookingJourney} type="button">
+              Book a new lesson
+            </button>
+          </div>
         ) : null}
 
-        {!isConfirmingBooking ? (
+        {showWorkflowCalendar ? (
           <div className="unified-calendar" id="lesson-calendar">
           <div className="calendar-panel unified-calendar__grid">
             <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
             <div className="unified-calendar__toolbar">
               <div className="unified-calendar__legend" aria-label="Calendar key">
                 <span><i className="is-booked" aria-hidden="true" /> Booked lesson</span>
-                <span><i className="is-free" aria-hidden="true" /> Free to book</span>
+                {intent === "book" ? <span><i className="is-free" aria-hidden="true" /> Free to book</span> : null}
               </div>
               {isCalendarCompact ? (
                 <button
@@ -1238,8 +1357,16 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               </div>
             ) : (
               <>
-                <p className="eyebrow">{selectedDate ? "Selected day" : "Your calendar"}</p>
-                <h3>{selectedDate ? formatLongDate(`${selectedDate}T12:00:00Z`) : "Choose a day"}</h3>
+                <p className="eyebrow">
+                  {selectedDate ? "Selected day" : intent === "lessons" ? "Upcoming lessons" : "Choose a day"}
+                </p>
+                <h3>
+                  {selectedDate
+                    ? formatLongDate(`${selectedDate}T12:00:00Z`)
+                    : intent === "lessons" && !calendarWindowBookings.length
+                      ? "Nothing booked yet"
+                      : "Choose a day"}
+                </h3>
 
                 {selectedDayBookings.length ? (
                   <div className="unified-calendar__bookings">
@@ -1270,7 +1397,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   </div>
                 ) : (
                   <p className="booking-state-note">
-                    {calendarWindowBookings.length ? "No lesson booked on this day." : "No lessons booked in the next eight weeks."}
+                    {calendarWindowBookings.length
+                      ? "No lesson booked on this day."
+                      : laterBookingCount
+                        ? "Your next booked dates are in Upcoming lessons above."
+                        : "No lessons booked in these eight weeks."}
                   </p>
                 )}
 
@@ -1318,9 +1449,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       <p className="booking-state-note">No free times on this day.</p>
                     )}
                   </div>
-                ) : (
+                ) : intent === "book" ? (
                   <p className="unified-calendar__prompt">Choose a lesson type above to add free times to this calendar.</p>
-                )}
+                ) : null}
               </>
             )}
             </div>

@@ -38,8 +38,9 @@ await fallbackMotionPage.addInitScript(() => {
 });
 await fallbackMotionPage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
 await fallbackMotionPage
-  .getByRole("button", { name: "Sign in to see your lessons", exact: true })
+  .getByRole("button", { name: "Book a new lesson", exact: true })
   .waitFor({ state: "visible", timeout: 10_000 });
+await fallbackMotionPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
 const fallbackSingleLesson = fallbackMotionPage.getByRole("button", {
   name: "Single lesson 60 minutes · €25",
   exact: true
@@ -216,6 +217,11 @@ if (!bookingCalendar && !bookingPlaceholder) {
 }
 
 if (bookingCalendar) {
+  await page.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor({ timeout: 10_000 });
+  if ((await page.locator("#lesson-calendar").count()) !== 0) {
+    throw new Error("The booking calendar should wait for the student's first decision.");
+  }
+  await page.getByRole("button", { name: "Book a new lesson", exact: true }).click();
   try {
     await page.waitForSelector(".lesson-card", { timeout: 10_000 });
   } catch {
@@ -227,7 +233,7 @@ if (bookingCalendar) {
   }
 
   const bookingText = (await page.locator(".booking-composition").innerText()).toLowerCase();
-  assertIncludes(bookingText, "what would you like to book?", "lesson choice heading");
+  assertIncludes(bookingText, "choose a lesson", "lesson choice heading");
   assertIncludes(bookingText, "porto time", "booking timezone note");
   if (bookingText.includes("booked lessons and free times share the same calendar")) {
     throw new Error("The unified calendar still repeats its own purpose above the booking controls.");
@@ -235,8 +241,8 @@ if (bookingCalendar) {
   if ((await page.locator(".unified-booking__head .booking-step-heading").count()) !== 0) {
     throw new Error("The unified calendar still has a redundant visible heading.");
   }
-  if ((await page.locator("#lesson-calendar").count()) !== 1) {
-    throw new Error("Booking and lesson management should share one calendar.");
+  if ((await page.locator("#lesson-calendar").count()) !== 0) {
+    throw new Error("The calendar should wait until the lesson type has been chosen.");
   }
 
   // The mobile menu replaces the inline nav below 820px; both must work.
@@ -290,6 +296,14 @@ await accountPage.route("**/lesson-types", async (route) => {
     headers: { "Access-Control-Allow-Origin": "*" },
     body: JSON.stringify({
       lessonTypes: [
+        {
+          id: "trial",
+          slug: "trial-lesson",
+          name: "Trial lesson",
+          description: "A first lesson with Inês.",
+          duration_minutes: 60,
+          price_cents: 2000
+        },
         {
           id: "single-60",
           slug: "single-lesson",
@@ -380,7 +394,7 @@ await accountPage.route("**/me", async (route) => {
         },
         {
           reference: "INES-OLD1",
-          status: "cancelled",
+          status: "confirmed",
           startAt: qaPastStart.toISOString(),
           endAt: qaPastEnd.toISOString(),
           location: "online",
@@ -515,7 +529,6 @@ for (const oldToggleName of ["Account", "Close", "Close account"]) {
   }
 }
 await accountPage.getByRole("button", { name: "Sign out", exact: true }).waitFor();
-await accountPage.getByRole("button", { name: "Stop repeating", exact: true }).waitFor();
 if ((await accountPanel.getByText("Ana Martins", { exact: true }).count()) !== 1) {
   throw new Error("The signed-in identity should appear once, inside the account bar.");
 }
@@ -527,6 +540,63 @@ for (const duplicateIdentity of ["Signed in as", "Booking as", "Not you?"]) {
 if (await accountPage.locator(".booking-history").count()) {
   throw new Error("The old detached history disclosure is still rendered below the calendar.");
 }
+await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+if (await accountPage.locator("#lesson-calendar").count()) {
+  throw new Error("The calendar should not compete with the first book-or-view decision.");
+}
+if (await accountPage.locator(".unified-booking__lesson-picker").count()) {
+  throw new Error("Lesson types should wait until the student chooses to book.");
+}
+for (const hiddenUntilViewing of [/Upcoming lessons/, /Past lessons/, /Stop repeating/]) {
+  if (await accountPanel.getByRole("button", { name: hiddenUntilViewing }).count()) {
+    throw new Error(`${hiddenUntilViewing} should not compete with the first workflow choice.`);
+  }
+}
+const initialWorkflowLayout = await accountPage.evaluate(() => {
+  const account = document.querySelector("#account-controls")?.getBoundingClientRect();
+  const start = document.querySelector("#booking-journey-start")?.getBoundingClientRect();
+  const accountName = document.querySelector(".my-lessons__account-name")?.getBoundingClientRect();
+  return {
+    accountLeft: account?.left ?? 0,
+    accountRight: account?.right ?? 0,
+    startLeft: start?.left ?? 0,
+    startRight: start?.right ?? 0,
+    accountTop: account?.top ?? 0,
+    nameTop: accountName?.top ?? 0
+  };
+});
+if (
+  Math.abs(initialWorkflowLayout.accountLeft - initialWorkflowLayout.startLeft) > 2 ||
+  Math.abs(initialWorkflowLayout.accountRight - initialWorkflowLayout.startRight) > 2 ||
+  initialWorkflowLayout.nameTop - initialWorkflowLayout.accountTop < 16
+) {
+  throw new Error(`The first workflow and account bar are not cleanly aligned and padded: ${JSON.stringify(initialWorkflowLayout)}.`);
+}
+await accountPage.screenshot({ path: path.join(outDir, "booking-workflow-start-desktop.png"), fullPage: true });
+
+await accountPanel.getByRole("button", { name: "Edit details", exact: true }).click();
+await accountPanel.locator(".my-lessons__details").waitFor({ state: "visible" });
+await waitForOrientation(accountPage);
+const desktopDetailRows = await accountPanel.locator(".my-lessons__details-row").evaluateAll((rows) =>
+  rows.map((row) => {
+    const field = row.querySelector("label")?.getBoundingClientRect();
+    const action = row.querySelector("button")?.getBoundingClientRect();
+    return { fieldRight: field?.right ?? Infinity, actionLeft: action?.left ?? 0 };
+  })
+);
+if (desktopDetailRows.length !== 2 || desktopDetailRows.some((row) => row.actionLeft < row.fieldRight - 1)) {
+  throw new Error(`Account field actions should sit beside their fields when they fit: ${JSON.stringify(desktopDetailRows)}.`);
+}
+await accountPage.screenshot({ path: path.join(outDir, "booking-account-edit-desktop.png"), fullPage: true });
+await accountPanel.getByRole("button", { name: "Done", exact: true }).click();
+await accountPanel.locator(".my-lessons__details").waitFor({ state: "detached" });
+
+await accountPage.getByRole("button", { name: /View your lessons/ }).click();
+await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
+if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 1) {
+  throw new Error("Viewing existing lessons should open the next booked week, not the full calendar.");
+}
+await accountPage.getByRole("button", { name: "Stop repeating", exact: true }).waitFor();
 const pastLessonsToggle = accountPanel.getByRole("button", { name: /Past lessons/ });
 await pastLessonsToggle.click();
 await accountPanel.getByRole("heading", { name: "Past lessons", exact: true }).waitFor();
@@ -535,12 +605,17 @@ if (!(await accountPanel.getByText("INES-OLD1", { exact: true }).isVisible())) {
 }
 await pastLessonsToggle.click();
 
-const laterLessonsToggle = accountPanel.getByRole("button", { name: /Later lessons/ });
-await laterLessonsToggle.click();
-const laterLessonButton = accountPanel.getByRole("button", { name: /Booked.*Single lesson/ });
+const upcomingLessonsToggle = accountPanel.getByRole("button", { name: /Upcoming lessons/ });
+await upcomingLessonsToggle.click();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+const upcomingLessonButtons = accountPanel.locator("#account-upcoming-lessons .lesson-calendar__lesson");
+if ((await upcomingLessonButtons.count()) !== 3) {
+  throw new Error("Upcoming lessons should show every future booking in one place.");
+}
+const laterLessonButton = upcomingLessonButtons.last();
 await laterLessonButton.waitFor({ state: "visible" });
-if (!(await accountPanel.getByText(/eight-week booking calendar ends/i).isVisible())) {
-  throw new Error("Later lessons should explain why they are outside the booking calendar.");
+if (!(await accountPanel.getByText(/including dates after this eight-week calendar/i).isVisible())) {
+  throw new Error("Upcoming lessons should explain that it also includes dates beyond the calendar.");
 }
 await laterLessonButton.click();
 const laterManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
@@ -552,10 +627,10 @@ try {
 }
 await laterManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
 await laterManagePanel.getByRole("button", { name: "Back to calendar", exact: true }).click();
-await accountPage.locator(".unified-booking__lesson-picker").waitFor({ state: "visible" });
-if ((await laterLessonsToggle.getAttribute("aria-expanded")) === "true") {
-  await laterLessonsToggle.click();
-  await accountPanel.locator("#account-later-lessons").waitFor({ state: "detached" });
+await accountPage.locator(".booking-workflow-context").waitFor({ state: "visible" });
+if ((await upcomingLessonsToggle.getAttribute("aria-expanded")) === "true") {
+  await upcomingLessonsToggle.click();
+  await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "detached" });
 }
 await waitForOrientation(accountPage);
 if (await accountPage.locator(`#lesson-calendar [data-date-key="${qaLaterDate}"]`).count()) {
@@ -580,10 +655,7 @@ const desktopAccountLayout = await accountPage.evaluate(() => {
     intro: bounds(".booking-intro"),
     provider: bounds(".booking-provider"),
     panel: bounds("#account-controls"),
-    lessonPicker: bounds(".unified-booking__lesson-picker"),
-    lessonCards: [...document.querySelectorAll(".unified-booking__lesson-picker .lesson-card")].map((card) =>
-      card.getBoundingClientRect().width
-    )
+    workflowContext: bounds(".booking-workflow-context")
   };
 });
 if (
@@ -591,13 +663,13 @@ if (
   !desktopAccountLayout.intro ||
   !desktopAccountLayout.provider ||
   !desktopAccountLayout.panel ||
-  !desktopAccountLayout.lessonPicker ||
-  desktopAccountLayout.panel.bottom > desktopAccountLayout.lessonPicker.top + 1 ||
-  Math.abs(desktopAccountLayout.panel.left - desktopAccountLayout.lessonPicker.left) > 2 ||
-  Math.abs(desktopAccountLayout.panel.right - desktopAccountLayout.lessonPicker.right) > 2
+  !desktopAccountLayout.workflowContext ||
+  desktopAccountLayout.panel.bottom > desktopAccountLayout.workflowContext.top + 1 ||
+  Math.abs(desktopAccountLayout.panel.left - desktopAccountLayout.workflowContext.left) > 2 ||
+  Math.abs(desktopAccountLayout.panel.right - desktopAccountLayout.workflowContext.right) > 2
 ) {
   throw new Error(
-    `The account controls and booking choices should share one aligned workspace: ${JSON.stringify(desktopAccountLayout)}.`
+    `The account controls and active workflow should share one aligned workspace: ${JSON.stringify(desktopAccountLayout)}.`
   );
 }
 if (
@@ -605,13 +677,6 @@ if (
   desktopAccountLayout.provider.width <= desktopAccountLayout.intro.width
 ) {
   throw new Error("The desktop introduction still takes too much space from the booking task.");
-}
-if (
-  desktopAccountLayout.lessonCards.length !== 2 ||
-  Math.abs(desktopAccountLayout.lessonCards[0] - desktopAccountLayout.lessonCards[1]) > 2 ||
-  desktopAccountLayout.lessonCards.some((width) => width < 220)
-) {
-  throw new Error("The two desktop lesson choices should divide the available row evenly.");
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-account-desktop.png"), fullPage: true });
 
@@ -740,8 +805,7 @@ await accountPage.evaluate(() => {
 });
 
 const fullCalendarWeekCount = await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count();
-if (fullCalendarWeekCount <= 1) throw new Error("The calendar overview should show more than one week.");
-if (fullCalendarWeekCount > 9) {
+if (fullCalendarWeekCount !== 8) {
   throw new Error(`The eight-week booking window rendered ${fullCalendarWeekCount} calendar rows.`);
 }
 await accountPage.getByText("Next 8 weeks", { exact: true }).waitFor({ state: "visible" });
@@ -828,6 +892,17 @@ if (restoredCalendarWeekCount !== fullCalendarWeekCount) {
   );
 }
 
+await accountPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
+await accountPage.getByRole("heading", { name: "Choose a lesson", exact: true }).waitFor();
+if (await accountPage.locator("#lesson-calendar").count()) {
+  throw new Error("The calendar should wait until a lesson type has been chosen.");
+}
+if (await accountPage.getByRole("button", { name: /Trial lesson/ }).count()) {
+  throw new Error("A student who has attended a lesson should not be offered the trial.");
+}
+if (await accountPage.getByText(/The trial is for a first lesson/i).count()) {
+  throw new Error("Trial ineligibility should restore the valid choices without a warning banner.");
+}
 const lessonCardCount = await accountPage.locator(".unified-booking__lesson-picker .lesson-card").count();
 if (lessonCardCount !== 2) throw new Error(`Expected two full lesson choices; found ${lessonCardCount}.`);
 await accountPage.getByRole("button", { name: "Single lesson 60 minutes · €25", exact: true }).click();
@@ -935,6 +1010,12 @@ if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calend
 await lessonSummary.waitFor({ state: "visible" });
 await showAllDates.click();
 
+await changeLesson.click();
+await accountPage.getByRole("heading", { name: "Choose a lesson", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: "Back", exact: true }).click();
+await accountPage.getByRole("button", { name: /View your lessons/ }).click();
+await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
+
 const stopRepeating = accountPage.getByRole("button", { name: "Stop repeating", exact: true });
 await stopRepeating.click();
 await accountPage.getByRole("heading", { name: "Stop repeating lessons?", exact: true }).waitFor();
@@ -952,7 +1033,7 @@ await stopRepeating.waitFor({ state: "hidden" });
 if (stopRepeatCalls !== 1) throw new Error(`Expected one confirmed stop call; received ${stopRepeatCalls}.`);
 
 await accountPage.getByRole("button", { name: "Sign out", exact: true }).click();
-await accountPage.getByRole("button", { name: "Sign in to see your lessons", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: "Book a new lesson", exact: true }).waitFor();
 await accountPanel.waitFor({ state: "detached" });
 await accountPage.close();
 await accountBrowser.close();
@@ -961,7 +1042,7 @@ await accountBrowser.close();
 const legacyBrowser = await chromium.launch({ headless: true });
 const legacyPage = await legacyBrowser.newPage({ viewport: { width: 390, height: 844 } });
 await legacyPage.goto(`${base}/booking`, { waitUntil: "domcontentloaded" });
-await legacyPage.waitForSelector("#lesson-calendar", { timeout: 10_000 });
+await legacyPage.waitForSelector("#booking-journey-start", { timeout: 10_000 });
 await legacyPage.waitForFunction(() => window.location.pathname === "/book/", null, { timeout: 10_000 });
 if (new URL(legacyPage.url()).pathname !== "/book/") {
   throw new Error(`The legacy management route did not normalise to /book/: ${legacyPage.url()}`);
