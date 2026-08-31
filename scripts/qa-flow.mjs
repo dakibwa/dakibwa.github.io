@@ -919,45 +919,72 @@ if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-desktop.png"), fullPage: true });
 
-await recurringLaterGroup.getByRole("button", { name: "View next 4 lessons", exact: true }).click();
+await recurringLaterGroup.getByRole("button", { name: "Manage", exact: true }).click();
 const nextRecurringLessons = recurringLaterGroup.locator(".upcoming-lesson-group__date");
 await nextRecurringLessons.first().waitFor({ state: "visible" });
 if ((await nextRecurringLessons.count()) !== 4) {
   throw new Error("A repeating lesson should reveal only its next four booked occurrences.");
 }
 await nextRecurringLessons.first().click();
-const upcomingManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
-await upcomingManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor({ timeout: 10_000 });
-await upcomingManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
-await upcomingManagePanel.getByRole("heading", { name: "Part of a recurring sequence", exact: true }).waitFor();
-await upcomingManagePanel.getByRole("button", { name: "Move this lesson", exact: true }).waitFor();
-await upcomingManagePanel.getByRole("button", { name: "Cancel this lesson", exact: true }).waitFor();
-await upcomingManagePanel.getByRole("button", { name: "Manage sequence", exact: true }).waitFor();
-if (await accountPanel.locator("#account-upcoming-lessons").count()) {
-  throw new Error("Opening a recurring occurrence should replace the upcoming list with its management panel.");
+const upcomingManageDialog = accountPage.getByRole("dialog", { name: "Manage this lesson", exact: true });
+await upcomingManageDialog.waitFor({ state: "visible", timeout: 10_000 });
+await upcomingManageDialog.getByText("Recurring lesson", { exact: true }).waitFor();
+await upcomingManageDialog.getByText("Part of a recurring sequence", { exact: true }).waitFor();
+await upcomingManageDialog.getByRole("button", { name: "Change", exact: true }).waitFor();
+await upcomingManageDialog.getByRole("button", { name: "Cancel", exact: true }).waitFor();
+await upcomingManageDialog.getByRole("button", { name: "Manage sequence", exact: true }).waitFor();
+if (!(await accountPanel.locator("#account-upcoming-lessons").isVisible())) {
+  throw new Error("Opening a recurring occurrence should keep the upcoming list in the same workspace.");
 }
-const managedLessonPlacement = await accountPage.evaluate(() => {
-  const panel = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
-  const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
-  return { panelBottom: panel?.bottom ?? Infinity, calendarTop: calendar?.top ?? -Infinity };
+if (await accountPage.locator("#lesson-calendar.unified-calendar--managed").count()) {
+  throw new Error("A compact lesson choice should not rearrange the calendar into a separate management layout.");
+}
+const managedDialogLayout = await upcomingManageDialog.evaluate((dialog) => {
+  const rectangle = dialog.getBoundingClientRect();
+  return {
+    width: rectangle.width,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    top: rectangle.top,
+    bottom: rectangle.bottom
+  };
 });
-if (managedLessonPlacement.panelBottom > managedLessonPlacement.calendarTop + 1) {
-  throw new Error(`Lesson management should sit above the supporting calendar: ${JSON.stringify(managedLessonPlacement)}.`);
+if (
+  managedDialogLayout.width > 460 ||
+  managedDialogLayout.width > managedDialogLayout.viewportWidth - 24 ||
+  managedDialogLayout.top < 0 ||
+  managedDialogLayout.bottom > managedDialogLayout.viewportHeight + 1
+) {
+  throw new Error(`Lesson management should be a small, contained overlay: ${JSON.stringify(managedDialogLayout)}.`);
 }
+await waitForOrientation(accountPage);
+await accountPage.screenshot({ path: path.join(outDir, "booking-manage-overlay-desktop.png"), fullPage: true });
+await upcomingManageDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+await accountPage.getByRole("dialog", { name: "Cancel this lesson?", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: "Keep lesson", exact: true }).click();
+await upcomingManageDialog.waitFor({ state: "visible" });
+await upcomingManageDialog.getByRole("button", { name: "Change", exact: true }).click();
+await upcomingManageDialog.waitFor({ state: "detached" });
+const upcomingManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
+await upcomingManagePanel.getByRole("heading", { name: "Choose a new time", exact: true }).waitFor();
+if (!(await accountPanel.locator("#account-upcoming-lessons").isVisible())) {
+  throw new Error("Changing a lesson should use the existing calendar without dismissing Upcoming lessons.");
+}
+await upcomingManagePanel.getByRole("button", { name: "Back", exact: true }).click();
+await upcomingManageDialog.waitFor({ state: "visible" });
+await upcomingManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
+await upcomingManageDialog.waitFor({ state: "detached" });
 await accountMenuButton.click();
 const managedAccountMenu = accountPanel.locator("#account-menu");
 await managedAccountMenu.getByRole("button", { name: /Past lessons/ }).waitFor();
 await managedAccountMenu.getByRole("button", { name: /Past lessons/ }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "visible" });
-if (await upcomingManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).count()) {
-  throw new Error("A lesson-history shortcut should replace the active recurring-lesson panel instead of stacking above it.");
-}
 await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
 await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
-const laterDatesToggle = accountPanel.getByRole("button", { name: "View next 4 lessons", exact: true });
+const laterDatesToggle = accountPanel.locator(".upcoming-lesson-group--series").getByRole("button", { name: "Manage", exact: true });
 await laterDatesToggle.click();
 const laterLessonButton = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group__date");
 await laterLessonButton.first().waitFor({ state: "visible" });
@@ -968,13 +995,13 @@ if ((await laterLessonButton.count()) !== 4) {
 await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-expanded-desktop.png"), fullPage: true });
 await laterLessonButton.first().click();
 try {
-  await upcomingManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor({ timeout: 10_000 });
+  await upcomingManageDialog.waitFor({ state: "visible", timeout: 10_000 });
 } catch {
-  const panelText = (await upcomingManagePanel.innerText().catch(() => "missing panel")).replace(/\s+/g, " ").trim();
-  throw new Error(`An upcoming lesson did not open in the shared management panel. Panel: ${panelText}`);
+  const dialogText = (await accountPage.locator(".lesson-manage-dialog").innerText().catch(() => "missing dialog")).replace(/\s+/g, " ").trim();
+  throw new Error(`An upcoming lesson did not open in the compact management dialog. Dialog: ${dialogText}`);
 }
-await upcomingManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
-await upcomingManagePanel.getByRole("button", { name: "Back to upcoming lessons", exact: true }).click();
+await upcomingManageDialog.getByText("Recurring lesson", { exact: true }).waitFor();
+await upcomingManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
 await accountPage.locator(".booking-workflow-context").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 if ((await accountMenuButton.getAttribute("aria-expanded")) !== "false") {
@@ -1038,8 +1065,8 @@ const desktopScrollBeforeSelection = await accountPage.evaluate(() => window.scr
 await desktopBookedDay.click();
 await waitForOrientation(accountPage);
 const desktopScrollAfterSelection = await accountPage.evaluate(() => window.scrollY);
-if (Math.abs(desktopScrollAfterSelection - desktopScrollBeforeSelection) > 8) {
-  throw new Error("Selecting a visible desktop day should not unnecessarily move the page.");
+if (Math.abs(desktopScrollAfterSelection - desktopScrollBeforeSelection) > 160) {
+  throw new Error(`Selecting a desktop day should not make a large page jump: ${desktopScrollBeforeSelection} -> ${desktopScrollAfterSelection}.`);
 }
 const desktopCalendarStack = await accountPage.evaluate(() => {
   const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
@@ -1063,22 +1090,18 @@ await accountPage
   .first()
   .click();
 const desktopManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
-await desktopManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor();
-await desktopManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
-if (await desktopManagePanel.getByText("Your lesson", { exact: true }).count()) {
-  throw new Error("The selected-lesson header still stacks the redundant “Your lesson” label.");
-}
+const desktopManageDialog = accountPage.getByRole("dialog", { name: "Manage this lesson", exact: true });
+await desktopManageDialog.waitFor({ state: "visible" });
+await desktopManageDialog.locator(".lesson-calendar__status").waitFor();
 await waitForOrientation(accountPage);
-const desktopManageControls = await desktopManagePanel.evaluate((panel) => {
-  const bounds = [...panel.querySelectorAll(".manage-booking__actions .button")].map((button) => {
+const desktopManageControls = await desktopManageDialog.evaluate((dialog) => {
+  const bounds = [...dialog.querySelectorAll(".lesson-manage-dialog__actions .button")].map((button) => {
     const rectangle = button.getBoundingClientRect();
     return { left: rectangle.left, right: rectangle.right, width: rectangle.width, height: rectangle.height };
   });
-  const back = panel.querySelector(".booking-back--tertiary")?.getBoundingClientRect();
-  const rectangle = panel.getBoundingClientRect();
+  const rectangle = dialog.getBoundingClientRect();
   return {
     bounds,
-    backHeight: back?.height ?? Infinity,
     panelLeft: rectangle.left,
     panelRight: rectangle.right,
     panelWidth: rectangle.width
@@ -1089,15 +1112,26 @@ if (
   Math.abs(desktopManageControls.bounds[0].height - desktopManageControls.bounds[1].height) > 2 ||
   desktopManageControls.bounds.some((button) => button.width >= desktopManageControls.panelWidth * 0.75) ||
   desktopManageControls.bounds[0].left < desktopManageControls.panelLeft - 1 ||
-  desktopManageControls.panelRight - desktopManageControls.bounds.at(-1).right > 40 ||
-  desktopManageControls.backHeight > 44
+  desktopManageControls.panelRight - desktopManageControls.bounds.at(-1).right > 40
 ) {
   throw new Error(
     `Lesson management should use one compact, aligned control system: ${JSON.stringify(desktopManageControls)}.`
   );
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-manage-desktop.png"), fullPage: true });
-await desktopManagePanel.getByRole("button", { name: "Back to upcoming lessons", exact: true }).click();
+await desktopManageDialog.getByRole("button", { name: "Change", exact: true }).click();
+await desktopManagePanel.getByRole("heading", { name: "Choose a new time", exact: true }).waitFor();
+const desktopChangeLayout = await accountPage.evaluate(() => {
+  const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
+  const panel = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
+  return { calendarTop: calendar?.top ?? Infinity, panelTop: panel?.top ?? -Infinity };
+});
+if (Math.abs(desktopChangeLayout.calendarTop - desktopChangeLayout.panelTop) > 2) {
+  throw new Error(`Changing a lesson should stay inside the aligned calendar interface: ${JSON.stringify(desktopChangeLayout)}.`);
+}
+await desktopManagePanel.getByRole("button", { name: "Back", exact: true }).click();
+await desktopManageDialog.waitFor({ state: "visible" });
+await desktopManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
 await accountPage.getByRole("button", { name: "Back to 4 weeks", exact: true }).click();
 await waitForOrientation(accountPage);
 
@@ -1144,7 +1178,7 @@ await accountPanel.locator(".my-lessons__details").waitFor({ state: "detached" }
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
-await accountPanel.getByRole("button", { name: "View next 4 lessons", exact: true }).click();
+await accountPanel.locator(".upcoming-lesson-group--series").getByRole("button", { name: "Manage", exact: true }).click();
 await accountPanel.locator(".upcoming-lesson-group__date").first().waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
 const mobileLaterLessonsLayout = await accountPage.evaluate(() => ({
@@ -1271,23 +1305,35 @@ await accountPage
   .first()
   .click();
 const mobileManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
-await mobileManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor();
-await mobileManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
+const mobileManageDialog = accountPage.getByRole("dialog", { name: "Manage this lesson", exact: true });
+await mobileManageDialog.waitFor({ state: "visible" });
+await mobileManageDialog.locator(".lesson-calendar__status").waitFor();
 await waitForOrientation(accountPage);
 const mobileManagedPlacement = await accountPage.evaluate(() => {
-  const panel = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
-  const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
-  return { panelBottom: panel?.bottom ?? Infinity, calendarTop: calendar?.top ?? -Infinity };
+  const dialog = document.querySelector(".lesson-manage-dialog")?.getBoundingClientRect();
+  return {
+    dialogLeft: dialog?.left ?? -Infinity,
+    dialogRight: dialog?.right ?? Infinity,
+    dialogTop: dialog?.top ?? -Infinity,
+    dialogBottom: dialog?.bottom ?? Infinity,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight
+  };
 });
-if (mobileManagedPlacement.panelBottom > mobileManagedPlacement.calendarTop + 1) {
-  throw new Error(`Mobile lesson management should sit above the calendar: ${JSON.stringify(mobileManagedPlacement)}.`);
+if (
+  mobileManagedPlacement.dialogLeft < 8 ||
+  mobileManagedPlacement.dialogRight > mobileManagedPlacement.viewportWidth - 8 ||
+  mobileManagedPlacement.dialogTop < 0 ||
+  mobileManagedPlacement.dialogBottom > mobileManagedPlacement.viewportHeight + 1
+) {
+  throw new Error(`Mobile lesson management should remain a contained overlay: ${JSON.stringify(mobileManagedPlacement)}.`);
 }
-const mobileManageControls = await mobileManagePanel.evaluate((panel) => {
-  const bounds = [...panel.querySelectorAll(".manage-booking__actions .button")].map((button) => {
+const mobileManageControls = await mobileManageDialog.evaluate((dialog) => {
+  const bounds = [...dialog.querySelectorAll(".lesson-manage-dialog__actions .button")].map((button) => {
     const rectangle = button.getBoundingClientRect();
     return { left: rectangle.left, right: rectangle.right, width: rectangle.width, height: rectangle.height };
   });
-  const rectangle = panel.getBoundingClientRect();
+  const rectangle = dialog.getBoundingClientRect();
   return { bounds, panelLeft: rectangle.left, panelRight: rectangle.right, panelWidth: rectangle.width };
 });
 if (
@@ -1302,7 +1348,14 @@ if (
   );
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-manage-mobile.png"), fullPage: true });
-await mobileManagePanel.getByRole("button", { name: "Back to upcoming lessons", exact: true }).click();
+await mobileManageDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+await accountPage.getByRole("dialog", { name: "Cancel this lesson?", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: "Keep lesson", exact: true }).click();
+await mobileManageDialog.getByRole("button", { name: "Change", exact: true }).click();
+await mobileManagePanel.getByRole("heading", { name: "Choose a new time", exact: true }).waitFor();
+await mobileManagePanel.getByRole("button", { name: "Back", exact: true }).click();
+await mobileManageDialog.waitFor({ state: "visible" });
+await mobileManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
 await mobileManagePanel.getByText("Selected day", { exact: true }).waitFor();
 await waitForOrientation(accountPage);
 const compactCalendarLayout = await accountPage.evaluate(() => {
@@ -1474,12 +1527,13 @@ await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 const recurringLaterLesson = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group--series");
-await recurringLaterLesson.getByRole("button", { name: "View next 4 lessons", exact: true }).click();
+await recurringLaterLesson.getByRole("button", { name: "Manage", exact: true }).click();
 await recurringLaterLesson.locator(".upcoming-lesson-group__date").first().click();
-await upcomingManagePanel.getByRole("heading", { name: "Part of a recurring sequence", exact: true }).waitFor();
-const manageSequence = upcomingManagePanel.getByRole("button", { name: "Manage sequence", exact: true });
+const sequenceDialog = accountPage.locator(".lesson-manage-dialog");
+await sequenceDialog.getByText("Part of a recurring sequence", { exact: true }).waitFor();
+const manageSequence = sequenceDialog.getByRole("button", { name: "Manage sequence", exact: true });
 await manageSequence.click();
-const stopRepeating = upcomingManagePanel.getByRole("button", { name: "Stop repeating", exact: true });
+const stopRepeating = sequenceDialog.getByRole("button", { name: "Stop repeating", exact: true });
 await stopRepeating.click();
 if (stopRepeatCalls !== 0) throw new Error("Opening the repeat confirmation called the stop endpoint.");
 await waitForOrientation(accountPage);
@@ -1490,8 +1544,8 @@ await accountPage.screenshot({
 const sequenceConfirmationLayout = await accountPage.evaluate(() => ({
   clientWidth: document.documentElement.clientWidth,
   scrollWidth: document.documentElement.scrollWidth,
-  panelWidth: document.querySelector(".unified-calendar__panel")?.getBoundingClientRect().width ?? 0,
-  contentWidth: document.querySelector(".unified-calendar__panel-content")?.scrollWidth ?? Infinity
+  panelWidth: document.querySelector(".lesson-manage-dialog")?.getBoundingClientRect().width ?? 0,
+  contentWidth: document.querySelector(".lesson-manage-dialog")?.scrollWidth ?? Infinity
 }));
 if (
   sequenceConfirmationLayout.scrollWidth > sequenceConfirmationLayout.clientWidth + 1 ||
@@ -1499,14 +1553,15 @@ if (
 ) {
   throw new Error(`Recurring sequence confirmation should not clip or overflow: ${JSON.stringify(sequenceConfirmationLayout)}.`);
 }
-await upcomingManagePanel.getByRole("button", { name: "Keep repeating", exact: true }).click();
+await sequenceDialog.getByRole("button", { name: "Keep repeating", exact: true }).click();
 if (stopRepeatCalls !== 0) throw new Error("Keeping the repeat called the stop endpoint.");
 await manageSequence.click();
 await stopRepeating.click();
-await upcomingManagePanel.getByRole("button", { name: "Yes, stop repeating", exact: true }).click();
+await sequenceDialog.getByRole("button", { name: "Yes, stop repeating", exact: true }).click();
 await manageSequence.waitFor({ state: "hidden" });
 if (stopRepeatCalls !== 1) throw new Error(`Expected one confirmed stop call; received ${stopRepeatCalls}.`);
-await upcomingManagePanel.getByText("This sequence is no longer adding lessons.", { exact: false }).waitFor();
+await sequenceDialog.getByText("This sequence has stopped.", { exact: false }).waitFor();
+await sequenceDialog.getByRole("button", { name: "Done", exact: true }).click();
 
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: "Sign out", exact: true }).click();

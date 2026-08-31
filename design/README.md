@@ -115,12 +115,12 @@ Preserve these desktop and mobile states:
   `View your lessons`, while booking, and while an individual lesson is open;
   an empty history says so instead of removing the shortcut. The Upcoming
   lessons panel contains every future commitment. Choosing either lesson shortcut
-  dismisses the active booking or management detail, opens its own panel below
+  dismisses the active booking detail, opens its own panel below
   the account bar, and establishes the four-week lesson workspace beneath it.
   Each destination panel has `Back to start`, which restores the initial
   book-or-view choice. A repeating schedule appears once in Upcoming lessons,
   led by its nearest date and distinguished from coral one-off bookings with a
-  lilac recurring treatment. `View next 4 lessons` reveals no more than four
+  lilac recurring treatment. Its single `Manage` action reveals no more than four
   booked occurrences, each with its own `Manage` action. A small accessible
   tooltip explains that individual lessons can be modified up to four weeks in
   advance. One-off lessons remain individual entries.
@@ -142,8 +142,10 @@ Preserve these desktop and mobile states:
   booked” or lesson-summary copy; booked days retain their lesson details. The
   four-week lesson overview stops before later repeating dates; those future
   lessons remain in the list instead of stretching the calendar. Opening any
-  lesson puts its move/cancel panel above the calendar, so the action never
-  lands at the bottom of a long mobile page. The booking overview says `Next 8
+  lesson keeps the list and calendar in place and adds a compact overlay asking
+  whether to change or cancel it. `Change` returns to the same calendar and its
+  time picker; cancellation stays inside the overlay until explicitly confirmed.
+  The booking overview says `Next 8
   weeks`
   explicitly and contains no more than eight Monday-to-Sunday rows; the
   inclusive 56-day API boundary must not create a ninth visible row;
@@ -154,9 +156,8 @@ Preserve these desktop and mobile states:
   0.7 rem labels, 0.12 em tracking, and the same hand-drawn button radius.
   Tertiary text actions use the same type at 40 px minimum height and align to
   the right wherever the label fits, on mobile as well as desktop. The selected
-  lesson header pairs a `Booked lesson` status with a compact `Calendar` action;
-  `Move lesson` and `Cancel lesson` are compact right-aligned primary and
-  secondary actions rather than full-panel bars;
+  compact lesson overlay pairs the booking status with `Change` and `Cancel`;
+  it must not replace or reorder the underlying lesson workspace;
 - transitions belong to the account, choice, calendar, detail, and confirmation
   surfaces individually. The page scrolls only when the next decision is not
   already comfortably visible. Reduced motion removes both the transitions and
@@ -167,10 +168,10 @@ Preserve these desktop and mobile states:
 
 ## Account interaction states
 
-Selecting an occurrence from a recurring sequence identifies it beneath the
-lesson facts. `Move this lesson` and `Cancel this lesson` affect only that date;
-`Manage sequence` owns the separate stop-repeating decision. Before a student
-stops a repeating lesson, show a clear confirmation at desktop
+Selecting an occurrence from a recurring sequence identifies it in the compact
+management overlay. `Change` and `Cancel` affect only that date; `Manage
+sequence` owns the separate stop-repeating decision in that same overlay.
+Before a student stops a repeating lesson, show a clear confirmation at desktop
 and mobile sizes with two explicit choices. State that lessons already in the
 calendar stay booked and can be cancelled individually.
 

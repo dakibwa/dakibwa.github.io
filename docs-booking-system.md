@@ -140,16 +140,17 @@ depending on them having kept the right confirmation email.
   a menu shortcut. After a successful booking, `Back to upcoming lessons` opens
   this same list rather than returning to the generic start choice. Recurring
   schedules use a distinct lilac treatment and lead with their next occurrence;
-  one-off bookings remain coral cards. `View next 4
-  lessons` reveals at most four booked occurrences with individual `Manage`
+  one-off bookings remain coral cards. A recurring card's single `Manage`
+  action reveals at most four booked occurrences with individual `Manage`
   actions. An accessible tooltip explains the four-week individual-change
   window. The calendar remains underneath as supporting context. Opening an
-  occurrence puts its lesson panel above that calendar rather than after it.
-  That panel
-  identifies an occurrence as part of a recurring sequence: moving or cancelling
-  affects only that lesson, while `Manage sequence` leads to the separately
-  confirmed stop-repeating action. Stopping prevents future top-ups without
-  cancelling dates that are already booked.
+  occurrence leaves the list and calendar where they are and shows a compact
+  `Change` or `Cancel` overlay. `Change` reuses the existing calendar time
+  picker; `Cancel` stays in the overlay for explicit confirmation. Recurring
+  occurrences are identified there as part of a sequence: either action affects
+  only that lesson, while `Manage sequence` leads to the separately confirmed
+  stop-repeating action in the same overlay. Stopping prevents future top-ups
+  without cancelling dates that are already booked.
 
 ### Repeating bookings
 

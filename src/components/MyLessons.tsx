@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, ChevronRight, CircleHelp, Globe2, Menu as MenuIcon, Repeat } from "lucide-react";
+import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, CircleHelp, Globe2, Menu as MenuIcon, Repeat } from "lucide-react";
 import { AuthPanel } from "@/components/AuthPanel";
 import { LessonMark } from "@/components/LessonMarks";
 import {
@@ -146,6 +146,11 @@ export function MyLessons({
     setTodayKey(portoDateKey(new Date()));
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!embedded || !openUpcomingRequest) return;
+    void load();
+  }, [embedded, load, openUpcomingRequest]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -304,10 +309,9 @@ export function MyLessons({
   const selectedBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
 
   function manage(booking: MyBooking) {
-    // The chosen lesson replaces this drawer in the shared workspace. Closing
-    // it here prevents a long list remaining above the move/cancel decision.
-    setAccountSection("");
-    setExpandedUpcomingGroup("");
+    // Management now opens as a small decision over this same workspace. Keep
+    // the lesson list in place so closing it returns the student to exactly the
+    // recurring sequence or one-off lesson they were looking at.
     setMenuOpen(false);
     if (onManage) onManage(booking.manageToken, booking.seriesId);
     else window.location.assign(`/book/?manage=${encodeURIComponent(booking.manageToken)}`);
@@ -652,7 +656,6 @@ export function MyLessons({
               const datesId = group.seriesId ? `upcoming-series-dates-${group.seriesId}` : "";
               const activeSeries = group.seriesId ? series.find((entry) => entry.id === group.seriesId) ?? null : null;
               const visibleOccurrences = isSeries ? group.bookings.slice(0, 4) : group.bookings;
-              const occurrenceCount = visibleOccurrences.length;
               return (
                 <article
                   className={`upcoming-lesson-group ${isSeries ? "upcoming-lesson-group--series" : "upcoming-lesson-group--single"}`}
@@ -692,9 +695,10 @@ export function MyLessons({
                           }
                           type="button"
                         >
+                          Manage
                           {isExpanded
-                            ? "Hide lessons"
-                            : `View next ${occurrenceCount} ${occurrenceCount === 1 ? "lesson" : "lessons"}`}
+                            ? <ChevronUp aria-hidden="true" size={17} />
+                            : <ChevronDown aria-hidden="true" size={17} />}
                         </button>
                       ) : (
                         <button className="text-action upcoming-lesson-group__action" onClick={() => manage(nextBooking)} type="button">

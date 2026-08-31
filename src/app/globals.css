@@ -1876,12 +1876,6 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   align-items: start;
 }
 
-.unified-calendar--managed {
-  grid-template-areas:
-    "panel"
-    "calendar";
-}
-
 .unified-calendar__grid {
   grid-area: calendar;
   width: 100%;
@@ -2023,6 +2017,196 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   font-family: var(--ui);
   font-size: 1rem;
   line-height: 1.4;
+}
+
+.lesson-manage-overlay {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: clamp(1rem, 4vw, 2rem);
+  background: rgba(26, 49, 105, 0.24);
+  backdrop-filter: blur(3px);
+  animation: lesson-manage-backdrop 160ms ease-out both;
+}
+
+.lesson-manage-dialog {
+  position: relative;
+  display: grid;
+  width: min(100%, 440px);
+  max-height: min(82vh, 680px);
+  overflow-y: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-panel);
+  padding: clamp(1.25rem, 4vw, 1.7rem);
+  background: var(--paper-light);
+  box-shadow: 0 24px 65px rgba(26, 49, 105, 0.26);
+  outline: 0;
+  gap: 0.75rem;
+  animation: lesson-manage-dialog-in 190ms var(--motion-ease) both;
+}
+
+.lesson-manage-dialog::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 94% 4%, rgba(239, 93, 60, 0.14), transparent 28%),
+    linear-gradient(145deg, rgba(170, 164, 230, 0.08), transparent 58%);
+  content: "";
+}
+
+.lesson-manage-dialog__close {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.85rem;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid var(--rule-soft);
+  border-radius: 50%;
+  background: rgba(251, 244, 229, 0.82);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.lesson-manage-dialog__close:hover,
+.lesson-manage-dialog__close:focus-visible {
+  border-color: var(--coral-action);
+  color: var(--coral-action);
+}
+
+.lesson-manage-dialog > .lesson-calendar__status,
+.lesson-manage-dialog > .eyebrow {
+  justify-self: start;
+  margin-right: 2.8rem;
+}
+
+.lesson-manage-dialog h2 {
+  max-width: calc(100% - 2.8rem);
+  margin: 0;
+  font-family: var(--ui);
+  font-size: clamp(1.3rem, 4vw, 1.65rem);
+  line-height: 1.15;
+}
+
+.lesson-manage-dialog__loading {
+  display: grid;
+  min-height: 100px;
+  align-content: center;
+  gap: 0.45rem;
+}
+
+.lesson-manage-dialog__loading h2 {
+  margin: 0;
+}
+
+.lesson-manage-dialog__lesson {
+  display: grid;
+  border-top: 1px solid var(--rule-soft);
+  border-bottom: 1px solid var(--rule-soft);
+  padding: 0.8rem 0;
+  gap: 0.18rem;
+}
+
+.lesson-manage-dialog__lesson strong {
+  font-family: var(--ui);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.lesson-manage-dialog__lesson span,
+.lesson-manage-dialog__question,
+.lesson-manage-dialog__decision > p {
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.lesson-manage-dialog__question {
+  margin-top: 0.1rem;
+}
+
+.lesson-manage-dialog__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.lesson-manage-dialog__actions .button {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.72rem 0.8rem;
+}
+
+.lesson-manage-dialog__actions .text-action {
+  justify-self: center;
+}
+
+.lesson-manage-dialog__series {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 0.85rem;
+  color: var(--lavender-ink);
+  gap: 0.1rem 0.55rem;
+}
+
+.lesson-manage-dialog__series > svg {
+  margin-top: 0.1rem;
+}
+
+.lesson-manage-dialog__series > div {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.lesson-manage-dialog__series strong {
+  font-family: var(--ui);
+  font-size: 0.78rem;
+}
+
+.lesson-manage-dialog__series span {
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.lesson-manage-dialog__series .text-action {
+  grid-column: 2;
+  justify-self: start;
+  min-height: 34px;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+}
+
+.lesson-manage-dialog__decision {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.lesson-manage-dialog__done {
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.managed-lesson__current-time {
+  margin-bottom: 0.8rem;
+  border-bottom: 1px solid var(--rule-soft);
+  padding-bottom: 0.8rem;
+}
+
+@keyframes lesson-manage-backdrop {
+  from { opacity: 0; }
+}
+
+@keyframes lesson-manage-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
 }
 
 .managed-lesson__header {
@@ -2391,21 +2575,9 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
     align-content: start;
   }
 
-  .unified-calendar.unified-calendar--managed {
-    grid-template-areas:
-      "panel"
-      "calendar";
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .unified-calendar__panel {
     position: sticky;
     top: 1rem;
-  }
-
-  .unified-calendar--managed .unified-calendar__panel {
-    position: relative;
-    top: auto;
   }
 
   .unified-calendar__empty-summary {
@@ -5725,6 +5897,11 @@ button.text-action {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .lesson-manage-overlay,
+  .lesson-manage-dialog {
+    animation: none;
+  }
+
   .booking-journey-start,
   .booking-workflow-context,
   .booking-workflow-sign-in,
