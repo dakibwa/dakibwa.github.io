@@ -40,21 +40,21 @@ export default function Home() {
               Book a lesson
             </Link>
           </div>
-        </section>
 
-        <section className="principles-strip" aria-label="How lessons work">
-          {principles.map((principle) => {
-            return (
-              <article className="principle" key={principle.title}>
-                <AssetMark asset={principle.asset} />
-                <div>
-                  <h2>{principle.title}</h2>
-                  <span className="short-rule" aria-hidden="true" />
-                  <p>{principle.body}</p>
-                </div>
-              </article>
-            );
-          })}
+          <section className="principles-strip" aria-label="How lessons work">
+            {principles.map((principle) => {
+              return (
+                <article className="principle" key={principle.title}>
+                  <AssetMark asset={principle.asset} />
+                  <div>
+                    <h2>{principle.title}</h2>
+                    <span className="short-rule" aria-hidden="true" />
+                    <p>{principle.body}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
         </section>
 
         <section className="home-closing" aria-label="Read more or book a lesson">
