@@ -24,11 +24,11 @@ Every route carries a booking action within reach of its closing content, not
 only in the header: the home page closes on one, and the FAQ ends with a route
 to booking alongside the WhatsApp option.
 
-The canonical editable design is the
-[Português com a Inês Figma file](https://www.figma.com/design/c4AYW94iWzVqfRkCjyJs0Y).
-[design/README.md](./design/README.md) records the current visual rules,
-retained business-card references, production-asset boundary, and location of
-superseded work. The production interface is code-native.
+The website's canonical visual and interaction contract is
+[design/README.md](./design/README.md). It records the current visual rules,
+responsive states, retained business-card references, production-asset
+boundary, and location of superseded work. The production interface is
+code-native and the published site is where that contract is accepted.
 
 ## Asset weight
 
@@ -72,9 +72,9 @@ request only competes with the fonts for no gain.
   Google Drive; this repository is backed up by GitHub. The split exists
   because a `.git` directory inside the Drive-synced `Documents` tree risks
   corruption, not because the work is separate.
-- The canonical editable design is the Figma file linked from
-  [design/README.md](./design/README.md). Read that before changing anything
-  visual.
+- [design/README.md](./design/README.md) is the canonical visual and interaction
+  contract. Read it before changing anything visual, keep it aligned with the
+  code in the same change, and verify the result on the published site.
 - **Booking is owned by this repository**, not by a third-party scheduler. The
   `ines-booking` Worker in `workers/booking/` and its D1 database are the source
   of truth for availability, bookings, reschedules and cancellations. See
