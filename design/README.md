@@ -111,9 +111,9 @@ Preserve these desktop and mobile states:
 - the signed-in identity appears once, inside a generously padded account bar.
   `Upcoming lessons` remains a compact right-aligned action, while a small
   `Menu` contains `Past lessons`, `Edit details`, and `Sign out`. Past lessons
-  open in their own panel below the account bar rather than expanding that bar;
-  only the relevant account actions remain while booking. Repeating controls belong to
-  the view-lessons state. `Upcoming lessons` represents each repeating schedule once, led by its
+  remain available there in every signed-in booking state and open in their own
+  panel below the account bar rather than expanding that bar. Repeating controls
+  belong to the view-lessons state. `Upcoming lessons` represents each repeating schedule once, led by its
   soonest booked date; a quiet reveal exposes every later occurrence, and each
   date opens the same move/cancel panel as the calendar. One-off lessons remain
   individual entries. There is no second `My lessons` navigation destination.

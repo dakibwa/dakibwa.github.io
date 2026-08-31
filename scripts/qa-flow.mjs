@@ -567,7 +567,7 @@ if (await accountPage.locator("#lesson-calendar").count()) {
 if (await accountPage.locator(".unified-booking__lesson-picker").count()) {
   throw new Error("Lesson types should wait until the student chooses to book.");
 }
-for (const hiddenUntilViewing of [/Upcoming lessons/, /Past lessons/, /Stop repeating/]) {
+for (const hiddenUntilViewing of [/Upcoming lessons/, /Stop repeating/]) {
   if (await accountPanel.getByRole("button", { name: hiddenUntilViewing }).count()) {
     throw new Error(`${hiddenUntilViewing} should not compete with the first workflow choice.`);
   }
@@ -597,8 +597,11 @@ await accountPage.screenshot({ path: path.join(outDir, "booking-workflow-start-d
 await accountMenuButton.click();
 const initialAccountMenu = accountPanel.locator("#account-menu");
 await initialAccountMenu.waitFor({ state: "visible" });
-if ((await initialAccountMenu.getByRole("button").count()) !== 2) {
-  throw new Error("The initial account menu should contain only Edit details and Sign out.");
+if ((await initialAccountMenu.getByRole("button").count()) !== 3) {
+  throw new Error("Past lessons, Edit details and Sign out should remain available from the initial account menu.");
+}
+if (!(await initialAccountMenu.getByRole("button", { name: /Past lessons/ }).isVisible())) {
+  throw new Error("Past lessons should not require entering the lesson calendar first.");
 }
 await initialAccountMenu.getByRole("button", { name: "Edit details", exact: true }).click();
 await accountPanel.locator(".my-lessons__details").waitFor({ state: "visible" });

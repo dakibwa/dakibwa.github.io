@@ -52,6 +52,7 @@ export function MyLessons({
   onViewUpcoming,
   showCalendar = true,
   showHistory = true,
+  showUpcoming = true,
   showSeries = true
 }: {
   calendarHorizonDays?: number;
@@ -63,6 +64,7 @@ export function MyLessons({
   onViewUpcoming?: () => void;
   showCalendar?: boolean;
   showHistory?: boolean;
+  showUpcoming?: boolean;
   showSeries?: boolean;
 } = {}) {
   const [student, setStudent] = useState<Student | null>(null);
@@ -426,7 +428,7 @@ export function MyLessons({
           </p>
         )}
         <div className="my-lessons__header-actions">
-          {embedded && showHistory && upcoming.length ? (
+          {embedded && showUpcoming && upcoming.length ? (
             <button
               aria-label={`Upcoming lessons, ${upcomingGroups.length} ${upcomingGroups.length === 1 ? "entry" : "entries"}`}
               aria-controls="account-upcoming-lessons"
