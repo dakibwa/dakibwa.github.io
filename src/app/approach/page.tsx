@@ -78,7 +78,7 @@ export default function ApproachPage() {
 
         <section className="editorial-callout">
           <p className="eyebrow">Any level</p>
-          <h2>Nervous beginners welcome.</h2>
+          <h2>Beginners welcome.</h2>
           <p>
             If you’ve never said a word of Portuguese, we can start there. If you’ve been stuck at the same level for
             years, we can start there too.
