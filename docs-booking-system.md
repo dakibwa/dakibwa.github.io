@@ -369,6 +369,21 @@ money arrives on `checkout.session.async_payment_succeeded`, which this
 webhook deliberately does not handle. Enabling it is a real follow-up build,
 not a dashboard toggle.
 
+**Sandbox proving ground**: `wrangler --env staging` deploys the separate
+`ines-booking-staging` Worker and D1 database. It has `payment_mode=prepay`,
+uses Stripe sandbox credentials, and has `EMAIL_DRY_RUN=1`, so no message is
+actually delivered. The public site never points to it; local QA opts in with
+`NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-staging.dakibwa.workers.dev`.
+Deploy it with:
+
+```bash
+npx wrangler deploy --config workers/booking/wrangler.jsonc --env staging
+```
+
+The source-level `STRIPE_UI_MODE=embedded` setting maps to Stripe API
+2026-08-26.dahlia's `ui_mode=embedded_page`. Stripe.js still mounts the returned
+client secret with `initEmbeddedCheckout`.
+
 **Go-live checklist**:
 
 1. ~~Apply migration 0009 to the live database~~ — done, 28 August 2026.
@@ -380,12 +395,11 @@ not a dashboard toggle.
 4. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` for the
    Pages build, so the embedded form can mount.
 5. Register the webhook for `checkout.session.completed` at `/stripe/webhook`.
-6. Run the full test-mode journey: book a single (embedded form mounts on the
-   page), pay with a test card, watch the webhook confirm; cancel ahead of the
-   day and watch the refund. Book a weekly run: first lesson charges, the rest
-   go `scheduled`; run the cron by hand (`wrangler dev --test-scheduled`) on a
-   lesson's day and watch the saved card charge; kill the saved card in the
-   Stripe dashboard and watch the decline turn into a pay-now email.
+6. ~~Run the full test-mode journey~~ — passed in the isolated staging
+   environment on 31 August 2026: embedded single-lesson payment, signed
+   webhook confirmation, cancellation and refund; four-week first payment and
+   saved card; successful day-of automatic charge; declined day-of charge to
+   `payment_due`, hosted pay-now link, and dry-run student/teacher notices.
 7. Set the `payment_mode` settings row to `prepay`, and in the same breath ship
    the static-copy commit (FAQ, policy band, lessons note, and the README payment bullets) that states the
    prepaid terms — the page's dynamic copy follows the API on its own, the

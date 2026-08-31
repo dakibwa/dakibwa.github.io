@@ -49,5 +49,36 @@
     // the site must not be blocked from shipping on a payment rail that does not
     // exist yet.
     "required": ["BOOKING_TOKEN_SECRET", "ADMIN_TOKEN", "RESEND_API_KEY", "TEACHER_EMAIL"]
+  },
+  "env": {
+    // Isolated payment proving ground. It has its own empty D1 database, uses
+    // Stripe sandbox credentials, and records email deliveries without sending
+    // them. The public site never points here; local QA does so explicitly.
+    "staging": {
+      "name": "ines-booking-staging",
+      "triggers": {
+        "crons": ["10 3 * * *"]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "ines-booking-staging",
+          "database_id": "b4b5af8e-2fdc-4ea9-a5e7-0cc91688fc0f"
+        }
+      ],
+      "vars": {
+        "ALLOWED_ORIGIN": "http://localhost:3002,http://127.0.0.1:3002,http://localhost:3000,http://127.0.0.1:3000",
+        "SITE_URL": "http://localhost:3000",
+        "MAIL_FROM": "Português com a Inês <bookings@portuguesewithines.com>",
+        "MAIL_SENDER_ADDRESS": "bookings@portuguesewithines.com",
+        "EMAIL_DRY_RUN": "1",
+        "STRIPE_UI_MODE": "embedded",
+        "GOOGLE_CLIENT_ID": "174786285888-cq6vhf2jifpn5bdjutade6fe8an5i9ob.apps.googleusercontent.com",
+        "TEACHER_EMAIL": "test@example.invalid"
+      },
+      "secrets": {
+        "required": ["BOOKING_TOKEN_SECRET", "ADMIN_TOKEN", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]
+      }
+    }
   }
 }

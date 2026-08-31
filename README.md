@@ -89,8 +89,9 @@ request only competes with the fonts for no gain.
   test — could never have been hers.
 - There is no live payment rail yet — students pay Inês directly — but the
   Stripe integration is fully built and dormant. Inês's own Stripe account now
-  exists, with Dan as Administrator; the sandbox endpoint and least-privilege
-  restricted API key are provisioned while `payment_mode` remains `off`.
+  exists, with Dan as Administrator. The isolated sandbox journey passed end
+  to end on 31 August 2026 (payment, webhook, refund, saved-card charge and
+  decline fallback), while production `payment_mode` remains `off`.
   docs-booking-system.md has the security model and remaining go-live checks.
 - The approved product display is trial lesson €20 / 60 minutes, single lessons
   at €25 / 60 minutes or €35 / 1 hour 30 minutes. Bundles are not part of the
