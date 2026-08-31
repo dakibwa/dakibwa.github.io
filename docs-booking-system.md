@@ -125,8 +125,13 @@ depending on them having kept the right confirmation email.
   the active workflow rather than behind an Account/Close disclosure. The account
   bar names the student once and keeps later lessons, past lessons, profile
   editing and sign out inside one menu. Choosing later or past lessons opens a
-  separate panel below the account bar, and both remain available in every
-  signed-in booking state. There is only one `Booking`
+  separate panel below the account bar and switches away from any active booking
+  or lesson-management detail, so they work as shortcuts rather than stacked
+  disclosures. `Past lessons` stays in the menu throughout every signed-in
+  booking state, including before `View your lessons` is chosen and while a
+  recurring occurrence is open; an empty history gets an empty state rather
+  than losing the menu item. Both destination panels offer `Back to start` to
+  restore the initial book-or-view choice. There is only one `Booking`
   destination in the site navigation — no separate `My lessons` tab — because
   booking and managing lessons are the same workspace.
 - **Later lessons groups a repeating schedule as one thing.** The menu panel

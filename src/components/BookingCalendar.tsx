@@ -696,18 +696,35 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     orientTo(student ? "lesson-calendar" : "booking-lessons-sign-in", true);
   }
 
+  function resetJourneyToStart() {
+    closeManagedLesson();
+    setIntent("choose");
+    setShowAccountSignIn(false);
+    setLessonTypeId("");
+    setSelectedDate("");
+    setSelectedSlot("");
+    setCalendarWeekCount(4);
+    setStep("lesson");
+    setPayment(null);
+    setPaymentError("");
+  }
+
   function returnToJourneyStart() {
-    transitionBooking(() => {
-      closeManagedLesson();
-      setIntent("choose");
-      setShowAccountSignIn(false);
-      setLessonTypeId("");
-      setSelectedDate("");
-      setSelectedSlot("");
-      setCalendarWeekCount(4);
-      setStep("lesson");
-    });
+    transitionBooking(resetJourneyToStart);
     orientTo("booking-journey-start", true);
+  }
+
+  function openAccountShortcut() {
+    closeManagedLesson();
+    setIntent("lessons");
+    setShowAccountSignIn(false);
+    setLessonTypeId("");
+    setSelectedSlot("");
+    setCalendarWeekCount(4);
+    setStep("day");
+    setPayment(null);
+    setPaymentError("");
+    setSelectedDate(firstCalendarBookingStart ? portoDateKey(new Date(firstCalendarBookingStart)) : "");
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -963,7 +980,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       ) : null}
 
       <div className="booking-stage">
-        {student && !isConfirmingBooking ? (
+        {student ? (
           <section
             className="unified-account-area"
             id="account-controls"
@@ -973,11 +990,13 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               calendarHorizonDays={horizonDays}
               embedded
               laterThan={fourWeekCalendarEnd}
+              onBackToStart={resetJourneyToStart}
               onManage={(token, seriesId) =>
                 transitionBooking(() => {
                   void openManaged(token, seriesId);
                 })
               }
+              onOpenAccountSection={openAccountShortcut}
               onTransition={transitionBooking}
               onSignedOut={() => {
                 setStudent(null);
