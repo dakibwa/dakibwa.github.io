@@ -57,7 +57,9 @@ soft-lavender composition rather than two full-width bars. At 1000px and below
 they return to the simpler stacked order. Above 820px, the same soft-lavender
 rail treatment separates the Approach teaching list and the FAQ index from
 their cream content columns. At 820px and below those sections keep their
-simpler cream stacked treatment.
+simpler cream stacked treatment. In the intermediate Approach layout from
+821px to 999px, the teaching-list headings wrap naturally instead of being
+clipped at the right edge; from 1000px upwards they remain on one line.
 
 ## References retained in this repository
 
