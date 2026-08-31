@@ -467,7 +467,7 @@ p {
   grid-template-rows: repeat(3, minmax(0, 1fr));
   border-left: 1px solid var(--rule-soft);
   border-bottom: 1px solid var(--rule-soft);
-  background-color: var(--paper);
+  background-color: var(--lavender-soft);
   background-image: var(--paper-texture);
 }
 

@@ -46,11 +46,12 @@ follow-up is scheduled for 1 September 2026. That reconciliation must also
 replace every em dash in user-facing Figma copy and states with the natural
 punctuation now used in production, and use “Beginners welcome.” rather than
 “Nervous beginners welcome.” in the Approach callout. On desktop, the three
-home principles now form a stacked cream rail in the right side of the hero,
-using the space left by the removed card artwork. At 900px and below they
-remain stacked after the blue introduction so the mobile reading order stays
-unchanged. The browser favicon is now a generated cream-and-lavender organic
-mark with a coral accent on dark blue, replacing the flower symbol.
+home principles now form a stacked soft-lavender rail in the right side of the
+hero, using the space left by the removed card artwork without merging into
+the surrounding cream page. At 900px and below they remain stacked after the
+blue introduction so the mobile reading order stays unchanged. The browser
+favicon is now a generated cream-and-lavender organic mark with a coral accent
+on dark blue, replacing the flower symbol.
 
 ## References retained in this repository
 
