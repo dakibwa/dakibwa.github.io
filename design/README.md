@@ -105,38 +105,43 @@ Preserve these desktop and mobile states:
   the remaining width;
 - the workspace opens with one decision: `Book a new lesson` or `View your
   lessons`. Booking then asks for the lesson type before showing the calendar;
-  viewing lessons goes straight to the same calendar without displaying free
-  times. Completed decisions collapse into a compact row, so account tools,
+  viewing lessons opens the upcoming-lesson list, with the same calendar kept
+  beneath it as a four-week visual overview and without displaying free times.
+  Completed decisions collapse into a compact row, so account tools,
   lesson cards, the calendar, and confirmation never compete at once;
 - the signed-in identity appears once, inside a generously padded account bar.
   A small `Menu` contains `Upcoming lessons`, `Past lessons`, `Edit details`, and
   `Sign out`. `Past lessons` remains present even before the student chooses
   `View your lessons`, while booking, and while an individual lesson is open;
-  an empty history says so instead of removing the shortcut. Upcoming lessons are
-  only those beyond the four-week calendar. Choosing either lesson shortcut
+  an empty history says so instead of removing the shortcut. The Upcoming
+  lessons panel contains every future commitment. Choosing either lesson shortcut
   dismisses the active booking or management detail, opens its own panel below
   the account bar, and establishes the four-week lesson workspace beneath it.
   Each destination panel has `Back to start`, which restores the initial
-  book-or-view choice. A repeating
-  schedule appears once in Upcoming lessons, led by its nearest out-of-window date;
-  a quiet reveal exposes every upcoming occurrence. One-off lessons remain
-  individual entries. Every upcoming-lesson card uses the same booked badge, date
-  hierarchy and `Manage` action, with recurrence shown as supporting metadata.
+  book-or-view choice. A repeating schedule appears once in Upcoming lessons,
+  led by its nearest date and distinguished from coral one-off bookings with a
+  lilac recurring treatment. `View next 4 lessons` reveals no more than four
+  booked occurrences, each with its own `Manage` action. A small accessible
+  tooltip explains that individual lessons can be modified up to four weeks in
+  advance. One-off lessons remain individual entries.
   There is no second `My lessons` navigation destination.
   The account bar, workflow choices, calendar, and selected-day workspace share
   the same left and right edges. Profile-field actions sit beside their field
   whenever the available width permits;
-- the calendar is the stable surface. Viewing lessons owns a fixed four-week
-  overview; it never expands to absorb later booked dates because those belong
-  in the account menu. Selecting a day reduces it to one week, with `Back to 4
+- the calendar is the stable visual surface beneath the lesson-management
+  content. Viewing lessons owns a fixed four-week overview; it never expands to
+  absorb later booked dates because the complete list lives above it. Selecting
+  a day reduces it to one week, with `Back to 4
   weeks` restoring the lesson overview. The new-booking journey still uses its
   full eight-week availability horizon and returns there from a selected week,
   with the time or lesson detail beside it on desktop and immediately below it
   on mobile. A free day shows the available times without redundant “no lesson
   booked” or lesson-summary copy; booked days retain their lesson details. The
   four-week lesson overview stops before later repeating dates; those future
-  lessons and past lessons open from the account bar instead of extending or
-  sitting below the calendar. The booking overview says `Next 8 weeks`
+  lessons remain in the list instead of stretching the calendar. Opening any
+  lesson puts its move/cancel panel above the calendar, so the action never
+  lands at the bottom of a long mobile page. The booking overview says `Next 8
+  weeks`
   explicitly and contains no more than eight Monday-to-Sunday rows; the
   inclusive 56-day API boundary must not create a ninth visible row;
 - days with two bookings show both booked times on separate lines. Do not use a

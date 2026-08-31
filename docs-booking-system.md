@@ -109,13 +109,14 @@ depending on them having kept the right confirmation email.
 - **Booking, the learner's calendar, and lesson changes share one workspace.**
   The first screen at `/book` asks only whether the student wants to book a new
   lesson or view existing lessons. Booking asks for the lesson type and then
-  reveals the calendar; viewing lessons goes directly to that calendar without
-  free-time choices. Every booked lesson is marked there. Choosing a booked day
+  reveals the calendar; viewing lessons leads with the upcoming-lesson list and
+  keeps the calendar beneath it as a four-week visual without free-time choices.
+  Every booked lesson is marked there. Choosing a booked day
   or a free day reduces the calendar to that one week, putting the
   selected lesson or available times immediately beneath it on a phone. Each
   completed choice becomes a compact summary and the page moves the next
-  decision into view. Viewing lessons stays within a four-week calendar; dates
-  beyond that window are reached through `Upcoming lessons` in the account menu.
+  decision into view. Viewing lessons stays within a four-week calendar while
+  `Upcoming lessons` contains every future booking, including dates beyond it.
   Choosing an
   individual booking opens move and cancel in place. The emailed token still
   opens that same interface without requiring sign-in, so a forgotten password
@@ -134,11 +135,15 @@ depending on them having kept the right confirmation email.
   restore the initial book-or-view choice. There is only one `Booking`
   destination in the site navigation — no separate `My lessons` tab — because
   booking and managing lessons are the same workspace.
-- **Upcoming lessons groups a repeating schedule as one thing.** The menu panel
-  contains only dates beyond the four-week calendar. Every card uses the same
-  booked status, date hierarchy and `Manage` action; recurrence is secondary
-  metadata rather than a different card design. `View dates` reveals the other
-  booked occurrences, each of which opens the normal lesson panel. That panel
+- **Upcoming lessons groups a repeating schedule as one thing.** It opens first
+  when a signed-in student chooses `View your lessons` and remains available as
+  a menu shortcut. Recurring schedules use a distinct lilac treatment and lead
+  with their next occurrence; one-off bookings remain coral cards. `View next 4
+  lessons` reveals at most four booked occurrences with individual `Manage`
+  actions. An accessible tooltip explains the four-week individual-change
+  window. The calendar remains underneath as supporting context. Opening an
+  occurrence puts its lesson panel above that calendar rather than after it.
+  That panel
   identifies an occurrence as part of a recurring sequence: moving or cancelling
   affects only that lesson, while `Manage sequence` leads to the separately
   confirmed stop-repeating action. Stopping prevents future top-ups without

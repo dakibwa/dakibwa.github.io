@@ -683,6 +683,7 @@ await accountPanel.locator(".my-lessons__details").waitFor({ state: "detached" }
 
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4) {
   throw new Error("Viewing existing lessons should always open the four-week calendar.");
 }
@@ -722,37 +723,55 @@ await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 
 await accountMenuButton.click();
 const laterLessonsToggle = accountPanel.getByRole("button", { name: /Upcoming lessons/ });
-if (!/2\s*$/.test((await laterLessonsToggle.innerText()).trim())) {
-  throw new Error("The Upcoming lessons badge should count one repeating schedule once, plus each later one-off lesson.");
+if (!/3\s*$/.test((await laterLessonsToggle.innerText()).trim())) {
+  throw new Error("The Upcoming lessons badge should count each repeating schedule once, plus each one-off lesson.");
 }
-await laterLessonsToggle.click();
-await accountPanel.locator("#account-later-lessons").waitFor({ state: "visible" });
+await accountMenuButton.click();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
-const laterGroups = accountPanel.locator("#account-later-lessons .upcoming-lesson-group");
-const recurringLaterGroup = accountPanel.locator("#account-later-lessons .upcoming-lesson-group--series");
-const oneOffLaterGroup = accountPanel.locator("#account-later-lessons .upcoming-lesson-group--single");
+const laterGroups = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group");
+const recurringLaterGroup = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group--series");
+const oneOffLaterGroup = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group--single");
 if (
-  (await laterGroups.count()) !== 2 ||
+  (await laterGroups.count()) !== 3 ||
   (await recurringLaterGroup.count()) !== 1 ||
-  (await oneOffLaterGroup.count()) !== 1
+  (await oneOffLaterGroup.count()) !== 2
 ) {
   throw new Error("Upcoming lessons should show one card per repeating schedule and one per one-off lesson.");
 }
-if (!(await recurringLaterGroup.getByText(/9 upcoming dates/i).isVisible())) {
-  throw new Error("A later repeating lesson should report every occurrence beyond the four-week calendar.");
+if (!(await recurringLaterGroup.getByText(/10 booked dates/i).isVisible())) {
+  throw new Error("A repeating lesson should report all of its booked occurrences.");
 }
-if ((await laterGroups.getByText("Booked", { exact: true }).count()) !== 2) {
-  throw new Error("Recurring and one-off upcoming lessons should use the same Booked status grammar.");
+if (!(await recurringLaterGroup.getByText("Recurring lesson", { exact: true }).isVisible())) {
+  throw new Error("A repeating schedule should be visibly distinct from one-off booked lessons.");
 }
-if (await accountPanel.getByText(/Next:/).count()) {
-  throw new Error("Upcoming lesson cards should not use a different ‘Next’ heading hierarchy.");
+if ((await oneOffLaterGroup.getByText("Booked", { exact: true }).count()) !== 2) {
+  throw new Error("One-off upcoming lessons should retain the normal Booked status.");
 }
+if (!(await recurringLaterGroup.getByText(/Next:/).isVisible())) {
+  throw new Error("A repeating schedule should lead with its next occurrence.");
+}
+const modificationHint = accountPanel.getByRole("button", { name: "When individual lessons can be modified", exact: true });
+const modificationTooltip = accountPanel.locator('[role="tooltip"]');
+if ((await modificationTooltip.innerText()).trim() !== "You can modify individual lessons up to four weeks in advance.") {
+  throw new Error("Upcoming lessons should explain the four-week individual modification window.");
+}
+await modificationHint.focus();
+await modificationTooltip.waitFor({ state: "visible" });
+await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-tooltip-desktop.png"), fullPage: true });
+await accountMenuButton.focus();
 if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4) {
-  throw new Error("Opening upcoming lessons should keep the four-week calendar visible.");
+  throw new Error("The four-week calendar should remain as a visual beneath upcoming lessons.");
 }
-await accountPage.screenshot({ path: path.join(outDir, "booking-later-lessons-desktop.png"), fullPage: true });
+await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-desktop.png"), fullPage: true });
 
-await recurringLaterGroup.getByRole("button", { name: "Manage", exact: true }).click();
+await recurringLaterGroup.getByRole("button", { name: "View next 4 lessons", exact: true }).click();
+const nextRecurringLessons = recurringLaterGroup.locator(".upcoming-lesson-group__date");
+await nextRecurringLessons.first().waitFor({ state: "visible" });
+if ((await nextRecurringLessons.count()) !== 4) {
+  throw new Error("A repeating lesson should reveal only its next four booked occurrences.");
+}
+await nextRecurringLessons.first().click();
 const upcomingManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
 await upcomingManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor({ timeout: 10_000 });
 await upcomingManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
@@ -760,8 +779,16 @@ await upcomingManagePanel.getByRole("heading", { name: "Part of a recurring sequ
 await upcomingManagePanel.getByRole("button", { name: "Move this lesson", exact: true }).waitFor();
 await upcomingManagePanel.getByRole("button", { name: "Cancel this lesson", exact: true }).waitFor();
 await upcomingManagePanel.getByRole("button", { name: "Manage sequence", exact: true }).waitFor();
-if (await accountPanel.locator("#account-later-lessons").count()) {
-  throw new Error("Opening a later recurring lesson should close the account drawer and reveal its management panel.");
+if (await accountPanel.locator("#account-upcoming-lessons").count()) {
+  throw new Error("Opening a recurring occurrence should replace the upcoming list with its management panel.");
+}
+const managedLessonPlacement = await accountPage.evaluate(() => {
+  const panel = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
+  const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
+  return { panelBottom: panel?.bottom ?? Infinity, calendarTop: calendar?.top ?? -Infinity };
+});
+if (managedLessonPlacement.panelBottom > managedLessonPlacement.calendarTop + 1) {
+  throw new Error(`Lesson management should sit above the supporting calendar: ${JSON.stringify(managedLessonPlacement)}.`);
 }
 await accountMenuButton.click();
 const managedAccountMenu = accountPanel.locator("#account-menu");
@@ -775,35 +802,33 @@ await accountPanel.getByRole("button", { name: "Back to start", exact: true }).c
 await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
-
-await accountMenuButton.click();
-await accountPanel.getByRole("button", { name: /Upcoming lessons/ }).click();
-await accountPanel.locator("#account-later-lessons").waitFor({ state: "visible" });
-const laterDatesToggle = accountPanel.getByRole("button", { name: "View 9 dates", exact: true });
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+const laterDatesToggle = accountPanel.getByRole("button", { name: "View next 4 lessons", exact: true });
 await laterDatesToggle.click();
-const laterLessonButton = accountPanel.locator("#account-later-lessons .upcoming-lesson-group__date");
+const laterLessonButton = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group__date");
 await laterLessonButton.first().waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
-if ((await laterLessonButton.count()) !== 8) {
-  throw new Error("A repeating lesson should expose every remaining later occurrence beneath its lead date.");
+if ((await laterLessonButton.count()) !== 4) {
+  throw new Error("A repeating lesson should expose its next four occurrences and no more.");
 }
-await accountPage.screenshot({ path: path.join(outDir, "booking-later-lessons-expanded-desktop.png"), fullPage: true });
+await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-expanded-desktop.png"), fullPage: true });
 await laterLessonButton.first().click();
 try {
   await upcomingManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor({ timeout: 10_000 });
 } catch {
   const panelText = (await upcomingManagePanel.innerText().catch(() => "missing panel")).replace(/\s+/g, " ").trim();
-  throw new Error(`A later lesson did not open in the shared management panel. Panel: ${panelText}`);
+  throw new Error(`An upcoming lesson did not open in the shared management panel. Panel: ${panelText}`);
 }
 await upcomingManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
-await upcomingManagePanel.getByRole("button", { name: "Back to calendar", exact: true }).click();
+await upcomingManagePanel.getByRole("button", { name: "Back to upcoming lessons", exact: true }).click();
 await accountPage.locator(".booking-workflow-context").waitFor({ state: "visible" });
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 if ((await accountMenuButton.getAttribute("aria-expanded")) !== "false") {
-  throw new Error("Managing a later occurrence should leave the account menu neatly closed when returning to the calendar.");
+  throw new Error("Managing an upcoming occurrence should leave the account menu neatly closed when returning to the lesson list.");
 }
 await waitForOrientation(accountPage);
 if (await accountPage.locator(`#lesson-calendar [data-date-key="${qaLaterDate}"]`).count()) {
-  throw new Error("A later recurring lesson stretched the visible calendar beyond eight weeks.");
+  throw new Error("A future recurring lesson stretched the visible calendar beyond eight weeks.");
 }
 
 const desktopAccountLayout = await accountPage.evaluate(() => {
@@ -918,7 +943,7 @@ if (
   );
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-manage-desktop.png"), fullPage: true });
-await desktopManagePanel.getByRole("button", { name: "Back to calendar", exact: true }).click();
+await desktopManagePanel.getByRole("button", { name: "Back to upcoming lessons", exact: true }).click();
 await accountPage.getByRole("button", { name: "Back to 4 weeks", exact: true }).click();
 await waitForOrientation(accountPage);
 
@@ -949,10 +974,8 @@ await accountPanel.locator("#account-past-lessons").waitFor({ state: "detached" 
 await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
-await accountMenuButton.click();
-await accountPanel.getByRole("button", { name: /Upcoming lessons/ }).click();
-await accountPanel.locator("#account-later-lessons").waitFor({ state: "visible" });
-await accountPanel.getByRole("button", { name: "View 9 dates", exact: true }).click();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+await accountPanel.getByRole("button", { name: "View next 4 lessons", exact: true }).click();
 await accountPanel.locator(".upcoming-lesson-group__date").first().waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
 const mobileLaterLessonsLayout = await accountPage.evaluate(() => ({
@@ -960,12 +983,12 @@ const mobileLaterLessonsLayout = await accountPage.evaluate(() => ({
   scrollWidth: document.documentElement.scrollWidth
 }));
 if (mobileLaterLessonsLayout.scrollWidth > mobileLaterLessonsLayout.clientWidth + 1) {
-  throw new Error("The grouped upcoming lessons overflow on a phone.");
+  throw new Error(`The grouped upcoming lessons overflow on a phone: ${JSON.stringify(mobileLaterLessonsLayout)}.`);
 }
-await accountPage.screenshot({ path: path.join(outDir, "booking-later-lessons-mobile.png"), fullPage: true });
+await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-mobile.png"), fullPage: true });
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: /Upcoming lessons/ }).click();
-await accountPanel.locator("#account-later-lessons").waitFor({ state: "detached" });
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "detached" });
 const mobileAccountLayout = await accountPage.evaluate(() => {
   const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid");
   const calendarBounds = calendar?.getBoundingClientRect();
@@ -1082,6 +1105,14 @@ const mobileManagePanel = accountPage.locator("#lesson-calendar .unified-calenda
 await mobileManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).waitFor();
 await mobileManagePanel.getByText("Booked lesson", { exact: true }).waitFor();
 await waitForOrientation(accountPage);
+const mobileManagedPlacement = await accountPage.evaluate(() => {
+  const panel = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
+  const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
+  return { panelBottom: panel?.bottom ?? Infinity, calendarTop: calendar?.top ?? -Infinity };
+});
+if (mobileManagedPlacement.panelBottom > mobileManagedPlacement.calendarTop + 1) {
+  throw new Error(`Mobile lesson management should sit above the calendar: ${JSON.stringify(mobileManagedPlacement)}.`);
+}
 const mobileManageControls = await mobileManagePanel.evaluate((panel) => {
   const bounds = [...panel.querySelectorAll(".manage-booking__actions .button")].map((button) => {
     const rectangle = button.getBoundingClientRect();
@@ -1102,7 +1133,7 @@ if (
   );
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-manage-mobile.png"), fullPage: true });
-await mobileManagePanel.getByRole("button", { name: "Back to calendar", exact: true }).click();
+await mobileManagePanel.getByRole("button", { name: "Back to upcoming lessons", exact: true }).click();
 await mobileManagePanel.getByText("Selected day", { exact: true }).waitFor();
 await waitForOrientation(accountPage);
 const compactCalendarLayout = await accountPage.evaluate(() => {
@@ -1270,11 +1301,10 @@ await accountPage.getByRole("heading", { name: "Choose a lesson", exact: true })
 await accountPage.getByRole("button", { name: "Back", exact: true }).click();
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
-
-await accountMenuButton.click();
-await accountPanel.getByRole("button", { name: /Upcoming lessons/ }).click();
-const recurringLaterLesson = accountPanel.locator("#account-later-lessons .upcoming-lesson-group--series");
-await recurringLaterLesson.getByRole("button", { name: "Manage", exact: true }).click();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+const recurringLaterLesson = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group--series");
+await recurringLaterLesson.getByRole("button", { name: "View next 4 lessons", exact: true }).click();
+await recurringLaterLesson.locator(".upcoming-lesson-group__date").first().click();
 await upcomingManagePanel.getByRole("heading", { name: "Part of a recurring sequence", exact: true }).waitFor();
 const manageSequence = upcomingManagePanel.getByRole("button", { name: "Manage sequence", exact: true });
 await manageSequence.click();

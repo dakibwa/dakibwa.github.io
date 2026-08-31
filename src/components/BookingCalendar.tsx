@@ -347,6 +347,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [manageError, setManageError] = useState("");
   const [manageOutcome, setManageOutcome] = useState("");
   const [showAccountSignIn, setShowAccountSignIn] = useState(false);
+  const [upcomingRequestKey, setUpcomingRequestKey] = useState(0);
 
   const lessonType = lessonTypes.find((type) => type.id === lessonTypeId) ?? null;
 
@@ -424,6 +425,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         setSelectedDate(portoDateKey(new Date(result.booking.startAt)));
         setManageLoading(false);
       });
+      window.requestAnimationFrame(() => orientTo("booking-next-step", true));
     } catch (caught) {
       transitionBooking(() => {
         setManaged(null);
@@ -537,10 +539,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       : allCalendarWeeks;
   // A 56-day inclusive range can touch a ninth Monday–Sunday row. New booking
   // still uses the full eight-week horizon; the lesson overview owns only four
-  // rows, and anything beyond them lives in Upcoming lessons in the account menu.
+  // rows. The Upcoming lessons list is the management surface; this stays as
+  // the four-week visual overview beneath it.
   const calendarWeeks = uncappedCalendarWeeks.slice(0, 8);
   const fourWeekCalendarWeeks = calendarWeeks.slice(0, 4);
-  const fourWeekCalendarEnd = fourWeekCalendarWeeks.at(-1)?.cells.at(-1)?.key ?? "";
   const overviewCalendarWeeks = intent === "lessons" ? fourWeekCalendarWeeks : calendarWeeks;
   const visibleCalendarDates = new Set(overviewCalendarWeeks.flatMap((week) => week.cells.map((cell) => cell.key)));
   const calendarWindowBookings = calendarBookings.filter((booking) =>
@@ -577,6 +579,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     !isConfirmingBooking &&
     !needsLessonsSignIn &&
     (intent === "lessons" || Boolean(intent === "book" && lessonType && step !== "lesson") || Boolean(managed));
+  const managedPanelIsPrimary = Boolean(managedToken || manageLoading || managed || manageError);
   const resolvedManagedSeriesId = managedSeriesId ?? myBookings.find((booking) => booking.manageToken === managedToken)?.seriesId ?? null;
   const activeManagedSeries = resolvedManagedSeriesId
     ? lessonSeries.find((entry) => entry.id === resolvedManagedSeriesId) ?? null
@@ -685,6 +688,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setLessonTypeId("");
       setSelectedSlot("");
       setCalendarWeekCount(4);
+      setUpcomingRequestKey((current) => current + 1);
       setStep("day");
       setShowAccountSignIn(!student);
       if (firstCalendarBookingStart) {
@@ -693,7 +697,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         setSelectedDate("");
       }
     });
-    orientTo(student ? "lesson-calendar" : "booking-lessons-sign-in", true);
+    if (!student) orientTo("booking-lessons-sign-in", true);
   }
 
   function resetJourneyToStart() {
@@ -865,6 +869,13 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     }
   }
 
+  function returnFromManagedLesson() {
+    transitionBooking(() => {
+      closeManagedLesson();
+      setUpcomingRequestKey((current) => current + 1);
+    });
+  }
+
   if (confirmation) {
     const localTime = differingLocalTime(confirmation.startAt, studentZone);
     return (
@@ -989,7 +1000,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             <AccountControls
               calendarHorizonDays={horizonDays}
               embedded
-              laterThan={fourWeekCalendarEnd}
               onBackToStart={resetJourneyToStart}
               onManage={(token, seriesId) =>
                 transitionBooking(() => {
@@ -1012,9 +1022,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 setSelectedDate("");
                 setSelectedSlot("");
               }}
+              openUpcomingRequest={upcomingRequestKey}
               showCalendar={false}
               showHistory
-              showLaterLessons
+              showUpcomingLessons
               showSeries={false}
             />
           </section>
@@ -1062,7 +1073,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               heading="Your account"
               headingLevel={3}
               initialMode="signin"
-              intro="Your upcoming lessons will appear on the calendar."
+              intro="Your upcoming lessons will appear first, with your calendar beneath them."
               onSignedIn={(signedIn) => {
                 transitionBooking(() => {
                   setStudent(signedIn);
@@ -1164,7 +1175,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         ) : null}
 
         {showWorkflowCalendar ? (
-          <div className="unified-calendar" id="lesson-calendar">
+          <div className={`unified-calendar${managedPanelIsPrimary ? " unified-calendar--managed" : ""}`} id="lesson-calendar">
           <div className="calendar-panel unified-calendar__grid">
             <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
             <div className="unified-calendar__toolbar">
@@ -1292,12 +1303,12 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     <h3>{managed.booking.lessonType.name}</h3>
                   </div>
                   <button
-                    aria-label="Back to calendar"
+                    aria-label={student ? "Back to upcoming lessons" : "Back to calendar"}
                     className="booking-back booking-back--tertiary"
-                    onClick={() => transitionBooking(closeManagedLesson)}
+                    onClick={student ? returnFromManagedLesson : () => transitionBooking(closeManagedLesson)}
                     type="button"
                   >
-                    <ArrowLeft size={16} aria-hidden="true" /> Calendar
+                    <ArrowLeft size={16} aria-hidden="true" /> {student ? "Lessons" : "Calendar"}
                   </button>
                 </div>
                 {manageOutcome ? (
