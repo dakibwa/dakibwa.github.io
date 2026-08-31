@@ -125,7 +125,8 @@ depending on them having kept the right confirmation email.
   the active workflow rather than behind an Account/Close disclosure. The account
   bar names the student once and keeps upcoming lessons beside a menu containing
   past lessons, profile editing and sign out. Choosing past lessons opens a
-  separate panel below the account bar. Repeating controls appear when the student has
+  separate panel below the account bar, and that menu item remains available in
+  every signed-in booking state. Repeating controls appear when the student has
   chosen to view lessons, where they are relevant. There is only one `Booking`
   destination in the site navigation — no separate `My lessons` tab — because
   booking and managing lessons are the same workspace.

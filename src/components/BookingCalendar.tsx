@@ -952,7 +952,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 setSelectedSlot("");
               }}
               showCalendar={false}
-              showHistory={intent === "lessons"}
+              showHistory
+              showUpcoming={intent === "lessons"}
               showSeries={intent === "lessons"}
             />
           </section>
