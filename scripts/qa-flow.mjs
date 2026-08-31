@@ -394,7 +394,7 @@ await accountPage.route("**/me", async (route) => {
         },
         {
           reference: "INES-OLD1",
-          status: "confirmed",
+          status: "cancelled",
           startAt: qaPastStart.toISOString(),
           endAt: qaPastEnd.toISOString(),
           location: "online",
@@ -898,7 +898,7 @@ if (await accountPage.locator("#lesson-calendar").count()) {
   throw new Error("The calendar should wait until a lesson type has been chosen.");
 }
 if (await accountPage.getByRole("button", { name: /Trial lesson/ }).count()) {
-  throw new Error("A student who has attended a lesson should not be offered the trial.");
+  throw new Error("A student with any non-cancelled booking should not be offered the trial.");
 }
 if (await accountPage.getByText(/The trial is for a first lesson/i).count()) {
   throw new Error("Trial ineligibility should restore the valid choices without a warning banner.");

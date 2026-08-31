@@ -324,9 +324,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [student, setStudent] = useState<Student | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
   const [checkingSession, setCheckingSession] = useState(true);
-  // Someone with a lesson behind them shouldn't see the trial at all — the
-  // server refuses it anyway, but a card you can't book is a trap, not a choice.
-  const [hadLesson, setHadLesson] = useState(false);
+  // The Worker treats any non-cancelled booking as the start of the student's
+  // relationship with Inês, including an upcoming first lesson. Mirror that
+  // exact rule here: a card the server will refuse is a trap, not a choice.
+  const [hasPriorBooking, setHasPriorBooking] = useState(false);
   const [managedToken, setManagedToken] = useState("");
   const [managed, setManaged] = useState<ManagedBooking | null>(null);
   const [manageMode, setManageMode] = useState<"view" | "reschedule" | "confirm-cancel">("view");
@@ -343,14 +344,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     if (!session) {
       setStudent(null);
       setMyBookings([]);
-      setHadLesson(false);
+      setHasPriorBooking(false);
       return null;
     }
 
     const data = await fetchMe(session);
     setStudent(data?.student ?? null);
     setMyBookings(data?.bookings ?? []);
-    setHadLesson((data?.bookings ?? []).some((booking) => booking.isPast && booking.status !== "cancelled"));
+    setHasPriorBooking((data?.bookings ?? []).some((booking) => booking.status !== "cancelled"));
     return data;
   }, []);
 
@@ -380,7 +381,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   // choices back in the same place. A large warning makes an eligibility rule
   // feel like the student's mistake; the unavailable option simply leaves.
   useEffect(() => {
-    if (!hadLesson || lessonTypeId !== "trial") return;
+    if (!hasPriorBooking || lessonTypeId !== "trial") return;
     transitionBooking(() => {
       setIntent("book");
       setLessonTypeId("");
@@ -390,7 +391,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setStep("lesson");
     });
     orientTo("booking-lesson-choice");
-  }, [hadLesson, lessonTypeId]);
+  }, [hasPriorBooking, lessonTypeId]);
 
   const openManaged = useCallback(async (token: string) => {
     if (!token) return;
@@ -551,7 +552,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     !isConfirmingBooking &&
     !needsLessonsSignIn &&
     (intent === "lessons" || Boolean(intent === "book" && lessonType && step !== "lesson") || Boolean(managed));
-  const visibleLessonTypes = hadLesson ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes;
+  const visibleLessonTypes = hasPriorBooking ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes;
   const panelMotionKey = showAccountSignIn && !student
     ? "sign-in"
     : manageLoading
@@ -932,7 +933,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               onSignedOut={() => {
                 setStudent(null);
                 setMyBookings([]);
-                setHadLesson(false);
+                setHasPriorBooking(false);
                 setIntent("choose");
                 setLessonTypeId("");
                 setSelectedDate("");
