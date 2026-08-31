@@ -126,6 +126,12 @@ depending on them having kept the right confirmation email.
   chosen to view lessons, where they are relevant. There is only one `Booking`
   destination in the site navigation — no separate `My lessons` tab — because
   booking and managing lessons are the same workspace.
+- **Upcoming lessons groups a repeating schedule as one thing.** Its card shows
+  the soonest booked occurrence and opens that lesson's normal move/cancel panel.
+  `View all dates` reveals the remaining booked occurrences, each of which can
+  be moved or cancelled individually in that same panel. One-off lessons remain
+  separate cards. Stopping a repeat is still a separate confirmed action because
+  it stops future top-ups without cancelling dates that are already booked.
 
 ### Repeating bookings
 
