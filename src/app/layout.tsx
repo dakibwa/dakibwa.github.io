@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Beth_Ellen, Montserrat } from "next/font/google";
 import { preload } from "react-dom";
-import { RouteMotion } from "@/components/RouteMotion";
 import { publicAssetPath, publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
 
@@ -93,7 +92,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         }}
       >
         {children}
-        <RouteMotion />
       </body>
     </html>
   );

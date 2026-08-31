@@ -49,6 +49,9 @@
   --ui: var(--font-montserrat), Arial, sans-serif;
   --page-pad: clamp(1.5rem, 4.4vw, 5rem);
   --header-height: 108px;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-route: 240ms;
+  --motion-surface: 260ms;
 }
 
 * {
@@ -153,20 +156,16 @@ p {
   }
 }
 
-/* The entrance fade runs once, on arrival. RouteMotion marks <html> with
-   .route-arrived on the first in-app navigation; from then on pages paint
-   immediately — moving around the site must never wait on an animation. */
+/* Next remounts the route template after navigation, so this is an incoming
+   dissolve rather than a click delay. The destination starts loading
+   immediately; the fade only softens the paint once it is ready. */
 .route-fade {
-  animation: route-fade-in 220ms ease-out backwards;
-}
-
-html.route-arrived .route-fade {
-  animation: none;
+  animation: route-fade-in var(--motion-route) var(--motion-ease) both;
 }
 
 @keyframes route-fade-in {
   from {
-    opacity: 0;
+    opacity: 0.28;
   }
   to {
     opacity: 1;
@@ -174,8 +173,9 @@ html.route-arrived .route-fade {
 }
 
 @media (max-width: 720px) {
-  .route-fade {
-    animation-duration: 170ms;
+  :root {
+    --motion-route: 190ms;
+    --motion-surface: 220ms;
   }
 }
 
@@ -1265,6 +1265,61 @@ textarea,
    the whole width, which is what stopped it feeling cramped. */
 .booking-stage {
   display: flow-root;
+  view-transition-name: booking-flow;
+}
+
+/* A booking choice changes the size and content of one workspace. The native
+   view-transition snapshot lets that workspace resize and dissolve as one
+   surface, while the rest of the page stays still. There is no artificial
+   pause before the state update. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-group(booking-flow) {
+  animation-duration: var(--motion-surface);
+  animation-timing-function: var(--motion-ease);
+}
+
+::view-transition-old(booking-flow) {
+  animation: booking-flow-out 130ms ease-out both;
+}
+
+::view-transition-new(booking-flow) {
+  animation: booking-flow-in var(--motion-surface) var(--motion-ease) both;
+}
+
+@keyframes booking-flow-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes booking-flow-in {
+  from {
+    opacity: 0.18;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+html.booking-transitioning .booking-stage,
+html.booking-fallback-transitioning .booking-stage {
+  pointer-events: none;
+}
+
+/* Browsers without the JS transition API still get a soft replacement of the
+   specific content that changed. The class is applied only around a booking
+   decision, so this never adds a second entrance on initial page load. */
+html.booking-fallback-transitioning .booking-choice-summary,
+html.booking-fallback-transitioning .calendar-weeks,
+html.booking-fallback-transitioning .unified-account-controls,
+html.booking-fallback-transitioning .unified-calendar__panel-content,
+html.booking-fallback-transitioning .booking-confirmation-stage {
+  animation: booking-flow-in var(--motion-surface) var(--motion-ease) both;
 }
 
 .booking-back {
@@ -1702,7 +1757,7 @@ textarea,
   scroll-margin-top: 1rem;
 }
 
-.unified-calendar__panel > h3 {
+.unified-calendar__panel-content > h3 {
   margin: 0.2rem 0 0.8rem;
   font-family: var(--ui);
   font-size: 1rem;
@@ -4935,6 +4990,10 @@ button.text-action {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .booking-stage {
+    view-transition-name: none;
+  }
+
   .text-action,
   .text-action:hover {
     transform: none;
@@ -4978,6 +5037,14 @@ button.text-action {
   }
 
   .auth-panel__form {
+    animation: none;
+  }
+
+  .booking-choice-summary,
+  .calendar-weeks,
+  .unified-account-controls,
+  .unified-calendar__panel-content,
+  .booking-confirmation-stage {
     animation: none;
   }
 }
