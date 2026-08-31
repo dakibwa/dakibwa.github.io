@@ -655,7 +655,15 @@ if (!(await initialAccountMenu.getByRole("button", { name: /Later lessons/ }).is
 if (!(await initialAccountMenu.getByRole("button", { name: /Past lessons/ }).isVisible())) {
   throw new Error("Past lessons should not require entering the lesson calendar first.");
 }
-await initialAccountMenu.getByRole("button", { name: "Edit details", exact: true }).click();
+await initialAccountMenu.getByRole("button", { name: /Past lessons/ }).click();
+await accountPanel.locator("#account-past-lessons").waitFor({ state: "visible" });
+if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4) {
+  throw new Error("The initial Past lessons shortcut should establish the four-week lesson workspace.");
+}
+await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
+await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+await accountMenuButton.click();
+await accountPanel.getByRole("button", { name: "Edit details", exact: true }).click();
 await accountPanel.locator(".my-lessons__details").waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
 const desktopDetailRows = await accountPanel.locator(".my-lessons__details-row").evaluateAll((rows) =>
@@ -693,6 +701,7 @@ await accountPage.screenshot({ path: path.join(outDir, "booking-account-menu-des
 const pastLessonsToggle = lessonsAccountMenu.getByRole("button", { name: /Past lessons/ });
 await pastLessonsToggle.click();
 await accountPanel.getByRole("heading", { name: "Past lessons", exact: true }).waitFor();
+await waitForOrientation(accountPage);
 if (!(await accountPanel.getByText("INES-OLD1", { exact: true }).isVisible())) {
   throw new Error("Past lessons should open from the account menu.");
 }
@@ -705,9 +714,11 @@ if (pastLessonPlacement.historyTop <= pastLessonPlacement.accountBottom + 4) {
   throw new Error(`Past lessons should live in a separate panel below the account bar: ${JSON.stringify(pastLessonPlacement)}.`);
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-past-lessons-desktop.png"), fullPage: true });
-await accountMenuButton.click();
-await accountPanel.getByRole("button", { name: /Past lessons/ }).click();
+await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "detached" });
+await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: /View your lessons/ }).click();
+await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 
 await accountMenuButton.click();
 const laterLessonsToggle = accountPanel.getByRole("button", { name: /Later lessons/ });
@@ -752,8 +763,18 @@ await upcomingManagePanel.getByRole("button", { name: "Manage sequence", exact: 
 if (await accountPanel.locator("#account-later-lessons").count()) {
   throw new Error("Opening a later recurring lesson should close the account drawer and reveal its management panel.");
 }
-await upcomingManagePanel.getByRole("button", { name: "Back to calendar", exact: true }).click();
-await accountPage.locator(".booking-workflow-context").waitFor({ state: "visible" });
+await accountMenuButton.click();
+const managedAccountMenu = accountPanel.locator("#account-menu");
+await managedAccountMenu.getByRole("button", { name: /Past lessons/ }).waitFor();
+await managedAccountMenu.getByRole("button", { name: /Past lessons/ }).click();
+await accountPanel.locator("#account-past-lessons").waitFor({ state: "visible" });
+if (await upcomingManagePanel.getByRole("heading", { name: "Single lesson", exact: true }).count()) {
+  throw new Error("A lesson-history shortcut should replace the active recurring-lesson panel instead of stacking above it.");
+}
+await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
+await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: /View your lessons/ }).click();
+await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: /Later lessons/ }).click();
@@ -923,9 +944,11 @@ if (mobilePastLessonsLayout.scrollWidth > mobilePastLessonsLayout.clientWidth + 
   throw new Error("The separate past-lessons panel overflows on a phone.");
 }
 await accountPanel.screenshot({ path: path.join(outDir, "booking-past-lessons-mobile.png") });
-await accountMenuButton.click();
-await accountPanel.getByRole("button", { name: /Past lessons/ }).click();
+await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "detached" });
+await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: /View your lessons/ }).click();
+await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: /Later lessons/ }).click();
 await accountPanel.locator("#account-later-lessons").waitFor({ state: "visible" });
@@ -1199,6 +1222,12 @@ await accountPage
   .click();
 const confirmHeading = accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true });
 await confirmHeading.waitFor({ state: "visible" });
+await accountMenuButton.waitFor({ state: "visible" });
+await accountMenuButton.click();
+const confirmationAccountMenu = accountPanel.locator("#account-menu");
+await confirmationAccountMenu.getByRole("button", { name: /Past lessons/ }).waitFor();
+await accountMenuButton.click();
+await confirmationAccountMenu.waitFor({ state: "detached" });
 for (const duplicateIdentity of ["Signed in as", "Booking as", "Not you?"]) {
   if (await accountPage.getByText(duplicateIdentity, { exact: false }).count()) {
     throw new Error(`Confirmation still repeats the account identity as “${duplicateIdentity}”.`);

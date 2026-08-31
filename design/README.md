@@ -110,9 +110,14 @@ Preserve these desktop and mobile states:
   lesson cards, the calendar, and confirmation never compete at once;
 - the signed-in identity appears once, inside a generously padded account bar.
   A small `Menu` contains `Later lessons`, `Past lessons`, `Edit details`, and
-  `Sign out`. Later lessons are only those beyond the four-week calendar; past
-  and later lessons remain available in every signed-in booking state and open
-  in their own panel below the account bar rather than expanding it. A repeating
+  `Sign out`. `Past lessons` remains present even before the student chooses
+  `View your lessons`, while booking, and while an individual lesson is open;
+  an empty history says so instead of removing the shortcut. Later lessons are
+  only those beyond the four-week calendar. Choosing either lesson shortcut
+  dismisses the active booking or management detail, opens its own panel below
+  the account bar, and establishes the four-week lesson workspace beneath it.
+  Each destination panel has `Back to start`, which restores the initial
+  book-or-view choice. A repeating
   schedule appears once in Later lessons, led by its nearest out-of-window date;
   a quiet reveal exposes every later occurrence. One-off lessons remain
   individual entries. Every later-lesson card uses the same booked badge, date

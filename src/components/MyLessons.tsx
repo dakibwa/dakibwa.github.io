@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, CalendarDays, CheckCircle2, ChevronRight, Globe2, Menu as MenuIcon, Repeat } from "lucide-react";
+import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, ChevronRight, Globe2, Menu as MenuIcon, Repeat } from "lucide-react";
 import { AuthPanel } from "@/components/AuthPanel";
 import { LessonMark } from "@/components/LessonMarks";
 import {
@@ -46,8 +46,10 @@ export function MyLessons({
   calendarHorizonDays = BOOKING_HORIZON_DAYS_FALLBACK,
   embedded = false,
   laterThan = "",
+  onBackToStart,
   onBook,
   onManage,
+  onOpenAccountSection,
   onSignedOut,
   onTransition,
   showCalendar = true,
@@ -58,8 +60,10 @@ export function MyLessons({
   calendarHorizonDays?: number;
   embedded?: boolean;
   laterThan?: string;
+  onBackToStart?: () => void;
   onBook?: () => void;
   onManage?: (token: string, seriesId: string | null) => void;
+  onOpenAccountSection?: (section: "history" | "later") => void;
   onSignedOut?: () => void;
   onTransition?: (update: () => void) => void;
   showCalendar?: boolean;
@@ -303,12 +307,28 @@ export function MyLessons({
   }
 
   function toggleAccountSection(section: "history" | "later") {
+    const isOpening = accountSection !== section;
     applyTransition(() => {
       setMenuOpen(false);
       setEditing(false);
       setExpandedUpcomingGroup("");
       setAccountSection((current) => (current === section ? "" : section));
+      if (isOpening) onOpenAccountSection?.(section);
     });
+    if (isOpening) {
+      window.requestAnimationFrame(() => document.getElementById(`account-${section === "history" ? "past" : "later"}-lessons`)?.focus());
+    }
+  }
+
+  function backToStart() {
+    applyTransition(() => {
+      setMenuOpen(false);
+      setEditing(false);
+      setExpandedUpcomingGroup("");
+      setAccountSection("");
+      onBackToStart?.();
+    });
+    window.requestAnimationFrame(() => document.getElementById("booking-journey-start")?.focus());
   }
 
   if (loading) return <p className="booking-state-note">Loading your lessons…</p>;
@@ -453,7 +473,7 @@ export function MyLessons({
                       Later lessons <span>{laterGroups.length}</span>
                     </button>
                   ) : null}
-                  {showHistory && past.length ? (
+                  {showHistory ? (
                     <button
                       aria-controls="account-past-lessons"
                       aria-expanded={accountSection === "history"}
@@ -592,12 +612,17 @@ export function MyLessons({
       </div>
 
       {embedded && accountSection === "later" ? (
-        <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-later-lessons" aria-labelledby="later-lessons-heading">
+        <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-later-lessons" aria-labelledby="later-lessons-heading" tabIndex={-1}>
           <div className="my-lessons__account-section-heading">
             <div>
               <h3 className="eyebrow" id="later-lessons-heading">Later lessons</h3>
               <p>Beyond your four-week calendar. Repeating lessons appear once.</p>
             </div>
+            {onBackToStart ? (
+              <button className="booking-back booking-back--tertiary" onClick={backToStart} type="button">
+                <ArrowLeft size={16} aria-hidden="true" /> Back to start
+              </button>
+            ) : null}
           </div>
           <div className="my-lessons__account-bookings">
             {laterGroups.map((group) => {
@@ -675,25 +700,36 @@ export function MyLessons({
       ) : null}
 
       {embedded && accountSection === "history" ? (
-        <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-past-lessons" aria-labelledby="past-lessons-heading">
-          <h3 className="eyebrow" id="past-lessons-heading">Past lessons</h3>
-          <ul className="lesson-list lesson-list--past">
-            {past.map((booking) => (
-              <li key={booking.reference}>
-                <div className="lesson-list__body">
-                  <h3>
-                    {booking.lessonType.name}
-                    {booking.status === "cancelled" ? <em> · cancelled</em> : null}
-                  </h3>
-                  <p>
-                    <CalendarDays size={16} aria-hidden="true" />
-                    {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
-                  </p>
-                </div>
-                <span className="lesson-list__reference">{booking.reference}</span>
-              </li>
-            ))}
-          </ul>
+        <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-past-lessons" aria-labelledby="past-lessons-heading" tabIndex={-1}>
+          <div className="my-lessons__account-section-heading">
+            <h3 className="eyebrow" id="past-lessons-heading">Past lessons</h3>
+            {onBackToStart ? (
+              <button className="booking-back booking-back--tertiary" onClick={backToStart} type="button">
+                <ArrowLeft size={16} aria-hidden="true" /> Back to start
+              </button>
+            ) : null}
+          </div>
+          {past.length ? (
+            <ul className="lesson-list lesson-list--past">
+              {past.map((booking) => (
+                <li key={booking.reference}>
+                  <div className="lesson-list__body">
+                    <h3>
+                      {booking.lessonType.name}
+                      {booking.status === "cancelled" ? <em> · cancelled</em> : null}
+                    </h3>
+                    <p>
+                      <CalendarDays size={16} aria-hidden="true" />
+                      {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
+                    </p>
+                  </div>
+                  <span className="lesson-list__reference">{booking.reference}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="booking-state-note">No past lessons yet.</p>
+          )}
         </section>
       ) : null}
 
