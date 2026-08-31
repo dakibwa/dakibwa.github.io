@@ -160,7 +160,7 @@ const faqSections = [
       {
         question: "How do I pay?",
         answer:
-          "You don’t pay when you book — your slot is held as soon as you confirm it. You pay on the day, in person with Inês."
+          "You don’t pay when you book. Your slot is held as soon as you confirm it. You pay on the day, in person with Inês."
       },
       {
         question: "How much does a lesson cost?",
@@ -194,7 +194,7 @@ const faqSections = [
       {
         question: "What if I don’t turn up?",
         answer:
-          "Cancelling is always better than not coming — even last minute, so the time isn’t held for nothing. If something happened, message me: I’d rather sort it out than worry about it.",
+          "Cancelling is always better than not coming, even at the last minute, so the time isn’t held for nothing. If something happened, message me. I’d rather sort it out than worry about it.",
         // Placed under cancelling rather than payment on purpose — the answer is
         // mostly "cancel instead", and that is the thing worth reading.
       },

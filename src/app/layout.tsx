@@ -38,7 +38,7 @@ const shareImage = {
   url: "/og.png",
   width: 1200,
   height: 630,
-  alt: "Português com a Inês — European Portuguese lessons in Porto, or online"
+  alt: "Português com a Inês: European Portuguese lessons in Porto or online"
 };
 
 export const metadata: Metadata = {

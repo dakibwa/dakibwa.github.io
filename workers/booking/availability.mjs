@@ -252,7 +252,7 @@ export async function isSlotBookable(
     const hours = settings.minimumNoticeHours;
     return {
       ok: false,
-      reason: `That's too soon — Inês needs at least ${hours} hour${hours === 1 ? "" : "s"}' notice. Please choose a later time.`
+      reason: `That's too soon. Inês needs at least ${hours} hour${hours === 1 ? "" : "s"}' notice. Please choose a later time.`
     };
   }
 

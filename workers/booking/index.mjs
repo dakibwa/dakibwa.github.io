@@ -1206,7 +1206,7 @@ async function handleCreate(request, env, ctx) {
       .first();
     if ((prior?.n ?? 0) > 0) {
       return fail(
-        "The trial is for your first lesson with Inês — you're past that! Book a single lesson instead.",
+        "The trial is for your first lesson with Inês. You've already had a lesson, so choose a single lesson instead.",
         400,
         request,
         env

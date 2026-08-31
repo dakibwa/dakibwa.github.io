@@ -292,7 +292,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setLessonTypeId("");
     setSelectedSlot("");
     goTo("lesson");
-    setTrialNotice("The trial is for a first lesson with Inês — you're past that! A single lesson is the same hour.");
+    setTrialNotice("The trial is for a first lesson with Inês. You've already had a lesson, so choose a single lesson instead.");
   }, [hadLesson, lessonTypeId]);
 
   const openManaged = useCallback(async (token: string) => {
@@ -655,7 +655,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 {confirmation.series.booked.length === 1 ? "lesson" : "lessons"} booked
               </strong>
               {confirmation.series.openEnded
-                ? " — and this time stays yours every week until you stop it."
+                ? ". This time stays yours every week until you stop it."
                 : " at the same time each week."}
             </p>
             {confirmation.series.skipped.length ? (
@@ -1162,7 +1162,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 <h3>{lessonType?.name}</h3>
                 <p>
                   <CalendarDays size={17} aria-hidden="true" />
-                  <span>{chosen ? `${formatLongDate(chosen.startAt)}, ${formatSlotTime(chosen.startAt)}` : "—"}</span>
+                  <span>{chosen ? `${formatLongDate(chosen.startAt)}, ${formatSlotTime(chosen.startAt)}` : "Not selected"}</span>
                 </p>
                 {chosen && differingLocalTime(chosen.startAt, studentZone) ? (
                   <p>
@@ -1173,7 +1173,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 <div className="booking-recap__pair">
                   <p>
                     <Clock3 size={17} aria-hidden="true" />
-                    {lessonType ? formatLessonDuration(lessonType.duration_minutes) : "—"}
+                    {lessonType ? formatLessonDuration(lessonType.duration_minutes) : "Not selected"}
                   </p>
                   <p>
                     <MapPin size={17} aria-hidden="true" />
@@ -1217,7 +1217,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   <p className="booking-payment__summary">
                     {lessonType?.name}
                     {lessonType ? ` · ${formatMoneyCents(lessonType.price_cents)}` : ""}
-                    {form.repeat !== "once" ? " for your first lesson" : ""} — your time is held while you pay.
+                    {form.repeat !== "once" ? " for your first lesson" : ""}. Your time is held while you pay.
                   </p>
                   {paymentError ? (
                     <div className="booking-alert" role="alert">
@@ -1227,7 +1227,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   ) : null}
                   <div className="booking-payment__mount" ref={paymentMountRef} />
                   <button className="text-action" onClick={() => setPayment(null)} type="button">
-                    Back — change something first
+                    Back to make a change
                   </button>
                 </div>
               ) : checkingSession ? (
@@ -1323,8 +1323,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                                   {seriesPreview.skipped.length === 1
                                     ? "One week isn't free"
                                     : `${seriesPreview.skipped.length} weeks aren't free`}
-                                </strong>{" "}
-                                — you won&rsquo;t have a lesson{" "}
+                                </strong>
+                                . You won&rsquo;t have a lesson{" "}
                                 {seriesPreview.skipped.length === 1 ? "that week" : "those weeks"}.
                               </p>
                               <ul>
@@ -1377,7 +1377,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
                   {prepay && form.repeat !== "once" ? (
                     <p className="booking-form-note">
-                      You&rsquo;ll pay your first lesson now, securely with Stripe — each later lesson goes to the same
+                      You&rsquo;ll pay for your first lesson now, securely with Stripe. Each later lesson goes to the same
                       card automatically on its own day. Move or cancel any lesson free until the day before from your{" "}
                       <button className="booking-form-note__calendar" onClick={() => goTo("time")} type="button">
                         lesson calendar
@@ -1390,8 +1390,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       You&rsquo;ll pay now, securely with Stripe. Move or cancel free until the day before from your{" "}
                       <button className="booking-form-note__calendar" onClick={() => goTo("time")} type="button">
                         lesson calendar
-                      </button>{" "}
-                      — a cancellation is refunded automatically. On the day of
+                      </button>
+                      . A cancellation is refunded automatically. On the day of
                       the lesson it&rsquo;s yours: <strong>no changes and no refunds</strong>.
                     </p>
                   ) : (
@@ -1399,9 +1399,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       You pay on the day, in person with Inês. Change your booking any time from your{" "}
                       <button className="booking-form-note__calendar" onClick={() => goTo("time")} type="button">
                         lesson calendar
-                      </button>{" "}
-                      &mdash; free until the day before,{" "}
-                      <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong> on the day itself.
+                      </button>
+                      . It is free until the day before, with{" "}
+                      <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong> charged on the day itself.
                     </p>
                   )}
                 </form>

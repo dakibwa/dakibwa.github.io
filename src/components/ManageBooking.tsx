@@ -198,12 +198,12 @@ export function ManageBooking({
             <p>
               We&rsquo;ve emailed you the details and updated your calendar.
               {outcome.refunded && booking.amountCents
-                ? ` Your ${formatMoneyCents(booking.amountCents)} is on its way back to your card — refunds usually show within a few days.`
+                ? ` Your ${formatMoneyCents(booking.amountCents)} is on its way back to your card. Refunds usually show within a few days.`
                 : ""}
               {outcome.sameDayFee
                 ? ` Because this was on the day of the lesson, the ${formatMoneyCents(
                     booking.sameDayFeeCents
-                  )} same-day fee applies — Inês will mention it.`
+                  )} same-day fee applies. Inês will mention it.`
                 : ""}
             </p>
           </div>
@@ -305,7 +305,7 @@ export function ManageBooking({
             <div className="booking-alert booking-alert--warn" role="status">
               <AlertCircle size={18} aria-hidden="true" />
               <p>
-                Your lesson is today, and it&rsquo;s already paid — it can&rsquo;t be moved or cancelled on the day.
+                Your lesson is today, and it&rsquo;s already paid, so it can&rsquo;t be moved or cancelled on the day.
                 See you there. If something has happened, reply to your confirmation email and Inês will help.
               </p>
             </div>
@@ -350,7 +350,7 @@ export function ManageBooking({
             <div className="manage-booking__confirm">
               <p>
                 Cancel your {booking.lessonType.name.toLowerCase()} on {formatLongDate(booking.startAt)} at{" "}
-                {formatSlotTime(booking.startAt)}? This can&rsquo;t be undone — you&rsquo;d need to book again.
+                {formatSlotTime(booking.startAt)}? This can&rsquo;t be undone. You&rsquo;d need to book again.
                 {refundOnCancel && booking.amountCents
                   ? ` Your ${formatMoneyCents(booking.amountCents)} comes straight back to your card.`
                   : ""}
