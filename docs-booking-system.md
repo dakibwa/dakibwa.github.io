@@ -211,10 +211,11 @@ ahead without browsing a full three-month calendar.
   beyond the visible window, but those lessons no longer stretch the calendar;
   they remain available from `Upcoming lessons` in the account bar and still
   open the same in-place move/cancel interface.
-- A signed-in student who has already attended a lesson is never offered the
-  trial. If that eligibility becomes known after the trial was selected (for
-  example after signing in at confirmation), the trial choice dissolves and the
-  valid lesson choices return without a warning banner or a failed booking.
+- A signed-in student with any non-cancelled booking is never offered the trial,
+  matching the Worker's booking rule exactly. If that eligibility becomes known
+  after the trial was selected (for example after signing in at confirmation),
+  the trial choice dissolves and the valid lesson choices return without a
+  warning banner or a failed booking.
 - **When she moves a lesson, the emails say so.** They used to go out in the
   student's own voice — "that's done" — and tell her the student had moved it.
 
