@@ -51,15 +51,17 @@ hero, using the space left by the removed card artwork without merging into
 the surrounding cream page. At 900px and below they remain stacked after the
 blue introduction so the mobile reading order stays unchanged. The browser
 favicon is now a generated cream-and-lavender organic mark with a coral accent
-on dark blue, replacing the flower symbol. Above 1000px, the Lessons page now
+on dark blue, replacing the flower symbol. From 821px upwards, the Lessons page
 combines its closing booking prompt and payment note as one asymmetric blue and
-soft-lavender composition rather than two full-width bars. At 1000px and below
-they return to the simpler stacked order. Above 820px, the same soft-lavender
-rail treatment separates the Approach teaching list and the FAQ index from
-their cream content columns. At 820px and below those sections keep their
-simpler cream stacked treatment. In the intermediate Approach layout from
-821px to 999px, the teaching-list headings wrap naturally instead of being
-clipped at the right edge; from 1000px upwards they remain on one line.
+soft-lavender composition rather than two full-width bars. Between 821px and
+1100px, the blue panel arranges its own contents vertically so the joined
+composition still fits a narrower desktop window; only at 820px and below do
+the two panels stack. Above 820px, the same soft-lavender rail treatment
+separates the Approach teaching list and the FAQ index from their cream content
+columns. At 820px and below those sections keep their simpler cream stacked
+treatment. In the intermediate Approach layout from 821px to 999px, the
+teaching-list headings wrap naturally instead of being clipped at the right
+edge; from 1000px upwards they remain on one line.
 
 ## References retained in this repository
 

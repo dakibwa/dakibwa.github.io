@@ -4615,18 +4615,35 @@ button.text-action {
   }
 }
 
-@media (max-width: 1000px) {
+@media (min-width: 821px) and (max-width: 1100px) {
   .lessons-closing {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
   }
 
-  .lessons-note {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    border-top: 1px solid var(--rule-soft);
-    border-left: 0;
-    gap: 2rem;
+  .lesson-location-band {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    gap: 1.4rem;
+  }
+
+  .lesson-location-band > div {
+    gap: 1rem;
+  }
+
+  .lesson-location-band__mark {
+    width: 72px;
+    height: 64px;
+  }
+
+  .lesson-location-band p {
+    font-size: 1rem;
+  }
+
+  .lesson-location-band .button {
+    width: min(100%, 280px);
   }
 }
 
@@ -4697,10 +4714,16 @@ button.text-action {
     grid-template-columns: 76px 1fr;
   }
 
+  .lessons-closing {
+    grid-template-columns: 1fr;
+  }
+
   .lessons-note {
     align-items: flex-start;
     flex-direction: column;
     justify-content: flex-start;
+    border-top: 1px solid var(--rule-soft);
+    border-left: 0;
   }
 
   .approach-composition {
