@@ -54,7 +54,10 @@ favicon is now a generated cream-and-lavender organic mark with a coral accent
 on dark blue, replacing the flower symbol. Above 1000px, the Lessons page now
 combines its closing booking prompt and payment note as one asymmetric blue and
 soft-lavender composition rather than two full-width bars. At 1000px and below
-they return to the simpler stacked order.
+they return to the simpler stacked order. Above 820px, the same soft-lavender
+rail treatment separates the Approach teaching list and the FAQ index from
+their cream content columns. At 820px and below those sections keep their
+simpler cream stacked treatment.
 
 ## References retained in this repository
 
