@@ -11,12 +11,12 @@ const principles = [
   },
   {
     title: "Slow is fine",
-    body: "Repeat things. Ask the obvious question. Nobody is waiting.",
-    asset: "/visuals/v2-splats/at-your-pace-splat-v2.svg"
+    body: "Repeat things. Ask the obvious question. Build up confidence.",
+    asset: "/visuals/v2-splats/build-confidence-splat-generated-v2.webp"
   },
   {
     title: "Portuguese you’ll use",
-    body: "Ordering coffee, phone calls, small talk with the neighbours. Not textbook dialogues.",
+    body: "Expand your vocabulary and learn the grammar through practice.",
     asset: "/visuals/v2-splats/real-life-splat-v2.svg"
   }
 ];
@@ -39,18 +39,6 @@ export default function Home() {
             <Link className="button button--coral" href="/book">
               Book a lesson
             </Link>
-          </div>
-          <div className="home-hero__art">
-            <AssetMark
-              asset="/visuals/generated-splats/business-card-splat-generated-v2.webp"
-              avifAsset="/visuals/generated-splats/business-card-splat-generated-v2.avif"
-              className="home-hero__burst"
-              height={730}
-              mobileAsset="/visuals/generated-splats/business-card-splat-generated-v2-mobile.webp"
-              mobileAvifAsset="/visuals/generated-splats/business-card-splat-generated-v2-mobile.avif"
-              priority
-              width={1100}
-            />
           </div>
         </section>
 

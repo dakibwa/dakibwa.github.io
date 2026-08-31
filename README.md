@@ -38,10 +38,8 @@ source resolution. Two worth knowing about:
 - The wordmark is only ever a CSS `mask-image` over `currentColor`, so the
   browser discards its RGB channels. It ships as an alpha-only WebP at 760px
   (the header renders 380px) rather than a 900px RGBA PNG — 45KB to 22KB.
-- The hero splat renders 720x660 under `object-fit: cover`, so the desktop
-  source is 1100px wide rather than 1540px — 174KB to 95KB. Do not re-encode
-  the mobile variant: it is already at its floor and a second lossy pass makes
-  it larger.
+- The business-card-derived splat is retained for the generated social share
+  image only. It no longer loads in the home-page hero.
 
 ## Delivery
 
@@ -156,11 +154,10 @@ then on. There is no overlay, movement, scale, or staggered hero animation.
 scrolling, and the button and navigation hover transforms, keeping colour
 changes so states stay distinguishable.
 
-Hero artwork is served as AVIF with a WebP fallback — the painterly splats
-cost less than half as much in AVIF as they did in WebP — and fetched
-eagerly, with dedicated
-800 px sources for screens up to 720 px and preload links for the priority
-hero on each page; non-critical marks load lazily. The display font is
+Approach and lessons hero artwork is served as AVIF with a WebP fallback — the
+painterly splats cost less than half as much in AVIF as they did in WebP — and
+fetched eagerly, with dedicated 800 px sources for screens up to 720 px;
+non-critical marks load lazily. The display font is
 preloaded because every page's largest text is a Beth Ellen headline. The
 booking calendar renders from this site's own JavaScript against the booking
 Worker, so there is no third-party iframe to wait on.
