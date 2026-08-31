@@ -57,11 +57,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check booking link
-        run: npm run check:booking
-
-      - name: Build static site
-        run: npm run build
+      - name: Run release check
+        run: npm run check:release
 
       # The journey test only ever ran locally, so its selectors rotted through
       # several commits while CI stayed green — the booking page had been

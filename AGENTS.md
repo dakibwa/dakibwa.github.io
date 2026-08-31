@@ -2,7 +2,10 @@
 
 ## Verification and release
 
-- During implementation, run the smallest relevant check. Use `npm run test:booking` for Worker logic, `npm run check:booking` when booking configuration or routing changes, the focused Playwright smoke test for affected customer journeys, and the production build for release or cross-cutting work.
+- During implementation, run the smallest relevant check. Use `npm run test:booking` for Worker logic and the focused Playwright smoke test for affected customer journeys.
+- Before pushing, run `npm run check:fast`; it keeps type checking, lint and the booking unit suite in one short local loop. Do not put the live Worker probe, production build or browser journey in the edit loop.
+- `npm run check:release` adds the live booking probe and production build. CI runs it once on `main`, then exercises the customer journey against that same built export before automatically publishing it.
+- Run `npm run check:booking` directly only when booking configuration or routing changes, or to diagnose the release gate. If a local environment points it at a localhost Worker, start that Worker first; otherwise let CI exercise the configured live endpoint.
 - Booking changes span two deployables: the static site and the `ines-booking` Worker. Deploy the Worker first — the site's release gate checks its health and will refuse to publish against a broken one.
 - The Playwright journey test now runs in CI against the built export, not only locally. It rotted silently once — the booking container was renamed and nothing noticed for several commits — so if you rename a selector it guards, update `scripts/qa-flow.mjs` in the same change.
 - Markdown and `docs/**`-only changes do not require a build or deployment; the Pages workflow intentionally ignores them.
