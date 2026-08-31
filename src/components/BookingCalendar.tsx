@@ -537,7 +537,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       : allCalendarWeeks;
   // A 56-day inclusive range can touch a ninth Monday–Sunday row. New booking
   // still uses the full eight-week horizon; the lesson overview owns only four
-  // rows, and anything beyond them lives in Later lessons in the account menu.
+  // rows, and anything beyond them lives in Upcoming lessons in the account menu.
   const calendarWeeks = uncappedCalendarWeeks.slice(0, 8);
   const fourWeekCalendarWeeks = calendarWeeks.slice(0, 4);
   const fourWeekCalendarEnd = fourWeekCalendarWeeks.at(-1)?.cells.at(-1)?.key ?? "";
@@ -984,7 +984,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           <section
             className="unified-account-area"
             id="account-controls"
-            aria-label="Account, later and past lessons"
+            aria-label="Account, upcoming and past lessons"
           >
             <AccountControls
               calendarHorizonDays={horizonDays}

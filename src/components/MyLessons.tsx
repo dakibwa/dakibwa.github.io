@@ -470,7 +470,7 @@ export function MyLessons({
                       onClick={() => toggleAccountSection("later")}
                       type="button"
                     >
-                      Later lessons <span>{laterGroups.length}</span>
+                      Upcoming lessons <span>{laterGroups.length}</span>
                     </button>
                   ) : null}
                   {showHistory ? (
@@ -615,7 +615,7 @@ export function MyLessons({
         <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-later-lessons" aria-labelledby="later-lessons-heading" tabIndex={-1}>
           <div className="my-lessons__account-section-heading">
             <div>
-              <h3 className="eyebrow" id="later-lessons-heading">Later lessons</h3>
+              <h3 className="eyebrow" id="later-lessons-heading">Upcoming lessons</h3>
               <p>Beyond your four-week calendar. Repeating lessons appear once.</p>
             </div>
             {onBackToStart ? (
@@ -648,7 +648,7 @@ export function MyLessons({
                       </span>
                       {isSeries ? (
                         <small>
-                          <Repeat size={13} aria-hidden="true" /> {isActive ? "Repeating" : "Sequence ended"} · {group.bookings.length} later {group.bookings.length === 1 ? "date" : "dates"}
+                          <Repeat size={13} aria-hidden="true" /> {isActive ? "Repeating" : "Sequence ended"} · {group.bookings.length} upcoming {group.bookings.length === 1 ? "date" : "dates"}
                         </small>
                       ) : null}
                     </span>

@@ -2149,7 +2149,7 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   background: rgba(194, 58, 39, 0.14);
 }
 
-/* Later lessons all use one card grammar. A repeating schedule is still one
+/* Upcoming lessons all use one card grammar. A repeating schedule is still one
    commitment, but recurrence is supporting information rather than a second
    visual species with a different badge, headline and action bar. */
 .upcoming-lesson-group {
