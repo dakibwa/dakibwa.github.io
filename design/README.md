@@ -126,8 +126,9 @@ Preserve these desktop and mobile states:
   advance. One-off lessons remain individual entries.
   There is no second `My lessons` navigation destination.
   The account bar, workflow choices, calendar, and selected-day workspace share
-  the same left and right edges. Profile-field actions sit beside their field
-  whenever the available width permits;
+  the same left and right edges. Profile fields open directly inside the account
+  bar, without a second framed card; their actions sit beside the field whenever
+  the available width permits;
 - the calendar is the stable visual surface beneath the lesson-management
   content. Viewing lessons owns a fixed four-week overview; it never expands to
   absorb later booked dates because the complete list lives above it. Selecting

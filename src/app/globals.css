@@ -2365,6 +2365,16 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   margin-bottom: 0;
 }
 
+.unified-account-controls .my-lessons__details {
+  margin: 1rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--rule-soft);
+  border-radius: 0;
+  padding: 1.05rem 0 0;
+  background: transparent;
+  gap: 1rem;
+}
+
 .unified-account-controls .my-lessons__series {
   margin: 0.9rem 0 0;
   border: 0;

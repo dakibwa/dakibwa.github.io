@@ -666,6 +666,25 @@ await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: "Edit details", exact: true }).click();
 await accountPanel.locator(".my-lessons__details").waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
+const embeddedDetailsChrome = await accountPanel.locator(".my-lessons__details").evaluate((details) => {
+  const styles = window.getComputedStyle(details);
+  return {
+    backgroundColor: styles.backgroundColor,
+    borderBottomWidth: styles.borderBottomWidth,
+    borderLeftWidth: styles.borderLeftWidth,
+    borderRightWidth: styles.borderRightWidth,
+    borderRadius: styles.borderRadius,
+  };
+});
+if (
+  embeddedDetailsChrome.backgroundColor !== "rgba(0, 0, 0, 0)" ||
+  embeddedDetailsChrome.borderBottomWidth !== "0px" ||
+  embeddedDetailsChrome.borderLeftWidth !== "0px" ||
+  embeddedDetailsChrome.borderRightWidth !== "0px" ||
+  embeddedDetailsChrome.borderRadius !== "0px"
+) {
+  throw new Error(`Embedded account fields should use the account panel instead of a nested card: ${JSON.stringify(embeddedDetailsChrome)}.`);
+}
 const desktopDetailRows = await accountPanel.locator(".my-lessons__details-row").evaluateAll((rows) =>
   rows.map((row) => {
     const field = row.querySelector("label")?.getBoundingClientRect();
@@ -972,6 +991,21 @@ await accountPanel.screenshot({ path: path.join(outDir, "booking-past-lessons-mo
 await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "detached" });
 await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+await accountMenuButton.click();
+await accountPanel.getByRole("button", { name: "Edit details", exact: true }).click();
+await accountPanel.locator(".my-lessons__details").waitFor({ state: "visible" });
+await waitForOrientation(accountPage);
+const mobileDetailsLayout = await accountPage.evaluate(() => ({
+  clientWidth: document.documentElement.clientWidth,
+  scrollWidth: document.documentElement.scrollWidth,
+}));
+if (mobileDetailsLayout.scrollWidth > mobileDetailsLayout.clientWidth + 1) {
+  throw new Error(`The embedded account editor overflows on a phone: ${JSON.stringify(mobileDetailsLayout)}.`);
+}
+await accountPanel.screenshot({ path: path.join(outDir, "booking-account-edit-mobile.png") });
+await accountMenuButton.click();
+await accountPanel.getByRole("button", { name: "Done editing", exact: true }).click();
+await accountPanel.locator(".my-lessons__details").waitFor({ state: "detached" });
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
