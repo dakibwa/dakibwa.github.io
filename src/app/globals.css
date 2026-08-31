@@ -619,6 +619,18 @@ p {
 }
 
 @media (min-width: 821px) {
+  /*
+   * Wide split layouts need a real secondary surface. When both columns use
+   * the page paper, the rail disappears into the body and the composition
+   * reads as cream on cream. Mobile stacks these sections, so spacing and the
+   * intervening rules already provide the separation there.
+   */
+  .approach-list,
+  .faq-index {
+    background-color: var(--lavender-soft);
+    background-image: var(--paper-texture);
+  }
+
   .approach-item h2 {
     white-space: nowrap;
   }
