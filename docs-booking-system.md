@@ -115,7 +115,7 @@ depending on them having kept the right confirmation email.
   selected lesson or available times immediately beneath it on a phone. Each
   completed choice becomes a compact summary and the page moves the next
   decision into view. Viewing lessons stays within a four-week calendar; dates
-  beyond that window are reached through `Later lessons` in the account menu.
+  beyond that window are reached through `Upcoming lessons` in the account menu.
   Choosing an
   individual booking opens move and cancel in place. The emailed token still
   opens that same interface without requiring sign-in, so a forgotten password
@@ -123,8 +123,8 @@ depending on them having kept the right confirmation email.
   for links already in the world, then normalise to `/book`.
 - **Signed-in account controls stay in the shared workspace.** They sit above
   the active workflow rather than behind an Account/Close disclosure. The account
-  bar names the student once and keeps later lessons, past lessons, profile
-  editing and sign out inside one menu. Choosing later or past lessons opens a
+  bar names the student once and keeps upcoming lessons, past lessons, profile
+  editing and sign out inside one menu. Choosing upcoming or past lessons opens a
   separate panel below the account bar and switches away from any active booking
   or lesson-management detail, so they work as shortcuts rather than stacked
   disclosures. `Past lessons` stays in the menu throughout every signed-in
@@ -134,7 +134,7 @@ depending on them having kept the right confirmation email.
   restore the initial book-or-view choice. There is only one `Booking`
   destination in the site navigation — no separate `My lessons` tab — because
   booking and managing lessons are the same workspace.
-- **Later lessons groups a repeating schedule as one thing.** The menu panel
+- **Upcoming lessons groups a repeating schedule as one thing.** The menu panel
   contains only dates beyond the four-week calendar. Every card uses the same
   booked status, date hierarchy and `Manage` action; recurrence is secondary
   metadata rather than a different card design. `View dates` reveals the other

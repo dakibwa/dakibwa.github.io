@@ -109,18 +109,18 @@ Preserve these desktop and mobile states:
   times. Completed decisions collapse into a compact row, so account tools,
   lesson cards, the calendar, and confirmation never compete at once;
 - the signed-in identity appears once, inside a generously padded account bar.
-  A small `Menu` contains `Later lessons`, `Past lessons`, `Edit details`, and
+  A small `Menu` contains `Upcoming lessons`, `Past lessons`, `Edit details`, and
   `Sign out`. `Past lessons` remains present even before the student chooses
   `View your lessons`, while booking, and while an individual lesson is open;
-  an empty history says so instead of removing the shortcut. Later lessons are
+  an empty history says so instead of removing the shortcut. Upcoming lessons are
   only those beyond the four-week calendar. Choosing either lesson shortcut
   dismisses the active booking or management detail, opens its own panel below
   the account bar, and establishes the four-week lesson workspace beneath it.
   Each destination panel has `Back to start`, which restores the initial
   book-or-view choice. A repeating
-  schedule appears once in Later lessons, led by its nearest out-of-window date;
-  a quiet reveal exposes every later occurrence. One-off lessons remain
-  individual entries. Every later-lesson card uses the same booked badge, date
+  schedule appears once in Upcoming lessons, led by its nearest out-of-window date;
+  a quiet reveal exposes every upcoming occurrence. One-off lessons remain
+  individual entries. Every upcoming-lesson card uses the same booked badge, date
   hierarchy and `Manage` action, with recurrence shown as supporting metadata.
   There is no second `My lessons` navigation destination.
   The account bar, workflow choices, calendar, and selected-day workspace share
