@@ -111,18 +111,21 @@ depending on them having kept the right confirmation email.
   lesson or view existing lessons. Booking asks for the lesson type and then
   reveals the calendar; viewing lessons goes directly to that calendar without
   free-time choices. Every booked lesson is marked there. Choosing a booked day
-  or a free day reduces the eight-week overview to that one week, putting the
+  or a free day reduces the calendar to that one week, putting the
   selected lesson or available times immediately beneath it on a phone. Each
   completed choice becomes a compact summary and the page moves the next
-  decision into view. `Show all dates` restores the overview. Choosing an
+  decision into view. Viewing lessons starts with four weeks; `Show 8 weeks`
+  extends the calendar to the full horizon and `Show 4 weeks` restores the
+  default. Choosing an
   individual booking opens move and cancel in place. The emailed token still
   opens that same interface without requiring sign-in, so a forgotten password
   never blocks a change. The old `/my-lessons` and `/booking` paths remain valid
   for links already in the world, then normalise to `/book`.
 - **Signed-in account controls stay in the shared workspace.** They sit above
   the active workflow rather than behind an Account/Close disclosure. The account
-  bar names the student once and keeps upcoming lessons, past lessons, profile
-  editing and sign out together. Repeating controls appear when the student has
+  bar names the student once and keeps upcoming lessons beside a menu containing
+  past lessons, profile editing and sign out. Choosing past lessons opens a
+  separate panel below the account bar. Repeating controls appear when the student has
   chosen to view lessons, where they are relevant. There is only one `Booking`
   destination in the site navigation — no separate `My lessons` tab — because
   booking and managing lessons are the same workspace.
@@ -323,8 +326,9 @@ Once availability has loaded, the date picker omits complete leading weeks with
 no free slots. That means a weekend with nothing left to book opens directly on
 the next usable week; closed weeks later in the booking window remain visible.
 Selecting either a booked day or a free day then shows only its week, so the
-details are directly below the calendar on a phone; the student can restore the
-full window with `Show all dates`.
+details are directly below the calendar on a phone. The lesson-management view
+returns to its four-week default first and can then extend to the full eight-week
+window.
 
 ### Payment
 
