@@ -51,7 +51,10 @@ hero, using the space left by the removed card artwork without merging into
 the surrounding cream page. At 900px and below they remain stacked after the
 blue introduction so the mobile reading order stays unchanged. The browser
 favicon is now a generated cream-and-lavender organic mark with a coral accent
-on dark blue, replacing the flower symbol.
+on dark blue, replacing the flower symbol. Above 1000px, the Lessons page now
+combines its closing booking prompt and payment note as one asymmetric blue and
+soft-lavender composition rather than two full-width bars. At 1000px and below
+they return to the simpler stacked order.
 
 ## References retained in this repository
 

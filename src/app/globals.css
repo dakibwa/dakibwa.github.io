@@ -829,6 +829,12 @@ p {
   text-transform: uppercase;
 }
 
+.lessons-closing {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  border-bottom: 1px solid var(--rule-soft);
+}
+
 .lesson-location-band {
   display: flex;
   align-items: center;
@@ -861,16 +867,24 @@ p {
   text-transform: uppercase;
 }
 
+.lesson-location-band .button {
+  white-space: nowrap;
+}
+
 .lessons-note {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
   padding: 2rem var(--page-pad);
-  border-bottom: 1px solid var(--rule-soft);
-  gap: 2rem;
+  border-left: 1px solid var(--rule-soft);
+  background-color: var(--lavender-soft);
+  background-image: var(--paper-texture);
+  gap: 1rem;
 }
 
 .lessons-note p {
+  max-width: 38ch;
   margin: 0;
 }
 
@@ -4490,6 +4504,21 @@ button.text-action {
   }
 }
 
+@media (max-width: 1000px) {
+  .lessons-closing {
+    grid-template-columns: 1fr;
+  }
+
+  .lessons-note {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--rule-soft);
+    border-left: 0;
+    gap: 2rem;
+  }
+}
+
 @media (max-width: 900px) {
   .home-hero {
     grid-template-columns: 1fr;
@@ -4560,6 +4589,7 @@ button.text-action {
   .lessons-note {
     align-items: flex-start;
     flex-direction: column;
+    justify-content: flex-start;
   }
 
   .approach-composition {
