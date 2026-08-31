@@ -12,7 +12,8 @@ import {
   Clock3,
   Globe2,
   MapPin,
-  MessageSquareText
+  MessageSquareText,
+  Repeat
 } from "lucide-react";
 import { AssetMark } from "@/components/BrandMarks";
 /*
@@ -29,7 +30,7 @@ const AccountControls = dynamic(() => import("@/components/MyLessons").then((m) 
   loading: () => <p className="booking-state-note">Loading your account…</p>
 });
 import { LessonMark } from "@/components/LessonMarks";
-import { clearSession, fetchMe, readSession, type MyBooking, type Student } from "@/lib/auth-api";
+import { clearSession, fetchMe, readSession, type LessonSeries, type MyBooking, type Student } from "@/lib/auth-api";
 import {
   addDaysToKey,
   browserTimeZone,
@@ -47,6 +48,7 @@ import {
   previewSeries,
   rescheduleBooking,
   shortMonth,
+  stopSeries,
   type ManagedBooking,
   type LessonType,
   type RepeatChoice,
@@ -64,6 +66,7 @@ import {
 import { staticLessonTypes } from "@/lib/lesson-products";
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const weekdayNames = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
 
 type Step = "lesson" | "day" | "time" | "details";
 type BookingIntent = "choose" | "book" | "lessons";
@@ -73,6 +76,10 @@ type CalendarWeekCount = 1 | 4 | 8;
 type RepeatOption = "once" | 4 | "open";
 type FormState = { notes: string; location: "online" | "porto"; repeat: RepeatOption };
 const emptyForm: FormState = { notes: "", location: "online", repeat: "once" };
+
+function minutesToClock(minutes: number) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
 
 const REPEAT_OPTIONS: { value: RepeatOption; label: string }[] = [
   { value: "once", label: "Just once" },
@@ -325,14 +332,16 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [studentZone, setStudentZone] = useState(BOOKING_TIME_ZONE);
   const [student, setStudent] = useState<Student | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
+  const [lessonSeries, setLessonSeries] = useState<LessonSeries[]>([]);
   const [checkingSession, setCheckingSession] = useState(true);
   // The Worker treats any non-cancelled booking as the start of the student's
   // relationship with Inês, including an upcoming first lesson. Mirror that
   // exact rule here: a card the server will refuse is a trap, not a choice.
   const [hasPriorBooking, setHasPriorBooking] = useState(false);
   const [managedToken, setManagedToken] = useState("");
+  const [managedSeriesId, setManagedSeriesId] = useState<string | null>(null);
   const [managed, setManaged] = useState<ManagedBooking | null>(null);
-  const [manageMode, setManageMode] = useState<"view" | "reschedule" | "confirm-cancel">("view");
+  const [manageMode, setManageMode] = useState<"view" | "reschedule" | "confirm-cancel" | "sequence" | "confirm-stop-sequence">("view");
   const [manageLoading, setManageLoading] = useState(false);
   const [manageWorking, setManageWorking] = useState(false);
   const [manageError, setManageError] = useState("");
@@ -346,6 +355,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     if (!session) {
       setStudent(null);
       setMyBookings([]);
+      setLessonSeries([]);
       setHasPriorBooking(false);
       return null;
     }
@@ -353,6 +363,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     const data = await fetchMe(session);
     setStudent(data?.student ?? null);
     setMyBookings(data?.bookings ?? []);
+    setLessonSeries(data?.series ?? []);
     setHasPriorBooking((data?.bookings ?? []).some((booking) => booking.status !== "cancelled"));
     return data;
   }, []);
@@ -395,11 +406,12 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     orientTo("booking-lesson-choice");
   }, [hasPriorBooking, lessonTypeId]);
 
-  const openManaged = useCallback(async (token: string) => {
+  const openManaged = useCallback(async (token: string, seriesId: string | null = null) => {
     if (!token) return;
     setIntent("lessons");
     setCalendarWeekCount(1);
     setManagedToken(token);
+    setManagedSeriesId(seriesId);
     setManageLoading(true);
     setManageError("");
     setManageOutcome("");
@@ -495,7 +507,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       manageToken: managedToken
     });
   }
-  const upcomingLessonCount = new Set(
+  const allUpcomingLessonCount = new Set(
     calendarBookings.map((booking) => booking.seriesId ? `series:${booking.seriesId}` : `booking:${booking.reference}`)
   ).size;
 
@@ -523,21 +535,27 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             index === 0 && !week.showMonth ? { ...week, showMonth: true } : week
           )
       : allCalendarWeeks;
-  // A 56-day inclusive range can touch a ninth Monday–Sunday row. The product
-  // promise is eight visible weeks, so the interface shows eight rows exactly;
-  // anything already booked after them stays reachable from Upcoming lessons.
+  // A 56-day inclusive range can touch a ninth Monday–Sunday row. New booking
+  // still uses the full eight-week horizon; the lesson overview owns only four
+  // rows, and anything beyond them lives in Later lessons in the account menu.
   const calendarWeeks = uncappedCalendarWeeks.slice(0, 8);
-  const visibleCalendarDates = new Set(calendarWeeks.flatMap((week) => week.cells.map((cell) => cell.key)));
+  const fourWeekCalendarWeeks = calendarWeeks.slice(0, 4);
+  const fourWeekCalendarEnd = fourWeekCalendarWeeks.at(-1)?.cells.at(-1)?.key ?? "";
+  const overviewCalendarWeeks = intent === "lessons" ? fourWeekCalendarWeeks : calendarWeeks;
+  const visibleCalendarDates = new Set(overviewCalendarWeeks.flatMap((week) => week.cells.map((cell) => cell.key)));
   const calendarWindowBookings = calendarBookings.filter((booking) =>
     visibleCalendarDates.has(portoDateKey(new Date(booking.startAt)))
   );
+  const calendarLessonCount = new Set(
+    calendarWindowBookings.map((booking) => booking.seriesId ? `series:${booking.seriesId}` : `booking:${booking.reference}`)
+  ).size;
   const bookingsByDate = calendarWindowBookings.reduce<Record<string, MyBooking[]>>((dates, booking) => {
     const key = portoDateKey(new Date(booking.startAt));
     (dates[key] ??= []).push(booking);
     return dates;
   }, {});
   const selectedCalendarWeek = selectedDate
-    ? calendarWeeks.find((week) => week.cells.some((cell) => cell.key === selectedDate))
+    ? overviewCalendarWeeks.find((week) => week.cells.some((cell) => cell.key === selectedDate))
     : undefined;
   const standardCalendarWeekCount: Exclude<CalendarWeekCount, 1> = intent === "lessons" ? 4 : 8;
   const visibleCalendarWeekCount = calendarWeekCount === 1 && !selectedCalendarWeek
@@ -545,12 +563,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     : calendarWeekCount;
   const displayedCalendarWeeks = visibleCalendarWeekCount === 1 && selectedCalendarWeek
     ? [{ ...selectedCalendarWeek, showMonth: true }]
-    : calendarWeeks.slice(0, visibleCalendarWeekCount);
-  const nextCalendarWeekCount: Exclude<CalendarWeekCount, 1> = visibleCalendarWeekCount === 4
-    ? 8
-    : standardCalendarWeekCount === 4
-      ? 4
-      : 8;
+    : overviewCalendarWeeks;
+  const returnCalendarWeekCount = visibleCalendarWeekCount === 1 ? standardCalendarWeekCount : null;
   const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
@@ -563,6 +577,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     !isConfirmingBooking &&
     !needsLessonsSignIn &&
     (intent === "lessons" || Boolean(intent === "book" && lessonType && step !== "lesson") || Boolean(managed));
+  const resolvedManagedSeriesId = managedSeriesId ?? myBookings.find((booking) => booking.manageToken === managedToken)?.seriesId ?? null;
+  const activeManagedSeries = resolvedManagedSeriesId
+    ? lessonSeries.find((entry) => entry.id === resolvedManagedSeriesId) ?? null
+    : null;
   const visibleLessonTypes = hasPriorBooking ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes;
   const panelMotionKey = showAccountSignIn && !student
     ? "sign-in"
@@ -796,14 +814,33 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     }
   }
 
+  async function stopManagedSequence() {
+    if (!resolvedManagedSeriesId) return;
+    setManageWorking(true);
+    setManageError("");
+    try {
+      await stopSeries(readSession(), resolvedManagedSeriesId);
+      transitionBooking(() => {
+        setManageMode("view");
+        setManageOutcome("This sequence has stopped. The lessons already booked stay in your calendar.");
+      });
+      await refreshStudent();
+    } catch (caught) {
+      setManageError(caught instanceof Error ? caught.message : "That sequence could not be stopped.");
+    } finally {
+      setManageWorking(false);
+    }
+  }
+
   function closeManagedLesson() {
     setManaged(null);
     setManagedToken("");
+    setManagedSeriesId(null);
     setManageMode("view");
     setManageError("");
     setManageOutcome("");
     setSelectedSlot("");
-    if (selectedDate && !calendarWeeks.some((week) => week.cells.some((cell) => cell.key === selectedDate))) {
+    if (selectedDate && !overviewCalendarWeeks.some((week) => week.cells.some((cell) => cell.key === selectedDate))) {
       setSelectedDate(firstCalendarBookingStart ? portoDateKey(new Date(firstCalendarBookingStart)) : "");
     }
     if (new URLSearchParams(window.location.search).has("manage")) {
@@ -891,7 +928,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               if (confirmation.manageToken) {
                 transitionBooking(() => {
                   setConfirmation(null);
-                  void openManaged(confirmation.manageToken);
+                  void openManaged(confirmation.manageToken, confirmation.series?.id ?? null);
                 });
               } else {
                 window.location.assign(confirmation.manageUrl);
@@ -930,21 +967,26 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           <section
             className="unified-account-area"
             id="account-controls"
-            aria-label="Account, repeating and past lessons"
+            aria-label="Account, later and past lessons"
           >
             <AccountControls
               calendarHorizonDays={horizonDays}
               embedded
-              onManage={(token) =>
+              laterThan={fourWeekCalendarEnd}
+              onManage={(token, seriesId) =>
                 transitionBooking(() => {
-                  void openManaged(token);
+                  void openManaged(token, seriesId);
                 })
               }
               onTransition={transitionBooking}
-              onViewUpcoming={() => setCalendarWeekCount(4)}
               onSignedOut={() => {
                 setStudent(null);
                 setMyBookings([]);
+                setLessonSeries([]);
+                setManaged(null);
+                setManagedToken("");
+                setManagedSeriesId(null);
+                setManageMode("view");
                 setHasPriorBooking(false);
                 setIntent("choose");
                 setLessonTypeId("");
@@ -953,8 +995,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               }}
               showCalendar={false}
               showHistory
-              showUpcoming={intent === "lessons"}
-              showSeries={intent === "lessons"}
+              showLaterLessons
+              showSeries={false}
             />
           </section>
         ) : null}
@@ -978,9 +1020,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   <CheckCircle2 size={24} />
                 </span>
                 <strong>View your lessons</strong>
-                {student && upcomingLessonCount ? (
-                  <span className="booking-intent-card__count" aria-label={`${upcomingLessonCount} upcoming lessons`}>
-                    {upcomingLessonCount}
+                {student && allUpcomingLessonCount ? (
+                  <span className="booking-intent-card__count" aria-label={`${allUpcomingLessonCount} upcoming lessons`}>
+                    {allUpcomingLessonCount}
                   </span>
                 ) : null}
                 <ChevronRight aria-hidden="true" size={20} />
@@ -1094,7 +1136,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           <div className="booking-workflow-context" aria-label="Viewing your lessons">
             <div>
               <span className="eyebrow">Your calendar</span>
-              <strong>{upcomingLessonCount ? `${upcomingLessonCount} upcoming` : "Nothing booked yet"}</strong>
+              <strong>{calendarLessonCount ? `${calendarLessonCount} in the next 4 weeks` : "Nothing in the next 4 weeks"}</strong>
             </div>
             <button className="text-action" onClick={startBookingJourney} type="button">
               Book a new lesson
@@ -1115,15 +1157,16 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 <span className="unified-calendar__range">
                   {visibleCalendarWeekCount === 1 ? "Selected week" : `Next ${visibleCalendarWeekCount} weeks`}
                 </span>
-                <button
-                  aria-controls="booking-calendar-weeks"
-                  aria-expanded={visibleCalendarWeekCount === 8}
-                  className="text-action unified-calendar__expand"
-                  onClick={() => transitionBooking(() => setCalendarWeekCount(nextCalendarWeekCount))}
-                  type="button"
-                >
-                  Show {nextCalendarWeekCount} weeks
-                </button>
+                {returnCalendarWeekCount ? (
+                  <button
+                    aria-controls="booking-calendar-weeks"
+                    className="text-action unified-calendar__expand"
+                    onClick={() => transitionBooking(() => setCalendarWeekCount(returnCalendarWeekCount))}
+                    type="button"
+                  >
+                    Back to {returnCalendarWeekCount} weeks
+                  </button>
+                ) : null}
               </div>
             </div>
             <div className="calendar-weekdays" aria-hidden="true">
@@ -1291,14 +1334,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       }
                       type="button"
                     >
-                      Move lesson
+                      Move this lesson
                     </button>
                     <button
                       className="button button--quiet"
                       onClick={() => transitionBooking(() => setManageMode("confirm-cancel"))}
                       type="button"
                     >
-                      Cancel lesson
+                      Cancel this lesson
                     </button>
                   </div>
                 ) : null}
@@ -1372,6 +1415,63 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     </div>
                   </div>
                 ) : null}
+
+                {resolvedManagedSeriesId &&
+                manageMode !== "reschedule" &&
+                manageMode !== "confirm-cancel" ? (
+                  <section className="managed-lesson__series-context" aria-labelledby="managed-sequence-heading">
+                    <div className="managed-lesson__series-heading">
+                      <Repeat size={18} aria-hidden="true" />
+                      <div>
+                        <h3 className="eyebrow" id="managed-sequence-heading">Part of a recurring sequence</h3>
+                        {activeManagedSeries ? (
+                          <p>
+                            {weekdayNames[activeManagedSeries.weekday]} at {minutesToClock(activeManagedSeries.minuteOfDay)} Porto time
+                            {activeManagedSeries.openEnded ? ", every week" : ""}. {activeManagedSeries.upcoming} {activeManagedSeries.upcoming === 1 ? "lesson is" : "lessons are"} already booked.
+                          </p>
+                        ) : (
+                          <p>This sequence is no longer adding lessons. This booked occurrence is still yours.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {activeManagedSeries && manageMode === "view" ? (
+                      <button className="text-action" onClick={() => transitionBooking(() => setManageMode("sequence"))} type="button">
+                        Manage sequence <ChevronRight size={17} aria-hidden="true" />
+                      </button>
+                    ) : null}
+
+                    {activeManagedSeries && manageMode === "sequence" ? (
+                      <div className="managed-lesson__series-manage">
+                        <p>
+                          You can stop new weekly lessons being added. Every date already booked stays in your calendar and can still be moved or cancelled individually.
+                        </p>
+                        <div className="manage-booking__actions">
+                          <button className="button button--quiet" onClick={() => transitionBooking(() => setManageMode("confirm-stop-sequence"))} type="button">
+                            Stop repeating
+                          </button>
+                          <button className="text-action" onClick={() => transitionBooking(() => setManageMode("view"))} type="button">
+                            Back to this lesson
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {activeManagedSeries && manageMode === "confirm-stop-sequence" ? (
+                      <div className="managed-lesson__series-manage">
+                        <p><strong>Stop this recurring sequence?</strong> Your booked lessons will stay.</p>
+                        <div className="manage-booking__actions">
+                          <button className="button button--coral" disabled={manageWorking} onClick={stopManagedSequence} type="button">
+                            {manageWorking ? "Stopping…" : "Yes, stop repeating"}
+                          </button>
+                          <button className="button button--quiet" disabled={manageWorking} onClick={() => transitionBooking(() => setManageMode("view"))} type="button">
+                            Keep repeating
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
               </>
             ) : manageError ? (
               <div className="booking-alert" role="alert">
@@ -1407,7 +1507,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                         key={booking.reference}
                         onClick={() =>
                           transitionBooking(() => {
-                            void openManaged(booking.manageToken);
+                            void openManaged(booking.manageToken, booking.seriesId);
                           })
                         }
                         type="button"

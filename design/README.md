@@ -109,30 +109,31 @@ Preserve these desktop and mobile states:
   times. Completed decisions collapse into a compact row, so account tools,
   lesson cards, the calendar, and confirmation never compete at once;
 - the signed-in identity appears once, inside a generously padded account bar.
-  `Upcoming lessons` remains a compact right-aligned action, while a small
-  `Menu` contains `Past lessons`, `Edit details`, and `Sign out`. Past lessons
-  remain available there in every signed-in booking state and open in their own
-  panel below the account bar rather than expanding that bar. Repeating controls
-  belong to the view-lessons state. `Upcoming lessons` represents each repeating schedule once, led by its
-  soonest booked date; a quiet reveal exposes every later occurrence, and each
-  date opens the same move/cancel panel as the calendar. One-off lessons remain
-  individual entries. There is no second `My lessons` navigation destination.
+  A small `Menu` contains `Later lessons`, `Past lessons`, `Edit details`, and
+  `Sign out`. Later lessons are only those beyond the four-week calendar; past
+  and later lessons remain available in every signed-in booking state and open
+  in their own panel below the account bar rather than expanding it. A repeating
+  schedule appears once in Later lessons, led by its nearest out-of-window date;
+  a quiet reveal exposes every later occurrence. One-off lessons remain
+  individual entries. Every later-lesson card uses the same booked badge, date
+  hierarchy and `Manage` action, with recurrence shown as supporting metadata.
+  There is no second `My lessons` navigation destination.
   The account bar, workflow choices, calendar, and selected-day workspace share
   the same left and right edges. Profile-field actions sit beside their field
   whenever the available width permits;
-- the calendar is the stable surface. Viewing lessons opens a four-week
-  overview; `Show 8 weeks` extends it to the full booking horizon and `Show 4
-  weeks` returns to the quieter default. Selecting a day reduces it to one week,
-  with the relevant four- or eight-week return action available,
+- the calendar is the stable surface. Viewing lessons owns a fixed four-week
+  overview; it never expands to absorb later booked dates because those belong
+  in the account menu. Selecting a day reduces it to one week, with `Back to 4
+  weeks` restoring the lesson overview. The new-booking journey still uses its
+  full eight-week availability horizon and returns there from a selected week,
   with the time or lesson detail beside it on desktop and immediately below it
   on mobile. A free day shows the available times without redundant “no lesson
   booked” or lesson-summary copy; booked days retain their lesson details. The
-  overview stops at the API's eight-week horizon even when a
-  repeating series already holds a later lesson; those future lessons and past
-  lessons open from the account bar instead of extending or sitting below the
-  calendar. The extended overview says `Next 8 weeks` explicitly and contains
-  no more than eight Monday-to-Sunday rows; the inclusive 56-day API boundary
-  must not create a ninth visible row;
+  four-week lesson overview stops before later repeating dates; those future
+  lessons and past lessons open from the account bar instead of extending or
+  sitting below the calendar. The booking overview says `Next 8 weeks`
+  explicitly and contains no more than eight Monday-to-Sunday rows; the
+  inclusive 56-day API boundary must not create a ninth visible row;
 - days with two bookings show both booked times on separate lines. Do not use a
   small `2x` count badge beside the date. Each selected existing lesson uses a
   coral-tinted card with an explicit `Booked` status;
@@ -153,7 +154,10 @@ Preserve these desktop and mobile states:
 
 ## Account interaction states
 
-Before a student stops a repeating lesson, show a clear confirmation at desktop
+Selecting an occurrence from a recurring sequence identifies it beneath the
+lesson facts. `Move this lesson` and `Cancel this lesson` affect only that date;
+`Manage sequence` owns the separate stop-repeating decision. Before a student
+stops a repeating lesson, show a clear confirmation at desktop
 and mobile sizes with two explicit choices. State that lessons already in the
 calendar stay booked and can be cancelled individually.
 

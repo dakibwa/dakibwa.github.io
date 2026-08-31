@@ -45,26 +45,26 @@ function minutesToClock(minutes: number) {
 export function MyLessons({
   calendarHorizonDays = BOOKING_HORIZON_DAYS_FALLBACK,
   embedded = false,
+  laterThan = "",
   onBook,
   onManage,
   onSignedOut,
   onTransition,
-  onViewUpcoming,
   showCalendar = true,
   showHistory = true,
-  showUpcoming = true,
+  showLaterLessons = true,
   showSeries = true
 }: {
   calendarHorizonDays?: number;
   embedded?: boolean;
+  laterThan?: string;
   onBook?: () => void;
-  onManage?: (token: string) => void;
+  onManage?: (token: string, seriesId: string | null) => void;
   onSignedOut?: () => void;
   onTransition?: (update: () => void) => void;
-  onViewUpcoming?: () => void;
   showCalendar?: boolean;
   showHistory?: boolean;
-  showUpcoming?: boolean;
+  showLaterLessons?: boolean;
   showSeries?: boolean;
 } = {}) {
   const [student, setStudent] = useState<Student | null>(null);
@@ -74,7 +74,7 @@ export function MyLessons({
   const [stopping, setStopping] = useState("");
   const [editing, setEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [accountSection, setAccountSection] = useState<"history" | "upcoming" | "">("");
+  const [accountSection, setAccountSection] = useState<"history" | "later" | "">("");
   const [expandedUpcomingGroup, setExpandedUpcomingGroup] = useState("");
   const [details, setDetails] = useState({ name: "", email: "" });
   const [savingName, setSavingName] = useState(false);
@@ -257,8 +257,11 @@ export function MyLessons({
   const upcoming = bookings
     .filter((booking) => !booking.isPast && booking.status === "confirmed")
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
-  const upcomingGroups = Array.from(
-    upcoming
+  const laterUpcoming = laterThan
+    ? upcoming.filter((booking) => portoDateKey(new Date(booking.startAt)) > laterThan)
+    : upcoming;
+  const laterGroups = Array.from(
+    laterUpcoming
       .reduce<Map<string, UpcomingLessonGroup>>((groups, booking) => {
         const id = booking.seriesId ? `series:${booking.seriesId}` : `booking:${booking.reference}`;
         const group = groups.get(id) ?? { id, seriesId: booking.seriesId, bookings: [] };
@@ -295,18 +298,16 @@ export function MyLessons({
     setAccountSection("");
     setExpandedUpcomingGroup("");
     setMenuOpen(false);
-    if (onManage) onManage(booking.manageToken);
+    if (onManage) onManage(booking.manageToken, booking.seriesId);
     else window.location.assign(`/book/?manage=${encodeURIComponent(booking.manageToken)}`);
   }
 
-  function toggleAccountSection(section: "history" | "upcoming") {
+  function toggleAccountSection(section: "history" | "later") {
     applyTransition(() => {
-      const isOpening = accountSection !== section;
       setMenuOpen(false);
       setEditing(false);
       setExpandedUpcomingGroup("");
       setAccountSection((current) => (current === section ? "" : section));
-      if (section === "upcoming" && isOpening) onViewUpcoming?.();
     });
   }
 
@@ -428,18 +429,6 @@ export function MyLessons({
           </p>
         )}
         <div className="my-lessons__header-actions">
-          {embedded && showUpcoming && upcoming.length ? (
-            <button
-              aria-label={`Upcoming lessons, ${upcomingGroups.length} ${upcomingGroups.length === 1 ? "entry" : "entries"}`}
-              aria-controls="account-upcoming-lessons"
-              aria-expanded={accountSection === "upcoming"}
-              className="text-action"
-              onClick={() => toggleAccountSection("upcoming")}
-              type="button"
-            >
-              Upcoming lessons <span aria-hidden="true">{upcomingGroups.length}</span>
-            </button>
-          ) : null}
           {embedded ? (
             <div className="my-lessons__menu" ref={menuRef}>
               <button
@@ -454,6 +443,16 @@ export function MyLessons({
               </button>
               {menuOpen ? (
                 <div className="my-lessons__menu-panel" id="account-menu">
+                  {showLaterLessons && laterUpcoming.length ? (
+                    <button
+                      aria-controls="account-later-lessons"
+                      aria-expanded={accountSection === "later"}
+                      onClick={() => toggleAccountSection("later")}
+                      type="button"
+                    >
+                      Later lessons <span>{laterGroups.length}</span>
+                    </button>
+                  ) : null}
                   {showHistory && past.length ? (
                     <button
                       aria-controls="account-past-lessons"
@@ -592,80 +591,61 @@ export function MyLessons({
       {seriesControls}
       </div>
 
-      {embedded && accountSection === "upcoming" ? (
-        <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-upcoming-lessons" aria-labelledby="upcoming-lessons-heading">
+      {embedded && accountSection === "later" ? (
+        <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-later-lessons" aria-labelledby="later-lessons-heading">
           <div className="my-lessons__account-section-heading">
             <div>
-              <h3 className="eyebrow" id="upcoming-lessons-heading">Upcoming lessons</h3>
-              <p>Repeating lessons appear once. Open later dates to manage any week.</p>
+              <h3 className="eyebrow" id="later-lessons-heading">Later lessons</h3>
+              <p>Beyond your four-week calendar. Repeating lessons appear once.</p>
             </div>
           </div>
           <div className="my-lessons__account-bookings">
-            {upcomingGroups.map((group) => {
+            {laterGroups.map((group) => {
               const [nextBooking, ...laterBookings] = group.bookings;
-              if (!group.seriesId) {
-                return (
-                  <button
-                    className="lesson-calendar__lesson lesson-calendar__lesson--booked upcoming-lesson-group upcoming-lesson-group--single"
-                    key={group.id}
-                    onClick={() => manage(nextBooking)}
-                    type="button"
-                  >
+              const isSeries = Boolean(group.seriesId);
+              const isExpanded = isSeries && expandedUpcomingGroup === group.id;
+              const datesId = group.seriesId ? `later-series-dates-${group.seriesId}` : "";
+              const isActive = group.seriesId ? series.some((entry) => entry.id === group.seriesId) : false;
+              return (
+                <article
+                  className={`upcoming-lesson-group ${isSeries ? "upcoming-lesson-group--series" : "upcoming-lesson-group--single"}`}
+                  key={group.id}
+                >
+                  <div className="upcoming-lesson-group__summary">
                     <LessonMark className="lesson-calendar__mark" lessonTypeId={nextBooking.lessonType.id} />
                     <span className="lesson-calendar__lesson-copy">
                       <span className="lesson-calendar__status">
                         <CheckCircle2 size={13} aria-hidden="true" /> Booked
                       </span>
                       <strong>{formatLongDate(nextBooking.startAt)}, {formatSlotTime(nextBooking.startAt)}</strong>
-                      <span>{nextBooking.lessonType.name} · {nextBooking.location === "porto" ? "In Porto" : "Online"}</span>
-                    </span>
-                    <span className="upcoming-lesson-group__action">
-                      Manage <ChevronRight aria-hidden="true" size={17} />
-                    </span>
-                  </button>
-                );
-              }
-
-              const isExpanded = expandedUpcomingGroup === group.id;
-              const datesId = `upcoming-series-dates-${group.seriesId}`;
-              const isActive = series.some((entry) => entry.id === group.seriesId);
-              return (
-                <article className="upcoming-lesson-group upcoming-lesson-group--series" key={group.id}>
-                  <button
-                    className="lesson-calendar__lesson upcoming-lesson-group__next"
-                    onClick={() => manage(nextBooking)}
-                    type="button"
-                  >
-                    <LessonMark className="lesson-calendar__mark" lessonTypeId={nextBooking.lessonType.id} />
-                    <span className="lesson-calendar__lesson-copy">
-                      <span className="lesson-calendar__status lesson-calendar__status--repeat">
-                        <Repeat size={13} aria-hidden="true" /> {isActive ? "Repeating" : "Booked dates"}
-                      </span>
-                      <strong>Next: {formatLongDate(nextBooking.startAt)}, {formatSlotTime(nextBooking.startAt)}</strong>
                       <span>
-                        {nextBooking.lessonType.name} · {nextBooking.location === "porto" ? "In Porto" : "Online"} · {group.bookings.length} {group.bookings.length === 1 ? "booked date" : "booked dates"}
+                        {nextBooking.lessonType.name} · {nextBooking.location === "porto" ? "In Porto" : "Online"}
                       </span>
+                      {isSeries ? (
+                        <small>
+                          <Repeat size={13} aria-hidden="true" /> {isActive ? "Repeating" : "Sequence ended"} · {group.bookings.length} later {group.bookings.length === 1 ? "date" : "dates"}
+                        </small>
+                      ) : null}
                     </span>
-                    <span className="upcoming-lesson-group__action">
-                      Manage next <ChevronRight aria-hidden="true" size={17} />
-                    </span>
-                  </button>
-
-                  {laterBookings.length ? (
-                    <div className="upcoming-lesson-group__more">
+                    <div className="upcoming-lesson-group__actions">
+                      <button className="text-action upcoming-lesson-group__action" onClick={() => manage(nextBooking)} type="button">
+                        Manage <ChevronRight aria-hidden="true" size={17} />
+                      </button>
+                      {isSeries && laterBookings.length ? (
                       <button
                         aria-controls={datesId}
                         aria-expanded={isExpanded}
-                        className="text-action"
+                        className="text-action upcoming-lesson-group__dates-toggle"
                         onClick={() =>
                           applyTransition(() => setExpandedUpcomingGroup((current) => current === group.id ? "" : group.id))
                         }
                         type="button"
                       >
-                        {isExpanded ? "Hide dates" : "View all dates"}
+                        {isExpanded ? "Hide dates" : `View ${group.bookings.length} dates`}
                       </button>
+                      ) : null}
                     </div>
-                  ) : null}
+                  </div>
 
                   {isExpanded ? (
                     <div className="upcoming-lesson-group__dates" id={datesId}>

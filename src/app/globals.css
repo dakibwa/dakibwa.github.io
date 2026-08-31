@@ -2072,6 +2072,54 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   line-height: 1.4;
 }
 
+.managed-lesson__series-context {
+  display: grid;
+  margin-top: 1rem;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 0.9rem;
+  gap: 0.75rem;
+}
+
+.managed-lesson__series-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.6rem;
+}
+
+.managed-lesson__series-heading > svg {
+  margin-top: 0.08rem;
+  color: var(--lavender-ink);
+}
+
+.managed-lesson__series-heading .eyebrow {
+  margin-bottom: 0.2rem;
+}
+
+.managed-lesson__series-heading p:last-child,
+.managed-lesson__series-manage > p {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  opacity: 0.78;
+}
+
+.managed-lesson__series-context > .text-action {
+  justify-self: end;
+}
+
+.managed-lesson__series-manage {
+  display: grid;
+  min-width: 0;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 0.75rem;
+  gap: 0.7rem;
+}
+
+.managed-lesson__series-manage > p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .unified-calendar__bookings,
 .unified-calendar__availability,
 .unified-calendar__move {
@@ -2101,33 +2149,22 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   background: rgba(194, 58, 39, 0.14);
 }
 
-/* A recurring schedule is one commitment, even though the Worker holds every
-   booked occurrence separately. The account drawer mirrors that mental model:
-   the nearest date leads, and later dates stay quiet until they are needed. */
-.upcoming-lesson-group--series {
+/* Later lessons all use one card grammar. A repeating schedule is still one
+   commitment, but recurrence is supporting information rather than a second
+   visual species with a different badge, headline and action bar. */
+.upcoming-lesson-group {
   overflow: hidden;
   border: 1px solid rgba(194, 58, 39, 0.26);
   border-radius: var(--squiggle-field);
   background: rgba(194, 58, 39, 0.075);
 }
 
-.lesson-calendar__lesson.upcoming-lesson-group__next {
-  border: 0;
+.upcoming-lesson-group__summary {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
   padding: 0.8rem;
-  background: transparent;
-}
-
-.lesson-calendar__lesson.upcoming-lesson-group__next:last-child {
-  padding-bottom: 0.8rem;
-}
-
-.lesson-calendar__lesson.upcoming-lesson-group__next:hover,
-.lesson-calendar__lesson.upcoming-lesson-group__next:focus-visible {
-  background: rgba(194, 58, 39, 0.08);
-}
-
-.lesson-calendar__status.lesson-calendar__status--repeat {
-  background: var(--lavender-ink);
+  gap: 0.75rem;
 }
 
 .upcoming-lesson-group__action {
@@ -2146,16 +2183,22 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   text-transform: uppercase;
 }
 
-.upcoming-lesson-group__more {
+.upcoming-lesson-group__actions {
   display: flex;
+  min-width: max-content;
+  flex-direction: column;
+  align-items: flex-end;
   justify-content: flex-end;
-  border-top: 1px solid var(--rule-soft);
-  padding: 0.12rem 0.75rem;
+  gap: 0.1rem;
 }
 
-.upcoming-lesson-group__more .text-action {
-  min-height: 38px;
+.upcoming-lesson-group__actions .text-action {
+  min-height: 34px;
   font-size: 0.62rem;
+}
+
+.upcoming-lesson-group__dates-toggle {
+  color: var(--lavender-ink);
 }
 
 .upcoming-lesson-group__dates {
@@ -2208,28 +2251,26 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 }
 
 @container booking (max-width: 480px) {
-  .upcoming-lesson-group__next,
-  .upcoming-lesson-group--single {
+  .upcoming-lesson-group__summary {
     grid-template-columns: 38px minmax(0, 1fr);
     grid-template-areas:
       "mark copy"
-      ". action";
+      ". actions";
   }
 
-  .upcoming-lesson-group__next .lesson-calendar__mark,
-  .upcoming-lesson-group--single .lesson-calendar__mark {
+  .upcoming-lesson-group__summary .lesson-calendar__mark {
     grid-area: mark;
   }
 
-  .upcoming-lesson-group__next .lesson-calendar__lesson-copy,
-  .upcoming-lesson-group--single .lesson-calendar__lesson-copy {
+  .upcoming-lesson-group__summary .lesson-calendar__lesson-copy {
     grid-area: copy;
   }
 
-  .upcoming-lesson-group__next .upcoming-lesson-group__action,
-  .upcoming-lesson-group--single .upcoming-lesson-group__action {
-    grid-area: action;
-    justify-self: end;
+  .upcoming-lesson-group__summary .upcoming-lesson-group__actions {
+    grid-area: actions;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     margin-top: 0.28rem;
   }
 }
@@ -2329,21 +2370,18 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 }
 
 .unified-calendar__panel .manage-booking__actions {
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
 }
 
 .unified-calendar__panel .manage-booking__actions > .button,
 .unified-calendar__panel .manage-booking__actions > .booking-back {
-  width: auto;
+  width: 100%;
   min-height: 48px;
   padding: 0.65rem;
-  white-space: nowrap;
-}
-
-@container booking (min-width: 300px) {
-  .unified-calendar__panel .manage-booking__actions {
-    flex-wrap: nowrap;
-  }
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .booking-confirmation-stage {
