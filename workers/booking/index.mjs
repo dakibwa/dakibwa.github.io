@@ -11,6 +11,7 @@ import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./i
 import { deliver } from "./email.mjs";
 import {
   chargeSavedCard,
+  checkoutSessionProblem,
   createCheckoutSession,
   isTestMode,
   refundPayment,
@@ -1871,10 +1872,12 @@ async function handleCancel(request, env, ctx, token) {
 /**
  * Confirms a booking once Stripe says the money arrived.
  *
- * Nothing here trusts the request until the signature verifies, and nothing
- * runs twice: Stripe delivers at least once, so the event id is recorded first
- * and a repeat stops there. A 200 is returned even for events we ignore, or
- * Stripe retries them for 24 hours.
+ * Nothing here trusts the request until the signature verifies, and an
+ * authentic event still has to match the exact session, amount and currency
+ * stored for the booking. The booking update is conditional and the event id
+ * is recorded only after the effect succeeds, so a crash cannot leave a failed
+ * delivery permanently labelled as handled. A 200 is returned for events we
+ * deliberately ignore, or Stripe keeps retrying them.
  */
 async function handleStripeWebhook(request, env, ctx) {
   if (!env.STRIPE_WEBHOOK_SECRET) return new Response("Not configured.", { status: 503 });
@@ -1890,93 +1893,142 @@ async function handleStripeWebhook(request, env, ctx) {
     return new Response("Bad payload.", { status: 400 });
   }
 
-  try {
-    await env.DB.prepare("INSERT INTO stripe_events (id, type, processed_at) VALUES (?, ?, ?)")
-      .bind(event.id, event.type, new Date().toISOString())
-      .run();
-  } catch {
-    return new Response("Already handled.", { status: 200 });
-  }
-
   if (event.type !== "checkout.session.completed") {
     return new Response("Ignored.", { status: 200 });
   }
+
+  if (!event.id || typeof event.id !== "string") return new Response("No event id.", { status: 400 });
+
+  const handled = await env.DB.prepare("SELECT id FROM stripe_events WHERE id = ?").bind(event.id).first();
+  if (handled) return new Response("Already handled.", { status: 200 });
 
   const session = event.data?.object ?? {};
   const bookingId = session.client_reference_id;
   if (!bookingId) return new Response("No booking reference.", { status: 200 });
 
-  // One payment for a whole run: every held occurrence confirms together.
-  if (session.metadata?.series_id) {
-    return await confirmPaidSeries(env, ctx, session);
-  }
-
   const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(bookingId).first();
   if (!row) return new Response("Unknown booking.", { status: 200 });
 
-  // An already-confirmed lesson paying by link — after a declined automatic
-  // charge — just settles up: mark it paid and say thank you, quietly.
-  if (row.status === "confirmed") {
-    if (row.payment_status === "payment_due" || row.payment_status === "scheduled") {
-      await env.DB.prepare(
-        "UPDATE bookings SET payment_status = 'paid', stripe_payment_intent = ?, updated_at = ? WHERE id = ? AND payment_status != 'paid'"
-      )
-        .bind(session.payment_intent ?? null, new Date().toISOString(), bookingId)
-        .run();
-
-      const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
-        .bind(row.lesson_type_id)
-        .first();
-      const settings = await loadSettings(env);
-      ctx.waitUntil(
-        deliver(env, {
-          to: row.student_email,
-          subject: `Paid — thank you`,
-          kind: "student_payment_received",
-          bookingId: row.id,
-          dedupeKey: `link-paid:${row.id}`,
-          replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail || undefined,
-          content: {
-            heading: "Paid — thank you",
-            preheader: `${lessonType?.name ?? "Lesson"} · ${row.reference}`,
-            intro: `Olá ${row.student_name.split(" ")[0]}, that's settled — thank you. Nothing else to do.`,
-            callout: "",
-            rows: [{ label: "Reference", value: row.reference }],
-            action: null,
-            footer: "Sent automatically by the booking system on portuguesewithines.com."
-          }
-        })
-      );
-      return new Response("ok", { status: 200 });
-    }
-    return new Response("Already confirmed.", { status: 200 });
+  const sessionProblem = checkoutSessionProblem(session, row);
+  if (sessionProblem === "payment is not paid") {
+    // A delayed method can complete Checkout before funds arrive. Multibanco
+    // is disabled for this booking account, but never turn an accidental
+    // dashboard change into a confirmed, unpaid lesson.
+    return new Response("Payment pending.", { status: 200 });
+  }
+  if (sessionProblem) {
+    console.warn("stripe-session-rejected", row.reference, sessionProblem);
+    return new Response("Session does not match booking.", { status: 400 });
   }
 
-  await env.DB.prepare(
-    `UPDATE bookings SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?,
-       hold_expires_at = NULL, updated_at = ? WHERE id = ?`
-  )
-    .bind(session.payment_intent ?? null, new Date().toISOString(), bookingId)
-    .run();
+  let response;
 
-  const confirmed = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(bookingId).first();
-  const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
-    .bind(confirmed.lesson_type_id)
-    .first();
-  const settings = await loadSettings(env);
-  const token = await createManageToken(bookingId, env.BOOKING_TOKEN_SECRET);
+  // One payment for a whole run: every held occurrence confirms together.
+  if (session.metadata?.series_id) {
+    if (row.series_id !== session.metadata.series_id) {
+      console.warn("stripe-series-rejected", row.reference, "series does not match");
+      return new Response("Session does not match booking.", { status: 400 });
+    }
+    response = await confirmPaidSeries(env, ctx, session);
+  } else if (row.status === "confirmed" && row.series_id) {
+    // An already-confirmed lesson paying by link — after a declined automatic
+    // charge — just settles up: mark it paid and say thank you, quietly.
+    if (row.payment_status === "payment_due" || row.payment_status === "scheduled") {
+      await env.DB.prepare(
+        `UPDATE bookings SET payment_status = 'paid', stripe_payment_intent = ?, updated_at = ?
+         WHERE id = ? AND stripe_session_id = ? AND payment_status IN ('payment_due', 'scheduled')`
+      )
+        .bind(session.payment_intent, new Date().toISOString(), bookingId, session.id)
+        .run();
+    }
 
-  ctx.waitUntil(
-    notify(env, {
-      event: "booked",
-      row: confirmed,
-      lessonType,
-      settings,
-      manageUrl: studentManageUrl(env, token)
-    })
-  );
+    const settled = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(bookingId).first();
+    if (
+      settled?.status !== "confirmed" ||
+      settled?.payment_status !== "paid" ||
+      settled?.stripe_payment_intent !== session.payment_intent
+    ) {
+      return new Response("Booking could not be settled.", { status: 409 });
+    }
 
-  return new Response("ok", { status: 200 });
+    const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+      .bind(settled.lesson_type_id)
+      .first();
+    const settings = await loadSettings(env);
+    // This is safe to schedule again after a crash: `deliver` owns a unique
+    // dedupe key, so only the first attempt can send the message.
+    ctx.waitUntil(
+      deliver(env, {
+        to: settled.student_email,
+        subject: `Paid — thank you`,
+        kind: "student_payment_received",
+        bookingId: settled.id,
+        dedupeKey: `link-paid:${settled.id}`,
+        replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail || undefined,
+        content: {
+          heading: "Paid — thank you",
+          preheader: `${lessonType?.name ?? "Lesson"} · ${settled.reference}`,
+          intro: `Olá ${settled.student_name.split(" ")[0]}, that's settled — thank you. Nothing else to do.`,
+          callout: "",
+          rows: [{ label: "Reference", value: settled.reference }],
+          action: null,
+          footer: "Sent automatically by the booking system on portuguesewithines.com."
+        }
+      })
+    );
+    response = new Response("ok", { status: 200 });
+  } else {
+    await env.DB.prepare(
+      `UPDATE bookings SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?,
+         hold_expires_at = NULL, updated_at = ?
+       WHERE id = ? AND stripe_session_id = ? AND status = 'pending_payment' AND payment_status = 'pending'`
+    )
+      .bind(session.payment_intent, new Date().toISOString(), bookingId, session.id)
+      .run();
+
+    const confirmed = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(bookingId).first();
+    if (
+      confirmed?.status !== "confirmed" ||
+      confirmed?.payment_status !== "paid" ||
+      confirmed?.stripe_payment_intent !== session.payment_intent
+    ) {
+      return new Response("Booking could not be confirmed.", { status: 409 });
+    }
+
+    const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+      .bind(confirmed.lesson_type_id)
+      .first();
+    const settings = await loadSettings(env);
+    const token = await createManageToken(bookingId, env.BOOKING_TOKEN_SECRET);
+
+    // Re-scheduling after a crash is intentional; the notification deliveries
+    // are deduplicated in `email_log`, while skipping this would lose both the
+    // confirmation and calendar invite if the Worker stopped after the update.
+    ctx.waitUntil(
+      notify(env, {
+        event: "booked",
+        row: confirmed,
+        lessonType,
+        settings,
+        manageUrl: studentManageUrl(env, token)
+      })
+    );
+    response = new Response("ok", { status: 200 });
+  }
+
+  if (response.status >= 400) return response;
+
+  try {
+    await env.DB.prepare("INSERT INTO stripe_events (id, type, processed_at) VALUES (?, ?, ?)")
+      .bind(event.id, event.type, new Date().toISOString())
+      .run();
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    if (/UNIQUE|constraint/i.test(message)) return new Response("Already handled.", { status: 200 });
+    throw error;
+  }
+
+  return response;
 }
 
 /**
@@ -2000,12 +2052,21 @@ async function confirmPaidSeries(env, ctx, session) {
   const paidFirst = await env.DB.prepare(
     `UPDATE bookings SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?,
        hold_expires_at = NULL, updated_at = ?
-     WHERE id = ? AND status = 'pending_payment'`
+     WHERE id = ? AND stripe_session_id = ? AND status = 'pending_payment' AND payment_status = 'pending'`
   )
-    .bind(session.payment_intent ?? null, now, firstId)
+    .bind(session.payment_intent, now, firstId, session.id)
     .run();
 
-  if ((paidFirst?.meta?.changes ?? 0) === 0) return new Response("Already confirmed.", { status: 200 });
+  if ((paidFirst?.meta?.changes ?? 0) === 0) {
+    const first = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(firstId).first();
+    if (
+      first?.status !== "confirmed" ||
+      first?.payment_status !== "paid" ||
+      first?.stripe_payment_intent !== session.payment_intent
+    ) {
+      return new Response("Series could not be confirmed.", { status: 409 });
+    }
+  }
 
   await env.DB.prepare(
     `UPDATE bookings SET status = 'confirmed', payment_status = 'scheduled',

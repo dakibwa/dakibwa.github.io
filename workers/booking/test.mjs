@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import { candidateStartMinutes, computeAvailability, DEFAULT_BOOKING_HORIZON_DAYS } from "./availability.mjs";
-import { verifyWebhook } from "./stripe.mjs";
+import { checkoutSessionProblem, createCheckoutSession, isTestMode, verifyWebhook } from "./stripe.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
 import { hashPassword, verifyPassword, passwordProblem } from "./auth.mjs";
 import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./ics.mjs";
@@ -376,6 +376,14 @@ await test("a correctly signed webhook is accepted", async () => {
   assert.equal(await verifyWebhook(payload, header, SECRET), true);
 });
 
+await test("any valid v1 signature is accepted during a webhook-secret rotation", async () => {
+  const payload = JSON.stringify({ id: "evt_rotating", type: "checkout.session.completed" });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const valid = await stripeSignature(payload, timestamp);
+  const header = `t=${timestamp},v1=${valid},v1=${"0".repeat(64)}`;
+  assert.equal(await verifyWebhook(payload, header, SECRET), true);
+});
+
 await test("a webhook signed with the wrong secret is rejected", async () => {
   const payload = JSON.stringify({ id: "evt_1" });
   const timestamp = Math.floor(Date.now() / 1000);
@@ -404,6 +412,67 @@ await test("malformed signature headers are rejected", async () => {
   for (const header of ["", "nonsense", "t=123", "v1=abc", "t=abc,v1=abc", null, undefined]) {
     assert.equal(await verifyWebhook(payload, header, SECRET), false, `accepted: ${header}`);
   }
+});
+
+await test("restricted and standard sandbox keys are both recognised as test mode", () => {
+  assert.equal(isTestMode({ STRIPE_SECRET_KEY: "rk_test_example" }), true);
+  assert.equal(isTestMode({ STRIPE_SECRET_KEY: "sk_test_example" }), true);
+  assert.equal(isTestMode({ STRIPE_SECRET_KEY: "rk_live_example" }), false);
+  assert.equal(isTestMode({ STRIPE_SECRET_KEY: "sk_live_example" }), false);
+});
+
+await test("a paid Checkout Session must match the booking exactly", () => {
+  const booking = { amount_cents: 2500, stripe_session_id: "cs_test_expected" };
+  const session = {
+    id: "cs_test_expected",
+    mode: "payment",
+    payment_status: "paid",
+    payment_intent: "pi_test_paid",
+    currency: "eur",
+    amount_total: 2500
+  };
+
+  assert.equal(checkoutSessionProblem(session, booking), "");
+  assert.equal(checkoutSessionProblem({ ...session, payment_status: "unpaid" }, booking), "payment is not paid");
+  assert.equal(checkoutSessionProblem({ ...session, mode: "subscription" }, booking), "session is not a one-time payment");
+  assert.equal(checkoutSessionProblem({ ...session, currency: "gbp" }, booking), "currency does not match");
+  assert.equal(checkoutSessionProblem({ ...session, amount_total: 2000 }, booking), "amount does not match");
+  assert.equal(checkoutSessionProblem({ ...session, id: "cs_test_other" }, booking), "session does not match");
+  assert.equal(checkoutSessionProblem({ ...session, payment_intent: null }, booking), "payment intent is missing");
+});
+
+await test("Stripe requests pin the API version and identify this checkout integration", async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return new Response(JSON.stringify({ id: "cs_test_example", client_secret: "cs_test_secret_example" }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  };
+
+  try {
+    await createCheckoutSession(
+      { STRIPE_SECRET_KEY: "rk_test_example", STRIPE_UI_MODE: "embedded" },
+      {
+        booking: { id: "booking_1", reference: "PT-ABC234" },
+        lessonType: { id: "single", name: "Single lesson", duration_minutes: 60, price_cents: 2500 },
+        successUrl: "https://portuguesewithines.com/book/?payment=return",
+        cancelUrl: "https://portuguesewithines.com/book/?payment=cancelled",
+        customerEmail: "student@example.com"
+      }
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(request.url, "https://api.stripe.com/v1/checkout/sessions");
+  assert.equal(request.options.headers["Stripe-Version"], "2026-08-26.dahlia");
+  const body = new URLSearchParams(request.options.body);
+  assert.match(body.get("integration_identifier"), /^portugues-com-a-ines-[a-z]{8}$/);
+  assert.equal(body.has("payment_method_types"), false);
+  assert.equal(body.has("transfer_data[destination]"), false);
+  assert.equal(body.has("on_behalf_of"), false);
 });
 
 // --- Password hashing --------------------------------------------------------

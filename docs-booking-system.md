@@ -343,22 +343,16 @@ lesson. This is live now, independent of payment mode.
 
 Stripe is used because Square does not serve Portugal, and because Stripe carries
 MB WAY and Multibanco natively — between them the majority of Portuguese online
-payments. `sk_test_` keys work identically, which is how this is exercised
-before Inês has her own account.
+payments. A least-privilege `rk_test_` key is used for the sandbox journey; the
+account's general secret key never belongs in the Worker.
 
-**The account structure** (Dan, 28 August 2026, settled after costing both
-routes): **Inês's own Stripe account, with Dan as Administrator** — cheapest
+**The account structure** (chosen 28 August, provisioned 31 August 2026):
+**Inês's own Stripe account, with Dan as Administrator** — cheapest
 fees (no Connect platform surcharges), EUR settlement on a Portuguese account,
 her name on statements natively, and Dan runs everything day-to-day through
-the Administrator role and the account's API keys. The signup is ~10 minutes
-together: her name, email, ID and IBAN; then she invites Dan as Administrator
-and he takes it from there. Scheduled for 29 August 2026.
-
-The Connect routing built into `stripe.mjs` (destination charges via
-`STRIPE_CONNECTED_ACCOUNT`) stays dormant as the documented alternative — it
-would route money from a platform account to hers automatically, at ~€2/month
-plus 0.25% + €0.10 per payout and a UK→PT cross-border wrinkle. Leave its
-config field empty on the chosen route.
+the Administrator role and a restricted API key. Payments are created directly
+in her account; there is no platform, connected account, destination charge, or
+second settlement hop.
 
 **Payment methods**: enable **cards** and **MB WAY** (instant confirmation, so
 the existing `checkout.session.completed` flow just works; Stripe only offers
@@ -373,10 +367,9 @@ not a dashboard toggle.
 **Go-live checklist**:
 
 1. ~~Apply migration 0009 to the live database~~ — done, 28 August 2026.
-2. Open Inês's Stripe account together (her identity, her IBAN); she invites
-   Dan as **Administrator**. In its dashboard: enable MB WAY in payment-method
-   settings; leave Multibanco off (above). `STRIPE_CONNECTED_ACCOUNT` stays
-   empty.
+2. ~~Open Inês's Stripe account and invite Dan as **Administrator**~~ — done,
+   31 August 2026. Her business details and payout account remain hers to keep
+   current. Enable MB WAY in payment-method settings; leave Multibanco off.
 3. Put `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in as Worker secrets
    (test keys first). `STRIPE_UI_MODE` is already `embedded` in wrangler vars.
 4. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` for the
@@ -428,7 +421,7 @@ Secrets, each via `npx wrangler secret put <NAME> --config workers/booking/wrang
 | `ADMIN_TOKEN` | Fallback way into `/schedule` if she is locked out of her account. |
 | `RESEND_API_KEY` | Transactional email. |
 | `TEACHER_EMAIL` | Where her booking notifications go. |
-| `STRIPE_SECRET_KEY` | Optional. Only read when `payment_mode` is `prepay`. |
+| `STRIPE_SECRET_KEY` | Optional. A least-privilege restricted key; only read when `payment_mode` is `prepay`. |
 | `STRIPE_WEBHOOK_SECRET` | Optional, and required alongside the key. |
 
 Non-secret vars in `wrangler.jsonc`: `GOOGLE_CLIENT_ID` enables Google Sign-In
@@ -458,10 +451,10 @@ students at WhatsApp, rather than rendering a calendar that cannot work.
 
 ## Not yet built
 
-- **Her own Stripe account.** The payment path is built and can be exercised with
-  test keys, but taking real money needs an account in her name: NIF and a
-  Portuguese bank account. Until then `payment_mode` stays `off` and students pay
-  her directly, as they already do.
+- **Live payment activation.** The account and sandbox path exist, but
+  `payment_mode` stays `off` until the signing secret is installed, the full
+  sandbox journey passes, the live restricted key is provisioned, and the
+  customer-facing prepaid terms ship in the same release.
 - **Fiscal documents.** She must issue a fatura-recibo per lesson, and CIVA art.
   36.º gives 5 working days from the lesson. See
   `Documents/Work/Português com a Inês/Billing and Booking - Operating Context

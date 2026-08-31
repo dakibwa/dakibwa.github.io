@@ -2,32 +2,25 @@
  * Stripe: Checkout Sessions and webhook verification.
  *
  * Stripe is used rather than Square because Square does not onboard sellers in
- * Portugal, and because Stripe carries MB WAY and Multibanco natively — between
- * them the majority of Portuguese online payments.
+ * Portugal. This account accepts cards and MB WAY; Multibanco stays disabled
+ * because its delayed voucher flow is incompatible with a 35-minute slot hold.
  *
  * Only the REST API is used, no SDK: the official library is heavy for a Worker
  * and this needs two endpoints.
  */
 
 const API = "https://api.stripe.com/v1";
+const API_VERSION = "2026-08-26.dahlia";
+const INTEGRATION_IDENTIFIER = "portugues-com-a-ines-qjmrbzva";
 
-/**
- * Route the money straight to Inês: with STRIPE_CONNECTED_ACCOUNT set to her
- * Express connected account, every charge becomes a destination charge — funds
- * transfer to her account automatically and Stripe pays out to her own bank.
- * `on_behalf_of` makes her the settlement merchant, so her name (not the
- * platform's) is what a student's bank statement shows. Empty means the money
- * stays on the platform account, which is how it runs until she is onboarded.
- */
-function connectedAccount(env) {
-  return (env.STRIPE_CONNECTED_ACCOUNT ?? "").trim();
+function stripeHeaders(env, contentType = false) {
+  return {
+    Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+    "Stripe-Version": API_VERSION,
+    ...(contentType ? { "Content-Type": "application/x-www-form-urlencoded" } : {})
+  };
 }
 
-function connectFields(env) {
-  const acct = connectedAccount(env);
-  if (!acct) return {};
-  return { transfer_data: { destination: acct }, on_behalf_of: acct };
-}
 const encoder = new TextEncoder();
 
 /** Stripe's API is form-encoded, including nested keys like line_items[0][price_data][currency]. */
@@ -51,10 +44,7 @@ function formEncode(values, prefix = "") {
 async function stripeRequest(env, path, body) {
   const response = await fetch(`${API}${path}`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
+    headers: stripeHeaders(env, true),
     body: formEncode(body)
   });
 
@@ -67,7 +57,7 @@ async function stripeRequest(env, path, body) {
 
 async function stripeGet(env, path) {
   const response = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` }
+    headers: stripeHeaders(env)
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -96,7 +86,6 @@ export function chargeSavedCard(env, { customer, paymentMethod, amountCents, des
     off_session: "true",
     confirm: "true",
     description,
-    ...connectFields(env),
     ...(metadata ? { metadata } : {})
   });
 }
@@ -145,15 +134,15 @@ export function createCheckoutSession(
   // at 500 characters; a run that skips more than fits just drops the note.
   const skipped = JSON.stringify(skippedStartAts);
   return stripeRequest(env, "/checkout/sessions", {
+    integration_identifier: INTEGRATION_IDENTIFIER,
     mode: "payment",
     client_reference_id: booking.id,
     customer_email: customerEmail,
     ...(saveCard ? { customer_creation: "always" } : {}),
-    ...((saveCard || connectedAccount(env))
+    ...(saveCard
       ? {
           payment_intent_data: {
-            ...(saveCard ? { setup_future_usage: "off_session" } : {}),
-            ...connectFields(env)
+            setup_future_usage: "off_session"
           }
         }
       : {}),
@@ -193,11 +182,26 @@ export function createCheckoutSession(
 export function refundPayment(env, paymentIntent, amountCents) {
   return stripeRequest(env, "/refunds", {
     payment_intent: paymentIntent,
-    ...(amountCents ? { amount: amountCents } : {}),
-    // With destination charges the money is already with Inês; the refund has
-    // to pull it back from her connected balance or it fails.
-    ...(connectedAccount(env) ? { reverse_transfer: "true" } : {})
+    ...(amountCents ? { amount: amountCents } : {})
   });
+}
+
+/**
+ * Refuse to confirm a lesson from a merely authentic Stripe event: it must be
+ * the exact Checkout Session created for this booking, for the exact EUR total,
+ * and Stripe must say the money is paid. An authentic event for another product
+ * in the same account is not authority to change this booking.
+ */
+export function checkoutSessionProblem(session, booking) {
+  if (session?.payment_status !== "paid") return "payment is not paid";
+  if (session?.mode !== "payment") return "session is not a one-time payment";
+  if (String(session?.currency ?? "").toLowerCase() !== "eur") return "currency does not match";
+  if (!Number.isSafeInteger(session?.amount_total) || session.amount_total !== booking?.amount_cents) {
+    return "amount does not match";
+  }
+  if (!session?.id || session.id !== booking?.stripe_session_id) return "session does not match";
+  if (!session?.payment_intent || typeof session.payment_intent !== "string") return "payment intent is missing";
+  return "";
 }
 
 /**
@@ -208,16 +212,17 @@ export function refundPayment(env, paymentIntent, amountCents) {
  * tolerance is what stops a captured request being replayed later.
  */
 export async function verifyWebhook(payload, header, secret, toleranceSeconds = 300) {
-  const parts = Object.fromEntries(
-    String(header ?? "")
-      .split(",")
-      .map((piece) => piece.split("=").map((value) => value.trim()))
-      .filter((pair) => pair.length === 2)
-  );
+  const pairs = String(header ?? "")
+    .split(",")
+    .map((piece) => {
+      const separator = piece.indexOf("=");
+      return separator < 0 ? null : [piece.slice(0, separator).trim(), piece.slice(separator + 1).trim()];
+    })
+    .filter(Boolean);
 
-  const timestamp = Number(parts.t);
-  const provided = parts.v1;
-  if (!timestamp || !provided) return false;
+  const timestamp = Number(pairs.find(([name]) => name === "t")?.[1]);
+  const provided = pairs.filter(([name, value]) => name === "v1" && value).map(([, value]) => value);
+  if (!timestamp || provided.length === 0 || !secret) return false;
   if (Math.abs(Date.now() / 1000 - timestamp) > toleranceSeconds) return false;
 
   const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
@@ -226,13 +231,15 @@ export async function verifyWebhook(payload, header, secret, toleranceSeconds = 
   const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(`${timestamp}.${payload}`));
   const expected = [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 
-  if (provided.length !== expected.length) return false;
+  return provided.some((candidate) => {
+    if (candidate.length !== expected.length) return false;
 
-  let mismatch = 0;
-  for (let index = 0; index < expected.length; index += 1) {
-    mismatch |= provided.charCodeAt(index) ^ expected.charCodeAt(index);
-  }
-  return mismatch === 0;
+    let mismatch = 0;
+    for (let index = 0; index < expected.length; index += 1) {
+      mismatch |= candidate.charCodeAt(index) ^ expected.charCodeAt(index);
+    }
+    return mismatch === 0;
+  });
 }
 
 /** True when a live Stripe key is configured. Test keys work identically. */
@@ -241,5 +248,5 @@ export function stripeConfigured(env) {
 }
 
 export function isTestMode(env) {
-  return String(env.STRIPE_SECRET_KEY ?? "").startsWith("sk_test_");
+  return /^(?:sk|rk)_test_/.test(String(env.STRIPE_SECRET_KEY ?? ""));
 }
