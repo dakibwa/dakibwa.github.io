@@ -44,7 +44,10 @@ desktop and mobile frames still need the same updates because the authenticated
 Figma Starter workspace had reached its MCP tool-call limit. A one-time
 follow-up is scheduled for 1 September 2026. That reconciliation must also
 replace every em dash in user-facing Figma copy and states with the natural
-punctuation now used in production.
+punctuation now used in production. On desktop, the three home principles now
+form a stacked cream rail in the right side of the hero, using the space left
+by the removed card artwork. At 900px and below they remain stacked after the
+blue introduction so the mobile reading order stays unchanged.
 
 ## References retained in this repository
 
