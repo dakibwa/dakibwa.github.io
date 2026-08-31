@@ -19,6 +19,7 @@ import {
   browserTimeZone,
   buildBookingWeeks,
   differingLocalTime,
+  formatBookedLessonLabel,
   formatLongDate,
   formatMoneyCents,
   formatSlotTime,
@@ -26,7 +27,7 @@ import {
   shortMonth,
   stopSeries
 } from "@/lib/booking-api";
-import { BOOKING_HORIZON_DAYS_FALLBACK, BOOKING_TIME_ZONE, formatLessonDuration } from "@/lib/config";
+import { BOOKING_HORIZON_DAYS_FALLBACK, BOOKING_TIME_ZONE } from "@/lib/config";
 
 /** Index matches the Worker's weekday, which is 0 = Sunday. */
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -670,7 +671,7 @@ export function MyLessons({
                       </span>
                       <strong>{isSeries ? "Next: " : ""}{formatLongDate(nextBooking.startAt)}, {formatSlotTime(nextBooking.startAt)}</strong>
                       <span>
-                        {nextBooking.lessonType.name} · {nextBooking.location === "porto" ? "In Porto" : "Online"}
+                        {formatBookedLessonLabel(nextBooking.lessonType)} · {nextBooking.location === "porto" ? "In Porto" : "Online"}
                       </span>
                       {isSeries ? (
                         <small>
@@ -679,7 +680,6 @@ export function MyLessons({
                             {activeSeries
                               ? `Every ${WEEKDAYS[activeSeries.weekday]} at ${minutesToClock(activeSeries.minuteOfDay)} Porto time`
                               : "Sequence ended"}
-                            {` · ${group.bookings.length} booked ${group.bookings.length === 1 ? "date" : "dates"}`}
                           </span>
                         </small>
                       ) : null}
@@ -719,7 +719,7 @@ export function MyLessons({
                         >
                           <span>
                             <strong>{formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}</strong>
-                            <small>{booking.lessonType.name} · {booking.location === "porto" ? "In Porto" : "Online"}</small>
+                            <small>{formatBookedLessonLabel(booking.lessonType)} · {booking.location === "porto" ? "In Porto" : "Online"}</small>
                           </span>
                           <span className="upcoming-lesson-group__action">
                             Manage <ChevronRight aria-hidden="true" size={17} />
@@ -752,7 +752,7 @@ export function MyLessons({
                 <li key={booking.reference}>
                   <div className="lesson-list__body">
                     <h3>
-                      {booking.lessonType.name}
+                      {formatBookedLessonLabel(booking.lessonType)}
                       {booking.status === "cancelled" ? <em> · cancelled</em> : null}
                     </h3>
                     <p>
@@ -849,8 +849,7 @@ export function MyLessons({
                   <span className="lesson-calendar__lesson-copy">
                     <strong>{formatSlotTime(booking.startAt)} Porto time</strong>
                     <span>
-                      {booking.lessonType.name} · {formatLessonDuration(booking.lessonType.durationMinutes)} ·{" "}
-                      {booking.location === "porto" ? "In Porto" : "Online"}
+                      {formatBookedLessonLabel(booking.lessonType)} · {booking.location === "porto" ? "In Porto" : "Online"}
                     </span>
                     {differingLocalTime(booking.startAt, zone) ? (
                       <small>
@@ -887,7 +886,7 @@ export function MyLessons({
               <li key={booking.reference}>
                 <div className="lesson-list__body">
                   <h3>
-                    {booking.lessonType.name}
+                    {formatBookedLessonLabel(booking.lessonType)}
                     {booking.status === "cancelled" ? <em> · cancelled</em> : null}
                   </h3>
                   <p>

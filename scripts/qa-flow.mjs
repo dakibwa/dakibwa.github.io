@@ -893,8 +893,14 @@ if (
 ) {
   throw new Error("Upcoming lessons should show one card per repeating schedule and one per one-off lesson.");
 }
-if (!(await recurringLaterGroup.getByText(/10 booked dates/i).isVisible())) {
-  throw new Error("A repeating lesson should report all of its booked occurrences.");
+if (await recurringLaterGroup.getByText(/booked dates/i).count()) {
+  throw new Error("A repeating lesson should not repeat its booked-date count in the compact summary.");
+}
+if (!(await recurringLaterGroup.getByText("60 mins · Online", { exact: true }).isVisible())) {
+  throw new Error("A booked single lesson should use its duration instead of repeating the product name.");
+}
+if (await recurringLaterGroup.getByText(/Single lesson/i).count()) {
+  throw new Error("Upcoming booking summaries should not repeat “Single lesson”.");
 }
 if (!(await recurringLaterGroup.getByText("Recurring lesson", { exact: true }).isVisible())) {
   throw new Error("A repeating schedule should be visibly distinct from one-off booked lessons.");
@@ -925,10 +931,14 @@ await nextRecurringLessons.first().waitFor({ state: "visible" });
 if ((await nextRecurringLessons.count()) !== 4) {
   throw new Error("A repeating lesson should reveal only its next four booked occurrences.");
 }
+if ((await nextRecurringLessons.getByText("60 mins · Online", { exact: true }).count()) !== 4) {
+  throw new Error("Every expanded occurrence should retain the compact duration and location.");
+}
 await nextRecurringLessons.first().click();
 const upcomingManageDialog = accountPage.getByRole("dialog", { name: "Manage this lesson", exact: true });
 await upcomingManageDialog.waitFor({ state: "visible", timeout: 10_000 });
 await upcomingManageDialog.getByText("Recurring lesson", { exact: true }).waitFor();
+await upcomingManageDialog.getByText("60 mins · Online", { exact: true }).waitFor();
 await upcomingManageDialog.getByText("Part of a recurring sequence", { exact: true }).waitFor();
 await upcomingManageDialog.getByRole("button", { name: "Change", exact: true }).waitFor();
 await upcomingManageDialog.getByRole("button", { name: "Cancel", exact: true }).waitFor();
