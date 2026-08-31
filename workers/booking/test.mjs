@@ -470,6 +470,10 @@ await test("Stripe requests pin the API version and identify this checkout integ
   assert.equal(request.options.headers["Stripe-Version"], "2026-08-26.dahlia");
   const body = new URLSearchParams(request.options.body);
   assert.match(body.get("integration_identifier"), /^portugues-com-a-ines-[a-z]{8}$/);
+  assert.equal(body.get("ui_mode"), "embedded_page");
+  assert.equal(body.get("return_url"), "https://portuguesewithines.com/book/?payment=return");
+  assert.equal(body.has("success_url"), false);
+  assert.equal(body.has("cancel_url"), false);
   assert.equal(body.has("payment_method_types"), false);
   assert.equal(body.has("transfer_data[destination]"), false);
   assert.equal(body.has("on_behalf_of"), false);

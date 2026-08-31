@@ -100,7 +100,10 @@ export function chargeSavedCard(env, { customer, paymentMethod, amountCents, des
  */
 function uiModeFields(env, { successUrl, cancelUrl, forceHosted }) {
   if (env.STRIPE_UI_MODE === "embedded" && !forceHosted) {
-    return { ui_mode: "embedded", return_url: successUrl };
+    // Stripe API 2026-08-26.dahlia renamed the create-session value from
+    // `embedded` to `embedded_page`. Stripe.js still mounts the returned
+    // client secret with initEmbeddedCheckout; this is only the REST value.
+    return { ui_mode: "embedded_page", return_url: successUrl };
   }
   return { success_url: successUrl, cancel_url: cancelUrl };
 }
