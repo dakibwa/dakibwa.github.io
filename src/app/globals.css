@@ -1533,30 +1533,28 @@ textarea,
 .unified-booking__head {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
+  justify-content: flex-start;
+  margin-bottom: 0.65rem;
   gap: 1rem 1.5rem;
-}
-
-.unified-booking__head > div:first-child > p {
-  max-width: 48ch;
-  margin-top: 0.25rem;
-  font-size: 0.92rem;
-  opacity: 0.76;
 }
 
 .unified-booking__account {
   display: flex;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  width: 100%;
   gap: 0.7rem 1rem;
 }
 
 .unified-booking__identity {
+  min-width: 0;
   margin: 0;
   font-size: 0.82rem;
   line-height: 1.35;
-  text-align: right;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .unified-booking__lesson-picker {
@@ -1587,11 +1585,19 @@ textarea,
   max-width: none;
 }
 
+.unified-calendar__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.55rem;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+}
+
 .unified-calendar__legend {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  margin-bottom: 0.4rem;
+  justify-content: flex-start;
   gap: 0.75rem 1rem;
   flex-wrap: wrap;
   font-family: var(--ui);
@@ -1599,6 +1605,11 @@ textarea,
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.unified-calendar__expand {
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .unified-calendar__legend span {
@@ -1651,6 +1662,21 @@ textarea,
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.unified-calendar .calendar-week button small.calendar-booking-count {
+  display: inline-flex;
+  width: max-content;
+  min-width: 1.3rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0.18rem auto 0;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.08rem 0.28rem;
+  font-size: 0.52rem;
+  letter-spacing: 0;
+  line-height: 1;
 }
 
 .unified-calendar__panel {
@@ -1736,9 +1762,24 @@ textarea,
 }
 
 .unified-account-controls {
-  margin-top: 2rem;
-  border-top: 1px solid var(--rule);
-  padding-top: 1.5rem;
+  margin: 0 0 1.6rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-panel);
+  padding: 1.1rem 1.25rem;
+  background: rgba(170, 164, 230, 0.1);
+}
+
+.unified-account-controls .my-lessons__header--embedded {
+  margin-bottom: 0;
+}
+
+.unified-account-controls .my-lessons__series {
+  margin: 0.9rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--rule-soft);
+  border-radius: 0;
+  padding: 0.9rem 0 0;
+  background: transparent;
 }
 
 @container booking (min-width: 700px) {
@@ -1756,9 +1797,8 @@ textarea,
   }
 }
 
-@container booking (max-width: 520px) {
-  .unified-booking__head,
-  .unified-booking__account {
+@container booking (max-width: 680px) {
+  .unified-booking__head {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -1767,8 +1807,12 @@ textarea,
     text-align: left;
   }
 
-  .unified-calendar__legend {
-    justify-content: flex-start;
+  .unified-account-controls {
+    padding: 1rem;
+  }
+
+  .unified-calendar__toolbar {
+    align-items: flex-start;
   }
 }
 
@@ -2802,6 +2846,24 @@ button.text-action {
   flex-wrap: wrap;
 }
 
+.my-lessons__header--embedded {
+  margin-bottom: 1.25rem;
+}
+
+.my-lessons__header--embedded h2 {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lavender-ink);
+}
+
+.text-action--muted {
+  color: var(--ink);
+}
+
 /* Deliberately quiet. It is a thing a student changes once, sitting above the
    lessons they came to the page for. */
 .my-lessons__details {
@@ -3304,6 +3366,18 @@ button.text-action {
   margin-bottom: 0;
   gap: 0.45rem;
   font-size: 0.95rem;
+}
+
+@container booking (max-width: 680px) {
+  .my-lessons__series-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .my-lessons__series-row > p {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 .my-lessons__series-confirmation {
