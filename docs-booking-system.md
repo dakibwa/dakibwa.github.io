@@ -114,28 +114,30 @@ depending on them having kept the right confirmation email.
   or a free day reduces the calendar to that one week, putting the
   selected lesson or available times immediately beneath it on a phone. Each
   completed choice becomes a compact summary and the page moves the next
-  decision into view. Viewing lessons starts with four weeks; `Show 8 weeks`
-  extends the calendar to the full horizon and `Show 4 weeks` restores the
-  default. Choosing an
+  decision into view. Viewing lessons stays within a four-week calendar; dates
+  beyond that window are reached through `Later lessons` in the account menu.
+  Choosing an
   individual booking opens move and cancel in place. The emailed token still
   opens that same interface without requiring sign-in, so a forgotten password
   never blocks a change. The old `/my-lessons` and `/booking` paths remain valid
   for links already in the world, then normalise to `/book`.
 - **Signed-in account controls stay in the shared workspace.** They sit above
   the active workflow rather than behind an Account/Close disclosure. The account
-  bar names the student once and keeps upcoming lessons beside a menu containing
-  past lessons, profile editing and sign out. Choosing past lessons opens a
-  separate panel below the account bar, and that menu item remains available in
-  every signed-in booking state. Repeating controls appear when the student has
-  chosen to view lessons, where they are relevant. There is only one `Booking`
+  bar names the student once and keeps later lessons, past lessons, profile
+  editing and sign out inside one menu. Choosing later or past lessons opens a
+  separate panel below the account bar, and both remain available in every
+  signed-in booking state. There is only one `Booking`
   destination in the site navigation — no separate `My lessons` tab — because
   booking and managing lessons are the same workspace.
-- **Upcoming lessons groups a repeating schedule as one thing.** Its card shows
-  the soonest booked occurrence and opens that lesson's normal move/cancel panel.
-  `View all dates` reveals the remaining booked occurrences, each of which can
-  be moved or cancelled individually in that same panel. One-off lessons remain
-  separate cards. Stopping a repeat is still a separate confirmed action because
-  it stops future top-ups without cancelling dates that are already booked.
+- **Later lessons groups a repeating schedule as one thing.** The menu panel
+  contains only dates beyond the four-week calendar. Every card uses the same
+  booked status, date hierarchy and `Manage` action; recurrence is secondary
+  metadata rather than a different card design. `View dates` reveals the other
+  booked occurrences, each of which opens the normal lesson panel. That panel
+  identifies an occurrence as part of a recurring sequence: moving or cancelling
+  affects only that lesson, while `Manage sequence` leads to the separately
+  confirmed stop-repeating action. Stopping prevents future top-ups without
+  cancelling dates that are already booked.
 
 ### Repeating bookings
 
@@ -170,9 +172,10 @@ stop it.
 - **Stopping a repeat keeps the lessons already booked.** Someone who stops
   repeating almost always still means to attend the ones in their calendar;
   cancelling those silently would be the worse of the two mistakes. Passing
-  `cancelRemaining` cancels them too. The account controls above the booking
-  choices ask for confirmation before calling the stop endpoint. The confirmation
-  says that booked lessons stay and can be cancelled individually on the calendar.
+  `cancelRemaining` cancels them too. A selected recurring occurrence exposes
+  `Manage sequence` and asks for confirmation before calling the stop endpoint.
+  The confirmation says that booked lessons stay and can be cancelled individually
+  on the calendar.
 - **A run under prepayment charges its first lesson now and the rest charge
   themselves.** The first checkout saves the card (`setup_future_usage`, with
   Stripe's own consent wording on the form); the whole run is held until that
@@ -327,9 +330,9 @@ Once availability has loaded, the date picker omits complete leading weeks with
 no free slots. That means a weekend with nothing left to book opens directly on
 the next usable week; closed weeks later in the booking window remain visible.
 Selecting either a booked day or a free day then shows only its week, so the
-details are directly below the calendar on a phone. The lesson-management view
-returns to its four-week default first and can then extend to the full eight-week
-window.
+details are directly below the calendar on a phone. Lesson management returns
+to its fixed four-week overview; new bookings return to the full eight-week
+availability window.
 
 ### Payment
 
