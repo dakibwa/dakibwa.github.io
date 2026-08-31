@@ -1,10 +1,11 @@
 # Current visual direction
 
-The canonical editable design is the
-[Português com a Inês Figma file](https://www.figma.com/design/c4AYW94iWzVqfRkCjyJs0Y).
-Use its approved desktop and mobile frames as the visual specification. Git
-owns the production implementation and the browser-ready assets actually used
-by the site.
+This file is the canonical human-readable contract for the website's visual
+direction, responsive composition, motion, and important interaction states.
+Git owns the production implementation and browser-ready assets, and the
+published site is the acceptance surface. When this contract and the site
+diverge, reconcile them in the repository rather than maintaining a second
+design system elsewhere.
 
 The current direction is:
 
@@ -16,52 +17,50 @@ The current direction is:
 - generous spacing and strong contrast, with no horizontal lines baked into
   the artwork.
 
-## Contrast corrections pending Figma reconciliation
+## Contrast and accessibility
 
-Three visible colour values were corrected in code on 2026-07-24 as
-accessibility fixes and still need reconciling into the canonical Figma file:
+Three visible colour choices are required for accessible contrast:
 
-- the second half of the Approach page heading (`way to learn.`) moved from
-  cream to `--blue` on the lavender panel. Cream measured 1.95:1 there, so half
-  the heading was barely readable; blue on lavender holds 3.2:1, the same tonal
-  relationship the home hero already uses for lilac on blue;
-- body ink deepened from `#203e82` to `#1a3169`, and the eyebrow lilac from
-  `#6a63aa` to `#665fa6`, so small text clears AA on the lavender and cream
-  panels. Both are imperceptible on cream and neither changes a fill colour;
-- the booking reassurance labels lightened from `#c8c3ef` to `#dcd8f5` to clear
-  AA on the blue booking panel.
+- the second half of the Approach page heading (`way to learn.`) uses `--blue`
+  on the lavender panel. Cream measured 1.95:1 there, while blue on lavender
+  holds 3.2:1, the same tonal relationship the home hero uses for lilac on blue;
+- body ink uses `#1a3169`, and the eyebrow lilac uses `#665fa6`, so small text
+  clears AA on the lavender and cream panels. Both are imperceptible on cream
+  and neither changes a fill colour;
+- booking reassurance labels use `#dcd8f5` to clear AA on the blue booking
+  panel.
 
 The `--blue`, `--blue-deep`, `--lavender`, `--paper`, and `--coral` fill
 colours are unchanged.
 
-## Figma reconciliation pending — 2026-08-31
+## Current responsive composition — 2026-08-31
 
-Production now reflects Inês's 31 August feedback: the home hero no longer
-contains the business-card artwork; the “Slow is fine” and “Talk first” marks
-have generated replacements; the approved Home, Approach, Lessons, and FAQ
-copy is in place; and the FAQ banner contains only its heading. The canonical
-desktop and mobile frames still need the same updates because the authenticated
-Figma Starter workspace had reached its MCP tool-call limit. A one-time
-follow-up is scheduled for 1 September 2026. That reconciliation must also
-replace every em dash in user-facing Figma copy and states with the natural
-punctuation now used in production, and use “Beginners welcome.” rather than
-“Nervous beginners welcome.” in the Approach callout. On desktop, the three
-home principles now form a stacked soft-lavender rail in the right side of the
-hero, using the space left by the removed card artwork without merging into
-the surrounding cream page. At 900px and below they remain stacked after the
-blue introduction so the mobile reading order stays unchanged. The browser
-favicon is now a generated cream-and-lavender organic mark with a coral accent
-on dark blue, replacing the flower symbol. From 821px upwards, the Lessons page
-combines its closing booking prompt and payment note as one asymmetric blue and
-soft-lavender composition rather than two full-width bars. Between 821px and
-1100px, the blue panel arranges its own contents vertically so the joined
-composition still fits a narrower desktop window; only at 820px and below do
-the two panels stack. Above 820px, the same soft-lavender rail treatment
-separates the Approach teaching list and the FAQ index from their cream content
-columns. At 820px and below those sections keep their simpler cream stacked
-treatment. In the intermediate Approach layout from 821px to 999px, the
-teaching-list headings wrap naturally instead of being clipped at the right
-edge; from 1000px upwards they remain on one line.
+The intended production state reflects Inês's 31 August feedback:
+
+- the home hero does not contain the business-card artwork, and the “Slow is
+  fine” and “Talk first” marks use their generated replacements;
+- the approved Home, Approach, Lessons, and FAQ copy is in place; the FAQ banner
+  contains only its heading; user-facing copy uses natural punctuation rather
+  than em dashes; and the Approach callout says “Beginners welcome.” rather
+  than “Nervous beginners welcome.”;
+- above 900px, the three home principles form a stacked soft-lavender rail in
+  the right side of the hero, using the space left by the removed card artwork
+  without merging into the surrounding cream page. At 900px and below they
+  remain stacked after the blue introduction so the mobile reading order stays
+  unchanged;
+- the browser favicon is a generated cream-and-lavender organic mark with a
+  coral accent on dark blue, replacing the flower symbol;
+- from 821px upwards, the Lessons page combines its closing booking prompt and
+  payment note as one asymmetric blue and soft-lavender composition rather
+  than two full-width bars. Between 821px and 1100px, the blue panel arranges
+  its own contents vertically so the joined composition fits a narrower
+  desktop window; only at 820px and below do the two panels stack;
+- above 820px, the same soft-lavender rail treatment separates the Approach
+  teaching list and the FAQ index from their cream content columns. At 820px
+  and below those sections keep their simpler cream stacked treatment. From
+  821px to 999px, the Approach teaching-list headings wrap naturally instead
+  of being clipped at the right edge; from 1000px upwards they remain on one
+  line.
 
 ## References retained in this repository
 
@@ -90,27 +89,16 @@ mockups, or unused candidates under `public/`.
 
 ## Motion direction
 
-The editable route-motion contract is on `05 QA / 2026-07-24` in the canonical
-Figma file, in the frame named
-`Motion & loading QA / Fade only / Desktop + mobile / 2026-07-24`. It
-specifies a short opacity-only transition, with faster mobile timings and no
-overlay, transform, ambient loop, or decorative hero entrance. Reduced-motion
-users navigate immediately without delay or animation.
+Use a short opacity-only transition on completed route changes, with faster
+mobile timings and no click delay, overlay, transform, ambient loop, or
+decorative hero entrance. Decisions inside the booking flow resize and
+dissolve the existing calendar workspace rather than abruptly replacing the
+page. Keep the rest of the page fixed. Reduced-motion users navigate
+immediately without animation or smooth scrolling.
 
-Dan approved a production refinement on 2026-08-31: use that restrained
-opacity treatment on every completed route change without delaying the click,
-and let decisions inside the booking flow resize and dissolve the existing
-calendar workspace rather than abruptly replacing the page. The code keeps the
-rest of the page fixed and removes both effects under reduced motion. The Figma
-frame still needs this refinement recorded when its Starter-plan tool-call
-limit clears; until then this note and the implementation are the source for
-the approved interaction behaviour.
+## Booking workspace
 
-The same Starter-plan limit blocked the approved booking-workspace refinement
-on 2026-08-31, so this is the exact reconciliation contract for the next Figma
-pass. Add a frame named
-`Booking workspace / Unified desktop + mobile / 2026-08-31` and record these
-production states:
+Preserve these desktop and mobile states:
 
 - on desktop the blue introduction is a supporting rail, clamped between 300
   and 440 px at roughly 29% of the viewport; the cream booking workspace owns
@@ -139,11 +127,9 @@ production states:
 
 ## Account interaction states
 
-The editable confirmation shown before a student stops a repeating lesson is
-on `05 QA / 2026-07-24`, in the frame named
-`My lessons / Stop repeating confirmation / Desktop + mobile / 2026-08-29`.
-It records the desktop and mobile arrangements, the two explicit choices, and
-the promise that lessons already in the calendar stay booked.
+Before a student stops a repeating lesson, show a clear confirmation at desktop
+and mobile sizes with two explicit choices. State that lessons already in the
+calendar stay booked and can be cancelled individually.
 
 ## Superseded work
 
