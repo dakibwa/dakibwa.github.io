@@ -104,6 +104,37 @@ frame still needs this refinement recorded when its Starter-plan tool-call
 limit clears; until then this note and the implementation are the source for
 the approved interaction behaviour.
 
+The same Starter-plan limit blocked the approved booking-workspace refinement
+on 2026-08-31, so this is the exact reconciliation contract for the next Figma
+pass. Add a frame named
+`Booking workspace / Unified desktop + mobile / 2026-08-31` and record these
+production states:
+
+- on desktop the blue introduction is a supporting rail, clamped between 300
+  and 440 px at roughly 29% of the viewport; the cream booking workspace owns
+  the remaining width;
+- the signed-in identity, account controls, lesson choices, calendar, and
+  selected-day workspace share the same left and right edges. Two lesson types
+  divide the row evenly rather than reserving an empty third column;
+- the calendar is the stable surface. A selected day reduces it to one week,
+  with the day or lesson detail beside it on desktop and immediately below it
+  on mobile. Collapsed history remains below the compact calendar instead of
+  being pushed down by the height of the detail card;
+- days with two bookings show both booked times on separate lines. Do not use a
+  small `2x` count badge beside the date;
+- primary coral and secondary outline actions share a 52 px height, Montserrat
+  0.7 rem labels, 0.12 em tracking, and the same hand-drawn button radius.
+  Tertiary text actions use the same type at 40 px minimum height. `Back to
+  calendar` is tertiary; `Move this lesson` and `Cancel lesson` are the paired
+  primary and secondary actions;
+- transitions belong to the account, choice, calendar, detail, and confirmation
+  surfaces individually. The page scrolls only when the next decision is not
+  already comfortably visible. Reduced motion removes both the transitions and
+  smooth scrolling;
+- preserve the current mobile reading order and full-width stacked lesson
+  choices. The mobile calendar must keep all seven columns and its legend inside
+  the card after resize or orientation changes.
+
 ## Account interaction states
 
 The editable confirmation shown before a student stops a repeating lesson is

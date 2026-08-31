@@ -1098,7 +1098,7 @@ p {
 
 .booking-composition {
   display: grid;
-  grid-template-columns: minmax(390px, 40%) 1fr;
+  grid-template-columns: clamp(300px, 29vw, 440px) minmax(0, 1fr);
   /* Stretch, not start: the two columns then share one height, so the cream
      panel matches the blue one instead of ending wherever the current step
      happens to finish. Each step used to change the panel height — 485px,
@@ -1113,7 +1113,7 @@ p {
   /* Was sticky. A stretched grid item is already the full row height, so
      sticky had nothing left to do and only made the rule harder to read. */
   overflow: hidden;
-  padding: 2.8rem var(--page-pad) 3.2rem;
+  padding: 2.6rem clamp(2rem, 3vw, 3.5rem) 3rem;
   background-color: var(--green);
   background-image: var(--paper-texture);
   color: var(--paper);
@@ -1122,7 +1122,7 @@ p {
 .booking-intro h1 {
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(3.2rem, 5.4vw, 5.8rem);
+  font-size: clamp(3rem, 4.2vw, 4.8rem);
   font-weight: 400;
   letter-spacing: -0.035em;
   line-height: 1;
@@ -1130,39 +1130,39 @@ p {
 
 .booking-intro > p {
   max-width: 430px;
-  font-size: 1.35rem;
+  font-size: 1.18rem;
 }
 
 .booking-intro__points {
   position: relative;
   z-index: 2;
-  margin: 2.2rem 0 0;
+  margin: 1.8rem 0 0;
   padding: 0;
   list-style: none;
 }
 
 .booking-intro__points li {
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 62px 1fr;
   align-items: center;
-  min-height: 76px;
+  min-height: 68px;
   border-bottom: 1px solid rgba(170, 164, 230, 0.65);
   color: var(--lavender-soft);
   font-family: var(--ui);
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .booking-intro__points .asset-mark {
-  width: 58px;
-  height: 62px;
+  width: 50px;
+  height: 54px;
 }
 
 .booking-intro__time-window {
-  width: min(42%, 280px);
-  margin: 2.4rem 0 0 auto;
+  width: min(38%, 230px);
+  margin: 2rem 0 0 auto;
   aspect-ratio: 8 / 7;
   opacity: 0.92;
 }
@@ -1183,8 +1183,11 @@ p {
 }
 
 .booking-provider {
+  --booking-control-height: 52px;
+  --booking-control-font-size: 0.7rem;
+  --booking-control-tracking: 0.12em;
   min-width: 0;
-  padding: 2rem var(--page-pad) 3rem;
+  padding: 2rem clamp(2rem, 3.5vw, 4rem) 3rem;
   background-color: var(--paper);
   background-image: var(--paper-texture);
   /* The booking column is a fraction of the viewport, not the viewport, so its
@@ -1192,6 +1195,31 @@ p {
      the middle sizes — at 900px the two-column confirm step overflowed. */
   container-type: inline-size;
   container-name: booking;
+}
+
+/* The booking journey has one control grammar. Importance still comes from
+   fill, outline or text treatment, not from unrelated heights and type sizes. */
+.booking-provider .button,
+.booking-provider .booking-back {
+  min-height: var(--booking-control-height);
+  border-radius: var(--squiggle-button);
+  padding: 0.72rem clamp(1.1rem, 2vw, 1.6rem);
+  font-family: var(--ui);
+  font-size: var(--booking-control-font-size);
+  font-weight: 700;
+  letter-spacing: var(--booking-control-tracking);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.booking-provider button.text-action {
+  min-height: 40px;
+  padding: 0.35rem 0.1rem 0.28rem;
+  font-family: var(--ui);
+  font-size: var(--booking-control-font-size);
+  font-weight: 700;
+  letter-spacing: var(--booking-control-tracking);
+  line-height: 1.2;
 }
 
 .booking-placeholder {
@@ -1300,7 +1328,6 @@ textarea,
    the whole width, which is what stopped it feeling cramped. */
 .booking-stage {
   display: flow-root;
-  view-transition-name: booking-flow;
 }
 
 /* A booking choice changes the size and content of one workspace. The native
@@ -1312,16 +1339,28 @@ textarea,
   animation: none;
 }
 
-::view-transition-group(booking-flow) {
+::view-transition-group(booking-account),
+::view-transition-group(booking-choice),
+::view-transition-group(booking-calendar),
+::view-transition-group(booking-detail),
+::view-transition-group(booking-confirmation) {
   animation-duration: var(--motion-surface);
   animation-timing-function: var(--motion-ease);
 }
 
-::view-transition-old(booking-flow) {
+::view-transition-old(booking-account),
+::view-transition-old(booking-choice),
+::view-transition-old(booking-calendar),
+::view-transition-old(booking-detail),
+::view-transition-old(booking-confirmation) {
   animation: booking-flow-out 130ms ease-out both;
 }
 
-::view-transition-new(booking-flow) {
+::view-transition-new(booking-account),
+::view-transition-new(booking-choice),
+::view-transition-new(booking-calendar),
+::view-transition-new(booking-detail),
+::view-transition-new(booking-confirmation) {
   animation: booking-flow-in var(--motion-surface) var(--motion-ease) both;
 }
 
@@ -1383,6 +1422,22 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 .booking-back:focus-visible {
   background: var(--coral-action);
   color: #fff;
+}
+
+/* Navigation back within the same surface is tertiary, not another large
+   outlined call to action competing with Move and Cancel. */
+.booking-provider .booking-back--tertiary {
+  min-height: 40px;
+  border: 0;
+  border-bottom: 1px solid rgba(194, 58, 39, 0.3);
+  border-radius: 0;
+  padding: 0.35rem 0.1rem 0.28rem;
+}
+
+.booking-provider .booking-back--tertiary:hover,
+.booking-provider .booking-back--tertiary:focus-visible {
+  background: transparent;
+  color: #95301f;
 }
 
 /* The control sits beside the heading rather than above it, which cost a whole
@@ -1480,7 +1535,7 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 
 @container booking (min-width: 520px) {
   .lesson-choice {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
     gap: 0.85rem;
   }
 
@@ -1585,8 +1640,8 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
-  width: min(100%, 700px);
-  margin: 0 0 0.65rem auto;
+  width: 100%;
+  margin: 0 0 0.65rem;
   gap: 1rem 1.5rem;
 }
 
@@ -1611,6 +1666,7 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 
 .unified-booking__lesson-picker {
   margin-bottom: 1.6rem;
+  view-transition-name: booking-choice;
 }
 
 .unified-booking__lesson-picker .lesson-choice {
@@ -1672,13 +1728,19 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 .unified-calendar {
   display: grid;
   min-width: 0;
-  gap: 1rem;
+  grid-template-areas:
+    "calendar"
+    "panel"
+    "history";
+  gap: 0.75rem 1rem;
   align-items: start;
 }
 
 .unified-calendar__grid {
+  grid-area: calendar;
   width: 100%;
   max-width: none;
+  view-transition-name: booking-calendar;
 }
 
 .unified-calendar__toolbar {
@@ -1760,29 +1822,30 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   white-space: nowrap;
 }
 
-.unified-calendar .calendar-week button small.calendar-booking-count {
-  display: inline-flex;
-  width: max-content;
-  min-width: 1.3rem;
-  align-items: center;
-  justify-content: center;
-  margin: 0.18rem auto 0;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  padding: 0.08rem 0.28rem;
-  font-size: 0.52rem;
+.unified-calendar .calendar-week button small.calendar-booking-times {
+  display: grid;
+  justify-items: center;
+  margin-top: 0.15rem;
+  font-size: 0.46rem;
   letter-spacing: 0;
-  line-height: 1;
+  line-height: 1.12;
+  white-space: normal;
+}
+
+.calendar-booking-times span {
+  display: block;
 }
 
 .unified-calendar__panel {
   position: relative;
+  grid-area: panel;
   overflow: hidden;
   min-width: 0;
   border: 1px solid var(--rule);
   border-radius: var(--squiggle-panel);
   padding: clamp(1rem, 2.4vw, 1.35rem);
   background: rgba(170, 164, 230, 0.13);
+  view-transition-name: booking-detail;
 }
 
 #booking-lesson-choice,
@@ -1865,12 +1928,13 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 }
 
 .unified-account-controls {
-  width: min(100%, 700px);
-  margin: 0 0 1.6rem auto;
+  width: 100%;
+  margin: 0 0 1.6rem;
   border: 1px solid var(--rule);
   border-radius: var(--squiggle-panel);
-  padding: 1.1rem 1.25rem;
+  padding: 0.9rem 1.1rem;
   background: rgba(170, 164, 230, 0.1);
+  view-transition-name: booking-account;
 }
 
 .unified-account-controls .my-lessons__header--embedded {
@@ -1889,6 +1953,13 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 .booking-history {
   margin-top: clamp(1.8rem, 4vw, 3rem);
   border-top: 1px solid var(--rule);
+}
+
+.unified-calendar > .booking-history {
+  grid-area: history;
+  align-self: start;
+  width: 100%;
+  margin-top: 0;
 }
 
 .booking-history summary {
@@ -1982,17 +2053,40 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 
 @container booking (min-width: 700px) {
   .unified-calendar {
+    grid-template-areas:
+      "calendar panel"
+      "history panel";
     grid-template-columns: minmax(0, 1fr) minmax(245px, 0.62fr);
+    grid-template-rows: min-content min-content;
+    align-content: start;
   }
 
   .unified-calendar__panel {
     position: sticky;
+    grid-row: 1 / span 2;
     top: 1rem;
   }
 
   .unified-calendar__empty-summary {
     display: none;
   }
+}
+
+@container booking (min-width: 900px) {
+  .unified-calendar__panel .manage-booking__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .unified-calendar__panel .manage-booking__actions > .button,
+  .unified-calendar__panel .manage-booking__actions > .booking-back {
+    width: 100%;
+  }
+}
+
+.booking-confirmation-stage {
+  view-transition-name: booking-confirmation;
 }
 
 @container booking (max-width: 680px) {
@@ -2050,6 +2144,9 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 .calendar-panel {
   position: relative;
   overflow: hidden;
+  /* Unlike hidden, clip cannot retain an internal horizontal scroll after a
+     focused desktop control disappears and the viewport becomes narrow. */
+  overflow: clip;
   max-width: 640px;
   border-radius: var(--squiggle-panel);
   border: 1px solid var(--rule);
@@ -4484,17 +4581,13 @@ button.text-action {
     grid-template-columns: 105px 1fr;
   }
 
-  .booking-composition {
-    grid-template-columns: 35% 65%;
-  }
-
   .booking-intro {
     padding-right: 2.2rem;
     padding-left: 2.2rem;
   }
 
   .booking-intro h1 {
-    font-size: clamp(3rem, 5vw, 4.5rem);
+    font-size: clamp(2.8rem, 4.3vw, 4.2rem);
   }
 
   .site-footer {
@@ -5052,7 +5145,11 @@ button.text-action {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .booking-stage {
+  .unified-account-controls,
+  .unified-booking__lesson-picker,
+  .unified-calendar__grid,
+  .unified-calendar__panel,
+  .booking-confirmation-stage {
     view-transition-name: none;
   }
 
