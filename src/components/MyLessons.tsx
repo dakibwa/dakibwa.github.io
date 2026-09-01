@@ -737,7 +737,13 @@ export function MyLessons({
                   tabIndex={!isSeries ? -1 : undefined}
                 >
                   <div className="upcoming-lesson-group__summary">
-                    <LessonMark className="lesson-calendar__mark" lessonTypeId={nextBooking.lessonType.id} />
+                    <LessonMark
+                      className="lesson-calendar__mark"
+                      durationMinutes={nextBooking.lessonType.durationMinutes}
+                      lessonTypeId={nextBooking.lessonType.id}
+                      location={nextBooking.location}
+                      recurring={isSeries}
+                    />
                     <span className="lesson-calendar__lesson-copy">
                       <span className={`lesson-calendar__status${isSeries ? " lesson-calendar__status--recurring" : ""}`}>
                         {isSeries ? <Repeat size={13} aria-hidden="true" /> : <CheckCircle2 size={13} aria-hidden="true" />}
@@ -929,7 +935,12 @@ export function MyLessons({
                   onClick={() => manage(booking)}
                   type="button"
                 >
-                  <LessonMark className="lesson-calendar__mark" lessonTypeId={booking.lessonType.id} />
+                  <LessonMark
+                    className="lesson-calendar__mark"
+                    durationMinutes={booking.lessonType.durationMinutes}
+                    lessonTypeId={booking.lessonType.id}
+                    location={booking.location}
+                  />
                   <span className="lesson-calendar__lesson-copy">
                     <strong>{formatSlotTime(booking.startAt)} Porto time</strong>
                     <span>

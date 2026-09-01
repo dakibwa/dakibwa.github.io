@@ -2042,9 +2042,9 @@ html.booking-transitioning .booking-confirmation-stage {
   margin-top: 0.65rem;
 }
 
-/* Initial booking is a considered set of visible choices, all on one screen.
-   The sliding selectors are reserved for the smaller change-booking overlay,
-   where their compact footprint is genuinely useful. */
+/* Initial booking keeps all three compact choices on one screen. The same
+   sliding language is used in management, so changing an existing lesson
+   feels like a smaller version of the booking decision rather than a new UI. */
 .booking-setup {
   display: grid;
   max-width: 700px;
@@ -2070,75 +2070,18 @@ html.booking-transitioning .booking-confirmation-stage {
   text-transform: uppercase;
 }
 
-.booking-option-cards {
-  display: grid;
-  gap: 0.55rem;
+.booking-setup .segmented {
+  width: 100%;
+  margin: 0;
 }
 
-.booking-option-cards--two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.booking-option-cards--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.booking-option-card {
-  position: relative;
-  display: grid;
-  min-height: 72px;
-  align-content: center;
-  border: 1px solid var(--rule);
-  border-radius: var(--squiggle-field);
-  padding: 0.68rem 0.85rem;
-  background: rgba(255, 255, 255, 0.36);
-  color: var(--ink);
-  cursor: pointer;
-  gap: 0.08rem;
-  text-align: left;
-  transition: background 180ms var(--motion-ease), border-color 180ms var(--motion-ease), box-shadow 180ms var(--motion-ease), transform 180ms var(--motion-ease);
-}
-
-.booking-option-cards--three .booking-option-card {
-  min-height: 62px;
-  text-align: center;
-}
-
-.booking-option-card input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
-.booking-option-card strong {
-  font-family: var(--ui);
-  font-size: clamp(0.86rem, 2vw, 1rem);
-  line-height: 1.25;
-}
-
-.booking-option-card span {
-  font-size: 0.68rem;
-  line-height: 1.35;
-  opacity: 0.7;
-}
-
-.booking-option-card:hover,
-.booking-option-card:focus-within {
-  border-color: rgba(82, 74, 150, 0.68);
-  background: rgba(170, 164, 230, 0.16);
-  transform: translateY(-1px);
-}
-
-.booking-option-card.is-selected {
-  border-color: var(--coral-action);
-  background: rgba(194, 58, 39, 0.1);
-  box-shadow: inset 0 -3px 0 rgba(194, 58, 39, 0.5);
-}
-
-.booking-option-card:has(input:focus-visible) {
-  outline: 3px solid rgba(170, 164, 230, 0.48);
-  outline-offset: 2px;
+.booking-repeat-choice.booking-repeat-choice--setup {
+  margin: 0.1rem 0 0;
+  border: 0;
+  border-left: 3px solid rgba(82, 74, 150, 0.48);
+  border-radius: 0 var(--squiggle-field) var(--squiggle-field) 0;
+  padding: 0.2rem 0 0.2rem 0.8rem;
+  background: transparent;
 }
 
 .booking-setup__continue {
@@ -3005,15 +2948,6 @@ html.booking-transitioning .booking-confirmation-stage {
 }
 
 @container booking (max-width: 480px) {
-  .booking-option-cards {
-    gap: 0.4rem;
-  }
-
-  .booking-option-card {
-    min-height: 66px;
-    padding-inline: 0.62rem;
-  }
-
   .upcoming-lesson-occurrences {
     margin-left: 0.45rem;
   }
@@ -3045,6 +2979,27 @@ html.booking-transitioning .booking-confirmation-stage {
   .upcoming-lesson-group__summary .upcoming-lesson-group__actions .text-action {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .upcoming-lesson-group--single .upcoming-lesson-group__summary {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    grid-template-areas: "mark copy actions";
+    padding-right: 0.55rem;
+  }
+
+  .upcoming-lesson-group--single .upcoming-lesson-group__summary .upcoming-lesson-group__actions {
+    width: auto;
+    min-width: max-content;
+    align-items: flex-end;
+    align-self: center;
+    margin-top: 0;
+  }
+
+  .upcoming-lesson-group--single .upcoming-lesson-group__summary .upcoming-lesson-group__actions .text-action {
+    width: auto;
+    min-height: 42px;
+    justify-content: flex-end;
+    padding-inline: 0.2rem;
   }
 }
 
@@ -3857,7 +3812,7 @@ html.booking-transitioning .booking-confirmation-stage {
   opacity: 0;
 }
 
-.segmented label:focus-within {
+.segmented label:has(input:focus-visible) {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -3894,6 +3849,26 @@ html.booking-transitioning .booking-confirmation-stage {
 .segmented--porto .segmented__thumb,
 .segmented--second .segmented__thumb {
   transform: translateX(calc(100% + 4px));
+}
+
+.segmented--four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.segmented--four .segmented__thumb {
+  width: calc(25% - 7px);
+}
+
+.segmented--position-1 .segmented__thumb {
+  transform: translateX(calc(100% + 4px));
+}
+
+.segmented--position-2 .segmented__thumb {
+  transform: translateX(calc(200% + 8px));
+}
+
+.segmented--position-3 .segmented__thumb {
+  transform: translateX(calc(300% + 12px));
 }
 
 .auth-panel__form {

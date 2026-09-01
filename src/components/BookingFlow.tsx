@@ -18,6 +18,7 @@ const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
  */
 export function BookingFlow({ initialView = "book" }: { initialView?: BookingView }) {
   const [manageToken, setManageToken] = useState("");
+  const [prepay, setPrepay] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -70,7 +71,7 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
 
           <section className="booking-provider" aria-label="Your lesson calendar">
             {BOOKING_CONFIGURED ? (
-              <BookingCalendar initialManageToken={manageToken} />
+              <BookingCalendar initialManageToken={manageToken} onPaymentModeChange={setPrepay} />
             ) : (
               <div className="booking-placeholder" aria-label="Booking setup placeholder">
                 <p className="eyebrow">Not yet available</p>
@@ -90,11 +91,12 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
         <section className="booking-policy" id="change-booking">
           <AssetMark asset="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg" />
           <div>
-            <p className="eyebrow">Changes and missed lessons</p>
-            <p>
-              Move or cancel free until the day before. A same-day change or cancellation costs <strong>{sameDayFee}</strong>.{" "}
-              Missed lessons do not carry a separate no-show fee.
-            </p>
+            <p className="eyebrow">Changes and cancellations</p>
+            {prepay ? (
+              <p>You can&rsquo;t change or cancel on the day of your lesson. If you miss it, you&rsquo;re still charged.</p>
+            ) : (
+              <p>Changes are free until the day before. On the day, moving or cancelling costs <strong>{sameDayFee}</strong>.</p>
+            )}
           </div>
         </section>
       </main>
