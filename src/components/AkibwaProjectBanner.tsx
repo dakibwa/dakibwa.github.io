@@ -4,18 +4,27 @@ export function AkibwaProjectBanner() {
   return (
     <header className="akibwa-project-banner" aria-label="Akibwa portfolio">
       <div className="akibwa-project-banner__inner">
-        <p className="akibwa-project-banner__identity">
-          I’m <strong>Akibwa</strong>
+        <p className="akibwa-project-banner__identity" aria-label="I’m Daniel. I’m Akibwa.">
+          <span aria-hidden="true">
+            I’m{" "}
+            <span className="akibwa-project-banner__name-stack">
+              <strong className="akibwa-project-banner__name akibwa-project-banner__name--daniel">
+                Daniel
+              </strong>
+              <strong className="akibwa-project-banner__name akibwa-project-banner__name--akibwa">
+                Akibwa
+              </strong>
+            </span>
+          </span>
         </p>
         <div className="akibwa-project-banner__copy">
-          <p className="akibwa-project-banner__lede">Building in the Intelligence Age.</p>
-          <a
-            className="akibwa-project-banner__back"
-            data-akibwa-project-back
-            href="https://akibwa.com/#projects"
-          >
-            Back to projects
-          </a>
+          <p className="akibwa-project-banner__lede">Building in the age of AI.</p>
+          <nav className="akibwa-project-banner__nav" aria-label="Akibwa">
+            <a data-akibwa-project-back href="https://akibwa.com/">Home</a>
+            <a data-akibwa-project-back href="https://akibwa.com/#projects">Projects</a>
+            <a data-akibwa-project-back href="https://akibwa.com/#career">Career</a>
+            <a data-akibwa-project-back href="https://akibwa.com/#taste">Taste Library</a>
+          </nav>
         </div>
       </div>
     </header>
