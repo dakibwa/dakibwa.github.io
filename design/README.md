@@ -124,6 +124,13 @@ the same identity or action:
   anchors the shared header and footer, while each page owns a task-specific
   heading and only the actions that meaningfully advance its reading path.
 
+- the booking and privacy policies use a quiet editorial cream column under a
+  compact blue hero, linked from the footer rather than promoted as primary
+  navigation. When after-lesson charging is active, every booking presents its
+  saved-card agreement as a distinct required lavender consent block next to
+  the final action; a payment configuration failure replaces action with a
+  visible inline error instead of confirming without a usable payment method.
+
 ## References retained in this repository
 
 `design/business-cards/` contains the original business-card exports. They are
@@ -308,10 +315,11 @@ happening today remains booked under the existing same-day policy.
 The change workflow has no decorative horizontal dividers. Lesson length uses
 the same sliding two-option control as `Online` / `In Porto`, so changing an
 existing lesson feels like the booking flow rather than a separate tool. The
-policy band follows the Worker's payment mode: pay-in-person shows the concise
-€5 legacy same-day rule; prepayment says that lessons cannot be changed or
-cancelled on their day and a missed lesson is still charged. It contains no
-instructions for finding the management controls.
+policy band follows the Worker's payment mode. Saved-card bookings say that the
+lesson price is charged when it ends, while moving or cancelling on its Porto
+calendar day costs €5. The teacher schedule exposes `Mark no-show` only after
+the lesson starts and before it ends; the marked state remains reversible until
+charging begins and means only €5 is taken instead of the full price.
 
 ## Superseded work
 

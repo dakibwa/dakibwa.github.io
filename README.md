@@ -87,24 +87,22 @@ request only competes with the fonts for no gain.
 - Square was removed in August 2026. Square does not onboard sellers in
   Portugal, so the account this site pointed at — Dan's UK account, set up as a
   test — could never have been hers.
-- There is no live payment rail yet — students pay Inês directly — but the
-  Stripe integration is fully built and dormant. Inês's own Stripe account now
-  exists, with Dan as Administrator. The isolated sandbox journey passed end
-  to end on 31 August 2026 (payment, webhook, refund, saved-card charge and
-  decline fallback), while production `payment_mode` remains `off`.
-  docs-booking-system.md has the security model and remaining go-live checks.
+- Live payment remains deliberately off while the saved-card, after-lesson
+  flow is proved in isolation. A booking saves a card without charging it;
+  the lesson price is charged when the scheduled lesson ends. Production
+  expects live keys and fails closed if test or incomplete credentials are
+  present. `docs-booking-system.md` records the activation boundary.
 - The approved product display is trial lesson €20 / 60 minutes, single lessons
   at €25 / 60 minutes or €35 / 1 hour 30 minutes. Bundles are not part of the
   public launch offer. Existing students retain their individually agreed
   legacy €20 / €30 pricing, which is not advertised publicly.
   The Worker's `lesson_types` table decides what is actually bookable; the
   lessons page is the copy a visitor reads. Keep the two in step.
-- The rescheduling rule is free before the lesson day, with a €5 fee for a
-  change made on the lesson day in Porto time — the one fee that exists. The
-  €10 no-show fee was retired on 28 August 2026. The Worker detects a same-day
-  change, warns the student before they confirm it, and emails Inês a notice so
-  she collects the €5 at the lesson. Once prepayment is live, paid lessons
-  simply cannot be moved or cancelled on their own day (docs-booking-system.md).
+- The rescheduling rule is free before the lesson day, with a €5 fee charged
+  automatically for a move or cancellation on the lesson day in Porto time.
+  During the lesson window Inês can mark a no-show; that replaces the full
+  lesson charge with €5 when the lesson ends. One booking can incur the
+  same-day action fee only once.
 
 ## Run and verify
 
@@ -118,12 +116,10 @@ Open `http://localhost:3000`.
 Smallest relevant checks:
 
 ```bash
-npm run typecheck
-npm run lint
-npm run test:booking   # Worker logic: DST, iCalendar, manage-link signing
-npm run check:booking  # release gate — the booking API must be healthy
+npm run test:booking   # focused Worker logic while iterating
+npm run check:fast     # typecheck, lint and Worker tests once before push
+npm run check:release  # live booking health probe and production build once at release
 npm run test:flow
-npm run build
 ```
 
 `test:booking` needs neither a server nor a network. It covers the parts that
@@ -182,7 +178,8 @@ Copy `.env.example` to `.env.local` and point the site at the deployed Worker:
 ```bash
 NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking.<subdomain>.workers.dev
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=          # optional; absent hides the Google button
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=    # optional; needed for the embedded payment form once prepay is on
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=    # optional; needed for the embedded card form once postpay is on
+NEXT_PUBLIC_STRIPE_EXPECTED_MODE=live  # use test only with the isolated staging Worker
 LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=60

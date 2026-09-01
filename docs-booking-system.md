@@ -224,7 +224,7 @@ number of booking rows at once.
   the student's booking calendar without another confirmation email. When
   teacher notifications are enabled, Inês gets one calendar update so the added
   time reaches her external calendar; that copy is currently paused during development.
-- **Existing open-ended series are topped up by a nightly cron**, not on a page view: her
+- **Existing open-ended series are topped up by the nightly scheduled sweep**, not on a page view: her
   calendar has to be right whether or not anyone has opened the site, and a read
   path that quietly writes bookings is impossible to reason about later.
 - **Stopping a repeat keeps the lessons already booked.** Someone who stops
@@ -243,16 +243,13 @@ number of booking rows at once.
   and any lesson on its own Porto day are left alone. Each booking keeps its
   calendar UID, increments its sequence, and the student receives one combined
   updated calendar email. Inês's copy follows the existing development pause.
-- **A run under prepayment charges its first lesson now and the rest charge
-  themselves.** The first checkout saves the card (`setup_future_usage`, with
-  Stripe's own consent wording on the form); the whole run is held until that
-  payment lands, then the webhook confirms it — first lesson `paid`, the rest
-  `scheduled`. Each scheduled lesson is charged to the saved card by the cron
-  at the 03:10 UTC morning run on its own day (03:10 Porto in winter, 04:10 in
-  summer). Open-ended runs work the same way: every
-  topped-up occurrence of a `prepaid` series is born `scheduled`. A declined
-  charge marks the row `payment_due`, emails the student a hosted pay-now
-  link, and tells Inês — the lesson stands either way.
+- **A run saves a card once and charges each lesson after it.** Stripe Checkout
+  runs in setup mode, so no money is taken while the run is booked. The whole
+  run is held until its webhook proves a reusable card exists, then every
+  occurrence becomes `scheduled`. The minute cron charges an occurrence
+  only once `ends_at` has passed. Open-ended top-ups inherit the same consent
+  and scheduled state. A declined charge marks the row `payment_due`, emails
+  the student a hosted pay-now link, and tells Inês.
 
 ### Changing your name or email
 
@@ -338,7 +335,7 @@ Email is best-effort, but "best effort" used to mean "one attempt, and silence".
   behind on failure, so the unique key made every later attempt return "already
   sent" without sending. A message Resend rate-limited was lost for good, and the
   caller was told it succeeded.
-- **There is now a sweep.** The nightly cron re-sends failed rows older than five
+- **There is now a sweep.** The scheduled cron re-sends failed rows older than five
   minutes. Only a booking's own confirmation can be rebuilt — the body is not
   stored — so anything else stays in the log for a person to look at.
 - **A cancelled run is one email, not one per lesson.** Stopping a twelve-week
@@ -349,21 +346,20 @@ Email is best-effort, but "best effort" used to mean "one attempt, and silence".
 
 ### The no-show policy
 
-For a prepaid lesson: not coming forfeits it — the lesson was paid for and the
-slot was held, so there is nothing to charge and nothing to do. For a booking
-made before prepayment (`payment_status = 'not_required'`), nothing: the €10
-no-show fee was retired on 28 August 2026. The €5 same-day change fee remains
-the one fee that exists, stated wherever changes are offered.
+During a confirmed saved-card lesson, the teacher schedule offers `Mark
+no-show` from the scheduled start until the scheduled end. The same control can
+undo the mark during that window. The endpoint accepts the change only while
+`payment_status = 'scheduled'`; the charge sweep first claims the row as
+`processing`, then reads attendance, so the teacher decision cannot race the
+PaymentIntent.
 
-- **Nothing in the system charges it.** `payment_mode` is off and payment is
-  made on the day, in person with Inês, so this is stated policy she applies or
-  waives — not something the site collects. There is no no-show flag on a
-  booking and no handler that sets one.
-- **The legacy same-day fee is €5.** It remains only while production is in
-  pay-in-person mode and for bookings made under those terms. When prepayment is
-  enabled, the simpler rule replaces it: no changes or cancellation on the
-  lesson day, and a missed lesson remains charged. The booking page reads the
-  live payment mode before choosing which version to show.
+- **Expected attendance** charges the booked lesson price after `ends_at`.
+- **No-show** charges €5 after `ends_at`, instead of the booked lesson price.
+- Bookings without explicit automatic-payment consent remain
+  `not_required`; the teacher control is not offered for them.
+- Moving or cancelling on the lesson's Porto calendar day is a separate €5
+  action fee, stored independently so a retry or second edit cannot duplicate
+  it.
 - **It is said before booking, not only after.** A charge someone first learns
   about by being charged is the kind that costs a relationship. It appears on the
   booking page's policy band, directly above the confirm button, on the
@@ -408,34 +404,34 @@ lesson above.
 ### Payment
 
 Off by default. `payment_mode` is `off`, every booking confirms on creation, and
-none of the Stripe columns are read. With it set to `prepay` and Stripe
+none of the Stripe columns are read. With it set to `postpay` and Stripe
 configured:
 
-- the slot is held as `pending_payment`, not confirmed, and nothing is emailed
-  until the webhook arrives — confirming first and reconciling later is how a
-  student ends up with a lesson they never paid for;
+- booking fails closed with a temporary payment error if the Worker does not
+  have a complete key/webhook pair in its declared `test` or `live` mode;
+- the slot is held as `pending_payment` while Checkout saves a reusable card in
+  setup mode; no money is taken and nothing is emailed until the webhook proves
+  the card setup succeeded;
 - the webhook signature is verified before the payload is trusted for anything,
   and events are recorded so each is handled exactly once;
+- Checkout creation, saved-card charges and refunds use a stable booking-based
+  Stripe idempotency key, so an infrastructure retry cannot duplicate money;
+- every student must explicitly accept the lesson-end and €5 charge terms, and
+  each booking and series records when and under which wording consent was given;
 - an abandoned checkout releases its slot when the hold expires, and a series
   whose checkout was abandoned loses its orphaned `booking_series` row in the
   same sweep.
 
-**The prepaid change policy** (Dan, 28 August 2026, `policy.mjs` is the single
-home): commitment locks the lesson's own Porto day. A single lesson is paid at
-booking; a run pays its first lesson at booking and each later lesson goes to
-the saved card on the morning of its own day. Until that day any lesson moves
-freely; cancelling ahead refunds a paid lesson in full — the refund is issued
-*before* the row is cancelled, and Stripe's "already refunded" answer is
-treated as success so a retried cancel completes rather than double-paying —
-and a not-yet-charged lesson is simply never charged. On the day itself a
-student can neither move nor cancel: paid or scheduled, the lesson happens or
-the money goes out regardless. No same-day fee, no no-show fee, nothing to
-collect. Inês is never locked — her cancellation refunds the student in full
-at any hour, and the emails tell both sides what the money did. Bookings from
-before the switch carry `payment_status = 'not_required'` and keep the fee
-terms they were booked under until they wash through. The card itself never
-touches the database — Stripe keeps it; `students` holds only the opaque
-customer and payment-method ids (migration 0009).
+**The after-lesson policy** (Dan, 1 September 2026, `policy.mjs` is the single
+home): booking saves a card but takes no money. A scheduled row charges its
+booked amount only after `ends_at`. Moving or cancelling before the lesson's
+Porto date is free; doing either on that date schedules one €5 action fee and
+prevents the full price from charging if the lesson was cancelled. A no-show
+recorded during the lesson changes the end charge from the booked price to €5.
+Inês is never charged a fee for a move or cancellation she makes. Older `paid`
+rows retain their earlier same-day lock/refund promise; `not_required` rows keep
+their original pay-in-person terms. The card itself never touches the database
+— Stripe keeps it; `students` holds only opaque customer and payment-method ids.
 
 Changing an ordinary lesson from 60 to 90 minutes (or back) uses that same
 reschedule endpoint. Legacy `not_required` bookings can change length directly;
@@ -444,14 +440,19 @@ price. A `paid` or `payment_due` lesson is never silently repriced: the student
 must cancel/refund and book the other length, or settle the outstanding payment.
 Trials cannot be converted into ordinary lessons through rescheduling.
 
+Every successful payment also sends Inês a private operational reminder to
+issue the appropriate fiscal document in Portal das Finanças. Stripe's receipt
+does not replace that Portuguese tax document, and Stripe Tax is not enabled
+while her IVA basis remains an owner/accountant decision.
+
 **Trial lessons are first lessons.** Anyone with a booking that wasn't
 cancelled is refused the trial at creation, kindly, and pointed at a single
 lesson. This is live now, independent of payment mode.
 
-Stripe is used because Square does not serve Portugal, and because Stripe carries
-MB WAY and Multibanco natively — between them the majority of Portuguese online
-payments. A least-privilege `rk_test_` key is used for the sandbox journey; the
-account's general secret key never belongs in the Worker.
+Stripe is used because Square does not serve Portugal and Stripe supports
+reusable cards with explicit off-session setup. A least-privilege `rk_test_`
+key is used for the sandbox journey; the account's general secret key never
+belongs in the Worker.
 
 **The account structure** (chosen 28 August, provisioned 31 August 2026):
 **Inês's own Stripe account, with Dan as Administrator** — cheapest
@@ -461,18 +462,12 @@ the Administrator role and a restricted API key. Payments are created directly
 in her account; there is no platform, connected account, destination charge, or
 second settlement hop.
 
-**Payment methods**: enable **cards** and **MB WAY** (instant confirmation, so
-the existing `checkout.session.completed` flow just works; Stripe only offers
-it on single lessons because MB WAY cannot save payment details, which is
-exactly right — weekly runs must be card-only for the automatic charges).
-Leave **Multibanco OFF**: it is a voucher paid later at an ATM or bank,
-confirmation can take days, which fights the 35-minute slot hold, and its
-money arrives on `checkout.session.async_payment_succeeded`, which this
-webhook deliberately does not handle. Enabling it is a real follow-up build,
-not a dashboard toggle.
+**Payment methods**: enable **cards only** for card setup and automatic
+off-session charges. Leave MB WAY and Multibanco off for this flow: neither is
+a substitute for the reusable card the later lesson and €5 policy charges use.
 
 **Sandbox proving ground**: `wrangler --env staging` deploys the separate
-`ines-booking-staging` Worker and D1 database. It has `payment_mode=prepay`,
+`ines-booking-staging` Worker and D1 database. It has `payment_mode=postpay`,
 uses Stripe sandbox credentials, and has `EMAIL_DRY_RUN=1`, so no message is
 actually delivered. The public site never points to it; local QA opts in with
 `NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking-staging.dakibwa.workers.dev`.
@@ -488,26 +483,34 @@ client secret with `initEmbeddedCheckout`.
 
 **Go-live checklist**:
 
-1. ~~Apply migration 0009 to the live database~~ — done, 28 August 2026.
+1. Apply migration 0012 to both databases while production payment remains
+   off. It adds lesson-end charge state, attendance, no-show and independent
+   same-day-fee fields.
 2. ~~Open Inês's Stripe account and invite Dan as **Administrator**~~ — done,
-   31 August 2026. Her business details and payout account remain hers to keep
-   current. Enable MB WAY in payment-method settings; leave Multibanco off.
-3. Put `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in as Worker secrets
-   (test keys first). `STRIPE_UI_MODE` is already `embedded` in wrangler vars.
-4. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` for the
-   Pages build, so the embedded form can mount.
-5. Register the webhook for `checkout.session.completed` at `/stripe/webhook`.
-6. ~~Run the full test-mode journey~~ — passed in the isolated staging
-   environment on 31 August 2026: embedded single-lesson payment, signed
-   webhook confirmation, cancellation and refund; four-week first payment and
-   saved card; successful day-of automatic charge; declined day-of charge to
-   `payment_due`, hosted pay-now link, and dry-run student/teacher notices.
-7. Set the `payment_mode` settings row to `prepay`, and in the same breath ship
-   the static-copy commit (FAQ, policy band, lessons note, and the README payment bullets) that states the
-   prepaid terms — the page's dynamic copy follows the API on its own, the
-   static prose does not.
-8. Swap to live keys and repeat the single-lesson journey with a real card
-   before telling anyone.
+   31 August 2026. **Inês must complete Stripe's profile in her own secure
+   session**: legal/tax identity, public business details, Portuguese payout
+   bank, identity checks and Stripe declarations. The account is sandbox-only
+   until Stripe accepts that profile; this cannot be replaced by Connect API
+   onboarding because this is her standalone merchant account, not a platform.
+3. In live mode, enable cards; leave the other payment methods off. Confirm the
+   business name, support contact, statement descriptor and payout schedule.
+4. Create a least-privilege live restricted key and install it with the live
+   webhook signing secret in the production Worker. Production's
+   `STRIPE_EXPECTED_MODE=live` rejects a sandbox key even if one is present.
+5. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to the live
+   publishable key. The Pages build's `NEXT_PUBLIC_STRIPE_EXPECTED_MODE=live`
+   refuses to mount Stripe.js with a test key.
+6. Register the live `/stripe/webhook` endpoint for
+   `checkout.session.completed`; verify a signed delivery in Stripe's event log.
+7. Run the redesigned full test-mode journey: setup mode takes no money;
+   signed webhook confirmation; full lesson-end charge; no-show €5 replacement;
+   same-day move/cancel €5; decline to `payment_due`; and dry-run notices.
+8. Deploy the customer terms, privacy notice and required saved-card
+   checkbox while production still has `payment_mode=off`.
+9. With explicit action-time approval for the real charge, run one live
+   lesson-end charge and one €5 policy outcome; verify Stripe, the Worker,
+   email and the public return journey. Only then set `payment_mode=postpay` and
+   re-run the production health/release gate.
 
 ### Same-day changes
 
@@ -518,12 +521,12 @@ booking time are kept:
   Porto day — the unified calendar says so instead of offering the
   buttons, and the endpoints refuse with the same words for anyone who kept an
   old tab open. `same_day_change` is never set on a paid row.
-- **Booked before prepayment**: students may move or cancel right up to the
-  lesson start. A change on the lesson's own Porto date sets `same_day_change`,
-  warns the student in the `/book` workspace before they act, marks their confirmation,
-  and subjects Inês's mail **"Same-day change"** so she collects the €5 at the
-  lesson — by her in person, because those bookings have no payment to charge
-  against.
+- **Scheduled saved-card booking**: students may move or cancel right up to the
+  lesson start. A change on the lesson's own Porto date atomically schedules
+  one €5 charge to the saved card. A move keeps the later full lesson charge at
+  the new end time; a cancellation removes the full lesson charge.
+- **Booked without automatic payment**: the original pay-in-person promise is
+  retained and no new card charge is invented.
 
 ## Deploying the Worker
 
@@ -542,7 +545,7 @@ Secrets, each via `npx wrangler secret put <NAME> --config workers/booking/wrang
 | `ADMIN_TOKEN` | Fallback way into `/schedule` if she is locked out of her account. |
 | `RESEND_API_KEY` | Transactional email. |
 | `TEACHER_EMAIL` | Where her booking notifications go. |
-| `STRIPE_SECRET_KEY` | Optional. A least-privilege restricted key; only read when `payment_mode` is `prepay`. |
+| `STRIPE_SECRET_KEY` | Optional. A least-privilege restricted key; only required when `payment_mode` is `postpay`. |
 | `STRIPE_WEBHOOK_SECRET` | Optional, and required alongside the key. |
 
 Non-secret vars in `wrangler.jsonc`: `GOOGLE_CLIENT_ID` enables Google Sign-In
@@ -564,6 +567,8 @@ a different origin, pass `--var ALLOWED_ORIGIN:… --var SITE_URL:…` to
 
 ```bash
 NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking.<subdomain>.workers.dev
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_STRIPE_EXPECTED_MODE=live
 LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=60
@@ -576,9 +581,9 @@ students at WhatsApp, rather than rendering a calendar that cannot work.
 ## Not yet built
 
 - **Live payment activation.** The account and sandbox path exist, but
-  `payment_mode` stays `off` until the signing secret is installed, the full
-  sandbox journey passes, the live restricted key is provisioned, and the
-  customer-facing prepaid terms ship in the same release.
+  `payment_mode` stays `off` until Inês completes the owner-only Stripe profile,
+  live keys and the live webhook replace the sandbox values, and the approved
+  real-charge/refund smoke test passes.
 - **Fiscal documents.** She must issue a fatura-recibo per lesson, and CIVA art.
   36.º gives 5 working days from the lesson. See
   `Documents/Work/Português com a Inês/Billing and Booking - Operating Context

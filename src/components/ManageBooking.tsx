@@ -44,6 +44,7 @@ export function ManageBooking({
   const [isPast, setIsPast] = useState(false);
   const [changeLocked, setChangeLocked] = useState(false);
   const [sameDayFeeApplies, setSameDayFeeApplies] = useState(false);
+  const [sameDayFeeAutomatic, setSameDayFeeAutomatic] = useState(false);
   const [refundOnCancel, setRefundOnCancel] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -80,6 +81,7 @@ export function ManageBooking({
         setIsPast(data.isPast);
         setChangeLocked(Boolean(data.changeLocked));
         setSameDayFeeApplies(Boolean(data.sameDayFeeApplies));
+        setSameDayFeeAutomatic(Boolean(data.sameDayFeeAutomatic));
         setRefundOnCancel(Boolean(data.refundOnCancel));
       })
       .catch((caught: Error) => setError(caught.message))
@@ -201,9 +203,13 @@ export function ManageBooking({
                 ? ` Your ${formatMoneyCents(booking.amountCents)} is on its way back to your card. Refunds usually show within a few days.`
                 : ""}
               {outcome.sameDayFee
-                ? ` Because this was on the day of the lesson, the ${formatMoneyCents(
-                    booking.sameDayFeeCents
-                  )} same-day fee applies. Inês will mention it.`
+                ? sameDayFeeAutomatic
+                  ? ` Because this was on the day of the lesson, the ${formatMoneyCents(
+                      booking.sameDayFeeCents
+                    )} same-day fee will be charged to your saved card.`
+                  : ` Because this was on the day of the lesson, the ${formatMoneyCents(
+                      booking.sameDayFeeCents
+                    )} same-day fee applies. Inês will arrange it with you.`
                 : ""}
             </p>
           </div>
@@ -316,7 +322,8 @@ export function ManageBooking({
               <AlertCircle size={18} aria-hidden="true" />
               <p>
                 Your lesson is today. Changing or cancelling now means the{" "}
-                {formatMoneyCents(booking.sameDayFeeCents)} same-day fee applies.
+                {formatMoneyCents(booking.sameDayFeeCents)} same-day fee{" "}
+                {sameDayFeeAutomatic ? "is charged automatically." : "applies."}
               </p>
             </div>
           ) : null}

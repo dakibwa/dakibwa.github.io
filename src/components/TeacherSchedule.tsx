@@ -13,6 +13,7 @@ import {
   minutesToTime,
   removeException,
   saveRules,
+  setNoShow,
   timeToMinutes,
   type AdminBooking,
   type AvailabilityException
@@ -38,6 +39,14 @@ type WeekState = Record<number, Window[]>;
 type NewLesson = { email: string; name: string; lessonType: string; date: string; time: string; notes: string };
 const emptyLesson: NewLesson = { email: "", name: "", lessonType: "single", date: "", time: "17:00", notes: "" };
 
+function canSetNoShow(booking: AdminBooking, now = new Date()) {
+  return (
+    booking.payment_status === "scheduled" &&
+    now >= new Date(booking.starts_at) &&
+    now < new Date(booking.ends_at)
+  );
+}
+
 export function TeacherSchedule() {
   const [token, setToken] = useState("");
   const [me, setMe] = useState<Student | null>(null);
@@ -53,6 +62,12 @@ export function TeacherSchedule() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [newDayOff, setNewDayOff] = useState({ date: "", note: "" });
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const session = readSession();
@@ -293,7 +308,44 @@ export function TeacherSchedule() {
                 </div>
                 <div className="schedule-bookings__meta">
                   <a href={`mailto:${booking.student_email}`}>{booking.student_email}</a>
-                  {booking.same_day_change ? <span className="schedule-flag">€5 same-day fee due</span> : null}
+                  {booking.attendance_status === "no_show" ? (
+                    <span className="schedule-flag">No-show · €5 after this lesson</span>
+                  ) : booking.same_day_fee_status === "paid" ? (
+                    <span className="schedule-flag">€5 same-day fee paid</span>
+                  ) : booking.same_day_change ? (
+                    <span className="schedule-flag">€5 same-day fee due</span>
+                  ) : null}
+                  {canSetNoShow(booking, now) ? (
+                    <button
+                      className="schedule-move"
+                      onClick={async () => {
+                        const next = booking.attendance_status !== "no_show";
+                        if (
+                          next &&
+                          !window.confirm(
+                            `Mark ${booking.student_name} as a no-show? Only €5 will be charged when this lesson ends.`
+                          )
+                        ) {
+                          return;
+                        }
+                        setError("");
+                        try {
+                          await setNoShow(token, booking.id, next);
+                          setStatus(
+                            next
+                              ? "Marked as a no-show. Only €5 will be charged when the lesson ends."
+                              : "No-show removed. The normal lesson price will be charged when it ends."
+                          );
+                          load(token);
+                        } catch (caught) {
+                          setError(caught instanceof Error ? caught.message : "Attendance could not be changed.");
+                        }
+                      }}
+                      type="button"
+                    >
+                      {booking.attendance_status === "no_show" ? "Undo no-show" : "Mark no-show"}
+                    </button>
+                  ) : null}
                   <button
                     className="schedule-move"
                     onClick={() =>

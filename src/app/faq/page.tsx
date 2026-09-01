@@ -160,7 +160,7 @@ const faqSections = [
       {
         question: "How do I pay?",
         answer:
-          "You don’t pay when you book. Your slot is held as soon as you confirm it. You pay on the day, in person with Inês."
+          "You save a card securely with Stripe when you book, but nothing is charged then. The lesson price is charged automatically when your lesson ends."
       },
       {
         question: "How much does a lesson cost?",
@@ -179,12 +179,12 @@ const faqSections = [
     questions: [
       {
         question: "Can I reschedule?",
-        answer: `${changeBookingInstructions} Move to any time that’s free. It costs nothing if you change it the day before or earlier; on the day itself there’s a ${sameDayFee} fee.`
+        answer: `${changeBookingInstructions} Move to any time that’s free. It’s free until the day before; moving on the lesson’s Porto calendar day costs ${sameDayFee}, charged automatically to your saved card.`
       },
       {
         question: `When does the ${sameDayFee} fee apply?`,
         answer:
-          "Only if you change the lesson on the day it’s due, counting by Porto time. Any earlier and it’s free."
+          "If you move or cancel on the lesson’s Porto calendar day. Inês can also record a no-show before the lesson ends; in that case only €5 is charged instead of the full lesson price."
       },
       {
         question: "Can I cancel?",
@@ -192,7 +192,7 @@ const faqSections = [
       },
       {
         question: "What if I don’t turn up?",
-        answer: `Please cancel rather than simply not coming, even at the last minute, so I know you’re safe. There is no separate no-show fee under the current pay-on-the-day terms; the ${sameDayFee} same-day fee applies when you change or cancel on the lesson day. If something happened, message me and we’ll sort it out.`,
+        answer: `Please cancel rather than simply not coming, even at the last minute, so I know you’re safe. If you don’t attend and Inês records a no-show before the lesson ends, only ${sameDayFee} is charged instead of the full lesson price. If something happened, message me and we’ll sort it out.`,
         // Placed under cancelling rather than payment on purpose — the answer is
         // mostly "cancel instead", and that is the thing worth reading.
       },

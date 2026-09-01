@@ -18,7 +18,6 @@ const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
  */
 export function BookingFlow({ initialView = "book" }: { initialView?: BookingView }) {
   const [manageToken, setManageToken] = useState("");
-  const [prepay, setPrepay] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -71,7 +70,7 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
 
           <section className="booking-provider" aria-label="Your lesson calendar">
             {BOOKING_CONFIGURED ? (
-              <BookingCalendar initialManageToken={manageToken} onPaymentModeChange={setPrepay} />
+              <BookingCalendar initialManageToken={manageToken} />
             ) : (
               <div className="booking-placeholder" aria-label="Booking setup placeholder">
                 <p className="eyebrow">Not yet available</p>
@@ -92,11 +91,7 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
           <AssetMark asset="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg" />
           <div>
             <p className="eyebrow">Changes and cancellations</p>
-            {prepay ? (
-              <p>You can&rsquo;t change or cancel on the day of your lesson. If you miss it, you&rsquo;re still charged.</p>
-            ) : (
-              <p>Changes are free until the day before. On the day, moving or cancelling costs <strong>{sameDayFee}</strong>.</p>
-            )}
+            <p>Changes are free until the day before. On the day, moving or cancelling costs <strong>{sameDayFee}</strong>.</p>
           </div>
         </section>
       </main>

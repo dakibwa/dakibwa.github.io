@@ -974,7 +974,8 @@ export function MyLessons({
                       </small>
                     ) : booking.sameDayFeeApplies ? (
                       <small className="lesson-calendar__notice">
-                        Changing it today costs {formatMoneyCents(feeCents)}.
+                        Changing it today costs {formatMoneyCents(feeCents)}
+                        {booking.sameDayFeeAutomatic ? ", charged automatically" : ""}.
                       </small>
                     ) : null}
                   </span>

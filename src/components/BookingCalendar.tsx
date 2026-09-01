@@ -65,6 +65,7 @@ import {
   CONTACT_WHATSAPP_URL,
   SAME_DAY_RESCHEDULE_FEE_CENTS,
   STRIPE_PUBLISHABLE_KEY,
+  STRIPE_PUBLISHABLE_READY,
   formatLessonDuration
 } from "@/lib/config";
 import { staticLessonTypes } from "@/lib/lesson-products";
@@ -214,7 +215,7 @@ type Confirmation = {
  * Stripe's embedded checkout: their payment form, mounted inside this page, so
  * paying never means leaving the site. The script is loaded only at the moment
  * a payment actually starts — the booking page carries no Stripe weight for
- * anyone browsing, and none at all until prepayment is switched on.
+ * anyone browsing, and none at all until saved-card charging is switched on.
  */
 declare global {
   interface Window {
@@ -299,13 +300,7 @@ function orientTo(id: string, focus = false, forceOnMobile = false) {
   orient();
 }
 
-export function BookingCalendar({
-  initialManageToken = "",
-  onPaymentModeChange
-}: {
-  initialManageToken?: string;
-  onPaymentModeChange?: (prepay: boolean) => void;
-} = {}) {
+export function BookingCalendar({ initialManageToken = "" }: { initialManageToken?: string } = {}) {
   const [step, setStep] = useState<Step>("pattern");
   const [intent, setIntent] = useState<BookingIntent>("choose");
   /*
@@ -316,9 +311,11 @@ export function BookingCalendar({
    * as it arrives, so the live table still decides names and prices.
    */
   const [lessonTypes, setLessonTypes] = useState<LessonType[]>(staticLessonTypes);
-  // Payment at booking: set from the API, so the page tells the truth in
-  // either mode without a rebuild when the switch is flipped.
-  const [prepay, setPrepay] = useState(false);
+  // Saved-card charging: set from the API, so the page tells the truth without
+  // a rebuild when the switch is flipped.
+  const [postpay, setPostpay] = useState(false);
+  const [paymentConfigurationError, setPaymentConfigurationError] = useState("");
+  const [paymentConsent, setPaymentConsent] = useState(false);
   const [payment, setPayment] = useState<{ clientSecret: string } | null>(null);
   const [paymentError, setPaymentError] = useState("");
   const paymentMountRef = useRef<HTMLDivElement>(null);
@@ -327,7 +324,7 @@ export function BookingCalendar({
   // student backs out. Completion never reaches this effect — Stripe returns
   // the student back to this workspace itself.
   useEffect(() => {
-    if (!payment || !STRIPE_PUBLISHABLE_KEY) return;
+    if (!payment || !STRIPE_PUBLISHABLE_READY) return;
     let cancelled = false;
     let mounted: { destroy: () => void } | null = null;
 
@@ -450,10 +447,17 @@ export function BookingCalendar({
     }
 
     listLessonTypes()
-      .then(({ lessonTypes: types, prepay: prepayOn }) => {
+      .then(({ lessonTypes: types, postpay: postpayOn, paymentReady }) => {
         setLessonTypes(types);
-        setPrepay(Boolean(prepayOn));
-        onPaymentModeChange?.(Boolean(prepayOn));
+        if (paymentReady === false || (postpayOn && !STRIPE_PUBLISHABLE_READY)) {
+          setPostpay(false);
+          setPaymentConfigurationError(
+            "Online payment is temporarily unavailable, so booking is paused. Please message Inês instead."
+          );
+          return;
+        }
+        setPaymentConfigurationError("");
+        setPostpay(Boolean(postpayOn));
       })
       .catch((error: Error) => setLoadError(error.message));
 
@@ -481,7 +485,7 @@ export function BookingCalendar({
       })
       .catch(() => undefined)
       .finally(() => setCheckingSession(false));
-  }, [onPaymentModeChange, refreshStudent]);
+  }, [refreshStudent]);
 
   // Signing in mid-flow can reveal a history the lesson step didn't know
   // about. If the trial is the current choice, dissolve it and put the real
@@ -608,6 +612,7 @@ export function BookingCalendar({
       lessonType: managed.booking.lessonType,
       isPast: managed.isPast,
       sameDayFeeApplies: managed.sameDayFeeApplies,
+      sameDayFeeAutomatic: managed.sameDayFeeAutomatic,
       changeLocked: managed.changeLocked,
       paymentStatus: managed.booking.paymentStatus,
       seriesId: null,
@@ -756,7 +761,13 @@ export function BookingCalendar({
     };
   }, [form.repeat, chosen, lessonType]);
 
-  const canSubmit = Boolean(chosen && lessonType && student) && !submitting && !previewing;
+  const needsPaymentConsent = postpay;
+  const canSubmit =
+    Boolean(chosen && lessonType && student) &&
+    !submitting &&
+    !previewing &&
+    !paymentConfigurationError &&
+    (!needsPaymentConsent || paymentConsent);
 
   useEffect(() => {
     if (!isConfirmingBooking) return;
@@ -846,6 +857,7 @@ export function BookingCalendar({
     setStep("pattern");
     setPayment(null);
     setPaymentError("");
+    setPaymentConsent(false);
   }
 
   function returnToJourneyStart() {
@@ -883,14 +895,15 @@ export function BookingCalendar({
         startAt: chosen.startAt,
         location: form.location,
         timezone: studentZone,
+        paymentConsent,
         // Omitted entirely for a one-off: `null` means "every week" on the wire.
         ...(repeat === undefined ? {} : { repeat })
       });
 
-      // With prepayment on, the slot is only held: Stripe finishes the booking.
-      // Embedded mode mounts the payment form right here; hosted redirects.
+      // A first booking is held while Stripe saves and authenticates a card.
+      // This setup step does not charge it; the webhook then confirms the slot.
       if (result.checkoutClientSecret) {
-        if (STRIPE_PUBLISHABLE_KEY) {
+        if (STRIPE_PUBLISHABLE_READY) {
           setPaymentError("");
           setPayment({ clientSecret: result.checkoutClientSecret });
           return;
@@ -933,6 +946,7 @@ export function BookingCalendar({
     try {
       const previousLessonTypeId = managed.booking.lessonType.id;
       const movingSequence = manageMode === "reschedule-sequence";
+      let sameDayFeeApplied = false;
       if (movingSequence) {
         if (!resolvedManagedSeriesId) throw new Error("That recurring lesson could not be found.");
         await rescheduleSeries(
@@ -943,12 +957,13 @@ export function BookingCalendar({
           managedLocation
         );
       } else {
-        await rescheduleBooking(
+        const result = await rescheduleBooking(
           managedToken,
           selectedSlot,
           managedLessonTypeId || previousLessonTypeId,
           managedLocation
         );
+        sameDayFeeApplied = result.sameDayFeeApplied;
       }
       const refreshed = await fetchBooking(managedToken);
       transitionBooking(() => {
@@ -962,8 +977,12 @@ export function BookingCalendar({
           movingSequence
             ? "Your upcoming recurring lessons have moved. We’ve emailed you and updated your calendar."
             : refreshed.booking.lessonType.id === previousLessonTypeId
-            ? "Your lesson has been moved. We’ve emailed you and updated your calendar."
-            : `Your lesson is now ${formatBookedLessonLabel(refreshed.booking.lessonType)}. We’ve emailed you and updated your calendar.`
+            ? `Your lesson has been moved. We’ve emailed you and updated your calendar.${
+                sameDayFeeApplied ? ` The ${formatMoneyCents(refreshed.booking.sameDayFeeCents)} same-day fee will be charged automatically.` : ""
+              }`
+            : `Your lesson is now ${formatBookedLessonLabel(refreshed.booking.lessonType)}. We’ve emailed you and updated your calendar.${
+                sameDayFeeApplied ? ` The ${formatMoneyCents(refreshed.booking.sameDayFeeCents)} same-day fee will be charged automatically.` : ""
+              }`
         );
       });
       await refreshStudent();
@@ -987,7 +1006,11 @@ export function BookingCalendar({
         setManageOutcome(
           result.booking.paymentStatus === "refunded"
             ? "Your lesson has been cancelled. Your refund is on its way back to your card."
-            : "Your lesson has been cancelled. We’ve emailed you and updated your calendar."
+            : `Your lesson has been cancelled. We’ve emailed you and updated your calendar.${
+                result.sameDayFeeApplied
+                  ? ` The ${formatMoneyCents(result.booking.sameDayFeeCents)} same-day fee will be charged automatically.`
+                  : ""
+              }`
         );
       });
       await refreshStudent();
@@ -1509,7 +1532,8 @@ export function BookingCalendar({
                         <p className="lesson-calendar__notice">This lesson is today and can&rsquo;t be changed or cancelled.</p>
                       ) : managed.sameDayFeeApplies && managed.booking.status !== "cancelled" ? (
                         <p className="lesson-calendar__notice">
-                          Changing or cancelling today costs {formatMoneyCents(managed.booking.sameDayFeeCents)}.
+                          Changing or cancelling today costs {formatMoneyCents(managed.booking.sameDayFeeCents)}
+                          {managed.sameDayFeeAutomatic ? ", charged automatically" : ""}.
                         </p>
                       ) : null}
 
@@ -1558,6 +1582,11 @@ export function BookingCalendar({
                         This only cancels the lesson on this date.
                         {managed.refundOnCancel && managed.booking.amountCents
                           ? ` Your ${formatMoneyCents(managed.booking.amountCents)} comes back to your card.`
+                          : ""}
+                        {managed.sameDayFeeApplies
+                          ? ` The ${formatMoneyCents(managed.booking.sameDayFeeCents)} same-day fee ${
+                              managed.sameDayFeeAutomatic ? "is charged automatically" : "applies"
+                            }.`
                           : ""}
                       </p>
                       <div className="lesson-manage-dialog__actions">
@@ -2403,7 +2432,7 @@ export function BookingCalendar({
                   <p className="booking-payment__summary">
                     {lessonType ? `${formatLessonDuration(lessonType.duration_minutes)} lesson` : "Your lesson"}
                     {lessonType ? ` · ${formatMoneyCents(lessonType.price_cents)}` : ""}
-                    {form.repeat !== "once" ? " for your first lesson" : ""}. Your time is held while you pay.
+                    {form.repeat !== "once" ? " each" : ""}. Your time is held while you save a card. Nothing is charged now.
                   </p>
                   {paymentError ? (
                     <div className="booking-alert" role="alert">
@@ -2459,6 +2488,30 @@ export function BookingCalendar({
                     </div>
                   ) : null}
 
+                  {paymentConfigurationError ? (
+                    <div className="booking-alert" role="alert">
+                      <AlertCircle size={18} aria-hidden="true" />
+                      <p>{paymentConfigurationError}</p>
+                    </div>
+                  ) : null}
+
+                  {needsPaymentConsent ? (
+                    <label className="booking-payment-consent">
+                      <input
+                        checked={paymentConsent}
+                        onChange={(event) => setPaymentConsent(event.target.checked)}
+                        required
+                        type="checkbox"
+                      />
+                      <span>
+                        I agree that each lesson price is charged to my saved card automatically when that lesson ends.
+                        Moving or cancelling on its Porto calendar day costs €5; if Inês records a no-show, only €5 is
+                        charged instead of the lesson price. See the{" "}
+                        <a href="/booking-terms">booking and payment terms</a>.
+                      </span>
+                    </label>
+                  ) : null}
+
                   {/* Says what is actually about to happen. "Confirm this lesson"
                       above a preview reading "8 lessons" invites the reader to
                       believe only the first one is being booked. */}
@@ -2466,20 +2519,16 @@ export function BookingCalendar({
                     {submitting
                       ? "Booking…"
                       : form.repeat === "once"
-                        ? prepay && lessonType
-                          ? `Confirm and pay ${formatMoneyCents(lessonType.price_cents)}`
-                          : "Confirm this lesson"
+                        ? "Confirm this lesson"
                         : seriesPreview
-                          ? prepay && lessonType
-                            ? `Confirm and pay ${formatMoneyCents(lessonType.price_cents)} for your first lesson`
-                            : `Confirm ${seriesPreview.bookable.length === 1 ? "this lesson" : `these ${seriesPreview.bookable.length} lessons`}`
+                          ? `Confirm ${seriesPreview.bookable.length === 1 ? "this lesson" : `these ${seriesPreview.bookable.length} lessons`}`
                           : "Confirm these lessons"}
                   </button>
 
-                  {prepay && form.repeat !== "once" ? (
+                  {postpay ? (
                     <p className="booking-form-note">
-                      You&rsquo;ll pay for your first lesson now, securely with Stripe. Each later lesson goes to the same
-                      card automatically on its own day. Move or cancel any lesson free until the day before from your{" "}
+                      Nothing is charged now. Your saved card is charged automatically when each lesson ends. Move or
+                      cancel free until the day before from your{" "}
                       <button
                         className="booking-form-note__calendar"
                         onClick={() => transitionBooking(() => goTo("time"))}
@@ -2487,21 +2536,8 @@ export function BookingCalendar({
                       >
                         lesson calendar
                       </button>
-                      . On a lesson&rsquo;s own day it&rsquo;s yours:{" "}
-                      <strong>no changes and no refunds</strong>.
-                    </p>
-                  ) : prepay ? (
-                    <p className="booking-form-note">
-                      You&rsquo;ll pay now, securely with Stripe. Move or cancel free until the day before from your{" "}
-                      <button
-                        className="booking-form-note__calendar"
-                        onClick={() => transitionBooking(() => goTo("time"))}
-                        type="button"
-                      >
-                        lesson calendar
-                      </button>
-                      . A cancellation is refunded automatically. On the day of
-                      the lesson it&rsquo;s yours: <strong>no changes and no refunds</strong>.
+                      . On the lesson&rsquo;s Porto calendar day, moving or cancelling costs{" "}
+                      <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong>.
                     </p>
                   ) : (
                     <p className="booking-form-note">

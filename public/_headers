@@ -48,6 +48,12 @@
 /book/
   Cache-Control: public, max-age=600, must-revalidate
 
+/booking-terms/
+  Cache-Control: public, max-age=600, must-revalidate
+
+/privacy/
+  Cache-Control: public, max-age=600, must-revalidate
+
 # The account pages were missing from this list entirely, so they fell back to
 # the Pages default of four hours — a deploy took that long to reach anyone
 # already carrying the old shell. Their contents come from the API at runtime,
