@@ -195,8 +195,9 @@ Preserve these desktop and mobile states:
   details. The four-week lesson overview stops before later repeating dates;
   those future lessons remain in the list instead of stretching the calendar. Opening any
   lesson keeps the list and calendar in place and adds a compact overlay asking
-  whether to change or cancel it. `Change` returns to the same calendar and its
-  time picker. Eligible ordinary lessons can switch between the same compact
+  whether to change or cancel it. `Change` keeps the page dimmed and lifts that
+  same calendar and time picker into the overlay; it never dismisses the modal
+  or scrolls the student down the underlying page. Eligible ordinary lessons can switch between the same compact
   `60 mins` and `90 mins` choices there; a paid lesson is never silently
   repriced. Cancellation stays inside the overlay until explicitly confirmed.
   The booking overview says `Next 8
@@ -213,9 +214,12 @@ Preserve these desktop and mobile states:
   compact lesson overlay pairs the booking status with `Change` and `Cancel`;
   it must not replace or reorder the underlying lesson workspace;
 - transitions belong to the account, choice, calendar, detail, and confirmation
-  surfaces individually. The page scrolls only when the next decision is not
-  already comfortably visible. Reduced motion removes both the transitions and
-  smooth scrolling;
+  surfaces individually. Use short local fades and a few pixels of settling
+  motion rather than page-wide view snapshots. Guidance begins with the state
+  change instead of waiting for decoration to finish, and the page scrolls only
+  when the next decision is not already comfortably visible. Loading copy and
+  its replacement controls dissolve into one another rather than snapping.
+  Reduced motion removes both the transitions and smooth scrolling;
 - preserve the current mobile reading order and full-width stacked lesson
   choices. The mobile calendar must keep all seven columns and its legend inside
   the card after resize or orientation changes.

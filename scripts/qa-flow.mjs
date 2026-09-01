@@ -24,32 +24,24 @@ page.on("console", (message) => {
   if (message.type() === "error") logs.push(`console:${message.text()}`);
 });
 
-// Some browsers expose the view-transition CSS property without exposing the
-// JavaScript API. Force that exact capability gap and make sure the booking
-// flow uses its local content fade rather than snapping between states. Run
-// this before the route matrix so its client bundle is tested from a clean
+// Booking decisions use one lightweight local transition in every browser.
+// Exercise it before the route matrix so the bundle is tested from a clean
 // browser cache rather than behind ten screenshot navigations.
-const fallbackMotionPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
-await fallbackMotionPage.addInitScript(() => {
-  Object.defineProperty(Document.prototype, "startViewTransition", {
-    configurable: true,
-    value: undefined
-  });
-});
-await fallbackMotionPage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
-await fallbackMotionPage
+const localMotionPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+await localMotionPage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
+await localMotionPage
   .getByRole("button", { name: "Book a new lesson", exact: true })
   .waitFor({ state: "visible", timeout: 10_000 });
-await fallbackMotionPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
-const fallbackSingleLesson = fallbackMotionPage.getByRole("button", {
+await localMotionPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
+const localMotionSingleLesson = localMotionPage.getByRole("button", {
   name: "Single lesson 60 minutes · €25",
   exact: true
 });
-await fallbackSingleLesson.waitFor({ state: "visible", timeout: 10_000 });
-await fallbackMotionPage.evaluate(() => {
+await localMotionSingleLesson.waitFor({ state: "visible", timeout: 10_000 });
+await localMotionPage.evaluate(() => {
   document.documentElement.dataset.qaFallbackTransitionSeen = "false";
   const observer = new MutationObserver(() => {
-    if (!document.documentElement.classList.contains("booking-fallback-transitioning")) return;
+    if (!document.documentElement.classList.contains("booking-transitioning")) return;
     requestAnimationFrame(() => {
       const summary = document.querySelector(".booking-choice-summary");
       const style = summary ? getComputedStyle(summary) : null;
@@ -61,21 +53,21 @@ await fallbackMotionPage.evaluate(() => {
   });
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 });
-await fallbackSingleLesson.click();
-await fallbackMotionPage.locator(".booking-choice-summary").waitFor({ state: "visible" });
-const fallbackBookingMotion = await fallbackMotionPage.evaluate(() => ({
+await localMotionSingleLesson.click();
+await localMotionPage.locator(".booking-choice-summary").waitFor({ state: "visible" });
+const localBookingMotion = await localMotionPage.evaluate(() => ({
   animationDuration: document.documentElement.dataset.qaFallbackAnimationDuration,
   animationName: document.documentElement.dataset.qaFallbackAnimationName,
   seen: document.documentElement.dataset.qaFallbackTransitionSeen === "true"
 }));
 if (
-  !fallbackBookingMotion.seen ||
-  !fallbackBookingMotion.animationName?.includes("booking-flow-in") ||
-  fallbackBookingMotion.animationDuration === "0s"
+  !localBookingMotion.seen ||
+  !localBookingMotion.animationName?.includes("booking-flow-in") ||
+  localBookingMotion.animationDuration === "0s"
 ) {
-  throw new Error("Browsers without the view-transition API should receive the local booking fade.");
+  throw new Error("Booking decisions should receive the lightweight local surface transition.");
 }
-await fallbackMotionPage.close();
+await localMotionPage.close();
 
 for (const route of routes) {
   for (const viewport of [
@@ -1073,12 +1065,40 @@ await upcomingManageDialog.getByRole("button", { name: "Cancel", exact: true }).
 await accountPage.getByRole("dialog", { name: "Cancel this lesson?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Keep lesson", exact: true }).click();
 await upcomingManageDialog.waitFor({ state: "visible" });
+await upcomingManageDialog.getByRole("button", { name: "Change", exact: true }).evaluate((button) => {
+  button.addEventListener("click", () => {
+    document.documentElement.dataset.qaUpcomingChangeScrollBefore = String(window.scrollY);
+  }, { capture: true, once: true });
+});
 await upcomingManageDialog.getByRole("button", { name: "Change", exact: true }).click();
 await upcomingManageDialog.waitFor({ state: "detached" });
+const upcomingChangeDialog = accountPage.getByRole("dialog", { name: "Choose a new date and time", exact: true });
+await upcomingChangeDialog.waitFor({ state: "visible" });
 const upcomingManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
 await upcomingManagePanel.getByRole("heading", { name: "Choose a new date and time", exact: true }).waitFor();
 if (!(await accountPanel.locator("#account-upcoming-lessons").isVisible())) {
   throw new Error("Changing a lesson should use the existing calendar without dismissing Upcoming lessons.");
+}
+const upcomingOverlayLayout = await accountPage.evaluate(() => {
+  const workspace = document.querySelector("#lesson-calendar")?.getBoundingClientRect();
+  return {
+    overlay: Boolean(document.querySelector(".lesson-manage-overlay--reschedule")),
+    position: document.querySelector("#lesson-calendar") ? getComputedStyle(document.querySelector("#lesson-calendar")).position : "",
+    scrollBefore: Number(document.documentElement.dataset.qaUpcomingChangeScrollBefore),
+    scrollY: window.scrollY,
+    top: workspace?.top ?? -Infinity,
+    bottom: workspace?.bottom ?? Infinity,
+    viewportHeight: window.innerHeight
+  };
+});
+if (
+  !upcomingOverlayLayout.overlay ||
+  upcomingOverlayLayout.position !== "fixed" ||
+  Math.abs(upcomingOverlayLayout.scrollY - upcomingOverlayLayout.scrollBefore) > 1 ||
+  upcomingOverlayLayout.top < 8 ||
+  upcomingOverlayLayout.bottom > upcomingOverlayLayout.viewportHeight - 8
+) {
+  throw new Error(`Changing a lesson should keep its calendar in the darkened overlay without moving the page: ${JSON.stringify(upcomingOverlayLayout)}.`);
 }
 await upcomingManagePanel.getByRole("button", { name: "Back", exact: true }).click();
 await upcomingManageDialog.waitFor({ state: "visible" });
@@ -1229,24 +1249,49 @@ if (
   );
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-manage-desktop.png"), fullPage: true });
+await desktopManageDialog.getByRole("button", { name: "Change", exact: true }).evaluate((button) => {
+  button.addEventListener("click", () => {
+    document.documentElement.dataset.qaDesktopChangeScrollBefore = String(window.scrollY);
+  }, { capture: true, once: true });
+});
 await desktopManageDialog.getByRole("button", { name: "Change", exact: true }).click();
+const desktopChangeDialog = accountPage.getByRole("dialog", { name: "Choose a new date and time", exact: true });
+await desktopChangeDialog.waitFor({ state: "visible" });
 await desktopManagePanel.getByRole("heading", { name: "Choose a new date and time", exact: true }).waitFor();
 await desktopManagePanel.getByRole("button", { name: "60 minutes", exact: true }).waitFor();
 const ninetyMinuteChoice = desktopManagePanel.getByRole("button", { name: "90 minutes", exact: true });
 await ninetyMinuteChoice.waitFor();
 const desktopChangeLayout = await accountPage.evaluate(() => {
+  const workspace = document.querySelector("#lesson-calendar")?.getBoundingClientRect();
   const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
   const panel = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
-  return { calendarTop: calendar?.top ?? Infinity, panelTop: panel?.top ?? -Infinity };
+  return {
+    calendarTop: calendar?.top ?? Infinity,
+    panelTop: panel?.top ?? -Infinity,
+    overlay: Boolean(document.querySelector(".lesson-manage-overlay--reschedule")),
+    position: document.querySelector("#lesson-calendar") ? getComputedStyle(document.querySelector("#lesson-calendar")).position : "",
+    scrollBefore: Number(document.documentElement.dataset.qaDesktopChangeScrollBefore),
+    scrollY: window.scrollY,
+    workspaceTop: workspace?.top ?? -Infinity,
+    workspaceBottom: workspace?.bottom ?? Infinity,
+    viewportHeight: window.innerHeight
+  };
 });
-if (Math.abs(desktopChangeLayout.calendarTop - desktopChangeLayout.panelTop) > 2) {
+if (
+  Math.abs(desktopChangeLayout.calendarTop - desktopChangeLayout.panelTop) > 2 ||
+  !desktopChangeLayout.overlay ||
+  desktopChangeLayout.position !== "fixed" ||
+  Math.abs(desktopChangeLayout.scrollY - desktopChangeLayout.scrollBefore) > 1 ||
+  desktopChangeLayout.workspaceTop < 8 ||
+  desktopChangeLayout.workspaceBottom > desktopChangeLayout.viewportHeight - 8
+) {
   throw new Error(`Changing a lesson should stay inside the aligned calendar interface: ${JSON.stringify(desktopChangeLayout)}.`);
 }
 await ninetyMinuteChoice.click();
 await accountPage.locator(`#lesson-calendar [data-date-key="${qaFreeDate}"]`).click();
 await desktopManagePanel.locator(".slot-grid button").first().click();
 await waitForOrientation(accountPage);
-await accountPage.screenshot({ path: path.join(outDir, "booking-change-workflow-desktop.png"), fullPage: true });
+await accountPage.screenshot({ path: path.join(outDir, "booking-change-workflow-desktop.png"), fullPage: false });
 await desktopManagePanel.getByRole("button", { name: /^Change to / }).click();
 const changedDurationDialog = accountPage.getByRole("dialog", { name: "All sorted", exact: true });
 await changedDurationDialog.waitFor({ state: "visible" });
@@ -1435,8 +1480,8 @@ if (bookedDayOrientation.top < 0 || bookedDayOrientation.top > bookedDayOrientat
 const bookingTransitionSeen = await accountPage.evaluate(
   () => document.documentElement.dataset.qaBookingTransitionSeen === "true"
 );
-if ((await accountPage.evaluate(() => typeof document.startViewTransition === "function")) && !bookingTransitionSeen) {
-  throw new Error("A supported browser should animate booking decisions as one calendar workspace.");
+if (!bookingTransitionSeen) {
+  throw new Error("Booking decisions should use the short local surface transition.");
 }
 const compactCalendarWeekCount = await accountPage
   .locator("#lesson-calendar .unified-calendar__grid .calendar-week")
@@ -1525,12 +1570,45 @@ await accountPage.screenshot({ path: path.join(outDir, "booking-manage-mobile.pn
 await mobileManageDialog.getByRole("button", { name: "Cancel", exact: true }).click();
 await accountPage.getByRole("dialog", { name: "Cancel this lesson?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Keep lesson", exact: true }).click();
+await mobileManageDialog.getByRole("button", { name: "Change", exact: true }).evaluate((button) => {
+  button.addEventListener("click", () => {
+    document.documentElement.dataset.qaMobileChangeScrollBefore = String(window.scrollY);
+  }, { capture: true, once: true });
+});
 await mobileManageDialog.getByRole("button", { name: "Change", exact: true }).click();
+const mobileChangeDialog = accountPage.getByRole("dialog", { name: "Choose a new date and time", exact: true });
+await mobileChangeDialog.waitFor({ state: "visible" });
 await mobileManagePanel.getByRole("heading", { name: "Choose a new date and time", exact: true }).waitFor();
 await mobileManagePanel.getByRole("button", { name: "60 minutes", exact: true }).waitFor();
 await mobileManagePanel.getByRole("button", { name: "90 minutes", exact: true }).waitFor();
 await waitForOrientation(accountPage);
-await accountPage.screenshot({ path: path.join(outDir, "booking-change-workflow-mobile.png"), fullPage: true });
+const mobileChangeLayout = await accountPage.evaluate(() => {
+  const workspace = document.querySelector("#lesson-calendar")?.getBoundingClientRect();
+  return {
+    overlay: Boolean(document.querySelector(".lesson-manage-overlay--reschedule")),
+    position: document.querySelector("#lesson-calendar") ? getComputedStyle(document.querySelector("#lesson-calendar")).position : "",
+    scrollBefore: Number(document.documentElement.dataset.qaMobileChangeScrollBefore),
+    scrollY: window.scrollY,
+    left: workspace?.left ?? -Infinity,
+    right: workspace?.right ?? Infinity,
+    top: workspace?.top ?? -Infinity,
+    bottom: workspace?.bottom ?? Infinity,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight
+  };
+});
+if (
+  !mobileChangeLayout.overlay ||
+  mobileChangeLayout.position !== "fixed" ||
+  Math.abs(mobileChangeLayout.scrollY - mobileChangeLayout.scrollBefore) > 1 ||
+  mobileChangeLayout.left < 8 ||
+  mobileChangeLayout.right > mobileChangeLayout.viewportWidth - 8 ||
+  mobileChangeLayout.top < 8 ||
+  mobileChangeLayout.bottom > mobileChangeLayout.viewportHeight - 8
+) {
+  throw new Error(`Mobile lesson changing should remain above the dimmed page: ${JSON.stringify(mobileChangeLayout)}.`);
+}
+await accountPage.screenshot({ path: path.join(outDir, "booking-change-workflow-mobile.png"), fullPage: false });
 await mobileManagePanel.getByRole("button", { name: "Back", exact: true }).click();
 await mobileManageDialog.waitFor({ state: "visible" });
 await mobileManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
@@ -1813,7 +1891,7 @@ console.log(
       },
       mobileNavigation,
       reducedRouteMotion,
-      fallbackBookingMotion,
+      localBookingMotion,
       bookingTransitionSeen,
       externalResourceWarnings: logs.filter((entry) => entry.includes("Failed to load resource")),
       screenshots: outDir
@@ -1832,8 +1910,7 @@ function assertIncludes(value, expected, label) {
 async function waitForOrientation(targetPage) {
   await targetPage.waitForFunction(
     () =>
-      !document.documentElement.classList.contains("booking-transitioning") &&
-      !document.documentElement.classList.contains("booking-fallback-transitioning"),
+      !document.documentElement.classList.contains("booking-transitioning"),
     null,
     { timeout: 2_000 }
   );
