@@ -663,6 +663,9 @@ export function BookingCalendar({
       Boolean(intent === "book" && lessonType && !["pattern", "setup"].includes(step)) ||
       Boolean(managed));
   const isLessonsCalendarOverview = intent === "lessons" && !isManagedReschedule;
+  const showSelectedDateSummary = Boolean(
+    intent === "book" && lessonType && selectedDate && step === "time" && !managed
+  );
   const resolvedManagedSeriesId = managedSeriesId ?? myBookings.find((booking) => booking.manageToken === managedToken)?.seriesId ?? null;
   const activeManagedSeries = resolvedManagedSeriesId
     ? lessonSeries.find((entry) => entry.id === resolvedManagedSeriesId) ?? null
@@ -1804,6 +1807,32 @@ export function BookingCalendar({
               <X aria-hidden="true" size={22} strokeWidth={2} />
             </button>
           ) : null}
+          {showSelectedDateSummary ? (
+            <div className="booking-date-summary" aria-label="Selected date">
+              <span className="booking-date-summary__mark" aria-hidden="true">
+                <CalendarDays size={25} strokeWidth={1.9} />
+              </span>
+              <span className="booking-choice-summary__copy">
+                <span className="eyebrow">Date selected</span>
+                <strong>{formatLongDate(`${selectedDate}T12:00:00Z`)}</strong>
+                <small>Porto time</small>
+              </span>
+              <button
+                className="text-action booking-choice-summary__change"
+                onClick={() =>
+                  transitionBooking(() => {
+                    setSelectedDate("");
+                    setSelectedSlot("");
+                    setCalendarWeekCount(8);
+                    goTo("day");
+                  })
+                }
+                type="button"
+              >
+                Change date
+              </button>
+            </div>
+          ) : (
           <div className="calendar-panel unified-calendar__grid">
             <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
             <div className="unified-calendar__toolbar">
@@ -1925,6 +1954,7 @@ export function BookingCalendar({
             </div>
             {loadingSlots ? <p className="booking-state-note">Checking what&rsquo;s free…</p> : null}
           </div>
+          )}
 
           {!isLessonsCalendarOverview ? (
           <aside className="unified-calendar__panel" id="booking-next-step" aria-live="polite" tabIndex={-1}>
@@ -2092,7 +2122,9 @@ export function BookingCalendar({
                 </p>
                 <h3>
                   {selectedDate
-                    ? formatLongDate(`${selectedDate}T12:00:00Z`)
+                    ? showSelectedDateSummary
+                      ? "Available times"
+                      : formatLongDate(`${selectedDate}T12:00:00Z`)
                     : intent === "lessons" && !calendarWindowBookings.length
                       ? "Nothing booked yet"
                       : "Choose a day"}

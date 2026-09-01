@@ -1349,7 +1349,8 @@ if (
   desktopAccountLayout.intro.bottom > desktopAccountLayout.provider.top + 1 ||
   desktopAccountLayout.panel.bottom > Math.min(desktopAccountLayout.upcoming.top, desktopAccountLayout.calendar.top) + 1 ||
   desktopAccountLayout.upcoming.right >= desktopAccountLayout.calendar.left ||
-  Math.abs(desktopAccountLayout.upcoming.top - desktopAccountLayout.calendar.top) > 2
+  Math.abs(desktopAccountLayout.upcoming.top - desktopAccountLayout.calendar.top) > 2 ||
+  Math.abs(desktopAccountLayout.upcoming.bottom - desktopAccountLayout.calendar.bottom) > 2
 ) {
   throw new Error(
     `The compact banner and signed-in desktop overview should form one aligned workspace: ${JSON.stringify(desktopAccountLayout)}.`
@@ -1919,8 +1920,25 @@ await lessonSummary.waitFor({ state: "visible" });
 const freeDay = accountPage.getByRole("button", { name: /5 times free/ }).first();
 await freeDay.waitFor({ state: "visible" });
 await freeDay.click();
-const showAllEightWeeks = accountPage.getByRole("button", { name: "Show all", exact: true });
-await showAllEightWeeks.waitFor({ state: "visible" });
+const selectedDateSummary = accountPage.locator(".booking-date-summary");
+await selectedDateSummary.waitFor({ state: "visible" });
+const changeDate = accountPage.getByRole("button", { name: "Change date", exact: true });
+await changeDate.waitFor({ state: "visible" });
+const selectedDateSummaryLayout = await selectedDateSummary.evaluate((summary) => {
+  const rectangle = summary.getBoundingClientRect();
+  const action = summary.querySelector(".booking-choice-summary__change")?.getBoundingClientRect();
+  return {
+    actionRight: action?.right ?? 0,
+    height: rectangle.height,
+    summaryRight: rectangle.right
+  };
+});
+if (
+  selectedDateSummaryLayout.height > 130 ||
+  selectedDateSummaryLayout.summaryRight - selectedDateSummaryLayout.actionRight > 18
+) {
+  throw new Error(`The chosen date should collapse into a compact row with its change action on the right: ${JSON.stringify(selectedDateSummaryLayout)}.`);
+}
 await waitForOrientation(accountPage);
 await accountPage.waitForFunction(
   () => {
@@ -1933,8 +1951,8 @@ await accountPage.waitForFunction(
 const freeCompactWeekCount = await accountPage
   .locator("#lesson-calendar .unified-calendar__grid .calendar-week")
   .count();
-if (freeCompactWeekCount !== 1) {
-  throw new Error(`Selecting a free day should shrink the calendar to one week; found ${freeCompactWeekCount}.`);
+if (freeCompactWeekCount !== 0) {
+  throw new Error(`Selecting a free day should collapse the calendar into its date summary; found ${freeCompactWeekCount} calendar rows.`);
 }
 const availableTimeCount = await accountPage
   .locator("#lesson-calendar .unified-calendar__availability .slot-grid button")
@@ -1982,6 +2000,14 @@ if (
 await waitForOrientation(accountPage);
 await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-free-day-mobile.png"), fullPage: true });
 
+await changeDate.click();
+await accountPage.locator("#lesson-calendar .calendar-week").first().waitFor({ state: "visible" });
+if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 8) {
+  throw new Error("Change date should restore the full eight-week booking calendar.");
+}
+await accountPage.getByRole("button", { name: /5 times free/ }).first().click();
+await selectedDateSummary.waitFor({ state: "visible" });
+
 await accountPage
   .locator("#lesson-calendar .unified-calendar__availability .slot-grid button")
   .first()
@@ -2006,6 +2032,25 @@ const confirmationAccountMenu = accountPanel.locator("#account-menu");
 await confirmationAccountMenu.getByRole("button", { name: /Past lessons/ }).waitFor();
 await accountMenuButton.click();
 await confirmationAccountMenu.waitFor({ state: "hidden" });
+const bookingNotes = accountPage.locator(".student-details-form textarea");
+await bookingNotes.click();
+const bookingNotesFocus = await bookingNotes.evaluate((textarea) => {
+  const style = getComputedStyle(textarea);
+  return {
+    borderColor: style.borderTopColor,
+    borderWidth: style.borderTopWidth,
+    boxShadow: style.boxShadow,
+    outlineStyle: style.outlineStyle
+  };
+});
+if (
+  bookingNotesFocus.borderColor !== "rgb(32, 62, 130)" ||
+  bookingNotesFocus.borderWidth !== "2px" ||
+  bookingNotesFocus.boxShadow !== "none" ||
+  bookingNotesFocus.outlineStyle !== "none"
+) {
+  throw new Error(`The booking notes textarea should use one blue focus border: ${JSON.stringify(bookingNotesFocus)}.`);
+}
 for (const duplicateIdentity of ["Signed in as", "Booking as", "Not you?"]) {
   if (await accountPage.getByText(duplicateIdentity, { exact: false }).count()) {
     throw new Error(`Confirmation still repeats the account identity as “${duplicateIdentity}”.`);

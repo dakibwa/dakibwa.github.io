@@ -1643,7 +1643,7 @@ textarea,
   .booking-stage--lessons {
     display: grid;
     grid-template-columns: minmax(420px, 0.9fr) minmax(560px, 1.1fr);
-    align-items: start;
+    align-items: stretch;
     gap: 1rem clamp(1rem, 2vw, 1.4rem);
   }
 
@@ -1661,6 +1661,7 @@ textarea,
     grid-row: 2;
     grid-column: 1;
     min-width: 0;
+    height: 100%;
     margin: 0;
   }
 
@@ -2160,6 +2161,30 @@ html.booking-transitioning .booking-confirmation-stage {
   padding: 0.7rem 0.9rem;
   background: rgba(170, 164, 230, 0.11);
   gap: 0.75rem;
+}
+
+.booking-date-summary {
+  display: grid;
+  grid-area: calendar;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  align-self: start;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-field);
+  padding: 0.7rem 0.9rem;
+  background: rgba(170, 164, 230, 0.11);
+  gap: 0.75rem;
+}
+
+.booking-date-summary__mark {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--squiggle-tile);
+  background: rgba(47, 88, 178, 0.14);
+  color: var(--blue-deep);
 }
 
 .booking-choice-summary__mark {
@@ -3243,6 +3268,10 @@ html.booking-transitioning .booking-confirmation-stage {
     grid-template-columns: 42px minmax(0, 1fr) auto;
   }
 
+  .booking-date-summary {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+  }
+
   .booking-choice-summary__mark {
     width: 38px;
     height: 38px;
@@ -3724,6 +3753,12 @@ html.booking-transitioning .booking-confirmation-stage {
   padding: 0.95rem 0.9rem 0.85rem;
   line-height: 1.55;
   resize: vertical;
+}
+
+.student-details-form textarea:focus-visible {
+  border: 2px solid var(--blue-deep);
+  outline: 0;
+  box-shadow: none;
 }
 
 .booking-confirm-button {

@@ -181,7 +181,8 @@ Preserve these desktop and mobile states:
   a returning signed-in student opens directly on the upcoming-lesson list
   rather than the book-or-view fork. On a wide desktop the account bar spans
   the workspace above a two-column overview: upcoming lessons on the left and
-  the same four-week visual calendar on the right. At narrower widths they keep
+  the same four-week visual calendar on the right. Those two panels share their
+  top and bottom edges even when the upcoming list is short. At narrower widths they keep
   the accessible stacked order of account, lessons, then calendar. Free times
   do not appear in this lesson overview.
   A signed-out visitor can browse lesson types, dates, and times first; sign-in
@@ -242,9 +243,10 @@ Preserve these desktop and mobile states:
   second context strip or selected-day panel: selecting a booked date expands
   its recurring group when needed, scrolls the exact occurrence into Upcoming
   lessons, and briefly highlights it. The new-booking journey still uses its
-  full eight-week availability horizon and returns there from a selected week,
-  with the time or lesson detail beside it on desktop and immediately below it
-  on mobile. A free day shows the available times without redundant “no lesson
+  full eight-week availability horizon. Choosing a free day collapses that
+  calendar into a compact selected-date row with a `Change date` action, while
+  the available times stay beside it on desktop and immediately below it on
+  mobile. A free day shows the available times without redundant “no lesson
   booked” or lesson-summary copy. Those times form one compact grid without
   morning, afternoon, or evening subheadings; buttons keep an accessible touch
   target while fitting three across on a phone. The four-week lesson overview stops before later repeating dates;
@@ -264,7 +266,8 @@ Preserve these desktop and mobile states:
   uses the selected date and time as its display heading instead of repeating
   `Single lesson`. It does not repeat the Online/In Porto control beneath the
   recap; one `Change details` action returns to the setup choices with the
-  current location and length retained. The inclusive 56-day API boundary must
+  current location and length retained. The optional notes textarea uses one
+  clear blue focus boundary rather than stacking coral and blue rings. The inclusive 56-day API boundary must
   not create a ninth visible row;
 - days with two bookings show both booked times on separate lines. Do not use a
   small `2x` count badge beside the date;
