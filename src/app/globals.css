@@ -4317,7 +4317,7 @@ button.text-action {
   z-index: 20;
   top: calc(100% + 0.4rem);
   right: 0;
-  display: grid;
+  display: none;
   overflow: hidden;
   width: min(220px, calc(100vw - 4rem));
   border: 1px solid var(--rule);
@@ -4325,6 +4325,10 @@ button.text-action {
   background-color: var(--paper-light);
   background-image: var(--paper-texture);
   box-shadow: 0 14px 26px rgba(32, 62, 130, 0.09);
+}
+
+.my-lessons__menu-panel.is-open {
+  display: grid;
 }
 
 .my-lessons__menu-panel > button {
@@ -4355,6 +4359,17 @@ button.text-action {
 .my-lessons__menu-panel > button:focus-visible {
   background: rgba(194, 58, 39, 0.08);
   color: var(--coral-action);
+}
+
+.my-lessons__menu-panel > .my-lessons__menu-book {
+  background: var(--coral-action);
+  color: #fff;
+}
+
+.my-lessons__menu-panel > .my-lessons__menu-book:hover,
+.my-lessons__menu-panel > .my-lessons__menu-book:focus-visible {
+  background: var(--coral);
+  color: #fff;
 }
 
 .my-lessons__menu-panel > button > span {
@@ -4406,6 +4421,80 @@ button.text-action {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
+}
+
+.booking-provider .upcoming-lessons__book-action {
+  min-height: 42px;
+  border: 1px solid var(--coral-action);
+  padding: 0.58rem 0.85rem;
+  background: var(--coral-action);
+  box-shadow: 0 6px 16px rgba(194, 58, 39, 0.14);
+  color: #fff;
+  gap: 0.42rem;
+}
+
+.booking-provider .upcoming-lessons__book-action:hover,
+.booking-provider .upcoming-lessons__book-action:focus-visible {
+  border-color: var(--coral);
+  background: var(--coral);
+  color: #fff;
+}
+
+@container booking (min-width: 1040px) {
+  .my-lessons__header--embedded {
+    align-items: center;
+  }
+
+  .my-lessons__menu-toggle {
+    display: none;
+  }
+
+  .my-lessons__menu-panel,
+  .my-lessons__menu-panel.is-open {
+    position: static;
+    display: flex;
+    overflow: visible;
+    width: auto;
+    align-items: center;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    gap: 0.18rem;
+  }
+
+  .my-lessons__menu-panel > button {
+    min-height: 40px;
+    border: 0;
+    border-radius: var(--squiggle-pill);
+    padding: 0.52rem 0.7rem;
+    background: transparent;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  .my-lessons__menu-panel > button:hover,
+  .my-lessons__menu-panel > button:focus-visible {
+    background: rgba(170, 164, 230, 0.16);
+  }
+
+  .my-lessons__menu-panel > .my-lessons__menu-book {
+    min-height: 42px;
+    padding-right: 0.88rem;
+    padding-left: 0.88rem;
+    background: var(--coral-action);
+    box-shadow: 0 6px 16px rgba(194, 58, 39, 0.14);
+  }
+
+  .my-lessons__menu-panel > .my-lessons__menu-book:hover,
+  .my-lessons__menu-panel > .my-lessons__menu-book:focus-visible {
+    background: var(--coral);
+  }
+
+  .upcoming-lessons__book-action {
+    display: none;
+  }
 }
 
 .upcoming-lessons__title-line {

@@ -186,8 +186,11 @@ Preserve these desktop and mobile states:
   Completed decisions collapse into a compact row, so account tools,
   lesson cards, the calendar, and confirmation never compete at once;
 - the signed-in identity appears once, inside a generously padded account bar.
-  A small `Menu` contains `View lessons`, `Book a lesson`, `Past lessons`, `Edit
-  details`, and `Sign out`, in that order. `View lessons` may show the useful
+  On wide desktop, `View lessons`, `Book a lesson`, `Past lessons`, `Edit
+  details`, and `Sign out` sit directly in that bar, in that order; narrower
+  layouts retain them inside a small `Menu`. `Book a lesson` uses the coral
+  primary-action treatment rather than blending into the account utilities.
+  `View lessons` may show the useful
   upcoming count; `Past lessons` deliberately has no count competing for
   attention. It remains present even before the student chooses
   `View your lessons`, while booking, and while an individual lesson is open;
@@ -195,8 +198,9 @@ Preserve these desktop and mobile states:
   lessons panel contains every future commitment. Choosing either lesson shortcut
   dismisses the active booking detail, opens its own panel below
   the account bar, and establishes the four-week lesson workspace beneath it.
-  Past lessons has `Back to start`, while the more useful top-right action in
-  Upcoming lessons is `Book a lesson` and opens the booking choices directly.
+  Past lessons has `Back to start`. Below the wide-desktop account-bar layout,
+  the more useful top-right action in Upcoming lessons remains `Book a lesson`,
+  uses the same coral emphasis, and opens the booking choices directly.
   A repeating schedule appears once in Upcoming lessons,
   led by its nearest date and distinguished from coral one-off bookings with a
   lilac recurring treatment and a subtle lilac hover/focus wash.

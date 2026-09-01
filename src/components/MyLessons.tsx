@@ -535,73 +535,72 @@ export function MyLessons({
               >
                 <MenuIcon size={16} aria-hidden="true" /> Menu
               </button>
-              {menuOpen ? (
-                <div className="my-lessons__menu-panel" id="account-menu">
-                  {showUpcomingLessons ? (
-                    <button
-                      aria-controls="account-upcoming-lessons"
-                      aria-expanded={accountSection === "upcoming"}
-                      onClick={() => toggleAccountSection("upcoming")}
-                      type="button"
-                    >
-                      View lessons {upcomingGroups.length ? <span>{upcomingGroups.length}</span> : null}
-                    </button>
-                  ) : null}
-                  {onBook ? (
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setEditing(false);
-                        setAccountSection("");
-                        setExpandedUpcomingGroup("");
-                        onBook();
-                      }}
-                      type="button"
-                    >
-                      Book a lesson
-                    </button>
-                  ) : null}
-                  {showHistory ? (
-                    <button
-                      aria-controls="account-past-lessons"
-                      aria-expanded={accountSection === "history"}
-                      onClick={() => toggleAccountSection("history")}
-                      type="button"
-                    >
-                      Past lessons
-                    </button>
-                  ) : null}
+              <div className={`my-lessons__menu-panel${menuOpen ? " is-open" : ""}`} id="account-menu">
+                {showUpcomingLessons ? (
                   <button
-                    onClick={() =>
-                      applyTransition(() => {
-                        setMenuOpen(false);
-                        setAccountSection("");
-                        setExpandedUpcomingGroup("");
-                        setEditing((open) => !open);
-                      })
-                    }
+                    aria-controls="account-upcoming-lessons"
+                    aria-expanded={accountSection === "upcoming"}
+                    onClick={() => toggleAccountSection("upcoming")}
                     type="button"
                   >
-                    {editing ? "Done editing" : "Edit details"}
+                    View lessons {upcomingGroups.length ? <span>{upcomingGroups.length}</span> : null}
                   </button>
+                ) : null}
+                {onBook ? (
                   <button
-                    onClick={() =>
-                      applyTransition(() => {
-                        setMenuOpen(false);
-                        clearSession();
-                        setStudent(null);
-                        setBookings([]);
-                        setAccountSection("");
-                        setExpandedUpcomingGroup("");
-                        onSignedOut?.();
-                      })
-                    }
+                    className="my-lessons__menu-book"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setEditing(false);
+                      setAccountSection("");
+                      setExpandedUpcomingGroup("");
+                      onBook();
+                    }}
                     type="button"
                   >
-                    Sign out
+                    Book a lesson
                   </button>
-                </div>
-              ) : null}
+                ) : null}
+                {showHistory ? (
+                  <button
+                    aria-controls="account-past-lessons"
+                    aria-expanded={accountSection === "history"}
+                    onClick={() => toggleAccountSection("history")}
+                    type="button"
+                  >
+                    Past lessons
+                  </button>
+                ) : null}
+                <button
+                  onClick={() =>
+                    applyTransition(() => {
+                      setMenuOpen(false);
+                      setAccountSection("");
+                      setExpandedUpcomingGroup("");
+                      setEditing((open) => !open);
+                    })
+                  }
+                  type="button"
+                >
+                  {editing ? "Done editing" : "Edit details"}
+                </button>
+                <button
+                  onClick={() =>
+                    applyTransition(() => {
+                      setMenuOpen(false);
+                      clearSession();
+                      setStudent(null);
+                      setBookings([]);
+                      setAccountSection("");
+                      setExpandedUpcomingGroup("");
+                      onSignedOut?.();
+                    })
+                  }
+                  type="button"
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -717,7 +716,7 @@ export function MyLessons({
               </span>
             </div>
             {onBook ? (
-              <button className="booking-back booking-back--tertiary" onClick={bookLesson} type="button">
+              <button className="booking-back upcoming-lessons__book-action" onClick={bookLesson} type="button">
                 Book a lesson <ChevronRight size={16} aria-hidden="true" />
               </button>
             ) : null}
