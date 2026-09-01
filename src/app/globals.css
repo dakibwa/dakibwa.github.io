@@ -1377,11 +1377,7 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 
 .booking-composition {
   display: grid;
-  grid-template-columns: clamp(300px, 29vw, 440px) minmax(0, 1fr);
-  /* Stretch, not start: the two columns then share one height, so the cream
-     panel matches the blue one instead of ending wherever the current step
-     happens to finish. Each step used to change the panel height — 485px,
-     749px, 375px, 1074px — which read as the page jumping about. */
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   border-bottom: 1px solid var(--rule);
   background-color: var(--green);
@@ -1389,22 +1385,33 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 }
 
 .booking-intro {
-  /* Was sticky. A stretched grid item is already the full row height, so
-     sticky had nothing left to do and only made the rule harder to read. */
+  display: grid;
   overflow: hidden;
-  padding: 2.6rem clamp(2rem, 3vw, 3.5rem) 3rem;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(520px, 1.8fr) 90px;
+  align-items: center;
+  padding: 1.2rem var(--page-pad);
   background-color: var(--green);
   background-image: var(--paper-texture);
   color: var(--paper);
+  gap: clamp(1.5rem, 4vw, 4.5rem);
 }
 
 .booking-intro h1 {
+  grid-column: 1;
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(3rem, 4.2vw, 4.8rem);
+  font-size: clamp(2rem, 3vw, 3.15rem);
   font-weight: 400;
   letter-spacing: -0.035em;
   line-height: 1;
+}
+
+.booking-intro h1 br {
+  display: none;
+}
+
+.booking-intro > .editorial-rule {
+  display: none;
 }
 
 .booking-intro > p {
@@ -1415,17 +1422,21 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 .booking-intro__points {
   position: relative;
   z-index: 2;
-  margin: 1.8rem 0 0;
+  display: grid;
+  grid-column: 2;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .booking-intro__points li {
   display: grid;
-  grid-template-columns: 62px 1fr;
+  grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
-  min-height: 68px;
-  border-bottom: 1px solid rgba(170, 164, 230, 0.65);
+  min-height: 54px;
+  border-right: 1px solid rgba(170, 164, 230, 0.65);
+  padding: 0 clamp(0.75rem, 1.5vw, 1.25rem);
   color: var(--lavender-soft);
   font-family: var(--ui);
   font-size: 0.7rem;
@@ -1434,15 +1445,20 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
   text-transform: uppercase;
 }
 
+.booking-intro__points li:last-child {
+  border-right: 0;
+}
+
 .booking-intro__points .asset-mark {
-  width: 50px;
-  height: 54px;
+  width: 34px;
+  height: 38px;
 }
 
 .booking-intro__time-window {
-  width: min(38%, 230px);
-  margin: 2rem 0 0 auto;
-  aspect-ratio: 8 / 7;
+  grid-column: 3;
+  width: 82px;
+  margin: 0;
+  aspect-ratio: 1;
   opacity: 0.92;
 }
 
@@ -1466,7 +1482,7 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
   --booking-control-font-size: 0.7rem;
   --booking-control-tracking: 0.12em;
   min-width: 0;
-  padding: 2rem clamp(2rem, 3.5vw, 4rem) 3rem;
+  padding: 1.5rem var(--page-pad) 3rem;
   background-color: var(--paper);
   background-image: var(--paper-texture);
   /* The booking column is a fraction of the viewport, not the viewport, so its
@@ -1606,6 +1622,46 @@ textarea,
    the whole width, which is what stopped it feeling cramped. */
 .booking-stage {
   display: flow-root;
+}
+
+.booking-state-note--initial {
+  min-height: 110px;
+  padding: 1.25rem;
+}
+
+/* Returning students get a real dashboard at wide desktop sizes: identity is
+   the shared header row, then commitments and the four-week visual calendar
+   use the reclaimed width together. The DOM order stays account, lessons,
+   calendar, which is also the intended mobile reading order. */
+@container booking (min-width: 1040px) {
+  .booking-stage--lessons {
+    display: grid;
+    grid-template-columns: minmax(420px, 0.9fr) minmax(560px, 1.1fr);
+    align-items: start;
+    gap: 1rem clamp(1rem, 2vw, 1.4rem);
+  }
+
+  .booking-stage--lessons > .unified-account-area,
+  .booking-stage--lessons > .unified-account-area > .my-lessons--embedded {
+    display: contents;
+  }
+
+  .booking-stage--lessons .unified-account-controls {
+    grid-row: 1;
+    grid-column: 1 / -1;
+  }
+
+  .booking-stage--lessons .my-lessons__account-section--detached {
+    grid-row: 2;
+    grid-column: 1;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .booking-stage--lessons > .unified-calendar-shell {
+    grid-row: 2;
+    grid-column: 2;
+  }
 }
 
 /* The booking page opens with one decision, not four sections competing for
@@ -5782,15 +5838,6 @@ button.text-action {
     grid-template-columns: 105px 1fr;
   }
 
-  .booking-intro {
-    padding-right: 2.2rem;
-    padding-left: 2.2rem;
-  }
-
-  .booking-intro h1 {
-    font-size: clamp(2.8rem, 4.3vw, 4.2rem);
-  }
-
   .site-footer {
     grid-template-columns: minmax(200px, 1fr) auto minmax(0, 1fr);
     gap: 2rem;
@@ -6055,12 +6102,21 @@ button.text-action {
    */
   .booking-intro {
     position: relative;
+    display: block;
     padding-top: 1.9rem;
     padding-bottom: 1.9rem;
   }
 
   .booking-intro h1 {
     font-size: clamp(2.4rem, 9vw, 3.4rem);
+  }
+
+  .booking-intro h1 br {
+    display: initial;
+  }
+
+  .booking-intro > .editorial-rule {
+    display: block;
   }
 
   .booking-intro > p {

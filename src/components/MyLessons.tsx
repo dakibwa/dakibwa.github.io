@@ -63,6 +63,7 @@ export function MyLessons({
   onSignedOut,
   onTransition,
   focusUpcomingBooking,
+  focusUpcomingOnOpen = true,
   openUpcomingRequest = 0,
   showCalendar = true,
   showHistory = true,
@@ -78,6 +79,7 @@ export function MyLessons({
   onSignedOut?: () => void;
   onTransition?: (update: () => void) => void;
   focusUpcomingBooking?: UpcomingBookingFocusRequest | null;
+  focusUpcomingOnOpen?: boolean;
   openUpcomingRequest?: number;
   showCalendar?: boolean;
   showHistory?: boolean;
@@ -112,9 +114,10 @@ export function MyLessons({
     setEditing(false);
     setExpandedUpcomingGroup("");
     setAccountSection("upcoming");
+    if (!focusUpcomingOnOpen) return;
     const frame = window.requestAnimationFrame(() => document.getElementById("account-upcoming-lessons")?.focus());
     return () => window.cancelAnimationFrame(frame);
-  }, [embedded, openUpcomingRequest]);
+  }, [embedded, focusUpcomingOnOpen, openUpcomingRequest]);
 
   const applyTransition = useCallback(
     (update: () => void) => {
