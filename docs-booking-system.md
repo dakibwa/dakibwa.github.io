@@ -144,7 +144,7 @@ depending on them having kept the right confirmation email.
   for links already in the world, then normalise to `/book`.
 - **Signed-in account controls stay in the shared workspace.** They sit above
   the active workflow rather than behind an Account/Close disclosure. The account
-  bar names the student once and keeps `View lessons`, `Book a lesson`, past
+  bar names the student once and keeps `Book a lesson`, `View lessons`, past
   lessons, profile editing and sign out directly in the bar on wide desktop and
   inside one compact menu at narrower widths. `Book a lesson` is the coral
   primary action. The upcoming count may

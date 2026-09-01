@@ -1385,9 +1385,10 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 }
 
 .booking-intro {
+  position: relative;
   display: grid;
   overflow: hidden;
-  grid-template-columns: minmax(260px, 0.85fr) minmax(520px, 1.8fr) 90px;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.8fr) clamp(140px, 12vw, 220px);
   align-items: center;
   padding: 1.2rem var(--page-pad);
   background-color: var(--green);
@@ -1397,6 +1398,8 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 }
 
 .booking-intro h1 {
+  position: relative;
+  z-index: 2;
   grid-column: 1;
   margin: 0;
   font-family: var(--display);
@@ -1432,9 +1435,9 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 
 .booking-intro__points li {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
   align-items: center;
-  min-height: 54px;
+  min-height: 62px;
   border-right: 1px solid rgba(170, 164, 230, 0.65);
   padding: 0 clamp(0.75rem, 1.5vw, 1.25rem);
   color: var(--lavender-soft);
@@ -1450,16 +1453,19 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 }
 
 .booking-intro__points .asset-mark {
-  width: 34px;
-  height: 38px;
+  width: 46px;
+  height: 50px;
 }
 
 .booking-intro__time-window {
-  grid-column: 3;
-  width: 82px;
+  position: absolute;
+  z-index: 1;
+  top: clamp(-52px, -3vw, -38px);
+  right: clamp(-58px, -3vw, -36px);
+  width: clamp(220px, 16vw, 300px);
   margin: 0;
   aspect-ratio: 1;
-  opacity: 0.92;
+  opacity: 0.96;
 }
 
 /*

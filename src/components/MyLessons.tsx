@@ -536,16 +536,6 @@ export function MyLessons({
                 <MenuIcon size={16} aria-hidden="true" /> Menu
               </button>
               <div className={`my-lessons__menu-panel${menuOpen ? " is-open" : ""}`} id="account-menu">
-                {showUpcomingLessons ? (
-                  <button
-                    aria-controls="account-upcoming-lessons"
-                    aria-expanded={accountSection === "upcoming"}
-                    onClick={() => toggleAccountSection("upcoming")}
-                    type="button"
-                  >
-                    View lessons {upcomingGroups.length ? <span>{upcomingGroups.length}</span> : null}
-                  </button>
-                ) : null}
                 {onBook ? (
                   <button
                     className="my-lessons__menu-book"
@@ -559,6 +549,16 @@ export function MyLessons({
                     type="button"
                   >
                     Book a lesson
+                  </button>
+                ) : null}
+                {showUpcomingLessons ? (
+                  <button
+                    aria-controls="account-upcoming-lessons"
+                    aria-expanded={accountSection === "upcoming"}
+                    onClick={() => toggleAccountSection("upcoming")}
+                    type="button"
+                  >
+                    View lessons {upcomingGroups.length ? <span>{upcomingGroups.length}</span> : null}
                   </button>
                 ) : null}
                 {showHistory ? (

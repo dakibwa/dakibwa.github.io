@@ -164,7 +164,10 @@ Preserve these desktop and mobile states:
 
 - on desktop the blue introduction is a compact horizontal banner above the
   cream booking workspace, not a full-height side rail. It keeps the page title
-  and three reassurances while returning the full viewport width to the task;
+  and three reassurances while returning the full viewport width to the task.
+  Their small organic marks are large enough to read at a glance, while the
+  decorative availability splat is deliberately much larger and crops across
+  the banner's top-right corner rather than floating as a small isolated icon;
 - the workspace opens with one decision: `Book a new lesson` or `View your
   lessons`. Booking then asks whether this is one lesson or a recurring lesson.
   The selected route puts Online/In Porto and `60 minutes`/`90 minutes` together
@@ -186,7 +189,7 @@ Preserve these desktop and mobile states:
   Completed decisions collapse into a compact row, so account tools,
   lesson cards, the calendar, and confirmation never compete at once;
 - the signed-in identity appears once, inside a generously padded account bar.
-  On wide desktop, `View lessons`, `Book a lesson`, `Past lessons`, `Edit
+  On wide desktop, `Book a lesson`, `View lessons`, `Past lessons`, `Edit
   details`, and `Sign out` sit directly in that bar, in that order; narrower
   layouts retain them inside a small `Menu`. `Book a lesson` uses the coral
   primary-action treatment rather than blending into the account utilities.
