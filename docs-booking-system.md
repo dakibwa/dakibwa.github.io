@@ -114,14 +114,18 @@ depending on them having kept the right confirmation email.
   choices together as visible cards on one setup screen; recurring adds 4, 6,
   or 8 weeks on that same screen. Compact sliding selectors are used only while
   changing an existing booking. The first-time
-  trial remains a separate fixed-length route. Viewing lessons leads with the upcoming-lesson list and
+  trial remains a separate fixed-length route with its own location choice.
+  Viewing lessons leads with the upcoming-lesson list and
   keeps the calendar beneath it as a four-week visual without free-time choices.
   Signed-out visitors can browse lesson types, dates, and times before they are
   asked to sign in; `View your lessons` asks immediately because the data is
   private, while booking asks only at confirmation.
-  Every booked lesson is marked there. Choosing a booked day
-  or a free day reduces the calendar to that one week, putting the
-  selected lesson or available times immediately beneath it on a phone.
+  Every booked lesson is marked there. In lesson-view mode the calendar is a
+  visual index only: choosing a booked date scrolls back to its exact Upcoming
+  lesson and expands the recurring group when necessary. It does not create a
+  second selected-day panel. In the new-booking flow, choosing a free day
+  reduces the calendar to that one week and puts available times immediately
+  beneath it on a phone.
   Available times use one compact grid, without part-of-day headings, and fit
   three accessible time buttons across on a phone. Each
   completed choice becomes a compact summary and the page moves the next
@@ -142,8 +146,9 @@ depending on them having kept the right confirmation email.
   disclosures. `Past lessons` stays in the menu throughout every signed-in
   booking state, including before `View your lessons` is chosen and while a
   recurring occurrence is open; an empty history gets an empty state rather
-  than losing the menu item. Both destination panels offer `Back to start` to
-  restore the initial book-or-view choice. There is only one `Booking`
+  than losing the menu item. Past lessons offers `Back to start`; Upcoming
+  lessons instead offers `Book a lesson`, opening the booking choices directly.
+  There is only one `Booking`
   destination in the site navigation — no separate `My lessons` tab — because
   booking and managing lessons are the same workspace.
 - **Upcoming lessons groups a repeating schedule as one thing.** It opens first
@@ -158,8 +163,8 @@ depending on them having kept the right confirmation email.
   window. Once booked, ordinary lessons use the compact duration label (`60
   mins` or `90 mins`) instead of repeating the product name; trial lessons keep
   their name. Active recurring summaries show the weekly time without repeating
-  a booked-date count. The calendar remains underneath as
-  supporting context. Opening an
+  a booked-date count. The calendar remains underneath as supporting context,
+  without another context strip or selected-day detail card. Opening an
   occurrence leaves the list and calendar where they are and shows a compact
   `Change` or `Cancel` overlay. `Change` reuses the existing calendar date and
   time picker and, when payment state permits, offers the ordinary `60 mins`
@@ -274,6 +279,10 @@ ahead without browsing a full three-month calendar.
   after the trial was selected (for example after signing in at confirmation),
   the trial choice dissolves and the valid lesson choices return without a
   warning banner or a failed booking.
+- The confirmation recap contains the chosen location and length without
+  repeating their controls below it. `Change details` returns to the one-screen
+  setup with those choices retained, then the student chooses a date and time
+  through the same booking calendar.
 - **When she moves a lesson, the emails say so.** They used to go out in the
   student's own voice — "that's done" — and tell her the student had moved it.
 
@@ -374,11 +383,11 @@ withholds a 90-minute lesson earlier than a 60-minute one.
 Once availability has loaded, the date picker omits complete leading weeks with
 no free slots. That means a weekend with nothing left to book opens directly on
 the next usable week; closed weeks later in the booking window remain visible.
-Selecting either a booked day or a free day then shows only its week, so the
-details are directly below the calendar on a phone. The compact week uses only
-`Show all`, with no redundant `Selected week` label. Lesson management returns
-to its fixed four-week overview; new bookings return to the full eight-week
-availability window.
+Selecting a free day while booking shows only its week, so the available times
+are directly below the calendar on a phone. The compact week uses only `Show
+all`, with no redundant `Selected week` label. The lesson-view calendar stays
+at four weeks and sends booked-date selections to the matching lesson above;
+new bookings return to the full eight-week availability window.
 
 ### Payment
 

@@ -772,7 +772,7 @@ const accountMenuButton = accountPanel.getByRole("button", { name: "Menu", exact
 await accountMenuButton.waitFor();
 
 async function bookQaLessonAndReturnToUpcoming({ recurring }) {
-  await accountPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
+  await accountPage.getByRole("button", { name: /Book a (?:new )?lesson/, exact: true }).click();
   await accountPage
     .getByRole("button", {
       name: recurring
@@ -1214,8 +1214,11 @@ try {
 }
 await upcomingManageDialog.getByText("Recurring lesson", { exact: true }).waitFor();
 await upcomingManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
-await accountPage.locator(".booking-workflow-context").waitFor({ state: "visible" });
+await accountPage.locator("#lesson-calendar.unified-calendar--overview").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+if (await accountPage.locator(".booking-workflow-context, #lesson-calendar .unified-calendar__panel").count()) {
+  throw new Error("The lesson overview should not repeat its context or selected-day panel beneath Upcoming lessons.");
+}
 if ((await accountMenuButton.getAttribute("aria-expanded")) !== "false") {
   throw new Error("Managing an upcoming occurrence should leave the account menu neatly closed when returning to the lesson list.");
 }
@@ -1242,7 +1245,7 @@ const desktopAccountLayout = await accountPage.evaluate(() => {
     intro: bounds(".booking-intro"),
     provider: bounds(".booking-provider"),
     panel: bounds("#account-controls"),
-    workflowContext: bounds(".booking-workflow-context")
+    calendar: bounds("#lesson-calendar")
   };
 });
 if (
@@ -1250,10 +1253,10 @@ if (
   !desktopAccountLayout.intro ||
   !desktopAccountLayout.provider ||
   !desktopAccountLayout.panel ||
-  !desktopAccountLayout.workflowContext ||
-  desktopAccountLayout.panel.bottom > desktopAccountLayout.workflowContext.top + 1 ||
-  Math.abs(desktopAccountLayout.panel.left - desktopAccountLayout.workflowContext.left) > 2 ||
-  Math.abs(desktopAccountLayout.panel.right - desktopAccountLayout.workflowContext.right) > 2
+  !desktopAccountLayout.calendar ||
+  desktopAccountLayout.panel.bottom > desktopAccountLayout.calendar.top + 1 ||
+  Math.abs(desktopAccountLayout.panel.left - desktopAccountLayout.calendar.left) > 2 ||
+  Math.abs(desktopAccountLayout.panel.right - desktopAccountLayout.calendar.right) > 2
 ) {
   throw new Error(
     `The account controls and active workflow should share one aligned workspace: ${JSON.stringify(desktopAccountLayout)}.`
@@ -1273,34 +1276,25 @@ if ((await desktopBookingTimes.count()) !== 2) {
 }
 const desktopBookedDay = accountPage.getByRole("button", { name: /2 lessons/ }).first();
 await desktopBookedDay.scrollIntoViewIfNeeded();
-const desktopScrollBeforeSelection = await accountPage.evaluate(() => window.scrollY);
 await desktopBookedDay.click();
+const desktopCalendarTarget = accountPanel.locator("#upcoming-booking-INES-QA01");
+await desktopCalendarTarget.waitFor({ state: "visible" });
+await accountPage.waitForFunction(() => document.activeElement?.id === "upcoming-booking-INES-QA01");
 await waitForOrientation(accountPage);
-const desktopScrollAfterSelection = await accountPage.evaluate(() => window.scrollY);
-if (Math.abs(desktopScrollAfterSelection - desktopScrollBeforeSelection) > 160) {
-  throw new Error(`Selecting a desktop day should not make a large page jump: ${desktopScrollBeforeSelection} -> ${desktopScrollAfterSelection}.`);
-}
-const desktopCalendarStack = await accountPage.evaluate(() => {
-  const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
-  const panel = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
-  return {
-    panelTop: panel?.top ?? Infinity,
-    calendarTop: calendar?.top ?? Infinity
-  };
+const desktopTargetPlacement = await desktopCalendarTarget.evaluate((target) => {
+  const rectangle = target.getBoundingClientRect();
+  return { top: rectangle.top, bottom: rectangle.bottom, viewportHeight: window.innerHeight };
 });
-await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-selected-desktop.png"), fullPage: true });
-if (Math.abs(desktopCalendarStack.panelTop - desktopCalendarStack.calendarTop) > 2) {
-  throw new Error(
-    `The compact calendar and selected-day panel should remain one aligned workspace: ${JSON.stringify(desktopCalendarStack)}.`
-  );
+if (
+  desktopTargetPlacement.top < 0 ||
+  desktopTargetPlacement.bottom > desktopTargetPlacement.viewportHeight ||
+  (await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4 ||
+  (await accountPage.locator("#lesson-calendar .unified-calendar__panel").count())
+) {
+  throw new Error(`A calendar booking should guide the viewport to its lesson while leaving the four-week overview intact: ${JSON.stringify(desktopTargetPlacement)}.`);
 }
-if ((await accountPage.locator("#lesson-calendar .lesson-calendar__status", { hasText: "Booked" }).count()) !== 2) {
-  throw new Error("Each existing lesson should be explicitly labelled Booked in the selected-day panel.");
-}
-await accountPage
-  .locator("#lesson-calendar .unified-calendar__bookings .lesson-calendar__lesson")
-  .first()
-  .click();
+await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-guided-desktop.png"), fullPage: true });
+await desktopCalendarTarget.click();
 const desktopManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
 const desktopManageDialog = accountPage.getByRole("dialog", { name: "Manage this lesson", exact: true });
 await desktopManageDialog.waitFor({ state: "visible" });
@@ -1411,7 +1405,9 @@ await changedDurationDialog.waitFor({ state: "detached" });
 qaManagedStart = qaStart;
 qaManagedLessonType = { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 };
 qaManagedLocation = "online";
-await accountPage.getByRole("button", { name: "Show all", exact: true }).click();
+if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4) {
+  throw new Error("Finishing lesson management should restore the four-week visual overview.");
+}
 await waitForOrientation(accountPage);
 
 await accountPage.setViewportSize({ width: 390, height: 844 });
@@ -1591,18 +1587,16 @@ if ((await bookingTimes.count()) !== 2) {
 }
 const bookedDay = accountPage.getByRole("button", { name: /2 lessons/ }).first();
 await bookedDay.click();
-const showAllFourWeeks = accountPage.getByRole("button", { name: "Show all", exact: true });
-await showAllFourWeeks.waitFor({ state: "visible" });
-if (await accountPage.getByText("Selected week", { exact: true }).count()) {
-  throw new Error("The compact calendar should use only the self-explanatory Show all action.");
-}
+const mobileCalendarTarget = accountPanel.locator("#upcoming-booking-INES-QA01");
+await mobileCalendarTarget.waitFor({ state: "visible" });
+await accountPage.waitForFunction(() => document.activeElement?.id === "upcoming-booking-INES-QA01");
 await waitForOrientation(accountPage);
-const bookedDayOrientation = await accountPage.evaluate(() => {
-  const panel = document.querySelector("#booking-next-step")?.getBoundingClientRect();
-  return { top: panel?.top ?? Infinity, viewportHeight: window.innerHeight };
+const bookedDayOrientation = await mobileCalendarTarget.evaluate((target) => {
+  const rectangle = target.getBoundingClientRect();
+  return { top: rectangle.top, bottom: rectangle.bottom, viewportHeight: window.innerHeight };
 });
-if (bookedDayOrientation.top < 0 || bookedDayOrientation.top > bookedDayOrientation.viewportHeight * 0.35) {
-  throw new Error(`Choosing a booked date should guide a phone directly to its lesson details: ${JSON.stringify(bookedDayOrientation)}.`);
+if (bookedDayOrientation.top < 0 || bookedDayOrientation.bottom > bookedDayOrientation.viewportHeight) {
+  throw new Error(`Choosing a booked date should guide a phone directly to its matching lesson: ${JSON.stringify(bookedDayOrientation)}.`);
 }
 const bookingTransitionSeen = await accountPage.evaluate(
   () => document.documentElement.dataset.qaBookingTransitionSeen === "true"
@@ -1613,43 +1607,13 @@ if (!bookingTransitionSeen) {
 const compactCalendarWeekCount = await accountPage
   .locator("#lesson-calendar .unified-calendar__grid .calendar-week")
   .count();
-if (compactCalendarWeekCount !== 1) {
-  throw new Error(`Selecting a day should shrink the calendar to one week; found ${compactCalendarWeekCount}.`);
+if (compactCalendarWeekCount !== 4) {
+  throw new Error(`Selecting a booked day should keep the aesthetic four-week overview; found ${compactCalendarWeekCount}.`);
 }
-const selectedLessonCount = await accountPage
-  .locator("#lesson-calendar .unified-calendar__bookings .lesson-calendar__lesson")
-  .count();
-if (selectedLessonCount !== 2) {
-  throw new Error(`The selected day should show both lessons below the compact calendar; found ${selectedLessonCount}.`);
+if (await accountPage.locator("#lesson-calendar .unified-calendar__panel").count()) {
+  throw new Error("The lesson-view calendar should not add a second selected-day box on mobile.");
 }
-if ((await accountPage.locator("#lesson-calendar .lesson-calendar__status", { hasText: "Booked" }).count()) !== 2) {
-  throw new Error("Booked lessons need an explicit status label on mobile too.");
-}
-const bookedCardOutline = await accountPage
-  .locator("#lesson-calendar .unified-calendar__bookings .lesson-calendar__lesson")
-  .first()
-  .evaluate((card) => {
-    const style = getComputedStyle(card);
-    return {
-      top: style.borderTopWidth,
-      right: style.borderRightWidth,
-      bottom: style.borderBottomWidth,
-      left: style.borderLeftWidth,
-      style: style.borderTopStyle
-    };
-  });
-if (
-  bookedCardOutline.style !== "solid" ||
-  [bookedCardOutline.top, bookedCardOutline.right, bookedCardOutline.bottom, bookedCardOutline.left].some(
-    (width) => Number.parseFloat(width) < 1
-  )
-) {
-  throw new Error(`Booked lesson cards need a complete outline on every side: ${JSON.stringify(bookedCardOutline)}.`);
-}
-await accountPage
-  .locator("#lesson-calendar .unified-calendar__bookings .lesson-calendar__lesson")
-  .first()
-  .click();
+await mobileCalendarTarget.click();
 const mobileManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
 const mobileManageDialog = accountPage.getByRole("dialog", { name: "Manage this lesson", exact: true });
 await mobileManageDialog.waitFor({ state: "visible" });
@@ -1739,33 +1703,22 @@ await accountPage.screenshot({ path: path.join(outDir, "booking-change-workflow-
 await mobileManagePanel.getByRole("button", { name: "Back", exact: true }).click();
 await mobileManageDialog.waitFor({ state: "visible" });
 await mobileManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
-await mobileManagePanel.getByText("Selected day", { exact: true }).waitFor();
-await waitForOrientation(accountPage);
-const compactCalendarLayout = await accountPage.evaluate(() => {
-  const grid = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
-  const details = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
-  return { gridBottom: grid?.bottom ?? 0, detailsTop: details?.top ?? 0 };
-});
-if (compactCalendarLayout.detailsTop - compactCalendarLayout.gridBottom > 24) {
-  throw new Error("The selected lesson details are not directly below the compact mobile calendar.");
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+if (await accountPage.locator("#lesson-calendar .unified-calendar__panel").count()) {
+  throw new Error("Closing lesson management should return to the visual calendar without a selected-day panel.");
 }
 await waitForOrientation(accountPage);
-await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-selected-mobile.png"), fullPage: true });
-await showAllFourWeeks.click();
-await accountPage.waitForFunction(
-  (expected) => document.querySelectorAll("#lesson-calendar .unified-calendar__grid .calendar-week").length === expected,
-  defaultCalendarWeekCount
-);
+await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-overview-mobile.png"), fullPage: true });
 const restoredCalendarWeekCount = await accountPage
   .locator("#lesson-calendar .unified-calendar__grid .calendar-week")
   .count();
 if (restoredCalendarWeekCount !== defaultCalendarWeekCount) {
   throw new Error(
-    `Show all restored ${restoredCalendarWeekCount} weeks instead of ${defaultCalendarWeekCount}.`
+    `Returning from lesson management changed the four-week calendar to ${restoredCalendarWeekCount} rows.`
   );
 }
 
-await accountPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
+await accountPanel.getByRole("button", { name: "Book a lesson", exact: true }).click();
 await accountPage.getByRole("heading", { name: "How would you like to book?", exact: true }).waitFor();
 await accountPage.screenshot({ path: path.join(outDir, "booking-pattern-mobile.png"), fullPage: true });
 if (await accountPage.locator("#lesson-calendar").count()) {
@@ -1904,6 +1857,18 @@ await accountPage
   .click();
 const confirmHeading = accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true });
 await confirmHeading.waitFor({ state: "visible" });
+await accountPage.waitForFunction(
+  () => {
+    const heading = document.querySelector("#booking-step-heading")?.getBoundingClientRect();
+    return Boolean(heading && heading.top < window.innerHeight && heading.bottom > 0);
+  },
+  null,
+  { timeout: 2_000 }
+);
+const confirmOrientation = await confirmHeading.evaluate((heading) => {
+  const rectangle = heading.getBoundingClientRect();
+  return { top: rectangle.top, bottom: rectangle.bottom, viewportHeight: window.innerHeight };
+});
 await accountMenuButton.waitFor({ state: "visible" });
 await accountMenuButton.click();
 const confirmationAccountMenu = accountPanel.locator("#account-menu");
@@ -1915,24 +1880,12 @@ for (const duplicateIdentity of ["Signed in as", "Booking as", "Not you?"]) {
     throw new Error(`Confirmation still repeats the account identity as “${duplicateIdentity}”.`);
   }
 }
-await accountPage.waitForFunction(
-  () => {
-    const heading = document.querySelector("#booking-step-heading")?.getBoundingClientRect();
-    return Boolean(heading && heading.top < window.innerHeight && heading.bottom > 0);
-  },
-  null,
-  { timeout: 2_000 }
-);
 if (await accountPage.locator("#lesson-calendar").count()) {
   throw new Error("Choosing a time should collapse the calendar before the confirmation step.");
 }
 if (await accountPage.locator(".unified-booking__lesson-picker").count()) {
   throw new Error("Choosing a time should collapse the earlier lesson choice before confirmation.");
 }
-const confirmOrientation = await confirmHeading.evaluate((heading) => {
-  const rectangle = heading.getBoundingClientRect();
-  return { top: rectangle.top, bottom: rectangle.bottom, viewportHeight: window.innerHeight };
-});
 if (confirmOrientation.top >= confirmOrientation.viewportHeight || confirmOrientation.bottom <= 0) {
   throw new Error("Choosing a time did not bring the confirmation step into the mobile viewport.");
 }
@@ -1943,13 +1896,22 @@ if (/single lesson/i.test(recapTitle) || !recapTitle.includes("2026")) {
   throw new Error(`The confirmation card should lead with the chosen date and time, not “Single lesson”: ${recapTitle}.`);
 }
 
-await accountPage.getByRole("button", { name: "Change time", exact: true }).click();
-await showAllEightWeeks.waitFor({ state: "visible" });
-if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count()) !== 1) {
-  throw new Error("Changing the time should restore the selected week, not the full calendar.");
+if (await accountPage.locator(".booking-location-choice").count()) {
+  throw new Error("Confirmation should not repeat the location selector beneath the recap.");
 }
+await accountPage.getByRole("button", { name: "Change details", exact: true }).click();
+await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
+if (!(await accountPage.getByRole("radio", { name: "Online", exact: true }).isChecked())) {
+  throw new Error("Change details should retain the current location choice.");
+}
+if (!(await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).isChecked())) {
+  throw new Error("Change details should retain the current lesson length.");
+}
+await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
 await lessonSummary.waitFor({ state: "visible" });
-await showAllEightWeeks.click();
+if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count()) !== 8) {
+  throw new Error("Returning from Change details should show the full date calendar.");
+}
 
 await changeLesson.click();
 await accountPage.getByRole("heading", { name: "How would you like to book?", exact: true }).waitFor();
@@ -2094,11 +2056,10 @@ console.log(
         mobileLayout: mobileAccountLayout,
         calendarRange: {
           defaultWeekCount: defaultCalendarWeekCount,
-          compactWeekCount: compactCalendarWeekCount,
-          selectedLessonCount,
+          overviewWeekCountAfterSelection: compactCalendarWeekCount,
+          guidedLessonPlacement: bookedDayOrientation,
           freeCompactWeekCount,
-          availableTimeCount,
-          layout: compactCalendarLayout
+          availableTimeCount
         },
         stopRepeatCalls: stopRepeatPayloads.length,
         stopRepeatPayloads,

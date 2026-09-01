@@ -171,7 +171,8 @@ Preserve these desktop and mobile states:
   as clear choice cards on one setup screen; a recurring booking adds 4, 6, or
   8 weeks there as a third group. Sliding selectors are reserved for changing
   an existing booking, where their smaller footprint is useful. An eligible
-  first-time student also sees the separate fixed-length trial route;
+  first-time student also sees the separate fixed-length trial route, followed
+  by its Online/In Porto choice;
   viewing lessons opens the upcoming-lesson list, with the same calendar kept
   beneath it as a four-week visual overview and without displaying free times.
   A signed-out visitor can browse lesson types, dates, and times first; sign-in
@@ -188,8 +189,9 @@ Preserve these desktop and mobile states:
   lessons panel contains every future commitment. Choosing either lesson shortcut
   dismisses the active booking detail, opens its own panel below
   the account bar, and establishes the four-week lesson workspace beneath it.
-  Each destination panel has `Back to start`, which restores the initial
-  book-or-view choice. A repeating schedule appears once in Upcoming lessons,
+  Past lessons has `Back to start`, while the more useful top-right action in
+  Upcoming lessons is `Book a lesson` and opens the booking choices directly.
+  A repeating schedule appears once in Upcoming lessons,
   led by its nearest date and distinguished from coral one-off bookings with a
   lilac recurring treatment and a subtle lilac hover/focus wash.
   `Manage recurrence` opens the schedule-level choices directly, including
@@ -198,8 +200,7 @@ Preserve these desktop and mobile states:
   each with its own `Manage` action. A small accessible
   tooltip explains that individual lessons can be modified up to four weeks in
   advance; it opens over the lesson list on a dark blue floating surface, so it
-  never moves the cards beneath it, while `Back to start` stays at the panel's
-  upper right. Stopping a repeat immediately returns every retained date to the
+  never moves the cards beneath it. Stopping a repeat immediately returns every retained date to the
   ordinary individual lesson cards; only an active repeat is grouped. In these
   already-booked summaries, ordinary lesson product names are
   replaced by their useful compact duration (`60 mins` or `90 mins`), while a
@@ -208,25 +209,24 @@ Preserve these desktop and mobile states:
   individual entries. Each card gains a quiet colour wash on hover or keyboard
   focus without lifting, jumping, or shifting the list.
   There is no second `My lessons` navigation destination.
-  The account bar, workflow choices, calendar, and selected-day workspace share
-  the same left and right edges. Profile fields open directly inside the account
+  The account bar, workflow choices, and calendar share the same left and right
+  edges. Profile fields open directly inside the account
   bar, without a second framed card; their actions sit beside the field whenever
   the available width permits;
 - after a successful one-off or recurring booking, the confirmation's primary
   back action opens `Upcoming lessons` so the new booking is immediately visible;
 - the calendar is the stable visual surface beneath the lesson-management
   content. Viewing lessons owns a fixed four-week overview; it never expands to
-  absorb later booked dates because the complete list lives above it. Selecting
-  a day reduces it to one week, with the single `Show all` action restoring the
-  lesson overview. The compact state does not repeat `Selected week`. The
-  new-booking journey still uses its
+  absorb later booked dates because the complete list lives above it. It has no
+  second context strip or selected-day panel: selecting a booked date expands
+  its recurring group when needed, scrolls the exact occurrence into Upcoming
+  lessons, and briefly highlights it. The new-booking journey still uses its
   full eight-week availability horizon and returns there from a selected week,
   with the time or lesson detail beside it on desktop and immediately below it
   on mobile. A free day shows the available times without redundant “no lesson
   booked” or lesson-summary copy. Those times form one compact grid without
   morning, afternoon, or evening subheadings; buttons keep an accessible touch
-  target while fitting three across on a phone. Booked days retain their lesson
-  details. The four-week lesson overview stops before later repeating dates;
+  target while fitting three across on a phone. The four-week lesson overview stops before later repeating dates;
   those future lessons remain in the list instead of stretching the calendar. Opening any
   lesson keeps the list and calendar in place and adds a compact overlay asking
   whether to change or cancel it. `Change` keeps the page dimmed and lifts that
@@ -241,11 +241,12 @@ Preserve these desktop and mobile states:
   explicitly and contains no more than eight Monday-to-Sunday rows; the
   calendar key and range label share one visual centre. The final booking recap
   uses the selected date and time as its display heading instead of repeating
-  `Single lesson`. The inclusive 56-day API boundary must not create a ninth
-  visible row;
+  `Single lesson`. It does not repeat the Online/In Porto control beneath the
+  recap; one `Change details` action returns to the setup choices with the
+  current location and length retained. The inclusive 56-day API boundary must
+  not create a ninth visible row;
 - days with two bookings show both booked times on separate lines. Do not use a
-  small `2x` count badge beside the date. Each selected existing lesson uses a
-  coral-tinted card with an explicit `Booked` status;
+  small `2x` count badge beside the date;
 - primary coral and secondary outline actions share a 52 px height, Montserrat
   0.7 rem labels, 0.12 em tracking, and the same hand-drawn button radius.
   Tertiary text actions use the same type at 40 px minimum height and align to
