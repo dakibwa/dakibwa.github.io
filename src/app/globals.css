@@ -3809,10 +3809,18 @@ button.text-action {
   opacity: 0.72;
 }
 
+.my-lessons__account-section-heading--upcoming {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
 .upcoming-lessons__title-line {
   display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.35rem 0.55rem;
 }
 
 .upcoming-lessons__title-line .eyebrow {
@@ -3833,32 +3841,30 @@ button.text-action {
   cursor: help;
 }
 
-.upcoming-lessons__hint > span {
-  position: absolute;
-  z-index: 6;
+.upcoming-lessons__tip {
   display: none;
-  top: calc(100% + 0.45rem);
-  left: -0.65rem;
-  width: min(220px, 58vw);
+  min-width: min(220px, 100%);
+  max-width: 290px;
+  flex: 1 1 220px;
   border: 1px solid var(--rule);
   border-radius: 12px 20px 14px 18px;
-  padding: 0.7rem 0.8rem;
+  padding: 0.52rem 0.68rem;
   background: var(--cream);
-  box-shadow: 0 12px 28px rgba(24, 45, 104, 0.16);
+  box-shadow: 0 8px 20px rgba(24, 45, 104, 0.12);
   color: var(--ink);
   font-family: var(--body);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 400;
   letter-spacing: 0;
-  line-height: 1.45;
+  line-height: 1.4;
   pointer-events: none;
   text-align: left;
   text-transform: none;
 }
 
-.upcoming-lessons__hint:hover > span,
-.upcoming-lessons__hint:focus > span,
-.upcoming-lessons__hint:focus-visible > span {
+.upcoming-lessons__hint:hover + .upcoming-lessons__tip,
+.upcoming-lessons__hint:focus + .upcoming-lessons__tip,
+.upcoming-lessons__hint:focus-visible + .upcoming-lessons__tip {
   display: block;
 }
 

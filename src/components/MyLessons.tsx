@@ -625,23 +625,20 @@ export function MyLessons({
 
       {embedded && accountSection === "upcoming" ? (
         <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-upcoming-lessons" aria-labelledby="upcoming-lessons-heading" tabIndex={-1}>
-          <div className="my-lessons__account-section-heading">
-            <div>
-              <div className="upcoming-lessons__title-line">
-                <h3 className="eyebrow" id="upcoming-lessons-heading">Upcoming lessons</h3>
-                <button
-                  aria-describedby="upcoming-lessons-modification-tip"
-                  aria-label="When individual lessons can be modified"
-                  className="upcoming-lessons__hint"
-                  type="button"
-                >
-                  <CircleHelp size={16} aria-hidden="true" />
-                  <span id="upcoming-lessons-modification-tip" role="tooltip">
-                    You can modify individual lessons up to four weeks in advance.
-                  </span>
-                </button>
-              </div>
-              <p>Recurring lessons appear once. Open one to manage its next four booked dates.</p>
+          <div className="my-lessons__account-section-heading my-lessons__account-section-heading--upcoming">
+            <div className="upcoming-lessons__title-line">
+              <h3 className="eyebrow" id="upcoming-lessons-heading">Upcoming lessons</h3>
+              <button
+                aria-describedby="upcoming-lessons-modification-tip"
+                aria-label="When individual lessons can be modified"
+                className="upcoming-lessons__hint"
+                type="button"
+              >
+                <CircleHelp size={16} aria-hidden="true" />
+              </button>
+              <span className="upcoming-lessons__tip" id="upcoming-lessons-modification-tip" role="tooltip">
+                You can modify individual lessons up to four weeks in advance.
+              </span>
             </div>
             {onBackToStart ? (
               <button className="booking-back booking-back--tertiary" onClick={backToStart} type="button">
