@@ -51,7 +51,7 @@
   --header-height: 108px;
   --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-route: 240ms;
-  --motion-surface: 260ms;
+  --motion-surface: 190ms;
 }
 
 * {
@@ -326,7 +326,7 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 @media (max-width: 720px) {
   :root {
     --motion-route: 190ms;
-    --motion-surface: 220ms;
+    --motion-surface: 180ms;
   }
 }
 
@@ -1490,7 +1490,6 @@ textarea,
   border-radius: var(--squiggle-panel);
   padding: clamp(1.35rem, 3.2vw, 2.35rem);
   background: rgba(170, 164, 230, 0.1);
-  view-transition-name: booking-choice;
 }
 
 .booking-journey-start__heading {
@@ -1603,7 +1602,6 @@ textarea,
   padding: 0.72rem 0.95rem;
   background: rgba(170, 164, 230, 0.1);
   gap: 0.75rem 1rem;
-  view-transition-name: booking-choice;
 }
 
 .booking-workflow-context > div {
@@ -1636,73 +1634,55 @@ textarea,
   }
 }
 
-/* A booking choice changes the size and content of one workspace. The native
-   view-transition snapshot lets that workspace resize and dissolve as one
-   surface, while the rest of the page stays still. There is no artificial
-   pause before the state update. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-}
-
-::view-transition-group(booking-account),
-::view-transition-group(booking-choice),
-::view-transition-group(booking-calendar),
-::view-transition-group(booking-detail),
-::view-transition-group(booking-confirmation) {
-  animation-duration: var(--motion-surface);
-  animation-timing-function: var(--motion-ease);
-}
-
-::view-transition-old(booking-account),
-::view-transition-old(booking-choice),
-::view-transition-old(booking-calendar),
-::view-transition-old(booking-detail),
-::view-transition-old(booking-confirmation) {
-  animation: booking-flow-out 130ms ease-out both;
-}
-
-::view-transition-new(booking-account),
-::view-transition-new(booking-choice),
-::view-transition-new(booking-calendar),
-::view-transition-new(booking-detail),
-::view-transition-new(booking-confirmation) {
-  animation: booking-flow-in var(--motion-surface) var(--motion-ease) both;
-}
-
-@keyframes booking-flow-out {
-  to {
-    opacity: 0;
-  }
-}
-
+/* Booking decisions animate only the surface that changed. Page-wide view
+   snapshots looked polished in isolation but fought the guided mobile scroll,
+   producing a fade, a pause, then a second large movement. The final state now
+   exists immediately and settles with one short local motion. */
 @keyframes booking-flow-in {
   from {
-    opacity: 0.18;
+    opacity: 0.56;
+    transform: translateY(4px);
   }
 
   to {
     opacity: 1;
+    transform: none;
   }
 }
 
-html.booking-transitioning .booking-stage,
-html.booking-fallback-transitioning .booking-stage {
+@keyframes booking-content-in {
+  from {
+    opacity: 0.35;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html.booking-transitioning .booking-stage {
   pointer-events: none;
 }
 
-/* Browsers without the JS transition API still get a soft replacement of the
-   specific content that changed. The class is applied only around a booking
-   decision, so this never adds a second entrance on initial page load. */
-html.booking-fallback-transitioning .booking-choice-summary,
-html.booking-fallback-transitioning .booking-journey-start,
-html.booking-fallback-transitioning .booking-workflow-context,
-html.booking-fallback-transitioning .booking-workflow-sign-in,
-html.booking-fallback-transitioning .calendar-weeks,
-html.booking-fallback-transitioning .unified-account-controls,
-html.booking-fallback-transitioning .unified-calendar__panel-content,
-html.booking-fallback-transitioning .booking-confirmation-stage {
+html.booking-transitioning .booking-choice-summary,
+html.booking-transitioning .booking-journey-start,
+html.booking-transitioning .booking-workflow-context,
+html.booking-transitioning .booking-workflow-sign-in,
+html.booking-transitioning .calendar-weeks,
+html.booking-transitioning .unified-account-controls,
+html.booking-transitioning .unified-calendar__panel-content,
+html.booking-transitioning .booking-confirmation-stage {
   animation: booking-flow-in var(--motion-surface) var(--motion-ease) both;
+}
+
+.unified-calendar__panel-content > .booking-state-note,
+.unified-calendar__panel-content > .booking-alert,
+.unified-calendar__panel-content > .slot-grid,
+.unified-calendar__availability > .booking-state-note,
+.unified-calendar__availability > .slot-grid {
+  animation: booking-content-in 150ms ease-out both;
 }
 
 .booking-back {
@@ -1956,7 +1936,6 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 
 .unified-booking__lesson-picker {
   margin-bottom: 1.6rem;
-  view-transition-name: booking-choice;
 }
 
 .unified-booking__lesson-picker .lesson-choice {
@@ -2017,6 +1996,10 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   line-height: 1.45;
 }
 
+.unified-calendar-shell {
+  min-width: 0;
+}
+
 .unified-calendar {
   display: grid;
   min-width: 0;
@@ -2031,7 +2014,6 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   grid-area: calendar;
   width: 100%;
   max-width: none;
-  view-transition-name: booking-calendar;
 }
 
 .unified-calendar__toolbar {
@@ -2153,7 +2135,6 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   border-radius: var(--squiggle-panel);
   padding: clamp(1rem, 2.4vw, 1.35rem);
   background: rgba(170, 164, 230, 0.13);
-  view-transition-name: booking-detail;
 }
 
 #booking-lesson-choice,
@@ -2183,6 +2164,72 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   animation: lesson-manage-backdrop 160ms ease-out both;
 }
 
+.lesson-manage-overlay--reschedule {
+  background: rgba(17, 31, 72, 0.42);
+  backdrop-filter: blur(5px);
+}
+
+/* Changing a lesson is still the same modal task. Lift the existing calendar
+   above the dimmed page instead of dismissing the decision dialog and sending
+   the student a full screen down to a second interface. */
+.unified-calendar--managed-overlay {
+  position: fixed;
+  z-index: 61;
+  top: 50%;
+  left: 50%;
+  box-sizing: border-box;
+  width: min(calc(100vw - 2rem), 1040px);
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(170, 164, 230, 0.9);
+  border-radius: var(--squiggle-panel);
+  padding: clamp(0.65rem, 2vw, 1rem);
+  background-color: var(--paper-light);
+  background-image:
+    radial-gradient(circle at 96% 2%, rgba(239, 93, 60, 0.12), transparent 24%),
+    var(--paper-texture);
+  box-shadow: 0 28px 80px rgba(17, 31, 72, 0.38);
+  outline: 0;
+  transform: translate(-50%, -50%);
+  animation: lesson-manage-workspace-in 200ms var(--motion-ease) both;
+}
+
+.unified-calendar--managed-overlay .unified-calendar__toolbar {
+  padding-right: 2.65rem;
+}
+
+.unified-calendar--managed-overlay .unified-calendar__grid {
+  align-self: stretch;
+}
+
+.unified-calendar--managed-overlay .unified-calendar__panel {
+  top: 0;
+}
+
+.lesson-manage-workspace__close {
+  position: absolute;
+  z-index: 3;
+  top: 0.85rem;
+  right: 0.85rem;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid var(--rule-soft);
+  border-radius: 50%;
+  background: rgba(251, 244, 229, 0.94);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.lesson-manage-workspace__close:hover,
+.lesson-manage-workspace__close:focus-visible {
+  border-color: var(--coral-action);
+  color: var(--coral-action);
+}
+
 .lesson-manage-dialog {
   position: relative;
   display: grid;
@@ -2199,6 +2246,12 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   animation: lesson-manage-dialog-in 190ms var(--motion-ease) both;
 }
 
+.lesson-manage-dialog__content {
+  display: grid;
+  gap: 0.75rem;
+  animation: lesson-manage-content-in 160ms var(--motion-ease) both;
+}
+
 .lesson-manage-dialog::before {
   position: absolute;
   z-index: -1;
@@ -2211,6 +2264,7 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 
 .lesson-manage-dialog__close {
   position: absolute;
+  z-index: 2;
   top: 0.8rem;
   right: 0.85rem;
   display: grid;
@@ -2230,8 +2284,8 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   color: var(--coral-action);
 }
 
-.lesson-manage-dialog > .lesson-calendar__status,
-.lesson-manage-dialog > .eyebrow {
+.lesson-manage-dialog__content > .lesson-calendar__status,
+.lesson-manage-dialog__content > .eyebrow {
   justify-self: start;
   margin-right: 2.8rem;
 }
@@ -2408,6 +2462,25 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   from {
     opacity: 0;
     transform: translateY(10px) scale(0.985);
+  }
+}
+
+@keyframes lesson-manage-content-in {
+  from {
+    opacity: 0.45;
+    transform: translateY(3px);
+  }
+}
+
+@keyframes lesson-manage-workspace-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px)) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 
@@ -2725,7 +2798,6 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   z-index: 4;
   width: 100%;
   margin: 0 0 1.6rem;
-  view-transition-name: booking-account;
 }
 
 .unified-account-controls {
@@ -2789,10 +2861,6 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
   padding: 0.65rem;
   line-height: 1.2;
   white-space: normal;
-}
-
-.booking-confirmation-stage {
-  view-transition-name: booking-confirmation;
 }
 
 @container booking (max-width: 680px) {
@@ -6113,19 +6181,10 @@ button.text-action {
   }
 
   .lesson-manage-overlay,
-  .lesson-manage-dialog {
+  .lesson-manage-dialog,
+  .lesson-manage-dialog__content,
+  .unified-calendar--managed-overlay {
     animation: none;
-  }
-
-  .booking-journey-start,
-  .booking-workflow-context,
-  .booking-workflow-sign-in,
-  .unified-account-controls,
-  .unified-booking__lesson-picker,
-  .unified-calendar__grid,
-  .unified-calendar__panel,
-  .booking-confirmation-stage {
-    view-transition-name: none;
   }
 
   .text-action,
@@ -6181,7 +6240,12 @@ button.text-action {
   .calendar-weeks,
   .unified-account-controls,
   .unified-calendar__panel-content,
-  .booking-confirmation-stage {
+  .booking-confirmation-stage,
+  .unified-calendar__panel-content > .booking-state-note,
+  .unified-calendar__panel-content > .booking-alert,
+  .unified-calendar__panel-content > .slot-grid,
+  .unified-calendar__availability > .booking-state-note,
+  .unified-calendar__availability > .slot-grid {
     animation: none;
   }
 }

@@ -31,7 +31,7 @@ const AccountControls = dynamic(() => import("@/components/MyLessons").then((m) 
   loading: () => <p className="booking-state-note">Loading your account…</p>
 });
 import { LessonMark } from "@/components/LessonMarks";
-import { clearSession, fetchMe, readSession, type LessonSeries, type MyBooking, type Student } from "@/lib/auth-api";
+import { fetchMe, readSession, type LessonSeries, type MyBooking, type Student } from "@/lib/auth-api";
 import {
   addDaysToKey,
   browserTimeZone,
@@ -139,75 +139,24 @@ function loadStripeJs() {
   return stripeJs;
 }
 
-let bookingTransition: ViewTransition | null = null;
-let bookingFallbackTimer: number | null = null;
-let bookingFallbackFinished: Promise<void> | null = null;
-let resolveBookingFallback: (() => void) | null = null;
+let bookingMotionTimer: number | null = null;
 
-function finishBookingFallback() {
-  if (bookingFallbackTimer !== null) window.clearTimeout(bookingFallbackTimer);
-  document.documentElement.classList.remove("booking-fallback-transitioning");
-  bookingFallbackTimer = null;
-  const resolve = resolveBookingFallback;
-  resolveBookingFallback = null;
-  bookingFallbackFinished = null;
-  resolve?.();
+function finishBookingMotion() {
+  if (bookingMotionTimer !== null) window.clearTimeout(bookingMotionTimer);
+  document.documentElement.classList.remove("booking-transitioning");
+  bookingMotionTimer = null;
 }
 
-function fallbackBookingTransition(update: () => void) {
-  if (bookingFallbackFinished) finishBookingFallback();
-  bookingFallbackFinished = new Promise((resolve) => {
-    resolveBookingFallback = resolve;
-  });
-  document.documentElement.classList.add("booking-fallback-transitioning");
-  flushSync(update);
-  bookingFallbackTimer = window.setTimeout(finishBookingFallback, 280);
-}
-
-/**
- * The calendar changes shape as choices are made. Where the browser supports
- * same-document view transitions, let it blend the old and new geometry
- * instead of flashing between two layouts. The state update stays synchronous
- * so the new snapshot is reliable; older browsers get the same working flow
- * with the small CSS entrance fades below it.
- */
 function transitionBooking(update: () => void) {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     update();
     return;
   }
 
-  if (typeof document.startViewTransition !== "function") {
-    fallbackBookingTransition(update);
-    return;
-  }
-
-  bookingTransition?.skipTransition();
+  if (bookingMotionTimer !== null) finishBookingMotion();
   document.documentElement.classList.add("booking-transitioning");
-  let transition: ViewTransition;
-  try {
-    transition = document.startViewTransition(() => flushSync(update));
-  } catch {
-    bookingTransition = null;
-    document.documentElement.classList.remove("booking-transitioning");
-    fallbackBookingTransition(update);
-    return;
-  }
-  bookingTransition = transition;
-  // A quick second choice deliberately aborts the first transition. Chromium
-  // rejects `ready`/`updateCallbackDone` for that interrupted visual snapshot
-  // even though the state update itself succeeded, so consume those expected
-  // rejections rather than surfacing a false page error.
-  void transition.ready.catch(() => undefined);
-  void transition.updateCallbackDone.catch(() => undefined);
-  void transition.finished
-    .catch(() => undefined)
-    .finally(() => {
-      if (bookingTransition === transition) {
-        bookingTransition = null;
-        document.documentElement.classList.remove("booking-transitioning");
-      }
-    });
+  flushSync(update);
+  bookingMotionTimer = window.setTimeout(finishBookingMotion, 200);
 }
 
 /**
@@ -238,14 +187,10 @@ function orientTo(id: string, focus = false, forceOnMobile = false) {
     });
   };
 
-  const activeTransition = bookingTransition;
-  if (activeTransition) {
-    void activeTransition.finished.catch(() => undefined).then(orient);
-  } else if (bookingFallbackFinished) {
-    void bookingFallbackFinished.then(orient);
-  } else {
-    orient();
-  }
+  // The final DOM exists synchronously. Start guiding immediately rather than
+  // waiting for the decorative fade to finish, which previously created a
+  // noticeable pause followed by a second, separate movement.
+  orient();
 }
 
 export function BookingCalendar({ initialManageToken = "" }: { initialManageToken?: string } = {}) {
@@ -330,9 +275,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [manageWorking, setManageWorking] = useState(false);
   const [manageError, setManageError] = useState("");
   const [manageOutcome, setManageOutcome] = useState("");
+  const [managedCalendarPlaceholderHeight, setManagedCalendarPlaceholderHeight] = useState(0);
   const [showAccountSignIn, setShowAccountSignIn] = useState(false);
   const [upcomingRequestKey, setUpcomingRequestKey] = useState(0);
   const manageDialogRef = useRef<HTMLDivElement>(null);
+  const managedRescheduleRef = useRef<HTMLDivElement>(null);
 
   const lessonType = lessonTypes.find((type) => type.id === lessonTypeId) ?? null;
   const managedDurationChoices = managed?.booking.lessonType.id === "trial"
@@ -381,8 +328,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       })
       .catch((error: Error) => setLoadError(error.message));
 
+    // `fetchMe` already clears a genuinely invalid session on a 401. A network
+    // interruption (including a quick reload while this request is in flight)
+    // must not sign the student out as a side effect.
     refreshStudent()
-      .catch(() => clearSession())
+      .catch(() => undefined)
       .finally(() => setCheckingSession(false));
   }, [refreshStudent]);
 
@@ -412,6 +362,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setManageLoading(true);
     setManageError("");
     setManageOutcome("");
+    setManagedCalendarPlaceholderHeight(0);
     setManageMode("view");
     setSelectedSlot("");
     try {
@@ -584,7 +535,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const activeManagedSeries = resolvedManagedSeriesId
     ? lessonSeries.find((entry) => entry.id === resolvedManagedSeriesId) ?? null
     : null;
-  const manageDialogOpen = Boolean(manageLoading || manageError || (managed && manageMode !== "reschedule"));
+  const manageDialogOpen = Boolean(manageLoading || manageError || managed);
   const visibleLessonTypes = hasPriorBooking ? lessonTypes.filter((type) => type.id !== "trial") : lessonTypes;
   const panelMotionKey = showAccountSignIn && !student
     ? "sign-in"
@@ -865,6 +816,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setManageMode("view");
     setManageError("");
     setManageOutcome("");
+    setManagedCalendarPlaceholderHeight(0);
     setSelectedSlot("");
     if (selectedDate && !selectedDateInOverview) {
       setSelectedDate(firstCalendarBookingStart ? portoDateKey(new Date(firstCalendarBookingStart)) : "");
@@ -894,7 +846,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     if (!manageDialogOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const frame = requestAnimationFrame(() => manageDialogRef.current?.focus());
+    const frame = requestAnimationFrame(() => {
+      if (manageMode === "reschedule") managedRescheduleRef.current?.focus({ preventScroll: true });
+      else manageDialogRef.current?.focus({ preventScroll: true });
+    });
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") dismissManagedDialog();
     };
@@ -910,7 +865,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     if (!managed) return;
     const managedDate = portoDateKey(new Date(managed.booking.startAt));
     const isInCalendar = overviewCalendarWeeks.some((week) => week.cells.some((cell) => cell.key === managedDate));
+    const calendarHeight = managedRescheduleRef.current?.getBoundingClientRect().height ?? 0;
     transitionBooking(() => {
+      setManagedCalendarPlaceholderHeight(calendarHeight);
       setManageMode("reschedule");
       setManagedLessonTypeId(managed.booking.lessonType.id);
       setSelectedDate(isInCalendar ? managedDate : "");
@@ -919,7 +876,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setManageError("");
       setLoadingSlots(true);
     });
-    orientTo("lesson-calendar", false, true);
   }
 
   function returnFromConfirmationToUpcoming() {
@@ -1100,12 +1056,13 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
         {manageDialogOpen ? (
           <div
-            className="lesson-manage-overlay"
+            className={`lesson-manage-overlay${manageMode === "reschedule" ? " lesson-manage-overlay--reschedule" : ""}`}
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) dismissManagedDialog();
             }}
             role="presentation"
           >
+            {manageMode !== "reschedule" ? (
             <div
               aria-labelledby="lesson-manage-heading"
               aria-modal="true"
@@ -1124,6 +1081,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 <X aria-hidden="true" size={19} />
               </button>
 
+              <div
+                className="lesson-manage-dialog__content"
+                key={manageLoading ? "loading" : !managed ? "error" : manageOutcome ? "outcome" : manageMode}
+              >
               {manageLoading ? (
                 <div className="lesson-manage-dialog__loading">
                   <p className="eyebrow">One moment</p>
@@ -1294,7 +1255,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   </button>
                 </>
               )}
+              </div>
             </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -1442,7 +1405,32 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         ) : null}
 
         {showWorkflowCalendar ? (
-          <div className="unified-calendar" id="lesson-calendar">
+          <div
+            className="unified-calendar-shell"
+            style={managed && manageMode === "reschedule" && managedCalendarPlaceholderHeight
+              ? { height: `${managedCalendarPlaceholderHeight}px` }
+              : undefined}
+          >
+          <div
+            aria-labelledby={managed && manageMode === "reschedule" ? "managed-reschedule-heading" : undefined}
+            aria-modal={managed && manageMode === "reschedule" ? true : undefined}
+            className={`unified-calendar${managed && manageMode === "reschedule" ? " unified-calendar--managed-overlay" : ""}`}
+            id="lesson-calendar"
+            ref={managedRescheduleRef}
+            role={managed && manageMode === "reschedule" ? "dialog" : undefined}
+            tabIndex={managed && manageMode === "reschedule" ? -1 : undefined}
+          >
+          {managed && manageMode === "reschedule" ? (
+            <button
+              aria-label="Close lesson management"
+              className="lesson-manage-workspace__close"
+              disabled={manageWorking}
+              onClick={dismissManagedDialog}
+              type="button"
+            >
+              <X aria-hidden="true" size={19} />
+            </button>
+          ) : null}
           <div className="calendar-panel unified-calendar__grid">
             <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
             <div className="unified-calendar__toolbar">
@@ -1565,7 +1553,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 <div className="managed-lesson__header">
                   <div>
                     <p className="eyebrow">Change this lesson</p>
-                    <h3>Choose a new date and time</h3>
+                    <h3 id="managed-reschedule-heading">Choose a new date and time</h3>
                   </div>
                   <button
                     className="booking-back booking-back--tertiary"
@@ -1747,6 +1735,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             )}
             </div>
           </aside>
+          </div>
           </div>
         ) : null}
 
