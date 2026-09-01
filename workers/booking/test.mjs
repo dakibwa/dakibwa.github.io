@@ -133,6 +133,48 @@ await test("the default booking window is eight weeks and clamps later availabil
   assert.equal(slotsByDate["2026-10-26"], undefined, "the first Monday outside eight weeks must stay closed");
 });
 
+await test("moving a recurrence ignores only that sequence's existing lessons", async () => {
+  const env = {
+    DB: {
+      prepare(sql) {
+        return {
+          bind() {
+            return this;
+          },
+          async all() {
+            if (sql.includes("FROM availability_rules")) {
+              return { results: [{ weekday: 1, start_minute: 600, last_start_minute: 600 }] };
+            }
+            if (sql.includes("FROM bookings")) {
+              return {
+                results: [{
+                  id: "series-occurrence",
+                  series_id: "series-a",
+                  starts_at: "2026-09-07T09:00:00.000Z",
+                  ends_at: "2026-09-07T10:00:00.000Z"
+                }]
+              };
+            }
+            return { results: [] };
+          }
+        };
+      }
+    }
+  };
+
+  const input = {
+    fromKey: "2026-09-07",
+    toKey: "2026-09-07",
+    lessonType: { duration_minutes: 60 },
+    now: new Date("2026-09-06T08:00:00.000Z")
+  };
+  const blocked = await computeAvailability(env, input);
+  const moving = await computeAvailability(env, { ...input, ignoreSeriesId: "series-a" });
+
+  assert.equal(blocked.slotsByDate["2026-09-07"], undefined);
+  assert.equal(moving.slotsByDate["2026-09-07"]?.[0]?.startAt, "2026-09-07T09:00:00.000Z");
+});
+
 await test("eachDateKey is inclusive and refuses to run away", () => {
   assert.deepEqual(eachDateKey("2026-08-30", "2026-09-01"), ["2026-08-30", "2026-08-31", "2026-09-01"]);
   assert.equal(eachDateKey("2026-09-01", "2026-08-01").length, 0);
@@ -839,6 +881,35 @@ await test("teacher notifications can pause without silencing the student", asyn
     fixture.emailLog.map(({ kind, recipient }) => ({ kind, recipient })),
     [{ kind: "student_series_booked", recipient: "ana@example.com" }]
   );
+});
+
+await test("moving a recurring sequence sends one updated calendar to each enabled recipient", async () => {
+  const fixture = seriesEmailFixture();
+  fixture.rows.forEach((row) => { row.sequence = 2; });
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    await notifySeries(fixture.env, {
+      rows: fixture.rows,
+      lessonType: fixture.lessonType,
+      settings: fixture.settings,
+      series: { id: "series-moved", occurrences: 4 },
+      manageUrls: fixture.manageUrls,
+      skipped: [],
+      reason: "moved"
+    });
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.deepEqual(
+    fixture.emailLog.map(({ kind, recipient }) => ({ kind, recipient })),
+    [
+      { kind: "student_series_moved", recipient: "ana@example.com" },
+      { kind: "teacher_series_moved", recipient: "ines@example.com" }
+    ]
+  );
+  assert.ok(fixture.emailLog.every(({ dedupeKey }) => dedupeKey.endsWith(":2")));
 });
 
 await test("automatic open-ended top-ups do not send another client email", async () => {

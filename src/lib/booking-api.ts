@@ -197,6 +197,28 @@ export function stopSeries(session: string, seriesId: string, cancelRemaining = 
   );
 }
 
+/** Move every upcoming occurrence in an active weekly sequence together. */
+export function rescheduleSeries(
+  session: string,
+  seriesId: string,
+  startAt: string,
+  lessonType?: string,
+  location?: "online" | "porto"
+) {
+  return request<{ ok: true; moved: number; bookings: Booking[] }>(
+    `/series/${encodeURIComponent(seriesId)}/reschedule`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session}` },
+      body: JSON.stringify({
+        startAt,
+        ...(lessonType ? { lessonType } : {}),
+        ...(location ? { location } : {})
+      })
+    }
+  );
+}
+
 export function fetchBooking(token: string) {
   return request<ManagedBooking>(`/bookings/${encodeURIComponent(token)}`);
 }

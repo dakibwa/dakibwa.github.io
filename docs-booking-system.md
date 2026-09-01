@@ -29,6 +29,7 @@ Student on /book                                     (browse without an account)
   → GET  /me                          (Bearer)       → their calendar and series
   → GET  /bookings/:token                            one lesson; HMAC-signed token
   → POST /bookings/:token/reschedule | /cancel       → optional lessonType, sequence++, updated ICS
+  → POST /series/:id/reschedule | /stop (Bearer)     → move or end an owned weekly sequence
 Legacy /my-lessons and /booking links resolve into /book without losing state
 Inês on /schedule                     (her own account, role=teacher)
   → GET/POST /admin/availability, /admin/exceptions
@@ -109,9 +110,10 @@ depending on them having kept the right confirmation email.
 - **Booking, the learner's calendar, and lesson changes share one workspace.**
   The first screen at `/book` asks only whether the student wants to book a new
   lesson or view existing lessons. Booking asks for one lesson or a recurring
-  lesson first. Both ordinary routes choose Online or In Porto next; a recurring
-  route then chooses 4, 6, or 8 weeks, and both routes finish with the compact
-  60/90-minute selector before the calendar appears. The first-time
+  lesson first. Both ordinary routes then keep Online/In Porto and the 60/90-minute
+  choices together as visible cards on one setup screen; recurring adds 4, 6,
+  or 8 weeks on that same screen. Compact sliding selectors are used only while
+  changing an existing booking. The first-time
   trial remains a separate fixed-length route. Viewing lessons leads with the upcoming-lesson list and
   keeps the calendar beneath it as a four-week visual without free-time choices.
   Signed-out visitors can browse lesson types, dates, and times before they are
@@ -132,8 +134,9 @@ depending on them having kept the right confirmation email.
   for links already in the world, then normalise to `/book`.
 - **Signed-in account controls stay in the shared workspace.** They sit above
   the active workflow rather than behind an Account/Close disclosure. The account
-  bar names the student once and keeps upcoming lessons, past lessons, profile
-  editing and sign out inside one menu. Choosing upcoming or past lessons opens a
+  bar names the student once and keeps `View lessons`, `Book a lesson`, past
+  lessons, profile editing and sign out inside one menu. The upcoming count may
+  sit beside `View lessons`; Past lessons has no badge. Choosing view or past lessons opens a
   separate panel below the account bar and switches away from any active booking
   or lesson-management detail, so they work as shortcuts rather than stacked
   disclosures. `Past lessons` stays in the menu throughout every signed-in
@@ -149,7 +152,7 @@ depending on them having kept the right confirmation email.
   this same list rather than returning to the generic start choice. Recurring
   schedules use a distinct lilac treatment, a visible lilac hover/focus state,
   and lead with their next occurrence; one-off bookings remain coral cards.
-  `Manage recurrence` opens the schedule-level stop/cancel choices directly,
+  `Manage recurrence` opens the schedule-level move/stop/cancel choices directly,
   while `View next 4 lessons` reveals at most four separate occurrence cards,
   each with its own `Manage` action. An accessible tooltip explains the four-week individual-change
   window. Once booked, ordinary lessons use the compact duration label (`60
@@ -210,6 +213,14 @@ creates new ones.
   is never charged, and a lesson on its own Porto day remains booked. A selected
   recurring occurrence exposes `Manage sequence`, keeps both outcomes visibly
   distinct, and asks for confirmation before calling the stop endpoint.
+- **Moving a recurrence moves every future confirmed occurrence together.**
+  The student chooses the new weekly anchor, length, and location through the
+  same compact change-booking controls. Every proposed week is checked before
+  one guarded database update moves the run and its series recipe; a newly
+  claimed slot or concurrent individual change moves none of it. Past lessons
+  and any lesson on its own Porto day are left alone. Each booking keeps its
+  calendar UID, increments its sequence, and the student receives one combined
+  updated calendar email. Inês's copy follows the existing development pause.
 - **A run under prepayment charges its first lesson now and the rest charge
   themselves.** The first checkout saves the card (`setup_future_usage`, with
   Stripe's own consent wording on the form); the whole run is held until that
