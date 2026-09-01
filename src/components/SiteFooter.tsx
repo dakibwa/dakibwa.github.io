@@ -8,14 +8,16 @@ export function SiteFooter() {
       <div className="site-footer__brand">
         <BrandWordmark tone="cream" className="footer-wordmark" />
       </div>
-      <nav className="site-footer__nav" aria-label="Footer navigation">
-        <Link href="/approach">Approach</Link>
-        <Link href="/lessons">Lessons</Link>
-        <Link href="/faq">FAQ</Link>
-        <Link href="/book">Booking</Link>
-      </nav>
-      <div className="site-footer__contact">
-        <BackToTop />
+      <div className="site-footer__actions">
+        <nav className="site-footer__nav" aria-label="Footer navigation">
+          <Link href="/approach">Approach</Link>
+          <Link href="/lessons">Lessons</Link>
+          <Link href="/faq">FAQ</Link>
+          <Link href="/book">Booking</Link>
+        </nav>
+        <div className="site-footer__contact">
+          <BackToTop />
+        </div>
       </div>
     </footer>
   );

@@ -115,8 +115,10 @@ depending on them having kept the right confirmation email.
   lesson first. Both ordinary routes then keep Online/In Porto and the 60/90-minute
   choices together as compact sliding selectors on one setup screen; recurring
   adds 4, 6, 8 weeks, or `Ongoing` on that same screen. After the starting time
-  is chosen, a fully available repeat stays quiet; that screen reports only the
-  weeks that clash or a failed availability check before confirmation. The first-time
+  is chosen, the journey goes straight to confirmation while later weeks are
+  checked. A fully available repeat stays quiet; only clashing weeks or a failed
+  availability check take space before booking. Duration remains ahead of the
+  calendar because 60- and 90-minute lessons do not share every valid start. The first-time
   trial remains a separate fixed-length route with its own location choice.
   Viewing lessons leads with the upcoming-lesson list and keeps the calendar as
   a four-week visual without free-time choices. On a wide desktop, the compact

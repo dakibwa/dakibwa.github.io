@@ -174,8 +174,10 @@ Preserve these desktop and mobile states:
   as compact sliding selectors on one setup screen; a recurring booking adds 4,
   6, 8 weeks, or `Ongoing` there as a third selector. The recurring route name
   is not repeated above `Choose your lesson`. Once a starting time is chosen,
-  the expected all-clear stays silent; the same setup surface appears only when
-  it needs to list clashing weeks before confirmation. An eligible
+  the journey goes straight to confirmation while later weeks are checked. The
+  expected all-clear stays silent; only clashing weeks appear before the student
+  can book. Availability is never offered before lesson length because a
+  90-minute lesson has fewer valid start times than a 60-minute one. An eligible
   first-time student also sees the separate fixed-length trial route, followed
   by its Online/In Porto choice;
   a returning signed-in student opens directly on the upcoming-lesson list

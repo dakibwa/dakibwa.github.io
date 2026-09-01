@@ -100,6 +100,27 @@ for (const route of routes) {
       throw new Error(`${route.id} should retain the cream-on-blue footer wordmark once.`);
     }
 
+    if (viewport.id === "desktop") {
+      const footerNavigation = await page.evaluate(() => {
+        const footer = document.querySelector(".site-footer")?.getBoundingClientRect();
+        const navigation = document.querySelector(".site-footer__nav")?.getBoundingClientRect();
+        const style = document.querySelector(".site-footer__nav")
+          ? getComputedStyle(document.querySelector(".site-footer__nav"))
+          : null;
+        return {
+          footerRight: footer?.right ?? 0,
+          justifyContent: style?.justifyContent ?? "",
+          navigationRight: navigation?.right ?? 0
+        };
+      });
+      if (
+        footerNavigation.justifyContent !== "flex-end" ||
+        footerNavigation.footerRight - footerNavigation.navigationRight > 80
+      ) {
+        throw new Error(`The desktop footer navigation should sit on the right: ${JSON.stringify(footerNavigation)}.`);
+      }
+    }
+
     if (route.id === "home") {
       const homeBookingActions = await page.locator("main").getByRole("link", { name: "Book a lesson", exact: true }).count();
       if (homeBookingActions !== 1) {
@@ -827,16 +848,17 @@ async function bookQaLessonAndReturnToUpcoming({ recurring }) {
   await accountPage.locator("#lesson-calendar .unified-calendar__availability .slot-grid button").first().click();
 
   if (recurring) {
-    await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
+    await accountPage.getByRole("heading", { name: "Confirm your recurring lessons", exact: true }).waitFor();
     await recurrencePreview;
     await accountPage.locator(".booking-repeat-choice").waitFor({ state: "detached" });
     if (await accountPage.getByText(/week clashes/i).count()) {
       throw new Error("The no-clash recurring fixture unexpectedly reported a clash.");
     }
-    await accountPage.getByRole("button", { name: "Continue", exact: true }).click();
   }
 
-  await accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true }).waitFor();
+  await accountPage
+    .getByRole("heading", { name: recurring ? "Confirm your recurring lessons" : "Confirm your lesson", exact: true })
+    .waitFor();
 
   if (recurring && (await accountPage.locator(".booking-repeat-choice").count())) {
     throw new Error("A fully available recurrence should not spend confirmation space repeating an all-clear.");
@@ -1857,6 +1879,9 @@ await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true
 if ((await accountPage.locator(".booking-setup .segmented").count()) !== 3) {
   throw new Error("Initial recurring choices should use the same compact sliders as lesson management.");
 }
+if (await accountPage.getByText("Choose a time and we'll check every week before you book.", { exact: true }).count()) {
+  throw new Error("Recurring setup should not explain a later availability check before a first date exists.");
+}
 if (await accountPage.getByText("Recurring lessons", { exact: true }).count()) {
   throw new Error("The setup should not repeat the recurring-lessons label above Choose your lesson.");
 }
@@ -1871,13 +1896,15 @@ previewHasClash = true;
 await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
 await accountPage.getByRole("button", { name: /times free/ }).first().click();
 await accountPage.locator("#lesson-calendar .unified-calendar__availability .slot-grid button").first().click();
-await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
+await accountPage.getByRole("heading", { name: "Confirm your recurring lessons", exact: true }).waitFor();
 await accountPage.getByText("One week clashes", { exact: false }).waitFor();
-if ((await accountPage.locator(".booking-repeat-choice--setup .booking-skipped li").count()) !== 1) {
-  throw new Error("The recurring setup should list the exact clashing week before confirmation.");
+if ((await accountPage.locator(".booking-confirmation-stage .booking-skipped li").count()) !== 1) {
+  throw new Error("Recurring confirmation should list the exact clashing week before booking.");
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-recurring-clash-mobile.png"), fullPage: true });
 previewHasClash = false;
+await accountPage.getByRole("button", { name: "Change details", exact: true }).click();
+await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Back", exact: true }).click();
 await accountPage.getByRole("heading", { name: "How would you like to book?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
