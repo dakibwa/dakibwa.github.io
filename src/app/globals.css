@@ -2865,6 +2865,48 @@ html.booking-transitioning .booking-confirmation-stage {
   overflow-wrap: anywhere;
 }
 
+.my-lessons__history-bookings {
+  display: grid;
+  gap: 0.55rem;
+}
+
+/* Lesson history keeps the useful anatomy of Upcoming lessons without making
+   an old or cancelled booking look interactive. The status changes; the mark,
+   date, duration and location stay in the same places. */
+.history-lesson-card {
+  border-color: rgba(82, 74, 150, 0.28);
+  background:
+    linear-gradient(115deg, rgba(170, 164, 230, 0.15), rgba(255, 255, 255, 0.1)),
+    var(--paper-light);
+  box-shadow: inset 4px 0 0 rgba(82, 74, 150, 0.48);
+}
+
+.history-lesson-card--cancelled {
+  border-color: rgba(194, 58, 39, 0.24);
+  background: rgba(194, 58, 39, 0.055);
+  box-shadow: inset 4px 0 0 rgba(194, 58, 39, 0.46);
+}
+
+.history-lesson-card__summary {
+  grid-template-columns: 42px minmax(0, 1fr);
+}
+
+.history-lesson-card__status--completed {
+  background: var(--lavender-ink);
+}
+
+.history-lesson-card__status--cancelled {
+  background: var(--coral-action);
+}
+
+.lesson-calendar__lesson-copy > .history-lesson-card__reference {
+  margin-top: 0.1rem;
+  font-family: var(--ui);
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  opacity: 0.56;
+}
+
 .upcoming-lesson-group__summary {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) auto;
@@ -3062,6 +3104,11 @@ html.booking-transitioning .booking-confirmation-stage {
     min-height: 42px;
     justify-content: flex-end;
     padding-inline: 0.2rem;
+  }
+
+  .history-lesson-card__summary {
+    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-areas: "mark copy";
   }
 }
 

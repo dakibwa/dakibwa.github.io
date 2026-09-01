@@ -209,9 +209,9 @@ Preserve these desktop and mobile states:
   lilac recurring treatment and a subtle lilac hover/focus wash.
   `Manage recurrence` opens the schedule-level choices directly, including
   moving every upcoming occurrence to a new weekly slot;
-  `View next 4 lessons` reveals no more than four separate occurrence cards,
+  `View next 6 lessons` reveals no more than six separate occurrence cards,
   each with its own `Manage` action. A small accessible
-  tooltip explains that individual lessons can be modified up to four weeks in
+  tooltip explains that individual lessons can be modified up to six weeks in
   advance; it opens over the lesson list on a dark blue floating surface, so it
   never moves the cards beneath it. Stopping a repeat immediately returns every retained date to the
   ordinary individual lesson cards; only an active repeat is grouped. In these
@@ -225,6 +225,10 @@ Preserve these desktop and mobile states:
   row. Booked marks vary by 60/90 minutes and Online/In Porto; a repeating
   schedule has its own fifth mark. Do not reuse the stacked-wave emblem in
   booked lesson cards.
+  Past and cancelled lessons reuse this same card anatomy: organic lesson mark,
+  clear status pill, date, compact duration and location, then a quiet booking
+  reference. They have no hover lift or management affordance because they are
+  records rather than actions.
   There is no second `My lessons` navigation destination.
   The account bar, workflow choices, and calendar share the same left and right
   edges. Profile fields open directly inside the account
