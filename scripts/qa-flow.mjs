@@ -5,7 +5,7 @@ import path from "node:path";
 const outDir = path.join(process.cwd(), "tmp/qa");
 const base = (process.env.QA_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 const routes = [
-  { id: "home", path: "/", heading: "Português" },
+  { id: "home", path: "/", heading: "European Portuguese lessons." },
   { id: "approach", path: "/approach", heading: "No class." },
   { id: "lessons", path: "/lessons", heading: "Lessons, and" },
   { id: "faq", path: "/faq", heading: "Questions" },
@@ -87,6 +87,25 @@ for (const route of routes) {
     const headingCount = await page.locator("h1").count();
     if (headingCount !== 1) {
       throw new Error(`${route.id} should have exactly one h1; found ${headingCount}.`);
+    }
+
+    const wordmarkCount = await page.locator(".brand-wordmark").count();
+    if (wordmarkCount !== 1) {
+      throw new Error(`${route.id} should use the shared wordmark once; found ${wordmarkCount}.`);
+    }
+
+    if (await page.locator(".site-footer .brand-wordmark").count()) {
+      throw new Error(`${route.id} should keep the footer as a utility instead of repeating the wordmark.`);
+    }
+
+    if (route.id === "home") {
+      const homeBookingActions = await page.locator("main").getByRole("link", { name: "Book a lesson", exact: true }).count();
+      if (homeBookingActions !== 1) {
+        throw new Error(`Home should present one booking action; found ${homeBookingActions}.`);
+      }
+      if ((await page.locator(".home-hero__links a").count()) !== 2 || (await page.locator(".home-closing").count())) {
+        throw new Error("Home should keep its two supporting routes inside the introduction with no closing strip.");
+      }
     }
 
     const overflow = await page.evaluate(() => ({
