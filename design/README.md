@@ -264,12 +264,14 @@ Preserve these desktop and mobile states:
   The booking overview says `Next 8
   weeks`
   explicitly and contains no more than eight Monday-to-Sunday rows; the
-  calendar key and range label share one visual centre. The final booking recap
-  uses the selected date and time as its display heading instead of repeating
-  `Single lesson`. It does not repeat the Online/In Porto control beneath the
-  recap; one `Change details` action returns to the setup choices with the
-  current location and length retained. The optional notes textarea uses one
-  clear blue focus boundary rather than stacking coral and blue rings. The inclusive 56-day API boundary must
+  calendar key and range label share one visual centre. Completed booking
+  decisions are the review: lesson kind, location, length, repeat when relevant,
+  date, and time each keep the same compact selected-row anatomy with their own
+  precise change action. Editing one decision opens only that choice; changing
+  length returns to time because 60- and 90-minute availability differs. The
+  notes and final confirmation action follow this unified stack, with no second
+  recap page or combined `Change details` route. The optional notes textarea
+  uses one clear blue focus boundary rather than stacking coral and blue rings. The inclusive 56-day API boundary must
   not create a ninth visible row;
 - days with two bookings show both booked times on separate lines. Do not use a
   small `2x` count badge beside the date;
