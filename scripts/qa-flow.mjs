@@ -265,9 +265,13 @@ if (bookingCalendar) {
 // the real UI without using a student's session or changing a real repeating series.
 let repeatStopped = false;
 let stopRepeatCalls = 0;
+let qaManagedStart;
+let qaManagedLessonType = { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 };
+const qaReschedulePayloads = [];
 const accountRequestMethods = [];
 const qaStart = new Date(Date.now() + 7 * 86_400_000);
 qaStart.setUTCHours(17, 0, 0, 0);
+qaManagedStart = qaStart;
 const qaEnd = new Date(qaStart.getTime() + 60 * 60_000);
 const qaSecondStart = new Date(qaStart.getTime() + 2 * 60 * 60_000);
 const qaSecondEnd = new Date(qaSecondStart.getTime() + 60 * 60_000);
@@ -562,6 +566,7 @@ await accountPage.route("**/me", async (route) => {
   });
 });
 await accountPage.route("**/bookings/manage-qa", async (route) => {
+  const managedEnd = new Date(qaManagedStart.getTime() + qaManagedLessonType.durationMinutes * 60_000);
   await route.fulfill({
     contentType: "application/json",
     headers: { "Access-Control-Allow-Origin": "*" },
@@ -569,8 +574,8 @@ await accountPage.route("**/bookings/manage-qa", async (route) => {
       booking: {
         reference: "INES-QA01",
         status: "confirmed",
-        startAt: qaStart.toISOString(),
-        endAt: qaEnd.toISOString(),
+        startAt: qaManagedStart.toISOString(),
+        endAt: managedEnd.toISOString(),
         location: "online",
         studentName: "Ana Martins",
         studentEmail: "student@example.com",
@@ -580,12 +585,56 @@ await accountPage.route("**/bookings/manage-qa", async (route) => {
         sameDayFeeCents: 500,
         paymentStatus: "not_required",
         amountCents: null,
-        lessonType: { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 }
+        lessonType: qaManagedLessonType
       },
       isPast: false,
       sameDayFeeApplies: false,
       changeLocked: false,
       refundOnCancel: false
+    })
+  });
+});
+await accountPage.route("**/bookings/manage-qa/reschedule", async (route) => {
+  if (route.request().method() === "OPTIONS") {
+    await route.fulfill({
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, content-type",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+      }
+    });
+    return;
+  }
+
+  const payload = route.request().postDataJSON();
+  qaReschedulePayloads.push(payload);
+  qaManagedStart = new Date(payload.startAt);
+  qaManagedLessonType = payload.lessonType === "longer-90"
+    ? { id: "longer-90", name: "Longer lesson", durationMinutes: 90, priceCents: 3500 }
+    : { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 };
+  const managedEnd = new Date(qaManagedStart.getTime() + qaManagedLessonType.durationMinutes * 60_000);
+  await route.fulfill({
+    contentType: "application/json",
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({
+      booking: {
+        reference: "INES-QA01",
+        status: "confirmed",
+        startAt: qaManagedStart.toISOString(),
+        endAt: managedEnd.toISOString(),
+        location: "online",
+        studentName: "Ana Martins",
+        studentEmail: "student@example.com",
+        studentTimezone: "Europe/Lisbon",
+        notes: "",
+        rescheduleCount: 1,
+        sameDayFeeCents: 500,
+        paymentStatus: "not_required",
+        amountCents: null,
+        lessonType: qaManagedLessonType
+      },
+      sameDayFeeApplied: false
     })
   });
 });
@@ -1013,7 +1062,7 @@ await upcomingManageDialog.waitFor({ state: "visible" });
 await upcomingManageDialog.getByRole("button", { name: "Change", exact: true }).click();
 await upcomingManageDialog.waitFor({ state: "detached" });
 const upcomingManagePanel = accountPage.locator("#lesson-calendar .unified-calendar__panel");
-await upcomingManagePanel.getByRole("heading", { name: "Choose a new time", exact: true }).waitFor();
+await upcomingManagePanel.getByRole("heading", { name: "Choose a new date and time", exact: true }).waitFor();
 if (!(await accountPanel.locator("#account-upcoming-lessons").isVisible())) {
   throw new Error("Changing a lesson should use the existing calendar without dismissing Upcoming lessons.");
 }
@@ -1167,7 +1216,10 @@ if (
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-manage-desktop.png"), fullPage: true });
 await desktopManageDialog.getByRole("button", { name: "Change", exact: true }).click();
-await desktopManagePanel.getByRole("heading", { name: "Choose a new time", exact: true }).waitFor();
+await desktopManagePanel.getByRole("heading", { name: "Choose a new date and time", exact: true }).waitFor();
+await desktopManagePanel.getByRole("button", { name: "60 minutes", exact: true }).waitFor();
+const ninetyMinuteChoice = desktopManagePanel.getByRole("button", { name: "90 minutes", exact: true });
+await ninetyMinuteChoice.waitFor();
 const desktopChangeLayout = await accountPage.evaluate(() => {
   const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid")?.getBoundingClientRect();
   const panel = document.querySelector("#lesson-calendar .unified-calendar__panel")?.getBoundingClientRect();
@@ -1176,10 +1228,25 @@ const desktopChangeLayout = await accountPage.evaluate(() => {
 if (Math.abs(desktopChangeLayout.calendarTop - desktopChangeLayout.panelTop) > 2) {
   throw new Error(`Changing a lesson should stay inside the aligned calendar interface: ${JSON.stringify(desktopChangeLayout)}.`);
 }
-await desktopManagePanel.getByRole("button", { name: "Back", exact: true }).click();
-await desktopManageDialog.waitFor({ state: "visible" });
-await desktopManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
-await accountPage.getByRole("button", { name: "Back to 4 weeks", exact: true }).click();
+await ninetyMinuteChoice.click();
+await accountPage.locator(`#lesson-calendar [data-date-key="${qaFreeDate}"]`).click();
+await desktopManagePanel.locator(".slot-grid button").first().click();
+await waitForOrientation(accountPage);
+await accountPage.screenshot({ path: path.join(outDir, "booking-change-workflow-desktop.png"), fullPage: true });
+await desktopManagePanel.getByRole("button", { name: /^Change to / }).click();
+const changedDurationDialog = accountPage.getByRole("dialog", { name: "All sorted", exact: true });
+await changedDurationDialog.waitFor({ state: "visible" });
+await changedDurationDialog.getByText(/now 90 mins/i).waitFor();
+if (qaReschedulePayloads.at(-1)?.lessonType !== "longer-90") {
+  throw new Error(`Changing to 90 minutes sent the wrong lesson type: ${JSON.stringify(qaReschedulePayloads.at(-1))}.`);
+}
+await waitForOrientation(accountPage);
+await accountPage.screenshot({ path: path.join(outDir, "booking-change-duration-desktop.png"), fullPage: true });
+await changedDurationDialog.getByRole("button", { name: "Done", exact: true }).click();
+await changedDurationDialog.waitFor({ state: "detached" });
+qaManagedStart = qaStart;
+qaManagedLessonType = { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 };
+await accountPage.getByRole("button", { name: "Show all", exact: true }).click();
 await waitForOrientation(accountPage);
 
 await accountPage.setViewportSize({ width: 390, height: 844 });
@@ -1308,8 +1375,8 @@ const defaultCalendarWeekCount = await accountPage.locator("#lesson-calendar .un
 if (defaultCalendarWeekCount !== 4) {
   throw new Error(`The default upcoming-lessons calendar rendered ${defaultCalendarWeekCount} rows instead of four.`);
 }
-if (await accountPage.getByRole("button", { name: /Show 8 weeks|Show 4 weeks/ }).count()) {
-  throw new Error("The upcoming-lessons calendar should remain fixed at four weeks.");
+if (await accountPage.getByRole("button", { name: "Show all", exact: true }).count()) {
+  throw new Error("The upcoming-lessons calendar should show four weeks by default, without an expansion control.");
 }
 const bookingTimes = accountPage.locator("#lesson-calendar .calendar-booking-times span");
 if ((await bookingTimes.count()) !== 2) {
@@ -1317,8 +1384,11 @@ if ((await bookingTimes.count()) !== 2) {
 }
 const bookedDay = accountPage.getByRole("button", { name: /2 lessons/ }).first();
 await bookedDay.click();
-const backToFourWeeks = accountPage.getByRole("button", { name: "Back to 4 weeks", exact: true });
-await backToFourWeeks.waitFor({ state: "visible" });
+const showAllFourWeeks = accountPage.getByRole("button", { name: "Show all", exact: true });
+await showAllFourWeeks.waitFor({ state: "visible" });
+if (await accountPage.getByText("Selected week", { exact: true }).count()) {
+  throw new Error("The compact calendar should use only the self-explanatory Show all action.");
+}
 await waitForOrientation(accountPage);
 const bookedDayOrientation = await accountPage.evaluate(() => {
   const panel = document.querySelector("#booking-next-step")?.getBoundingClientRect();
@@ -1421,7 +1491,11 @@ await mobileManageDialog.getByRole("button", { name: "Cancel", exact: true }).cl
 await accountPage.getByRole("dialog", { name: "Cancel this lesson?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Keep lesson", exact: true }).click();
 await mobileManageDialog.getByRole("button", { name: "Change", exact: true }).click();
-await mobileManagePanel.getByRole("heading", { name: "Choose a new time", exact: true }).waitFor();
+await mobileManagePanel.getByRole("heading", { name: "Choose a new date and time", exact: true }).waitFor();
+await mobileManagePanel.getByRole("button", { name: "60 minutes", exact: true }).waitFor();
+await mobileManagePanel.getByRole("button", { name: "90 minutes", exact: true }).waitFor();
+await waitForOrientation(accountPage);
+await accountPage.screenshot({ path: path.join(outDir, "booking-change-workflow-mobile.png"), fullPage: true });
 await mobileManagePanel.getByRole("button", { name: "Back", exact: true }).click();
 await mobileManageDialog.waitFor({ state: "visible" });
 await mobileManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
@@ -1437,7 +1511,7 @@ if (compactCalendarLayout.detailsTop - compactCalendarLayout.gridBottom > 24) {
 }
 await waitForOrientation(accountPage);
 await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-selected-mobile.png"), fullPage: true });
-await backToFourWeeks.click();
+await showAllFourWeeks.click();
 await accountPage.waitForFunction(
   (expected) => document.querySelectorAll("#lesson-calendar .unified-calendar__grid .calendar-week").length === expected,
   defaultCalendarWeekCount
@@ -1447,7 +1521,7 @@ const restoredCalendarWeekCount = await accountPage
   .count();
 if (restoredCalendarWeekCount !== defaultCalendarWeekCount) {
   throw new Error(
-    `Back to 4 weeks restored ${restoredCalendarWeekCount} weeks instead of ${defaultCalendarWeekCount}.`
+    `Show all restored ${restoredCalendarWeekCount} weeks instead of ${defaultCalendarWeekCount}.`
   );
 }
 
@@ -1495,8 +1569,8 @@ await lessonSummary.waitFor({ state: "visible" });
 const freeDay = accountPage.getByRole("button", { name: /5 times free/ }).first();
 await freeDay.waitFor({ state: "visible" });
 await freeDay.click();
-const backToEightWeeks = accountPage.getByRole("button", { name: "Back to 8 weeks", exact: true });
-await backToEightWeeks.waitFor({ state: "visible" });
+const showAllEightWeeks = accountPage.getByRole("button", { name: "Show all", exact: true });
+await showAllEightWeeks.waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
 await accountPage.waitForFunction(
   () => {
@@ -1600,12 +1674,12 @@ await waitForOrientation(accountPage);
 await accountPage.screenshot({ path: path.join(outDir, "booking-confirm-mobile.png"), fullPage: true });
 
 await accountPage.getByRole("button", { name: "Change time", exact: true }).click();
-await backToEightWeeks.waitFor({ state: "visible" });
+await showAllEightWeeks.waitFor({ state: "visible" });
 if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count()) !== 1) {
   throw new Error("Changing the time should restore the selected week, not the full calendar.");
 }
 await lessonSummary.waitFor({ state: "visible" });
-await backToEightWeeks.click();
+await showAllEightWeeks.click();
 
 await changeLesson.click();
 await accountPage.getByRole("heading", { name: "Choose a lesson", exact: true }).waitFor();

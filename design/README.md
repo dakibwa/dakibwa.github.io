@@ -107,6 +107,8 @@ Preserve these desktop and mobile states:
   lessons`. Booking then asks for the lesson type before showing the calendar;
   viewing lessons opens the upcoming-lesson list, with the same calendar kept
   beneath it as a four-week visual overview and without displaying free times.
+  A signed-out visitor can browse lesson types, dates, and times first; sign-in
+  is requested only when they open their lessons or confirm a booking.
   Completed decisions collapse into a compact row, so account tools,
   lesson cards, the calendar, and confirmation never compete at once;
 - the signed-in identity appears once, inside a generously padded account bar.
@@ -140,8 +142,9 @@ Preserve these desktop and mobile states:
 - the calendar is the stable visual surface beneath the lesson-management
   content. Viewing lessons owns a fixed four-week overview; it never expands to
   absorb later booked dates because the complete list lives above it. Selecting
-  a day reduces it to one week, with `Back to 4
-  weeks` restoring the lesson overview. The new-booking journey still uses its
+  a day reduces it to one week, with the single `Show all` action restoring the
+  lesson overview. The compact state does not repeat `Selected week`. The
+  new-booking journey still uses its
   full eight-week availability horizon and returns there from a selected week,
   with the time or lesson detail beside it on desktop and immediately below it
   on mobile. A free day shows the available times without redundant “no lesson
@@ -152,7 +155,9 @@ Preserve these desktop and mobile states:
   those future lessons remain in the list instead of stretching the calendar. Opening any
   lesson keeps the list and calendar in place and adds a compact overlay asking
   whether to change or cancel it. `Change` returns to the same calendar and its
-  time picker; cancellation stays inside the overlay until explicitly confirmed.
+  time picker. Eligible ordinary lessons can switch between the same compact
+  `60 mins` and `90 mins` choices there; a paid lesson is never silently
+  repriced. Cancellation stays inside the overlay until explicitly confirmed.
   The booking overview says `Next 8
   weeks`
   explicitly and contains no more than eight Monday-to-Sunday rows; the

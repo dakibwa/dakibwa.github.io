@@ -323,6 +323,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [hasPriorBooking, setHasPriorBooking] = useState(false);
   const [managedToken, setManagedToken] = useState("");
   const [managedSeriesId, setManagedSeriesId] = useState<string | null>(null);
+  const [managedLessonTypeId, setManagedLessonTypeId] = useState("");
   const [managed, setManaged] = useState<ManagedBooking | null>(null);
   const [manageMode, setManageMode] = useState<"view" | "reschedule" | "confirm-cancel" | "sequence" | "confirm-stop-sequence">("view");
   const [manageLoading, setManageLoading] = useState(false);
@@ -334,6 +335,17 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const manageDialogRef = useRef<HTMLDivElement>(null);
 
   const lessonType = lessonTypes.find((type) => type.id === lessonTypeId) ?? null;
+  const managedDurationChoices = managed?.booking.lessonType.id === "trial"
+    ? []
+    : lessonTypes
+        .filter((type) => type.id !== "trial" && [60, 90].includes(type.duration_minutes))
+        .filter(
+          (type, index, choices) =>
+            choices.findIndex((choice) => choice.duration_minutes === type.duration_minutes) === index
+        );
+  const managedPaymentStatus = managed?.booking.paymentStatus ?? "not_required";
+  const canChangeManagedDuration =
+    managedDurationChoices.length > 1 && ["not_required", "scheduled"].includes(managedPaymentStatus);
 
   const refreshStudent = useCallback(async () => {
     const session = readSession();
@@ -396,6 +408,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setIntent("lessons");
     setManagedToken(token);
     setManagedSeriesId(seriesId);
+    setManagedLessonTypeId("");
     setManageLoading(true);
     setManageError("");
     setManageOutcome("");
@@ -405,12 +418,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       const result = await fetchBooking(token);
       transitionBooking(() => {
         setManaged(result);
+        setManagedLessonTypeId(result.booking.lessonType.id);
         setSelectedDate(portoDateKey(new Date(result.booking.startAt)));
         setManageLoading(false);
       });
     } catch (caught) {
       transitionBooking(() => {
         setManaged(null);
+        setManagedLessonTypeId("");
         setManageError(caught instanceof Error ? caught.message : "That lesson could not be opened.");
         setManageLoading(false);
       });
@@ -422,7 +437,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   }, [initialManageToken, openManaged]);
 
   const availabilityLessonTypeId =
-    manageMode === "reschedule" && managed ? managed.booking.lessonType.id : lessonTypeId;
+    manageMode === "reschedule" && managed
+      ? managedLessonTypeId || managed.booking.lessonType.id
+      : lessonTypeId;
 
   const loadAvailability = useCallback(
     (signal?: AbortSignal) => {
@@ -652,6 +669,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setShowAccountSignIn(false);
       setManaged(null);
       setManagedToken("");
+      setManagedLessonTypeId("");
       setManageMode("view");
       setLessonTypeId("");
       setSelectedDate("");
@@ -770,18 +788,24 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   }
 
   async function moveManagedLesson() {
-    if (!managedToken || !selectedSlot) return;
+    if (!managedToken || !selectedSlot || !managed) return;
     setManageWorking(true);
     setManageError("");
     try {
-      await rescheduleBooking(managedToken, selectedSlot);
+      const previousLessonTypeId = managed.booking.lessonType.id;
+      await rescheduleBooking(managedToken, selectedSlot, managedLessonTypeId || previousLessonTypeId);
       const refreshed = await fetchBooking(managedToken);
       transitionBooking(() => {
         setManaged(refreshed);
+        setManagedLessonTypeId(refreshed.booking.lessonType.id);
         setSelectedDate(portoDateKey(new Date(refreshed.booking.startAt)));
         setSelectedSlot("");
         setManageMode("view");
-        setManageOutcome("Your lesson has been moved. We’ve emailed you and updated your calendar.");
+        setManageOutcome(
+          refreshed.booking.lessonType.id === previousLessonTypeId
+            ? "Your lesson has been moved. We’ve emailed you and updated your calendar."
+            : `Your lesson is now ${formatBookedLessonLabel(refreshed.booking.lessonType)}. We’ve emailed you and updated your calendar.`
+        );
       });
       await refreshStudent();
     } catch (caught) {
@@ -837,6 +861,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setManaged(null);
     setManagedToken("");
     setManagedSeriesId(null);
+    setManagedLessonTypeId("");
     setManageMode("view");
     setManageError("");
     setManageOutcome("");
@@ -887,6 +912,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     const isInCalendar = overviewCalendarWeeks.some((week) => week.cells.some((cell) => cell.key === managedDate));
     transitionBooking(() => {
       setManageMode("reschedule");
+      setManagedLessonTypeId(managed.booking.lessonType.id);
       setSelectedDate(isInCalendar ? managedDate : "");
       setSelectedSlot("");
       setCalendarWeekCount(isInCalendar ? 1 : 4);
@@ -1055,6 +1081,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 setManaged(null);
                 setManagedToken("");
                 setManagedSeriesId(null);
+                setManagedLessonTypeId("");
                 setManageMode("view");
                 setHasPriorBooking(false);
                 setIntent("choose");
@@ -1426,9 +1453,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 ) : null}
               </div>
               <div className="unified-calendar__range-actions">
-                <span className="unified-calendar__range">
-                  {visibleCalendarWeekCount === 1 ? "Selected week" : `Next ${visibleCalendarWeekCount} weeks`}
-                </span>
+                {visibleCalendarWeekCount !== 1 ? (
+                  <span className="unified-calendar__range">Next {visibleCalendarWeekCount} weeks</span>
+                ) : null}
                 {returnCalendarWeekCount ? (
                   <button
                     aria-controls="booking-calendar-weeks"
@@ -1436,7 +1463,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     onClick={() => transitionBooking(() => setCalendarWeekCount(returnCalendarWeekCount))}
                     type="button"
                   >
-                    Back to {returnCalendarWeekCount} weeks
+                    Show all
                   </button>
                 ) : null}
               </div>
@@ -1538,7 +1565,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 <div className="managed-lesson__header">
                   <div>
                     <p className="eyebrow">Change this lesson</p>
-                    <h3>Choose a new time</h3>
+                    <h3>Choose a new date and time</h3>
                   </div>
                   <button
                     className="booking-back booking-back--tertiary"
@@ -1549,8 +1576,39 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   </button>
                 </div>
                 <p className="booking-state-note managed-lesson__current-time">
-                  Currently {formatLongDate(managed.booking.startAt)}, {formatSlotTime(managed.booking.startAt)}
+                  Currently {formatBookedLessonLabel(managed.booking.lessonType)} on{" "}
+                  {formatLongDate(managed.booking.startAt)}, {formatSlotTime(managed.booking.startAt)}
                 </p>
+                {canChangeManagedDuration ? (
+                  <fieldset className="managed-lesson__duration">
+                    <legend>Lesson length</legend>
+                    <div className="managed-lesson__duration-options">
+                      {managedDurationChoices.map((type) => (
+                        <button
+                          aria-label={`${type.duration_minutes} minutes`}
+                          aria-pressed={managedLessonTypeId === type.id}
+                          className={managedLessonTypeId === type.id ? "is-selected" : ""}
+                          key={type.id}
+                          onClick={() => {
+                            if (type.id === managedLessonTypeId) return;
+                            setLoadingSlots(true);
+                            setSlotsByDate({});
+                            setManagedLessonTypeId(type.id);
+                            setSelectedSlot("");
+                          }}
+                          type="button"
+                        >
+                          {type.duration_minutes} mins
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                ) : managed.booking.lessonType.id !== "trial" && managedPaymentStatus === "paid" ? (
+                  <p className="booking-state-note managed-lesson__duration-note">
+                    Lesson length: {formatBookedLessonLabel(managed.booking.lessonType)}. As this lesson is already paid,
+                    cancel and rebook to change its length.
+                  </p>
+                ) : null}
                 {manageError ? (
                   <div className="booking-alert" role="alert">
                     <AlertCircle size={18} aria-hidden="true" />

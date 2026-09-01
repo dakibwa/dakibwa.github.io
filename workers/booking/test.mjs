@@ -14,7 +14,12 @@ import { hashPassword, verifyPassword, passwordProblem } from "./auth.mjs";
 import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./ics.mjs";
 import { normaliseWeeks, occurrenceInstants, outstandingFor, slotOf, SERIES_LENGTHS } from "./series.mjs";
 import { createManageToken, readManageToken, safeEqual, bookingReference } from "./tokens.mjs";
-import { changePolicy, seriesTotalCents } from "./policy.mjs";
+import {
+  amountAfterLessonTypeChange,
+  changePolicy,
+  lessonTypeChangeProblem,
+  seriesTotalCents
+} from "./policy.mjs";
 import { notifySeries } from "./index.mjs";
 import {
   addDaysToKey,
@@ -907,6 +912,45 @@ await test("a scheduled lesson locks on its day but refunds nothing when cancell
 await test("a lesson with payment due behaves like a scheduled one", () => {
   const row = { payment_status: "payment_due", starts_at: "2026-09-09T16:30:00.000Z" };
   assert.equal(changePolicy(row, new Date("2026-09-09T08:00:00.000Z")).locked, true);
+});
+
+await test("an unpaid lesson can change between ordinary lesson lengths", () => {
+  const row = { payment_status: "not_required", amount_cents: null };
+  const single = { id: "single", price_cents: 2500 };
+  const long = { id: "long", price_cents: 3500 };
+  assert.equal(lessonTypeChangeProblem(row, single, long), "");
+  assert.equal(amountAfterLessonTypeChange(row, long), null);
+});
+
+await test("a future saved-card lesson changes to the new lesson price", () => {
+  const row = { payment_status: "scheduled", amount_cents: 2500 };
+  const single = { id: "single", price_cents: 2500 };
+  const long = { id: "long", price_cents: 3500 };
+  assert.equal(lessonTypeChangeProblem(row, single, long), "");
+  assert.equal(amountAfterLessonTypeChange(row, long), 3500);
+});
+
+await test("a paid lesson cannot silently change price", () => {
+  const row = { payment_status: "paid", amount_cents: 2500 };
+  const single = { id: "single", price_cents: 2500 };
+  const long = { id: "long", price_cents: 3500 };
+  assert.match(lessonTypeChangeProblem(row, single, long), /already paid/i);
+  // Moving the same lesson type remains valid.
+  assert.equal(lessonTypeChangeProblem(row, single, single), "");
+});
+
+await test("a lesson with payment due keeps the length used by its checkout", () => {
+  const row = { payment_status: "payment_due", amount_cents: 2500 };
+  const single = { id: "single", price_cents: 2500 };
+  const long = { id: "long", price_cents: 3500 };
+  assert.match(lessonTypeChangeProblem(row, single, long), /payment due/i);
+});
+
+await test("a trial cannot be converted into a standard lesson", () => {
+  const row = { payment_status: "not_required", amount_cents: null };
+  const trial = { id: "trial", price_cents: 2000 };
+  const single = { id: "single", price_cents: 2500 };
+  assert.match(lessonTypeChangeProblem(row, trial, single), /trial lesson/i);
 });
 
 await test("a run's checkout total is count times the lesson price", () => {
