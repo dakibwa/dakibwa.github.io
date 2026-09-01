@@ -111,9 +111,9 @@ depending on them having kept the right confirmation email.
   The first screen at `/book` asks only whether the student wants to book a new
   lesson or view existing lessons. Booking asks for one lesson or a recurring
   lesson first. Both ordinary routes then keep Online/In Porto and the 60/90-minute
-  choices together as visible cards on one setup screen; recurring adds 4, 6,
-  or 8 weeks on that same screen. Compact sliding selectors are used only while
-  changing an existing booking. The first-time
+  choices together as compact sliding selectors on one setup screen; recurring
+  adds 4, 6, 8 weeks, or `Ongoing` on that same screen. After the starting time
+  is chosen, that screen shows every clashing week before confirmation. The first-time
   trial remains a separate fixed-length route with its own location choice.
   Viewing lessons leads with the upcoming-lesson list and
   keeps the calendar beneath it as a four-week visual without free-time choices.
@@ -180,9 +180,10 @@ depending on them having kept the right confirmation email.
 
 ### Repeating bookings
 
-A student can hold the same slot every week for 4, 6, or 8 weeks. Existing
-open-ended schedules continue to work and top up, but the public flow no longer
-creates new ones.
+A student can hold the same slot every week for 4, 6, or 8 weeks, or choose
+`Ongoing` so it continues until they stop it. An open-ended schedule is kept
+twelve weeks ahead by the nightly top-up rather than creating an unlimited
+number of booking rows at once.
 
 - **The occurrences are ordinary rows in `bookings`.** A series is only the
   recipe that made them. That is what puts the time in Ines's calendar for real,
@@ -231,7 +232,8 @@ creates new ones.
   Stripe's own consent wording on the form); the whole run is held until that
   payment lands, then the webhook confirms it — first lesson `paid`, the rest
   `scheduled`. Each scheduled lesson is charged to the saved card by the cron
-  on the morning of its own day. Open-ended runs work the same way: every
+  at the 03:10 UTC morning run on its own day (03:10 Porto in winter, 04:10 in
+  summer). Open-ended runs work the same way: every
   topped-up occurrence of a `prepaid` series is born `scheduled`. A declined
   charge marks the row `payment_due`, emails the student a hosted pay-now
   link, and tells Inês — the lesson stands either way.
@@ -341,13 +343,11 @@ the one fee that exists, stated wherever changes are offered.
   made on the day, in person with Inês, so this is stated policy she applies or
   waives — not something the site collects. There is no no-show flag on a
   booking and no handler that sets one.
-- **It is a flat €10.** It was "half the lesson" until 27 August 2026 — a share,
-  because the three lessons are €20, €25 and €35 and one figure would have been
-  wrong for two of them — but Dan set it to a flat €10, which is simpler to say
-  and simpler to apply. The copy states the euro number everywhere; if the
-  policy changes again, the places to update are the booking page's policy band,
-  the confirm-form note, the confirmation screen, the two Worker email footers,
-  and the FAQ.
+- **The legacy same-day fee is €5.** It remains only while production is in
+  pay-in-person mode and for bookings made under those terms. When prepayment is
+  enabled, the simpler rule replaces it: no changes or cancellation on the
+  lesson day, and a missed lesson remains charged. The booking page reads the
+  live payment mode before choosing which version to show.
 - **It is said before booking, not only after.** A charge someone first learns
   about by being charged is the kind that costs a relationship. It appears on the
   booking page's policy band, directly above the confirm button, on the

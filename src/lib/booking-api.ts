@@ -116,8 +116,8 @@ export function fetchAvailability(lessonType: string, from: string, to: string, 
   );
 }
 
-/** A bounded weekly run. Omitting `repeat` books one lesson. */
-export type RepeatChoice = 4 | 6 | 8;
+/** A weekly run. `null` means it keeps going until the student stops it. */
+export type RepeatChoice = 4 | 6 | 8 | null;
 
 export type SeriesOutcome = {
   id: string;
@@ -144,7 +144,7 @@ export function previewSeries(
     skipped: string[];
   }>("/bookings/series/preview", {
     method: "POST",
-    headers: { Authorization: `Bearer ${session}` },
+    ...(session ? { headers: { Authorization: `Bearer ${session}` } } : {}),
     body: JSON.stringify(payload)
   });
 }

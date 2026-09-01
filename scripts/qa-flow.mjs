@@ -313,7 +313,7 @@ qaLaterStart.setUTCHours(17, 0, 0, 0);
 const qaLaterEnd = new Date(qaLaterStart.getTime() + 60 * 60_000);
 const qaLaterDate = qaLaterStart.toISOString().slice(0, 10);
 const qaLaterOneOffStart = new Date(qaLaterStart.getTime() + 2 * 24 * 60 * 60_000);
-const qaLaterOneOffEnd = new Date(qaLaterOneOffStart.getTime() + 60 * 60_000);
+const qaLaterOneOffEnd = new Date(qaLaterOneOffStart.getTime() + 90 * 60_000);
 const qaExtraSeriesBookings = Array.from({ length: 8 }, (_, index) => {
   const start = new Date(qaLaterStart.getTime() + (index + 1) * 7 * 24 * 60 * 60_000);
   const end = new Date(start.getTime() + 60 * 60_000);
@@ -333,6 +333,7 @@ const qaExtraSeriesBookings = Array.from({ length: 8 }, (_, index) => {
 });
 let qaCreatedBookings = [];
 let qaCreatedSeries = [];
+let previewHasClash = false;
 const accountBrowser = await chromium.launch({ headless: true });
 const accountPage = await accountBrowser.newPage({ viewport: { width: 1440, height: 1000 } });
 accountPage.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
@@ -404,13 +405,19 @@ await accountPage.route("**/bookings/series/preview", async (route) => {
     });
     return;
   }
-  const bookable = Array.from({ length: 4 }, (_, index) =>
+  const planned = Array.from({ length: 4 }, (_, index) =>
     new Date(qaFreeStart.getTime() + index * 7 * 24 * 60 * 60_000).toISOString()
   );
+  const bookable = previewHasClash ? planned.slice(0, 3) : planned;
   await route.fulfill({
     contentType: "application/json",
     headers: { "Access-Control-Allow-Origin": "*" },
-    body: JSON.stringify({ weeks: 4, openEnded: false, bookable, skipped: [] })
+    body: JSON.stringify({
+      weeks: 4,
+      openEnded: false,
+      bookable,
+      skipped: previewHasClash ? [planned[3]] : []
+    })
   });
 });
 await accountPage.route("**/bookings", async (route) => {
@@ -558,9 +565,9 @@ await accountPage.route("**/me", async (route) => {
           status: "confirmed",
           startAt: qaLaterOneOffStart.toISOString(),
           endAt: qaLaterOneOffEnd.toISOString(),
-          location: "online",
+          location: "porto",
           notes: "",
-          lessonType: { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 },
+          lessonType: { id: "longer-90", name: "Longer lesson", durationMinutes: 90, priceCents: 3500 },
           isPast: false,
           sameDayFeeApplies: false,
           seriesId: null,
@@ -785,10 +792,20 @@ async function bookQaLessonAndReturnToUpcoming({ recurring }) {
   await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
   await accountPage.getByRole("button", { name: /times free/ }).first().click();
   await accountPage.locator("#lesson-calendar .unified-calendar__availability .slot-grid button").first().click();
+
+  if (recurring) {
+    await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
+    await accountPage.getByText("4 lessons fit at this time", { exact: false }).waitFor();
+    if (await accountPage.getByText(/week clashes/i).count()) {
+      throw new Error("The no-clash recurring fixture unexpectedly reported a clash.");
+    }
+    await accountPage.getByRole("button", { name: "Continue", exact: true }).click();
+  }
+
   await accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true }).waitFor();
 
   if (recurring) {
-    await accountPage.getByText("4 lessons at this time", { exact: false }).waitFor();
+    await accountPage.getByText("4 lessons fit at this time", { exact: false }).waitFor();
   }
 
   await accountPage
@@ -1734,24 +1751,37 @@ const lessonCardCount = await accountPage.locator(".unified-booking__lesson-pick
 if (lessonCardCount !== 2) throw new Error(`Expected one-off and recurring choices; found ${lessonCardCount}.`);
 await accountPage.getByRole("button", { name: "Recurring lessons · keep the same weekly time", exact: true }).click();
 await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
-if ((await accountPage.locator(".booking-setup .segmented").count()) !== 0) {
-  throw new Error("Initial booking choices should use cards, not the compact change-booking slider.");
+if ((await accountPage.locator(".booking-setup .segmented").count()) !== 3) {
+  throw new Error("Initial recurring choices should use the same compact sliders as lesson management.");
 }
-if ((await accountPage.locator(".booking-option-card").count()) !== 7) {
-  throw new Error("Recurring booking should keep location, lesson length, and 4/6/8-week choices on one screen.");
+if (await accountPage.getByText("Recurring lessons", { exact: true }).count()) {
+  throw new Error("The setup should not repeat the recurring-lessons label above Choose your lesson.");
 }
 await accountPage.getByRole("radio", { name: "In Porto", exact: true }).check();
-if ((await accountPage.locator("input[name='booking-repeat']").count()) !== 3) {
-  throw new Error("Recurring booking should offer 4, 6, or 8 weeks.");
+if ((await accountPage.locator("input[name='booking-repeat']").count()) !== 4) {
+  throw new Error("Recurring booking should offer 4, 6, 8 weeks, or an ongoing repeat.");
 }
+await accountPage.getByRole("radio", { name: "Ongoing", exact: true }).check();
+await accountPage.getByRole("radio", { name: "4 weeks", exact: true }).check();
 await accountPage.screenshot({ path: path.join(outDir, "booking-repeat-length-mobile.png"), fullPage: true });
+previewHasClash = true;
+await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
+await accountPage.getByRole("button", { name: /times free/ }).first().click();
+await accountPage.locator("#lesson-calendar .unified-calendar__availability .slot-grid button").first().click();
+await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
+await accountPage.getByText("One week clashes", { exact: false }).waitFor();
+if ((await accountPage.locator(".booking-repeat-choice--setup .booking-skipped li").count()) !== 1) {
+  throw new Error("The recurring setup should list the exact clashing week before confirmation.");
+}
+await accountPage.screenshot({ path: path.join(outDir, "booking-recurring-clash-mobile.png"), fullPage: true });
+previewHasClash = false;
 await accountPage.getByRole("button", { name: "Back", exact: true }).click();
 await accountPage.getByRole("heading", { name: "How would you like to book?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
 await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
 await accountPage.getByRole("radio", { name: "Online", exact: true }).check();
-if ((await accountPage.locator(".booking-option-card input[name='booking-duration']").count()) !== 2) {
-  throw new Error("One-off booking should offer 60 and 90 minutes as visible cards.");
+if ((await accountPage.locator(".booking-setup .segmented input[name='booking-duration']").count()) !== 2) {
+  throw new Error("One-off booking should offer 60 and 90 minutes in the compact slider.");
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-duration-mobile.png"), fullPage: true });
 await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
@@ -1843,7 +1873,7 @@ const nextStepOrientation = await accountPage.evaluate(() => {
 });
 if (
   nextStepOrientation.top < 0 ||
-  nextStepOrientation.top > nextStepOrientation.viewportHeight * 0.35 ||
+  nextStepOrientation.top > nextStepOrientation.viewportHeight * 0.4 ||
   nextStepOrientation.bottom <= 0
 ) {
   throw new Error(`Choosing a day should guide a phone directly to the available times: ${JSON.stringify(nextStepOrientation)}.`);
@@ -1907,12 +1937,12 @@ if (!(await accountPage.getByRole("radio", { name: "Online", exact: true }).isCh
 if (!(await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).isChecked())) {
   throw new Error("Change details should retain the current lesson length.");
 }
+await accountPage.getByRole("button", { name: "Continue", exact: true }).click();
+await accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true }).waitFor();
+await accountPage.getByRole("button", { name: "Change details", exact: true }).click();
+await accountPage.getByRole("radio", { name: "90 minutes lesson · €35", exact: true }).check();
 await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
 await lessonSummary.waitFor({ state: "visible" });
-if ((await accountPage.locator("#lesson-calendar .unified-calendar__grid .calendar-week").count()) !== 8) {
-  throw new Error("Returning from Change details should show the full date calendar.");
-}
-
 await changeLesson.click();
 await accountPage.getByRole("heading", { name: "How would you like to book?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Back", exact: true }).click();

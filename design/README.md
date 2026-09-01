@@ -168,9 +168,10 @@ Preserve these desktop and mobile states:
 - the workspace opens with one decision: `Book a new lesson` or `View your
   lessons`. Booking then asks whether this is one lesson or a recurring lesson.
   The selected route puts Online/In Porto and `60 minutes`/`90 minutes` together
-  as clear choice cards on one setup screen; a recurring booking adds 4, 6, or
-  8 weeks there as a third group. Sliding selectors are reserved for changing
-  an existing booking, where their smaller footprint is useful. An eligible
+  as compact sliding selectors on one setup screen; a recurring booking adds 4,
+  6, 8 weeks, or `Ongoing` there as a third selector. The recurring route name
+  is not repeated above `Choose your lesson`. Once a starting time is chosen,
+  the same setup surface lists any clashing weeks before confirmation. An eligible
   first-time student also sees the separate fixed-length trial route, followed
   by its Online/In Porto choice;
   viewing lessons opens the upcoming-lesson list, with the same calendar kept
@@ -207,7 +208,11 @@ Preserve these desktop and mobile states:
   trial stays named. The recurring line states its weekly time without repeating
   the number of booked dates. One-off and stopped-sequence lessons remain
   individual entries. Each card gains a quiet colour wash on hover or keyboard
-  focus without lifting, jumping, or shifting the list.
+  focus without lifting, jumping, or shifting the list. One-off `Manage` stays
+  in the card's far-right column on a phone instead of becoming a full-width
+  row. Booked marks vary by 60/90 minutes and Online/In Porto; a repeating
+  schedule has its own fifth mark. Do not reuse the stacked-wave emblem in
+  booked lesson cards.
   There is no second `My lessons` navigation destination.
   The account bar, workflow choices, and calendar share the same left and right
   edges. Profile fields open directly inside the account
@@ -280,8 +285,10 @@ happening today remains booked under the existing same-day policy.
 The change workflow has no decorative horizontal dividers. Lesson length uses
 the same sliding two-option control as `Online` / `In Porto`, so changing an
 existing lesson feels like the booking flow rather than a separate tool. The
-policy band contains the current fee and missed-lesson terms, not instructions
-for finding the management controls.
+policy band follows the Worker's payment mode: pay-in-person shows the concise
+€5 legacy same-day rule; prepayment says that lessons cannot be changed or
+cancelled on their day and a missed lesson is still charged. It contains no
+instructions for finding the management controls.
 
 ## Superseded work
 

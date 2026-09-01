@@ -879,7 +879,8 @@ const worker = {
  * The morning charge: every lesson happening today that booked itself onto a
  * saved card gets charged now. This is the policy made mechanical — free to
  * change until the day before, charged on the day regardless — and it runs at
- * 03:10 Porto time, hours before the earliest lesson.
+ * 03:10 UTC (03:10 Porto in winter, 04:10 in summer), hours before the earliest
+ * lesson.
  *
  * A decline is a fact of card networks, not an exception: the lesson stays
  * confirmed, the student gets a pay-now link, Inês gets a note, and the row
@@ -1660,15 +1661,14 @@ async function fillSeries(env, { series, student, lessonType, fromKey, count, no
 }
 
 /**
- * What a repeat would actually book, without booking it.
+ * What a repeat would actually book, without booking it. Availability is
+ * already public, so this preview is public too; identity is still required by
+ * the create route where a lesson is actually written.
  *
  * The student sees the skipped weeks before they commit rather than after, so
  * "eight weeks" never quietly turns into seven in their inbox.
  */
 async function handleSeriesPreview(request, env) {
-  const student = await currentStudent(request, env);
-  if (!student) return fail("Please sign in to book a lesson.", 401, request, env);
-
   const body = await readJson(request);
   const weeks = normaliseWeeks(body.weeks);
   if (weeks === undefined) {
