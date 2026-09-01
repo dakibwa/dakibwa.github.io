@@ -121,7 +121,8 @@ depending on them having kept the right confirmation email.
   Viewing lessons leads with the upcoming-lesson list and keeps the calendar as
   a four-week visual without free-time choices. On a wide desktop, the compact
   blue introduction runs across the top and the upcoming list and calendar sit
-  alongside one another beneath the full-width account bar. Narrow layouts keep
+  alongside one another beneath the full-width account bar, sharing the same
+  top and bottom edges even when only one lesson is upcoming. Narrow layouts keep
   the same information in account, lessons, calendar reading order.
   Signed-out visitors can browse lesson types, dates, and times before they are
   asked to sign in; `View your lessons` asks immediately because the data is
@@ -130,8 +131,8 @@ depending on them having kept the right confirmation email.
   visual index only: choosing a booked date scrolls back to its exact Upcoming
   lesson and expands the recurring group when necessary. It does not create a
   second selected-day panel. In the new-booking flow, choosing a free day
-  reduces the calendar to that one week and puts available times immediately
-  beneath it on a phone.
+  replaces the calendar with a compact selected-date summary and a `Change
+  date` action, while keeping available times immediately beneath it on a phone.
   Available times use one compact grid, without part-of-day headings, and fit
   three accessible time buttons across on a phone. Each
   completed choice becomes a compact summary and the page moves the next
@@ -396,11 +397,11 @@ withholds a 90-minute lesson earlier than a 60-minute one.
 Once availability has loaded, the date picker omits complete leading weeks with
 no free slots. That means a weekend with nothing left to book opens directly on
 the next usable week; closed weeks later in the booking window remain visible.
-Selecting a free day while booking shows only its week, so the available times
-are directly below the calendar on a phone. The compact week uses only `Show
-all`, with no redundant `Selected week` label. The lesson-view calendar stays
-at four weeks and sends booked-date selections to the matching lesson above;
-new bookings return to the full eight-week availability window.
+Selecting a free day while booking collapses the date picker into a compact
+selected-date summary, so the available times are directly below it on a phone.
+`Change date` returns to the full eight-week availability window. The lesson-view
+calendar stays at four weeks and sends booked-date selections to the matching
+lesson above.
 
 ### Payment
 
