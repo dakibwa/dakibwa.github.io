@@ -228,10 +228,12 @@ Preserve these desktop and mobile states:
 
 Selecting an occurrence from a recurring sequence identifies it in the compact
 management overlay. `Change` and `Cancel` affect only that date; `Manage
-sequence` owns the separate stop-repeating decision in that same overlay.
-Before a student stops a repeating lesson, show a clear confirmation at desktop
-and mobile sizes with two explicit choices. State that lessons already in the
-calendar stay booked and can be cancelled individually.
+sequence` owns the recurring schedule in that same overlay. It offers two
+distinct routes: stop adding new lessons while keeping booked dates, or cancel
+all cancellable upcoming dates as well. Confirm either action at desktop and
+mobile sizes before changing anything. The bulk-cancel confirmation must state
+that paid cancellable lessons are refunded automatically and that a lesson
+happening today remains booked under the existing same-day policy.
 
 ## Superseded work
 

@@ -18,6 +18,7 @@ import {
   amountAfterLessonTypeChange,
   changePolicy,
   lessonTypeChangeProblem,
+  planSeriesCancellation,
   seriesTotalCents
 } from "./policy.mjs";
 import { notifySeries } from "./index.mjs";
@@ -912,6 +913,19 @@ await test("a scheduled lesson locks on its day but refunds nothing when cancell
 await test("a lesson with payment due behaves like a scheduled one", () => {
   const row = { payment_status: "payment_due", starts_at: "2026-09-09T16:30:00.000Z" };
   assert.equal(changePolicy(row, new Date("2026-09-09T08:00:00.000Z")).locked, true);
+});
+
+await test("bulk sequence cancellation keeps today and refunds only paid future lessons", () => {
+  const today = { id: "today", payment_status: "scheduled", starts_at: "2026-09-09T16:30:00.000Z" };
+  const paid = { id: "paid", payment_status: "paid", starts_at: "2026-09-16T16:30:00.000Z" };
+  const scheduled = { id: "scheduled", payment_status: "scheduled", starts_at: "2026-09-23T16:30:00.000Z" };
+  const plan = planSeriesCancellation([today, paid, scheduled], new Date("2026-09-09T08:00:00.000Z"));
+
+  assert.deepEqual(plan.kept.map((row) => row.id), ["today"]);
+  assert.deepEqual(
+    plan.cancellable.map(({ row, refund }) => [row.id, refund]),
+    [["paid", true], ["scheduled", false]]
+  );
 });
 
 await test("an unpaid lesson can change between ordinary lesson lengths", () => {

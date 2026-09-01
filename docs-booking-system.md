@@ -196,10 +196,11 @@ stop it.
 - **Stopping a repeat keeps the lessons already booked.** Someone who stops
   repeating almost always still means to attend the ones in their calendar;
   cancelling those silently would be the worse of the two mistakes. Passing
-  `cancelRemaining` cancels them too. A selected recurring occurrence exposes
-  `Manage sequence` and asks for confirmation before calling the stop endpoint.
-  The confirmation says that booked lessons stay and can be cancelled individually
-  on the calendar.
+  `cancelRemaining` cancels them too. It applies the same payment policy as an
+  individual cancellation: a future paid lesson is refunded, an uncharged one
+  is never charged, and a lesson on its own Porto day remains booked. A selected
+  recurring occurrence exposes `Manage sequence`, keeps both outcomes visibly
+  distinct, and asks for confirmation before calling the stop endpoint.
 - **A run under prepayment charges its first lesson now and the rest charge
   themselves.** The first checkout saves the card (`setup_future_usage`, with
   Stripe's own consent wording on the form); the whole run is held until that

@@ -256,7 +256,7 @@ if (bookingCalendar) {
 // behind another disclosure. Mock only private account calls so this can cover
 // the real UI without using a student's session or changing a real repeating series.
 let repeatStopped = false;
-let stopRepeatCalls = 0;
+const stopRepeatPayloads = [];
 let qaManagedStart;
 let qaManagedLessonType = { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 };
 const qaReschedulePayloads = [];
@@ -704,12 +704,19 @@ await accountPage.route("**/series/series-qa/stop", async (route) => {
     });
     return;
   }
-  stopRepeatCalls += 1;
+  const payload = JSON.parse(route.request().postData() || "{}");
+  stopRepeatPayloads.push(payload);
   repeatStopped = true;
   await route.fulfill({
     contentType: "application/json",
     headers: { "Access-Control-Allow-Origin": "*" },
-    body: JSON.stringify({ ok: true, stopped: true, cancelled: 0 })
+    body: JSON.stringify({
+      ok: true,
+      stopped: true,
+      cancelled: payload.cancelRemaining ? 4 : 0,
+      kept: 0,
+      refunded: payload.cancelRemaining ? 1 : 0
+    })
   });
 });
 
@@ -796,7 +803,7 @@ if (await accountPage.locator("#lesson-calendar").count()) {
 if (await accountPage.locator(".unified-booking__lesson-picker").count()) {
   throw new Error("Lesson types should wait until the student chooses to book.");
 }
-for (const hiddenUntilViewing of [/Upcoming lessons/, /Stop repeating/]) {
+for (const hiddenUntilViewing of [/Upcoming lessons/, /Stop repeating/, /Cancel all booked lessons/]) {
   if (await accountPanel.getByRole("button", { name: hiddenUntilViewing }).count()) {
     throw new Error(`${hiddenUntilViewing} should not compete with the first workflow choice.`);
   }
@@ -891,6 +898,9 @@ if (await accountPage.getByRole("button", { name: "Show 8 weeks", exact: true })
 }
 if (await accountPage.getByRole("button", { name: "Stop repeating", exact: true }).count()) {
   throw new Error("Sequence controls should appear only when one recurring lesson is selected.");
+}
+if (await accountPage.getByRole("button", { name: "Cancel all booked lessons", exact: true }).count()) {
+  throw new Error("Bulk sequence cancellation should appear only when one recurring lesson is selected.");
 }
 await accountMenuButton.click();
 const lessonsAccountMenu = accountPanel.locator("#account-menu");
@@ -1810,11 +1820,20 @@ await sequenceDialog.getByText("Part of a recurring sequence", { exact: true }).
 const manageSequence = sequenceDialog.getByRole("button", { name: "Manage sequence", exact: true });
 await manageSequence.click();
 const stopRepeating = sequenceDialog.getByRole("button", { name: "Stop repeating", exact: true });
+const cancelAllBooked = sequenceDialog.getByRole("button", { name: "Cancel all booked lessons", exact: true });
+await cancelAllBooked.waitFor();
 await stopRepeating.click();
-if (stopRepeatCalls !== 0) throw new Error("Opening the repeat confirmation called the stop endpoint.");
+if (stopRepeatPayloads.length !== 0) throw new Error("Opening the repeat confirmation called the stop endpoint.");
+await sequenceDialog.getByText("Your booked lessons will stay.", { exact: false }).waitFor();
+await sequenceDialog.getByRole("button", { name: "Keep repeating", exact: true }).click();
+if (stopRepeatPayloads.length !== 0) throw new Error("Keeping the repeat called the stop endpoint.");
+
+await cancelAllBooked.click();
+if (stopRepeatPayloads.length !== 0) throw new Error("Opening the bulk cancellation confirmation called the stop endpoint.");
+await sequenceDialog.getByText("Any paid lesson that can still be cancelled is refunded automatically.", { exact: false }).waitFor();
 await waitForOrientation(accountPage);
 await accountPage.screenshot({
-  path: path.join(outDir, "booking-sequence-confirm-mobile.png"),
+  path: path.join(outDir, "booking-sequence-cancel-confirm-mobile.png"),
   fullPage: true
 });
 const sequenceConfirmationLayout = await accountPage.evaluate(() => ({
@@ -1827,16 +1846,17 @@ if (
   sequenceConfirmationLayout.scrollWidth > sequenceConfirmationLayout.clientWidth + 1 ||
   sequenceConfirmationLayout.contentWidth > sequenceConfirmationLayout.panelWidth + 1
 ) {
-  throw new Error(`Recurring sequence confirmation should not clip or overflow: ${JSON.stringify(sequenceConfirmationLayout)}.`);
+  throw new Error(`Recurring sequence cancellation should not clip or overflow: ${JSON.stringify(sequenceConfirmationLayout)}.`);
 }
-await sequenceDialog.getByRole("button", { name: "Keep repeating", exact: true }).click();
-if (stopRepeatCalls !== 0) throw new Error("Keeping the repeat called the stop endpoint.");
-await manageSequence.click();
-await stopRepeating.click();
-await sequenceDialog.getByRole("button", { name: "Yes, stop repeating", exact: true }).click();
+await sequenceDialog.getByRole("button", { name: "Keep booked lessons", exact: true }).click();
+if (stopRepeatPayloads.length !== 0) throw new Error("Keeping booked lessons called the stop endpoint.");
+await cancelAllBooked.click();
+await sequenceDialog.getByRole("button", { name: "Yes, cancel all", exact: true }).click();
 await manageSequence.waitFor({ state: "hidden" });
-if (stopRepeatCalls !== 1) throw new Error(`Expected one confirmed stop call; received ${stopRepeatCalls}.`);
-await sequenceDialog.getByText("This sequence has stopped.", { exact: false }).waitFor();
+if (stopRepeatPayloads.length !== 1 || stopRepeatPayloads[0].cancelRemaining !== true) {
+  throw new Error(`Expected one confirmed bulk cancellation request; received ${JSON.stringify(stopRepeatPayloads)}.`);
+}
+await sequenceDialog.getByText("4 lessons were cancelled.", { exact: false }).waitFor();
 await sequenceDialog.getByRole("button", { name: "Done", exact: true }).click();
 
 await accountMenuButton.click();
@@ -1885,7 +1905,8 @@ console.log(
           availableTimeCount,
           layout: compactCalendarLayout
         },
-        stopRepeatCalls,
+        stopRepeatCalls: stopRepeatPayloads.length,
+        stopRepeatPayloads,
         accountRequestMethods,
         signedOut: true
       },

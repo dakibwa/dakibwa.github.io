@@ -270,7 +270,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [managedSeriesId, setManagedSeriesId] = useState<string | null>(null);
   const [managedLessonTypeId, setManagedLessonTypeId] = useState("");
   const [managed, setManaged] = useState<ManagedBooking | null>(null);
-  const [manageMode, setManageMode] = useState<"view" | "reschedule" | "confirm-cancel" | "sequence" | "confirm-stop-sequence">("view");
+  const [manageMode, setManageMode] = useState<
+    "view" | "reschedule" | "confirm-cancel" | "sequence" | "confirm-stop-sequence" | "confirm-cancel-sequence"
+  >("view");
   const [manageLoading, setManageLoading] = useState(false);
   const [manageWorking, setManageWorking] = useState(false);
   const [manageError, setManageError] = useState("");
@@ -790,19 +792,31 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     }
   }
 
-  async function stopManagedSequence() {
+  async function stopManagedSequence(cancelRemaining = false) {
     if (!resolvedManagedSeriesId) return;
     setManageWorking(true);
     setManageError("");
     try {
-      await stopSeries(readSession(), resolvedManagedSeriesId);
+      const result = await stopSeries(readSession(), resolvedManagedSeriesId, cancelRemaining);
       transitionBooking(() => {
         setManageMode("view");
-        setManageOutcome("This sequence has stopped. The lessons already booked stay in your calendar.");
+        if (!cancelRemaining) {
+          setManageOutcome("This sequence has stopped. The lessons already booked stay in your calendar.");
+          return;
+        }
+
+        const cancelledLessons = `${result.cancelled} ${result.cancelled === 1 ? "lesson" : "lessons"}`;
+        setManageOutcome(
+          result.kept
+            ? `This sequence has stopped and ${cancelledLessons} ${result.cancelled === 1 ? "was" : "were"} cancelled. Today’s lesson stays booked.`
+            : result.cancelled
+              ? `This sequence has stopped and ${cancelledLessons} ${result.cancelled === 1 ? "was" : "were"} cancelled.`
+              : "This sequence has stopped. There were no future booked lessons to cancel."
+        );
       });
       await refreshStudent();
     } catch (caught) {
-      setManageError(caught instanceof Error ? caught.message : "That sequence could not be stopped.");
+      setManageError(caught instanceof Error ? caught.message : cancelRemaining ? "Those lessons could not be cancelled." : "That sequence could not be stopped.");
     } finally {
       setManageWorking(false);
     }
@@ -1103,7 +1117,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   <h2 id="lesson-manage-heading">
                     {manageMode === "confirm-cancel"
                       ? "Cancel this lesson?"
-                      : manageMode === "sequence" || manageMode === "confirm-stop-sequence"
+                      : manageMode === "confirm-cancel-sequence"
+                        ? "Cancel booked lessons?"
+                        : manageMode === "sequence" || manageMode === "confirm-stop-sequence"
                         ? "Manage recurring lesson"
                         : manageOutcome
                           ? "All sorted"
@@ -1204,11 +1220,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   {activeManagedSeries && manageMode === "sequence" ? (
                     <div className="lesson-manage-dialog__decision">
                       <p>
-                        Stop new weekly lessons being added. Every date already booked stays in your calendar and can still be changed or cancelled individually.
+                        Choose whether to keep the lessons already in your calendar or cancel them too.
                       </p>
-                      <div className="lesson-manage-dialog__actions">
+                      <div className="lesson-manage-dialog__actions lesson-manage-dialog__actions--sequence">
                         <button className="button button--quiet" onClick={() => transitionBooking(() => setManageMode("confirm-stop-sequence"))} type="button">
                           Stop repeating
+                        </button>
+                        <button className="button button--coral" onClick={() => transitionBooking(() => setManageMode("confirm-cancel-sequence"))} type="button">
+                          Cancel all booked lessons
                         </button>
                         <button className="text-action" onClick={() => transitionBooking(() => setManageMode("view"))} type="button">
                           Back
@@ -1221,16 +1240,37 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     <div className="lesson-manage-dialog__decision">
                       <p><strong>Stop this recurring sequence?</strong> Your booked lessons will stay.</p>
                       <div className="lesson-manage-dialog__actions">
-                        <button className="button button--coral" disabled={manageWorking} onClick={stopManagedSequence} type="button">
+                        <button className="button button--coral" disabled={manageWorking} onClick={() => stopManagedSequence(false)} type="button">
                           {manageWorking ? "Stopping…" : "Yes, stop repeating"}
                         </button>
                         <button
                           className="button button--quiet"
                           disabled={manageWorking}
-                          onClick={() => transitionBooking(() => setManageMode("view"))}
+                          onClick={() => transitionBooking(() => setManageMode("sequence"))}
                           type="button"
                         >
                           Keep repeating
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeManagedSeries && manageMode === "confirm-cancel-sequence" ? (
+                    <div className="lesson-manage-dialog__decision">
+                      <p>
+                        <strong>Cancel every upcoming lesson in this sequence?</strong> This also stops new lessons being added. Any paid lesson that can still be cancelled is refunded automatically. A lesson happening today stays booked.
+                      </p>
+                      <div className="lesson-manage-dialog__actions">
+                        <button className="button button--coral" disabled={manageWorking} onClick={() => stopManagedSequence(true)} type="button">
+                          {manageWorking ? "Cancelling…" : "Yes, cancel all"}
+                        </button>
+                        <button
+                          className="button button--quiet"
+                          disabled={manageWorking}
+                          onClick={() => transitionBooking(() => setManageMode("sequence"))}
+                          type="button"
+                        >
+                          Keep booked lessons
                         </button>
                       </div>
                     </div>

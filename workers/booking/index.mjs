@@ -19,7 +19,12 @@ import {
   stripeConfigured,
   verifyWebhook
 } from "./stripe.mjs";
-import { amountAfterLessonTypeChange, changePolicy, lessonTypeChangeProblem } from "./policy.mjs";
+import {
+  amountAfterLessonTypeChange,
+  changePolicy,
+  lessonTypeChangeProblem,
+  planSeriesCancellation
+} from "./policy.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
 import {
   createResetToken,
@@ -1685,12 +1690,11 @@ async function handleStopSeries(request, env, ctx, seriesId) {
   const body = await readJson(request);
   const cancelRemaining = body.cancelRemaining === true;
   const now = new Date();
-
-  await env.DB.prepare("UPDATE booking_series SET status = 'ended', ended_at = ?, updated_at = ? WHERE id = ?")
-    .bind(now.toISOString(), now.toISOString(), seriesId)
-    .run();
-
   let cancelled = 0;
+  let kept = 0;
+  let refunded = 0;
+  let cancellationPlan = [];
+
   if (cancelRemaining) {
     const { results } = await env.DB.prepare(
       "SELECT * FROM bookings WHERE series_id = ? AND status = 'confirmed' AND starts_at > ? ORDER BY starts_at"
@@ -1698,17 +1702,54 @@ async function handleStopSeries(request, env, ctx, seriesId) {
       .bind(seriesId, now.toISOString())
       .all();
 
+    // A bulk action must not become a shortcut around the same-day promise.
+    // Keep today's occurrence, even for an older pay-in-person series whose
+    // individual route still uses its original same-day fee terms.
+    const plan = planSeriesCancellation(results ?? [], now);
+    kept = plan.kept.length;
+    cancellationPlan = plan.cancellable;
+
+    // Refund before changing either the series or its bookings. If Stripe is
+    // unavailable, nothing disappears from the student's calendar while money
+    // is still held. Retrying an already-refunded PaymentIntent is accepted in
+    // the same way as an individual cancellation.
+    for (const { row, refund } of cancellationPlan) {
+      if (!refund) continue;
+      try {
+        await refundPayment(env, row.stripe_payment_intent, row.amount_cents ?? undefined);
+        refunded += 1;
+      } catch (error) {
+        const message = String(error?.message ?? error);
+        if (/already been refunded|charge_already_refunded/i.test(message)) {
+          refunded += 1;
+          continue;
+        }
+        console.error("stripe-refund-series", row.reference, message);
+        return fail("We couldn't process the refund just now, so nothing was cancelled. Please try again in a moment.", 502, request, env);
+      }
+    }
+  }
+
+  await env.DB.prepare("UPDATE booking_series SET status = 'ended', ended_at = ?, updated_at = ? WHERE id = ?")
+    .bind(now.toISOString(), now.toISOString(), seriesId)
+    .run();
+
+  if (cancelRemaining) {
     const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
       .bind(series.lesson_type_id)
       .first();
     const settings = await loadSettings(env);
 
     const cancelledRows = [];
-    for (const row of results ?? []) {
+    for (const { row, refund } of cancellationPlan) {
+      const wasRefunded = refund ? 1 : 0;
       await env.DB.prepare(
-        "UPDATE bookings SET status = 'cancelled', cancelled_at = ?, cancelled_by = 'student', sequence = sequence + 1, updated_at = ? WHERE id = ?"
+        `UPDATE bookings SET status = 'cancelled', cancelled_at = ?, cancelled_by = 'student',
+           sequence = sequence + 1, updated_at = ?,
+           payment_status = CASE WHEN ? = 1 THEN 'refunded' ELSE payment_status END
+         WHERE id = ?`
       )
-        .bind(now.toISOString(), now.toISOString(), row.id)
+        .bind(now.toISOString(), now.toISOString(), wasRefunded, row.id)
         .run();
       cancelledRows.push(await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first());
       cancelled += 1;
@@ -1722,7 +1763,7 @@ async function handleStopSeries(request, env, ctx, seriesId) {
     }
   }
 
-  return json({ ok: true, stopped: true, cancelled }, 200, request, env);
+  return json({ ok: true, stopped: true, cancelled, kept, refunded }, 200, request, env);
 }
 
 async function handleGetBooking(request, env, token) {
