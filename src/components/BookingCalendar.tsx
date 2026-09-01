@@ -719,7 +719,7 @@ export function BookingCalendar({
     };
   }, [form.repeat, chosen, lessonType]);
 
-  const canSubmit = Boolean(chosen && lessonType && student) && !submitting;
+  const canSubmit = Boolean(chosen && lessonType && student) && !submitting && !previewing;
 
   /*
    * The confirmation mounts its region and its text in one commit, which is the
@@ -1744,7 +1744,7 @@ export function BookingCalendar({
                     </fieldset>
                   ) : null}
 
-                  {bookingKind === "recurring" ? (
+                  {bookingKind === "recurring" && chosen ? (
                     <RepeatAvailability
                       chosen={Boolean(chosen)}
                       error={seriesPreviewError}
@@ -2180,7 +2180,7 @@ export function BookingCalendar({
                               onClick={() =>
                                 transitionBooking(() => {
                                   setSelectedSlot(slot.startAt);
-                                  goTo(bookingKind === "recurring" ? "setup" : "details");
+                                  goTo("details");
                                 })
                               }
                               type="button"
@@ -2210,7 +2210,11 @@ export function BookingCalendar({
         {isConfirmingBooking ? (
           <div className="booking-confirmation-stage">
             <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
-              {student ? "Confirm your lesson" : "Sign in to confirm"}
+              {student
+                ? form.repeat === "once"
+                  ? "Confirm your lesson"
+                  : "Confirm your recurring lessons"
+                : "Sign in to confirm"}
             </h2>
 
             <div className="booking-final">

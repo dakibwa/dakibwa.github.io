@@ -5835,7 +5835,7 @@ button.text-action {
 
 .site-footer {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+  grid-template-columns: minmax(220px, 1fr) minmax(0, auto);
   align-items: center;
   min-height: 0;
   padding: 1.35rem var(--page-pad);
@@ -5853,12 +5853,19 @@ button.text-action {
   width: 100%;
 }
 
+.site-footer__actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 /* Flex, not a four-column grid: the account link made five items, and the
    fifth wrapped to a second row, which is what made the footer look stacked. */
 .site-footer__nav {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 0 clamp(1rem, 2.2vw, 2.6rem);
   font-family: var(--ui);
   font-size: 0.72rem;
@@ -6015,14 +6022,14 @@ button.text-action {
   }
 
   .site-footer {
-    grid-template-columns: minmax(200px, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: minmax(200px, 1fr) minmax(0, auto);
     gap: 2rem;
     padding-top: 2rem;
     padding-bottom: 2rem;
   }
 
   .site-footer__nav {
-    justify-content: center;
+    justify-content: flex-end;
     gap: clamp(1rem, 3vw, 2.25rem);
   }
 }
@@ -6375,6 +6382,10 @@ button.text-action {
      just made the footer a stack of links on a phone. */
   .site-footer__nav {
     display: none;
+  }
+
+  .site-footer__actions {
+    justify-content: flex-end;
   }
 
   .site-footer__contact {
