@@ -110,6 +110,32 @@ for (const route of routes) {
       }
     }
 
+    if (route.id === "booking" && viewport.id === "desktop") {
+      const bannerArtwork = await page.evaluate(() => {
+        const intro = document.querySelector(".booking-intro")?.getBoundingClientRect();
+        const corner = document.querySelector(".booking-intro__time-window")?.getBoundingClientRect();
+        const marks = [...document.querySelectorAll(".booking-intro__points .asset-mark")].map((mark) =>
+          mark.getBoundingClientRect()
+        );
+        return {
+          intro: intro ? { top: intro.top, right: intro.right } : null,
+          corner: corner ? { top: corner.top, right: corner.right, width: corner.width } : null,
+          markWidths: marks.map((mark) => mark.width)
+        };
+      });
+      if (
+        !bannerArtwork.intro ||
+        !bannerArtwork.corner ||
+        bannerArtwork.corner.width < 220 ||
+        bannerArtwork.corner.top >= bannerArtwork.intro.top ||
+        bannerArtwork.corner.right <= bannerArtwork.intro.right ||
+        bannerArtwork.markWidths.length !== 3 ||
+        bannerArtwork.markWidths.some((width) => width < 46)
+      ) {
+        throw new Error(`The booking banner should use larger reassurance marks and a cropped top-right splat: ${JSON.stringify(bannerArtwork)}.`);
+      }
+    }
+
     const overflow = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth
@@ -910,7 +936,16 @@ await accountPage.screenshot({ path: path.join(outDir, "booking-lessons-overview
 const initialAccountMenu = accountPanel.locator("#account-menu");
 await initialAccountMenu.waitFor({ state: "visible" });
 if ((await initialAccountMenu.getByRole("button").count()) !== 5) {
-  throw new Error("View lessons, Book a lesson, Past lessons, Edit details and Sign out should remain available from the initial account menu.");
+  throw new Error("Book a lesson, View lessons, Past lessons, Edit details and Sign out should remain available from the initial account menu.");
+}
+const initialAccountActionLabels = (await initialAccountMenu.getByRole("button").allTextContents()).map((label) =>
+  label.replace(/\s+/g, " ").trim()
+);
+if (
+  initialAccountActionLabels[0] !== "Book a lesson" ||
+  !initialAccountActionLabels[1]?.startsWith("View lessons")
+) {
+  throw new Error(`Book a lesson should be the furthest-left account action: ${JSON.stringify(initialAccountActionLabels)}.`);
 }
 if (!(await initialAccountMenu.getByRole("button", { name: /View lessons/ }).isVisible())) {
   throw new Error("View lessons should not require entering the lesson calendar first.");
@@ -1007,7 +1042,7 @@ if (await accountPage.getByRole("button", { name: "Cancel all booked lessons", e
 }
 const lessonsAccountMenu = accountPanel.locator("#account-menu");
 if ((await lessonsAccountMenu.getByRole("button").count()) !== 5) {
-  throw new Error("View lessons, Book a lesson, Past lessons, Edit details and Sign out should live together in the account menu.");
+  throw new Error("Book a lesson, View lessons, Past lessons, Edit details and Sign out should live together in the account menu.");
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-account-menu-desktop.png"), fullPage: true });
 const pastLessonsToggle = lessonsAccountMenu.getByRole("button", { name: /Past lessons/ });
