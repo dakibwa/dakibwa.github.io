@@ -1720,42 +1720,6 @@ textarea,
   margin-left: auto;
 }
 
-.booking-workflow-context {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.8rem;
-  border: 1px solid var(--rule);
-  border-radius: var(--squiggle-field);
-  padding: 0.72rem 0.95rem;
-  background: rgba(170, 164, 230, 0.1);
-  gap: 0.75rem 1rem;
-}
-
-.booking-workflow-context > div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.12rem;
-}
-
-.booking-workflow-context .eyebrow {
-  margin: 0;
-  font-size: 0.58rem;
-}
-
-.booking-workflow-context strong {
-  font-family: var(--ui);
-  font-size: 0.9rem;
-  line-height: 1.3;
-}
-
-.booking-workflow-context .text-action {
-  flex: none;
-  margin-left: auto;
-  white-space: nowrap;
-}
-
 @container booking (min-width: 540px) {
   .booking-journey-start__choices {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1796,7 +1760,6 @@ html.booking-transitioning .booking-stage {
 
 html.booking-transitioning .booking-choice-summary,
 html.booking-transitioning .booking-journey-start,
-html.booking-transitioning .booking-workflow-context,
 html.booking-transitioning .booking-workflow-sign-in,
 html.booking-transitioning .calendar-weeks,
 html.booking-transitioning .unified-account-controls,
@@ -2249,6 +2212,11 @@ html.booking-transitioning .booking-confirmation-stage {
     "panel";
   gap: 0.75rem 1rem;
   align-items: start;
+}
+
+.unified-calendar.unified-calendar--overview {
+  grid-template-areas: "calendar";
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .unified-calendar__grid {
@@ -2874,6 +2842,13 @@ html.booking-transitioning .booking-confirmation-stage {
     linear-gradient(115deg, rgba(170, 164, 230, 0.42), rgba(255, 255, 255, 0.28)),
     var(--paper-light);
   box-shadow: inset 4px 0 0 rgba(82, 74, 150, 0.8), 0 9px 24px rgba(82, 74, 150, 0.12);
+}
+
+.upcoming-lesson-group.is-calendar-target,
+.upcoming-lesson-occurrence.is-calendar-target {
+  border-color: rgba(82, 74, 150, 0.68);
+  background: rgba(170, 164, 230, 0.3);
+  box-shadow: 0 9px 24px rgba(82, 74, 150, 0.14);
 }
 
 .upcoming-lesson-group--series .lesson-calendar__status--recurring {
@@ -4862,23 +4837,6 @@ button.text-action {
   opacity: 0.78;
 }
 
-.booking-location-choice {
-  margin-bottom: 0.8rem;
-  border: 0;
-  padding: 0;
-}
-
-.booking-location-choice legend {
-  margin-bottom: 0.25rem;
-  font-family: var(--ui);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-}
-
-.booking-location-choice .segmented {
-  margin-bottom: 0;
-}
-
 .booking-repeat-choice {
   margin-bottom: 0.9rem;
   border: 0;
@@ -6466,7 +6424,6 @@ button.text-action {
 
   .booking-choice-summary,
   .booking-journey-start,
-  .booking-workflow-context,
   .booking-workflow-sign-in,
   .calendar-weeks,
   .unified-account-controls,

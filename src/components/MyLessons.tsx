@@ -39,6 +39,16 @@ type UpcomingLessonGroup = {
   bookings: MyBooking[];
 };
 
+export type UpcomingBookingFocusRequest = {
+  bookingReference: string;
+  requestKey: number;
+  seriesId: string | null;
+};
+
+function upcomingBookingId(reference: string) {
+  return `upcoming-booking-${encodeURIComponent(reference)}`;
+}
+
 function minutesToClock(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
@@ -52,6 +62,7 @@ export function MyLessons({
   onOpenAccountSection,
   onSignedOut,
   onTransition,
+  focusUpcomingBooking,
   openUpcomingRequest = 0,
   showCalendar = true,
   showHistory = true,
@@ -66,6 +77,7 @@ export function MyLessons({
   onOpenAccountSection?: (section: "history" | "upcoming") => void;
   onSignedOut?: () => void;
   onTransition?: (update: () => void) => void;
+  focusUpcomingBooking?: UpcomingBookingFocusRequest | null;
   openUpcomingRequest?: number;
   showCalendar?: boolean;
   showHistory?: boolean;
@@ -81,6 +93,7 @@ export function MyLessons({
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountSection, setAccountSection] = useState<"history" | "upcoming" | "">("");
   const [expandedUpcomingGroup, setExpandedUpcomingGroup] = useState("");
+  const [highlightedBookingReference, setHighlightedBookingReference] = useState("");
   const [details, setDetails] = useState({ name: "", email: "" });
   const [savingName, setSavingName] = useState(false);
   const [emailPending, setEmailPending] = useState("");
@@ -110,6 +123,39 @@ export function MyLessons({
     },
     [onTransition]
   );
+
+  useEffect(() => {
+    if (!embedded || !focusUpcomingBooking) return;
+
+    const { bookingReference, seriesId } = focusUpcomingBooking;
+    setMenuOpen(false);
+    setEditing(false);
+    setAccountSection("upcoming");
+    setExpandedUpcomingGroup(seriesId ? `series:${seriesId}` : "");
+    setHighlightedBookingReference(bookingReference);
+
+    const highlightTimeout = window.setTimeout(() => setHighlightedBookingReference(""), 1800);
+
+    return () => {
+      window.clearTimeout(highlightTimeout);
+    };
+  }, [embedded, focusUpcomingBooking]);
+
+  // This effect runs after the group expansion has committed, so the exact
+  // occurrence is guaranteed to exist before focus and scrolling are applied.
+  useEffect(() => {
+    if (accountSection !== "upcoming" || !highlightedBookingReference) return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(upcomingBookingId(highlightedBookingReference));
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "center"
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [accountSection, expandedUpcomingGroup, highlightedBookingReference]);
 
   const load = useCallback(async (animate = false, after?: () => void) => {
     const session = readSession();
@@ -346,6 +392,14 @@ export function MyLessons({
       onBackToStart?.();
     });
     window.requestAnimationFrame(() => document.getElementById("booking-journey-start")?.focus());
+  }
+
+  function bookLesson() {
+    setMenuOpen(false);
+    setEditing(false);
+    setExpandedUpcomingGroup("");
+    setAccountSection("");
+    onBook?.();
   }
 
   if (loading) return <p className="booking-state-note">Loading your lessons…</p>;
@@ -659,9 +713,9 @@ export function MyLessons({
                 You can modify individual lessons up to four weeks in advance.
               </span>
             </div>
-            {onBackToStart ? (
-              <button className="booking-back booking-back--tertiary" onClick={backToStart} type="button">
-                <ArrowLeft size={16} aria-hidden="true" /> Back to start
+            {onBook ? (
+              <button className="booking-back booking-back--tertiary" onClick={bookLesson} type="button">
+                Book a lesson <ChevronRight size={16} aria-hidden="true" />
               </button>
             ) : null}
           </div>
@@ -676,7 +730,11 @@ export function MyLessons({
               return (
                 <Fragment key={group.id}>
                 <article
-                  className={`upcoming-lesson-group ${isSeries ? "upcoming-lesson-group--series" : "upcoming-lesson-group--single"}`}
+                  className={`upcoming-lesson-group ${isSeries ? "upcoming-lesson-group--series" : "upcoming-lesson-group--single"}${
+                    !isSeries && highlightedBookingReference === nextBooking.reference ? " is-calendar-target" : ""
+                  }`}
+                  id={!isSeries ? upcomingBookingId(nextBooking.reference) : undefined}
+                  tabIndex={!isSeries ? -1 : undefined}
                 >
                   <div className="upcoming-lesson-group__summary">
                     <LessonMark className="lesson-calendar__mark" lessonTypeId={nextBooking.lessonType.id} />
@@ -735,7 +793,10 @@ export function MyLessons({
                     <div aria-label="Next recurring lessons" className="upcoming-lesson-occurrences" id={datesId}>
                       {visibleOccurrences.map((booking) => (
                         <button
-                          className="upcoming-lesson-occurrence"
+                          className={`upcoming-lesson-occurrence${
+                            highlightedBookingReference === booking.reference ? " is-calendar-target" : ""
+                          }`}
+                          id={upcomingBookingId(booking.reference)}
                           key={booking.reference}
                           onClick={() => manage(booking)}
                           type="button"
