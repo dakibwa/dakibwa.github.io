@@ -19,7 +19,7 @@ import {
   stripeConfigured,
   verifyWebhook
 } from "./stripe.mjs";
-import { changePolicy } from "./policy.mjs";
+import { amountAfterLessonTypeChange, changePolicy, lessonTypeChangeProblem } from "./policy.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
 import {
   createResetToken,
@@ -165,7 +165,7 @@ function locationLabel(row) {
  * Every student-facing and teacher-facing message for one lifecycle event.
  * Kept in one place so a change to wording cannot drift between the two sides.
  */
-async function notify(env, { event, row, lessonType, settings, manageUrl, previousStartsAt, byTeacher = false }) {
+async function notify(env, { event, row, lessonType, settings, manageUrl, previousStartsAt, previousLessonType, byTeacher = false }) {
   const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
   const replyTo = settings.replyToEmail || teacherEmail || undefined;
   const start = new Date(row.starts_at);
@@ -238,6 +238,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   // Subjects carry the date, not the reference: "PT-LS29CT" tells the reader
   // nothing in an inbox list, and the date is what they are scanning for.
   const shortWhen = formatShort(start, PORTO);
+  const lessonTypeChanged = Boolean(previousLessonType && previousLessonType.id !== lessonType.id);
 
   // Two footers because two sets of terms are live at once: prepaid bookings
   // carry the one-rule policy, and bookings from before prepay keep the fee
@@ -272,7 +273,15 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           callout: "",
           footer: "No charge for a change she makes."
         }
-      : {
+      : lessonTypeChanged
+        ? {
+            subject: `Your lesson has changed — ${shortWhen}`,
+            heading: "Your lesson has changed",
+            intro: `Olá ${row.student_name.split(" ")[0]}, that's done — your lesson is now ${lessonType.duration_minutes} minutes at the time below, and your calendar has been updated.`,
+            callout: isPaid || isOnCard ? "" : sameDayNotice,
+            footer: isPaid || isOnCard ? paidChangeFooter : "You can change or cancel it again from the same link."
+          }
+        : {
           subject: `Your lesson has moved — ${shortWhen}`,
           heading: "Your lesson has moved",
           intro: `Olá ${row.student_name.split(" ")[0]}, that's done — your lesson is now at the time below and your calendar has been updated.`,
@@ -308,15 +317,27 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
     rescheduled: {
       subject: byTeacher
         ? `You moved ${row.student_name}'s lesson — ${shortWhen}`
-        : `${row.same_day_change ? "Same-day change" : "Lesson moved"} — ${row.student_name}, ${shortWhen}`,
-      heading: byTeacher ? "You moved this lesson" : row.same_day_change ? "Changed on the lesson day" : "Lesson moved",
+        : lessonTypeChanged
+          ? `Lesson changed — ${row.student_name}, ${shortWhen}`
+          : `${row.same_day_change ? "Same-day change" : "Lesson moved"} — ${row.student_name}, ${shortWhen}`,
+      heading: byTeacher
+        ? "You moved this lesson"
+        : lessonTypeChanged
+          ? "Lesson changed"
+          : row.same_day_change
+            ? "Changed on the lesson day"
+            : "Lesson moved",
       intro: byTeacher
         ? `You moved ${row.student_name}'s lesson${
             previousStartsAt ? ` from ${formatInZone(new Date(previousStartsAt), PORTO)}` : ""
           }. They have been told, and your calendar has been updated.`
-        : `${row.student_name} moved their lesson${
-            previousStartsAt ? ` from ${formatInZone(new Date(previousStartsAt), PORTO)}` : ""
-          }. Your calendar has been updated.`,
+        : lessonTypeChanged
+          ? `${row.student_name} changed their lesson from ${previousLessonType.duration_minutes} to ${lessonType.duration_minutes} minutes${
+              previousStartsAt ? ` and moved it from ${formatInZone(new Date(previousStartsAt), PORTO)}` : ""
+            }. Your calendar has been updated.`
+          : `${row.student_name} moved their lesson${
+              previousStartsAt ? ` from ${formatInZone(new Date(previousStartsAt), PORTO)}` : ""
+            }. Your calendar has been updated.`,
       callout: row.same_day_change
         ? `This was changed on the day of the lesson, so the €${(settings.sameDayChangeFeeCents / 100).toFixed(
             0
@@ -1748,7 +1769,13 @@ async function handleReschedule(request, env, ctx, token) {
   }
 
   const body = await readJson(request);
-  const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(row.lesson_type_id).first();
+  const previousLessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(row.lesson_type_id).first();
+  const lessonTypeId = cleanText(body.lessonType, 40) || row.lesson_type_id;
+  const lessonType = await loadLessonType(env, lessonTypeId);
+  if (!lessonType) return fail("That lesson type is not available.", 400, request, env);
+
+  const typeChangeProblem = lessonTypeChangeProblem(row, previousLessonType, lessonType);
+  if (typeChangeProblem) return fail(typeChangeProblem, 409, request, env);
 
   const check = await isSlotBookable(env, { startAt: body.startAt, lessonType, now, ignoreBookingId: row.id });
   if (!check.ok) return fail(check.reason, 409, request, env);
@@ -1758,6 +1785,7 @@ async function handleReschedule(request, env, ctx, token) {
   const sameDay = dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO) ? 1 : 0;
   const startsAt = new Date(body.startAt).toISOString();
   const endsAt = check.endAt.toISOString();
+  const amountCents = amountAfterLessonTypeChange(row, lessonType);
 
   // Same gap as creating a booking: the check above and this write are two
   // statements, and a lesson can be claimed between them.
@@ -1770,11 +1798,13 @@ async function handleReschedule(request, env, ctx, token) {
    * while only one of them was true.
    */
   const moved = await env.DB.prepare(
-    `UPDATE bookings SET starts_at = ?, ends_at = ?, previous_starts_at = ?, sequence = sequence + 1,
-       reschedule_count = reschedule_count + 1, same_day_change = ?, updated_at = ?
+    `UPDATE bookings SET lesson_type_id = ?, starts_at = ?, ends_at = ?, previous_starts_at = ?,
+       amount_cents = ?, sequence = sequence + 1, reschedule_count = reschedule_count + 1,
+       same_day_change = ?, updated_at = ?
      WHERE id = ?
        AND status = 'confirmed'
        AND starts_at = ?
+       AND lesson_type_id = ?
        AND NOT EXISTS (
          SELECT 1 FROM bookings other
          WHERE other.status IN ('confirmed', 'pending_payment')
@@ -1782,7 +1812,20 @@ async function handleReschedule(request, env, ctx, token) {
            AND other.starts_at < ? AND other.ends_at > ?
        )`
   )
-    .bind(startsAt, endsAt, row.starts_at, sameDay, now.toISOString(), row.id, row.starts_at, endsAt, startsAt)
+    .bind(
+      lessonType.id,
+      startsAt,
+      endsAt,
+      row.starts_at,
+      amountCents,
+      sameDay,
+      now.toISOString(),
+      row.id,
+      row.starts_at,
+      row.lesson_type_id,
+      endsAt,
+      startsAt
+    )
     .run();
 
   if ((moved?.meta?.changes ?? 0) === 0) {
@@ -1799,7 +1842,15 @@ async function handleReschedule(request, env, ctx, token) {
   const manageUrl = studentManageUrl(env, token);
 
   ctx.waitUntil(
-    notify(env, { event: "rescheduled", row: updated, lessonType, settings, manageUrl, previousStartsAt: row.starts_at })
+    notify(env, {
+      event: "rescheduled",
+      row: updated,
+      lessonType,
+      settings,
+      manageUrl,
+      previousStartsAt: row.starts_at,
+      previousLessonType
+    })
   );
 
   return json(

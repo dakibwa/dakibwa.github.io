@@ -32,8 +32,8 @@ export type Booking = {
   notes: string;
   rescheduleCount: number;
   sameDayFeeCents: number;
-  /** 'paid' and 'refunded' exist only once prepayment is on; older bookings say 'not_required'. */
-  paymentStatus?: "not_required" | "pending" | "paid" | "refunded";
+  /** Prepayment states appear once Stripe is on; older bookings say 'not_required'. */
+  paymentStatus?: "not_required" | "pending" | "paid" | "scheduled" | "payment_due" | "refunded";
   amountCents?: number | null;
 };
 
@@ -204,10 +204,10 @@ export function fetchBooking(token: string) {
   return request<ManagedBooking>(`/bookings/${encodeURIComponent(token)}`);
 }
 
-export function rescheduleBooking(token: string, startAt: string) {
+export function rescheduleBooking(token: string, startAt: string, lessonType?: string) {
   return request<{ booking: Booking; sameDayFeeApplied: boolean }>(
     `/bookings/${encodeURIComponent(token)}/reschedule`,
-    { method: "POST", body: JSON.stringify({ startAt }) }
+    { method: "POST", body: JSON.stringify({ startAt, ...(lessonType ? { lessonType } : {}) }) }
   );
 }
 

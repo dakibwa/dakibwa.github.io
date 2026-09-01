@@ -24,7 +24,7 @@ export type MyBooking = {
   sameDayFeeApplies: boolean;
   /** A paid lesson on its own Porto day can be neither moved nor cancelled. */
   changeLocked?: boolean;
-  paymentStatus?: "not_required" | "pending" | "paid" | "refunded";
+  paymentStatus?: "not_required" | "pending" | "paid" | "scheduled" | "payment_due" | "refunded";
   /** Set when this lesson is one occurrence of a weekly series. */
   seriesId: string | null;
   manageToken: string;

@@ -37,6 +37,34 @@ export function changePolicy(row, now = new Date()) {
   };
 }
 
+/**
+ * A duration change is also a price change. Legacy pay-in-person bookings and
+ * future recurring lessons that have not charged yet can change safely. A paid
+ * lesson would need a partial refund or a second charge, while a payment-due
+ * lesson may already have a hosted Checkout Session for the old amount; neither
+ * should be rewritten silently by the reschedule endpoint.
+ */
+export function lessonTypeChangeProblem(row, currentLessonType, nextLessonType) {
+  if (currentLessonType.id === nextLessonType.id) return "";
+  if (currentLessonType.id === "trial" || nextLessonType.id === "trial") {
+    return "A trial lesson can't be changed into another lesson length. Choose a new date and time, or cancel it and book another lesson.";
+  }
+
+  if (row.payment_status === "not_required" || row.payment_status === "scheduled") return "";
+  if (row.payment_status === "paid") {
+    return "This lesson is already paid. To change its length, cancel it for a refund and book the other length.";
+  }
+  if (row.payment_status === "payment_due") {
+    return "This lesson already has a payment due. Pay or cancel it before choosing another lesson length.";
+  }
+  return "This lesson's length can't be changed while its payment is being processed.";
+}
+
+/** A future saved-card charge follows the newly chosen lesson price. */
+export function amountAfterLessonTypeChange(row, nextLessonType) {
+  return row.payment_status === "scheduled" ? nextLessonType.price_cents : (row.amount_cents ?? null);
+}
+
 /** What a fixed run of lessons costs at checkout. */
 export function seriesTotalCents(count, priceCents) {
   if (!Number.isInteger(count) || count < 1) throw new Error("A run needs at least one lesson.");

@@ -28,7 +28,7 @@ Student on /book                                     (browse without an account)
   → POST /bookings                    (Bearer)       → D1 row, emails, ICS invite
   → GET  /me                          (Bearer)       → their calendar and series
   → GET  /bookings/:token                            one lesson; HMAC-signed token
-  → POST /bookings/:token/reschedule | /cancel       → sequence++, updated ICS
+  → POST /bookings/:token/reschedule | /cancel       → optional lessonType, sequence++, updated ICS
 Legacy /my-lessons and /booking links resolve into /book without losing state
 Inês on /schedule                     (her own account, role=teacher)
   → GET/POST /admin/availability, /admin/exceptions
@@ -111,6 +111,9 @@ depending on them having kept the right confirmation email.
   lesson or view existing lessons. Booking asks for the lesson type and then
   reveals the calendar; viewing lessons leads with the upcoming-lesson list and
   keeps the calendar beneath it as a four-week visual without free-time choices.
+  Signed-out visitors can browse lesson types, dates, and times before they are
+  asked to sign in; `View your lessons` asks immediately because the data is
+  private, while booking asks only at confirmation.
   Every booked lesson is marked there. Choosing a booked day
   or a free day reduces the calendar to that one week, putting the
   selected lesson or available times immediately beneath it on a phone.
@@ -151,8 +154,10 @@ depending on them having kept the right confirmation email.
   without repeating a booked-date count. The calendar remains underneath as
   supporting context. Opening an
   occurrence leaves the list and calendar where they are and shows a compact
-  `Change` or `Cancel` overlay. `Change` reuses the existing calendar time
-  picker; `Cancel` stays in the overlay for explicit confirmation. Recurring
+  `Change` or `Cancel` overlay. `Change` reuses the existing calendar date and
+  time picker and, when payment state permits, offers the ordinary `60 mins`
+  and `90 mins` lengths in the same panel; `Cancel` stays in the overlay for
+  explicit confirmation. Recurring
   occurrences are identified there as part of a sequence: either action affects
   only that lesson, while `Manage sequence` leads to the separately confirmed
   stop-repeating action in the same overlay. Stopping prevents future top-ups
@@ -349,7 +354,8 @@ Once availability has loaded, the date picker omits complete leading weeks with
 no free slots. That means a weekend with nothing left to book opens directly on
 the next usable week; closed weeks later in the booking window remain visible.
 Selecting either a booked day or a free day then shows only its week, so the
-details are directly below the calendar on a phone. Lesson management returns
+details are directly below the calendar on a phone. The compact week uses only
+`Show all`, with no redundant `Selected week` label. Lesson management returns
 to its fixed four-week overview; new bookings return to the full eight-week
 availability window.
 
@@ -384,6 +390,13 @@ before the switch carry `payment_status = 'not_required'` and keep the fee
 terms they were booked under until they wash through. The card itself never
 touches the database — Stripe keeps it; `students` holds only the opaque
 customer and payment-method ids (migration 0009).
+
+Changing an ordinary lesson from 60 to 90 minutes (or back) uses that same
+reschedule endpoint. Legacy `not_required` bookings can change length directly;
+a future recurring lesson with `scheduled` payment follows the new lesson
+price. A `paid` or `payment_due` lesson is never silently repriced: the student
+must cancel/refund and book the other length, or settle the outstanding payment.
+Trials cannot be converted into ordinary lessons through rescheduling.
 
 **Trial lessons are first lessons.** Anyone with a booking that wasn't
 cancelled is refused the trial at creation, kindly, and pointed at a single
