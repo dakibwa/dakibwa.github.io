@@ -117,7 +117,8 @@ p {
  * site's client-side navigation, and preserves the whole Portuguese site
  * untouched below the green rule. */
 .akibwa-project-banner {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 80;
   display: none;
   width: 100%;

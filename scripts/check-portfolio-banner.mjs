@@ -73,6 +73,7 @@ const state = () => page.evaluate(() => {
     backText: document.querySelector(".akibwa-project-banner__back")?.textContent.trim(),
     banner: rect(".akibwa-project-banner"),
     bannerDisplay: getComputedStyle(document.querySelector(".akibwa-project-banner")).display,
+    bannerPosition: getComputedStyle(document.querySelector(".akibwa-project-banner")).position,
     flag: document.documentElement.getAttribute("data-akibwa-project"),
     identity: document.querySelector(".akibwa-project-banner__identity")?.textContent.trim(),
     lede: document.querySelector(".akibwa-project-banner__lede")?.textContent.trim(),
@@ -94,8 +95,9 @@ try {
   await page.waitForSelector('html[data-akibwa-project="true"] .akibwa-project-banner');
   current = await state();
   check(current.flag === "true", "the Akibwa entry flag activates before the page settles");
-  check(current.identity === "I’m Daniel", `the masthead identity is concise [${current.identity}]`);
-  check(current.lede === "Building in the age of AI.", "the masthead keeps the portfolio proposition");
+  check(current.bannerPosition === "sticky", "the portfolio masthead stays pinned while the destination scrolls");
+  check(current.identity === "I’m Akibwa", `the masthead identity is concise [${current.identity}]`);
+  check(current.lede === "Building in the Intelligence Age.", "the masthead keeps the portfolio proposition");
   check(current.backText === "Back to projects", "the return action uses plain text");
   check(
     current.backHref === "https://akibwa.com/#projects",
@@ -117,6 +119,10 @@ try {
   check(current.bannerDisplay === "block", "the masthead persists through Portuguese navigation");
   check(current.siteHeader.top === current.banner.bottom, "the destination still begins below the masthead");
 
+  await page.evaluate(() => scrollTo(0, Math.min(600, document.documentElement.scrollHeight - innerHeight)));
+  current = await state();
+  check(Math.abs(current.banner.top) <= 1, "the masthead remains pinned after desktop scrolling");
+
   await page.evaluate(() => {
     document.querySelector(".akibwa-project-banner__back").addEventListener(
       "click",
@@ -136,6 +142,10 @@ try {
   check(current.banner.height <= 88, `the phone masthead stays compact [${current.banner.height.toFixed(1)}px]`);
   check(current.siteHeader.top === current.banner.bottom, "the phone site starts below the green boundary");
   check(current.overflow <= 1, `the phone entry has no horizontal overflow [${current.overflow}px]`);
+
+  await page.evaluate(() => scrollTo(0, Math.min(500, document.documentElement.scrollHeight - innerHeight)));
+  current = await state();
+  check(Math.abs(current.banner.top) <= 1, "the masthead remains pinned after phone scrolling");
 
   if (process.env.PORTFOLIO_SCREENSHOT) {
     await page.screenshot({ path: process.env.PORTFOLIO_SCREENSHOT, fullPage: false });

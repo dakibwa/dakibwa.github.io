@@ -5,10 +5,10 @@ export function AkibwaProjectBanner() {
     <header className="akibwa-project-banner" aria-label="Akibwa portfolio">
       <div className="akibwa-project-banner__inner">
         <p className="akibwa-project-banner__identity">
-          I’m <strong>Daniel</strong>
+          I’m <strong>Akibwa</strong>
         </p>
         <div className="akibwa-project-banner__copy">
-          <p className="akibwa-project-banner__lede">Building in the age of AI.</p>
+          <p className="akibwa-project-banner__lede">Building in the Intelligence Age.</p>
           <a
             className="akibwa-project-banner__back"
             data-akibwa-project-back
