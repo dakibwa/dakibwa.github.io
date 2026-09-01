@@ -1970,6 +1970,79 @@ html.booking-transitioning .booking-confirmation-stage {
   margin-top: 0.65rem;
 }
 
+/* Location and duration are compact comparisons, not feature cards. Keeping
+   both in the same selector language makes the flow calmer and leaves the
+   calendar as the visual centre of the booking experience. */
+.booking-step-selector {
+  display: grid;
+  max-width: 620px;
+  margin: 0.85rem auto 0;
+  border: 0;
+  padding: 0;
+  gap: 0.8rem;
+}
+
+.booking-step-selector .segmented {
+  margin: 0;
+}
+
+.booking-step-selector .segmented label {
+  flex-wrap: wrap;
+  gap: 0.08rem 0.4rem;
+}
+
+.booking-step-selector .segmented label small {
+  font-size: 0.65rem;
+  font-weight: 600;
+  opacity: 0.76;
+}
+
+.booking-step-selector__continue {
+  justify-self: end;
+  min-width: min(190px, 100%);
+}
+
+.booking-repeat-lengths {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 620px;
+  margin: 0.85rem auto 0;
+  gap: 0.65rem;
+}
+
+.booking-repeat-length {
+  display: grid;
+  min-height: 86px;
+  align-content: center;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-field);
+  padding: 0.75rem 0.55rem;
+  background: rgba(255, 255, 255, 0.44);
+  color: var(--ink);
+  cursor: pointer;
+  gap: 0.16rem;
+  text-align: center;
+  transition: background 180ms var(--motion-ease), border-color 180ms var(--motion-ease), transform 180ms var(--motion-ease);
+}
+
+.booking-repeat-length strong {
+  font-family: var(--ui);
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
+}
+
+.booking-repeat-length span {
+  font-size: 0.7rem;
+  opacity: 0.72;
+}
+
+.booking-repeat-length:hover,
+.booking-repeat-length:focus-visible,
+.booking-repeat-length.is-selected {
+  border-color: var(--lavender-ink);
+  background: rgba(170, 164, 230, 0.24);
+  transform: translateY(-1px);
+}
+
 .booking-choice-summary {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) auto;
@@ -2233,10 +2306,16 @@ html.booking-transitioning .booking-confirmation-stage {
 
 .unified-calendar--managed-overlay .unified-calendar__grid {
   align-self: stretch;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .unified-calendar--managed-overlay .unified-calendar__panel {
   top: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .lesson-manage-workspace__close {
@@ -2248,16 +2327,16 @@ html.booking-transitioning .booking-confirmation-stage {
   width: 38px;
   height: 38px;
   place-items: center;
-  border: 1px solid var(--rule-soft);
+  border: 0;
   border-radius: 50%;
-  background: rgba(251, 244, 229, 0.94);
+  background: rgba(170, 164, 230, 0.18);
   color: var(--ink);
   cursor: pointer;
 }
 
 .lesson-manage-workspace__close:hover,
 .lesson-manage-workspace__close:focus-visible {
-  border-color: var(--coral-action);
+  background: rgba(170, 164, 230, 0.34);
   color: var(--coral-action);
 }
 
@@ -2302,16 +2381,16 @@ html.booking-transitioning .booking-confirmation-stage {
   width: 38px;
   height: 38px;
   place-items: center;
-  border: 1px solid var(--rule-soft);
+  border: 0;
   border-radius: 50%;
-  background: rgba(251, 244, 229, 0.82);
+  background: rgba(170, 164, 230, 0.18);
   color: var(--ink);
   cursor: pointer;
 }
 
 .lesson-manage-dialog__close:hover,
 .lesson-manage-dialog__close:focus-visible {
-  border-color: var(--coral-action);
+  background: rgba(170, 164, 230, 0.34);
   color: var(--coral-action);
 }
 
@@ -2631,7 +2710,7 @@ html.booking-transitioning .booking-confirmation-stage {
   border: 1px solid rgba(194, 58, 39, 0.26);
   border-radius: var(--squiggle-field);
   background: rgba(194, 58, 39, 0.075);
-  transition: border-color 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: border-color 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .upcoming-lesson-group--single:hover,
@@ -2652,8 +2731,9 @@ html.booking-transitioning .booking-confirmation-stage {
 .upcoming-lesson-group--series:focus-within {
   border-color: rgba(82, 74, 150, 0.62);
   background:
-    linear-gradient(115deg, rgba(170, 164, 230, 0.34), rgba(255, 255, 255, 0.24)),
+    linear-gradient(115deg, rgba(170, 164, 230, 0.42), rgba(255, 255, 255, 0.28)),
     var(--cream);
+  box-shadow: inset 4px 0 0 rgba(82, 74, 150, 0.8), 0 9px 24px rgba(82, 74, 150, 0.12);
 }
 
 .upcoming-lesson-group--series .lesson-calendar__status--recurring {
@@ -2705,6 +2785,57 @@ html.booking-transitioning .booking-confirmation-stage {
 
 .upcoming-lesson-group__dates-toggle {
   color: var(--lavender-ink);
+}
+
+.upcoming-lesson-group__recurrence-action {
+  color: var(--coral-action);
+}
+
+.upcoming-lesson-occurrences {
+  display: grid;
+  margin: -0.1rem 0 0.25rem clamp(0.6rem, 3vw, 1.6rem);
+  gap: 0.42rem;
+}
+
+.upcoming-lesson-occurrence {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid rgba(82, 74, 150, 0.24);
+  border-radius: var(--squiggle-field);
+  padding: 0.72rem 0.8rem;
+  background: rgba(170, 164, 230, 0.09);
+  color: inherit;
+  cursor: pointer;
+  gap: 0.75rem;
+  text-align: left;
+  transition: background 180ms var(--motion-ease), border-color 180ms var(--motion-ease);
+}
+
+.upcoming-lesson-occurrence:hover,
+.upcoming-lesson-occurrence:focus-visible {
+  border-color: rgba(82, 74, 150, 0.5);
+  background: rgba(170, 164, 230, 0.2);
+}
+
+.upcoming-lesson-occurrence > span:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.16rem;
+}
+
+.upcoming-lesson-occurrence strong {
+  font-family: var(--ui);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.upcoming-lesson-occurrence small {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  opacity: 0.72;
 }
 
 .upcoming-lesson-group__dates {
@@ -2759,11 +2890,24 @@ html.booking-transitioning .booking-confirmation-stage {
 }
 
 @container booking (max-width: 480px) {
+  .booking-repeat-lengths {
+    gap: 0.4rem;
+  }
+
+  .booking-repeat-length {
+    min-height: 76px;
+    padding-inline: 0.3rem;
+  }
+
+  .upcoming-lesson-occurrences {
+    margin-left: 0.45rem;
+  }
+
   .upcoming-lesson-group__summary {
     grid-template-columns: 38px minmax(0, 1fr);
     grid-template-areas:
       "mark copy"
-      ". actions";
+      "actions actions";
   }
 
   .upcoming-lesson-group__summary .lesson-calendar__mark {
@@ -2776,10 +2920,16 @@ html.booking-transitioning .booking-confirmation-stage {
 
   .upcoming-lesson-group__summary .upcoming-lesson-group__actions {
     grid-area: actions;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    margin-top: 0.28rem;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 0.38rem;
+  }
+
+  .upcoming-lesson-group__summary .upcoming-lesson-group__actions .text-action {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 

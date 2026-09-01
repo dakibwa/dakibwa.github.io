@@ -166,6 +166,20 @@ function locationLabel(row) {
   return row.location === "porto" ? "In person, Porto" : "Online";
 }
 
+export function normaliseLocation(value, fallback = "online") {
+  if (value === "porto" || value === "online") return value;
+  return fallback === "porto" ? "porto" : "online";
+}
+
+/**
+ * Development can pause Inês's copies without silencing confirmations,
+ * calendar updates, password resets, or other student mail. Her address stays
+ * configured because it remains the reply-to address on student messages.
+ */
+function teacherNotificationsEnabled(env) {
+  return env.TEACHER_NOTIFICATIONS_ENABLED !== "0";
+}
+
 /**
  * Every student-facing and teacher-facing message for one lifecycle event.
  * Kept in one place so a change to wording cannot drift between the two sides.
@@ -390,7 +404,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
     })
   ];
 
-  if (teacherEmail) {
+  if (teacherNotificationsEnabled(env) && teacherEmail) {
     sends.push(
       deliver(env, {
         to: teacherEmail,
@@ -536,7 +550,7 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
     );
   }
 
-  if (teacherEmail) {
+  if (teacherNotificationsEnabled(env) && teacherEmail) {
     sends.push(
       deliver(env, {
         to: teacherEmail,
@@ -671,7 +685,7 @@ async function notifySeriesCancelled(env, { rows, lessonType, settings }) {
     })
   ];
 
-  if (teacherEmail) {
+  if (teacherNotificationsEnabled(env) && teacherEmail) {
     sends.push(
       deliver(env, {
         to: teacherEmail,
@@ -978,7 +992,7 @@ async function notifyPaymentDue(env, { row, lessonType }) {
     }
   });
 
-  if (teacherEmail) {
+  if (teacherNotificationsEnabled(env) && teacherEmail) {
     await deliver(env, {
       to: teacherEmail,
       subject: `Card declined — ${row.student_name}, ${formatShort(start, PORTO)}`,
@@ -1151,6 +1165,7 @@ async function handleHealth(request, env) {
       missing,
       lessonTypes,
       emailMode: env.RESEND_API_KEY && env.EMAIL_DRY_RUN !== "1" ? "live" : "dry-run",
+      teacherNotifications: teacherNotificationsEnabled(env) ? "live" : "paused",
       paymentMode,
       stripe: stripeConfigured(env) ? (isTestMode(env) ? "test" : "live") : "not-configured",
       googleSignIn: env.GOOGLE_CLIENT_ID ? "configured" : "not-configured"
@@ -1215,7 +1230,7 @@ async function handleCreate(request, env, ctx) {
   const now = new Date();
 
   const notes = cleanText(body.notes, 1000);
-  const location = body.location === "porto" ? "porto" : "online";
+  const location = normaliseLocation(body.location);
   const timezone = isValidTimeZone(body.timezone) ? body.timezone : student.timezone;
 
   const lessonType = await loadLessonType(env, cleanText(body.lessonType, 40) || "single");
@@ -1814,6 +1829,7 @@ async function handleReschedule(request, env, ctx, token) {
   const lessonTypeId = cleanText(body.lessonType, 40) || row.lesson_type_id;
   const lessonType = await loadLessonType(env, lessonTypeId);
   if (!lessonType) return fail("That lesson type is not available.", 400, request, env);
+  const location = normaliseLocation(body.location, row.location);
 
   const typeChangeProblem = lessonTypeChangeProblem(row, previousLessonType, lessonType);
   if (typeChangeProblem) return fail(typeChangeProblem, 409, request, env);
@@ -1839,7 +1855,7 @@ async function handleReschedule(request, env, ctx, token) {
    * while only one of them was true.
    */
   const moved = await env.DB.prepare(
-    `UPDATE bookings SET lesson_type_id = ?, starts_at = ?, ends_at = ?, previous_starts_at = ?,
+    `UPDATE bookings SET lesson_type_id = ?, location = ?, starts_at = ?, ends_at = ?, previous_starts_at = ?,
        amount_cents = ?, sequence = sequence + 1, reschedule_count = reschedule_count + 1,
        same_day_change = ?, updated_at = ?
      WHERE id = ?
@@ -1855,6 +1871,7 @@ async function handleReschedule(request, env, ctx, token) {
   )
     .bind(
       lessonType.id,
+      location,
       startsAt,
       endsAt,
       row.starts_at,

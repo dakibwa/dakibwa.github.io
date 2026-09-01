@@ -70,13 +70,13 @@ import { staticLessonTypes } from "@/lib/lesson-products";
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const weekdayNames = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
 
-type Step = "pattern" | "repeat" | "lesson" | "day" | "time" | "details";
+type Step = "pattern" | "where" | "repeat" | "lesson" | "day" | "time" | "details";
 type BookingIntent = "choose" | "book" | "lessons";
 type BookingKind = "" | "trial" | "once" | "recurring";
 type CalendarWeekCount = 1 | 4 | 8;
 
 /** "once" is a real choice, not the absence of one, so it lives in the union. */
-type RepeatOption = "once" | 4 | "open";
+type RepeatOption = "once" | 4 | 6 | 8;
 type FormState = { notes: string; location: "online" | "porto"; repeat: RepeatOption };
 const emptyForm: FormState = { notes: "", location: "online", repeat: "once" };
 
@@ -84,15 +84,16 @@ function minutesToClock(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-const RECURRING_OPTIONS: { value: Exclude<RepeatOption, "once">; label: string; description: string }[] = [
-  { value: 4, label: "4 weeks", description: "Four weekly lessons, then it stops" },
-  { value: "open", label: "Until I stop it", description: "Keep the same weekly time" }
+const RECURRING_OPTIONS: { value: Exclude<RepeatOption, "once">; label: string }[] = [
+  { value: 4, label: "4 weeks" },
+  { value: 6, label: "6 weeks" },
+  { value: 8, label: "8 weeks" }
 ];
 
-/** The wire form: `undefined` books one lesson, `null` repeats indefinitely. */
+/** The wire form: `undefined` books one lesson; a number books that many weeks. */
 function repeatPayload(option: RepeatOption): RepeatChoice | undefined {
   if (option === "once") return undefined;
-  return option === "open" ? null : option;
+  return option;
 }
 
 type Confirmation = {
@@ -270,6 +271,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [managedToken, setManagedToken] = useState("");
   const [managedSeriesId, setManagedSeriesId] = useState<string | null>(null);
   const [managedLessonTypeId, setManagedLessonTypeId] = useState("");
+  const [managedLocation, setManagedLocation] = useState<"online" | "porto">("online");
   const [managed, setManaged] = useState<ManagedBooking | null>(null);
   const [manageMode, setManageMode] = useState<
     "view" | "reschedule" | "confirm-cancel" | "sequence" | "confirm-stop-sequence" | "confirm-cancel-sequence"
@@ -357,7 +359,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     orientTo("booking-lesson-choice");
   }, [hasPriorBooking, lessonTypeId]);
 
-  const openManaged = useCallback(async (token: string, seriesId: string | null = null) => {
+  const openManaged = useCallback(async (
+    token: string,
+    seriesId: string | null = null,
+    initialMode: "view" | "sequence" = "view"
+  ) => {
     if (!token) return;
     setIntent("lessons");
     setManagedToken(token);
@@ -367,14 +373,16 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setManageError("");
     setManageOutcome("");
     setManagedCalendarPlaceholderHeight(0);
-    setManageMode("view");
+    setManageMode(initialMode);
     setSelectedSlot("");
     try {
       const result = await fetchBooking(token);
       transitionBooking(() => {
         setManaged(result);
         setManagedLessonTypeId(result.booking.lessonType.id);
+        setManagedLocation(result.booking.location);
         setSelectedDate(portoDateKey(new Date(result.booking.startAt)));
+        setManageMode(initialMode);
         setManageLoading(false);
       });
     } catch (caught) {
@@ -524,7 +532,21 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     ? [{ ...selectedCalendarWeek, showMonth: true }]
     : overviewCalendarWeeks;
   const returnCalendarWeekCount = visibleCalendarWeekCount === 1 ? standardCalendarWeekCount : null;
-  const daySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
+  const rawDaySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
+  const managedDate = managed ? portoDateKey(new Date(managed.booking.startAt)) : "";
+  const shouldShowCurrentManagedSlot = Boolean(
+    managed &&
+    manageMode === "reschedule" &&
+    selectedDate === managedDate &&
+    (managedLessonTypeId || managed.booking.lessonType.id) === managed.booking.lessonType.id &&
+    !rawDaySlots.some((slot) => slot.startAt === managed.booking.startAt)
+  );
+  const daySlots = shouldShowCurrentManagedSlot && managed
+    ? [
+        ...rawDaySlots,
+        { startAt: managed.booking.startAt, endAt: managed.booking.endAt }
+      ].sort((a, b) => a.startAt.localeCompare(b.startAt))
+    : rawDaySlots;
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
   const firstCalendarBookingStart = calendarWindowBookings[0]?.startAt ?? "";
@@ -536,7 +558,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     !isConfirmingBooking &&
     !needsLessonsSignIn &&
     (intent === "lessons" ||
-      Boolean(intent === "book" && lessonType && !["pattern", "repeat", "lesson"].includes(step)) ||
+      Boolean(intent === "book" && lessonType && !["pattern", "where", "repeat", "lesson"].includes(step)) ||
       Boolean(managed));
   const resolvedManagedSeriesId = managedSeriesId ?? myBookings.find((booking) => booking.manageToken === managedToken)?.seriesId ?? null;
   const activeManagedSeries = resolvedManagedSeriesId
@@ -617,7 +639,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       orientTo("booking-next-step");
     } else if (next === "day") {
       orientTo("lesson-calendar");
-    } else if (next === "pattern" || next === "repeat" || next === "lesson") {
+    } else if (next === "pattern" || next === "where" || next === "repeat" || next === "lesson") {
       orientTo("booking-lesson-choice");
     }
   }
@@ -757,11 +779,17 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setManageError("");
     try {
       const previousLessonTypeId = managed.booking.lessonType.id;
-      await rescheduleBooking(managedToken, selectedSlot, managedLessonTypeId || previousLessonTypeId);
+      await rescheduleBooking(
+        managedToken,
+        selectedSlot,
+        managedLessonTypeId || previousLessonTypeId,
+        managedLocation
+      );
       const refreshed = await fetchBooking(managedToken);
       transitionBooking(() => {
         setManaged(refreshed);
         setManagedLessonTypeId(refreshed.booking.lessonType.id);
+        setManagedLocation(refreshed.booking.location);
         setSelectedDate(portoDateKey(new Date(refreshed.booking.startAt)));
         setSelectedSlot("");
         setManageMode("view");
@@ -838,6 +866,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setManagedToken("");
     setManagedSeriesId(null);
     setManagedLessonTypeId("");
+    setManagedLocation("online");
     setManageMode("view");
     setManageError("");
     setManageOutcome("");
@@ -895,8 +924,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       setManagedCalendarPlaceholderHeight(calendarHeight);
       setManageMode("reschedule");
       setManagedLessonTypeId(managed.booking.lessonType.id);
+      setManagedLocation(managed.booking.location);
       setSelectedDate(isInCalendar ? managedDate : "");
-      setSelectedSlot("");
+      setSelectedSlot(isInCalendar ? managed.booking.startAt : "");
       setCalendarWeekCount(isInCalendar ? 1 : 4);
       setManageError("");
       setLoadingSlots(true);
@@ -1049,9 +1079,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               calendarHorizonDays={horizonDays}
               embedded
               onBackToStart={resetJourneyToStart}
-              onManage={(token, seriesId) =>
+              onManage={(token, seriesId, openSeries) =>
                 transitionBooking(() => {
-                  void openManaged(token, seriesId);
+                  void openManaged(token, seriesId, openSeries ? "sequence" : "view");
                 })
               }
               onOpenAccountSection={openAccountShortcut}
@@ -1064,6 +1094,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 setManagedToken("");
                 setManagedSeriesId(null);
                 setManagedLessonTypeId("");
+                setManagedLocation("online");
                 setManageMode("view");
                 setHasPriorBooking(false);
                 setIntent("choose");
@@ -1104,7 +1135,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 onClick={dismissManagedDialog}
                 type="button"
               >
-                <X aria-hidden="true" size={19} />
+                <X aria-hidden="true" size={22} strokeWidth={2} />
               </button>
 
               <div
@@ -1369,7 +1400,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
         {showLessonChoice ? (
           <div className="unified-booking__lesson-picker" id="booking-lesson-choice" tabIndex={-1}>
-            {lessonType && !["pattern", "repeat", "lesson"].includes(step) ? (
+            {lessonType && !["pattern", "where", "repeat", "lesson"].includes(step) ? (
               <div className="booking-choice-summary" aria-label="Booking choices">
                 <LessonMark className="booking-choice-summary__mark" lessonTypeId={lessonType.id} />
                 <span className="booking-choice-summary__copy">
@@ -1378,11 +1409,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   </span>
                   <strong>{formatLessonDuration(lessonType.duration_minutes)}</strong>
                   <small>
-                    {formatMoneyCents(lessonType.price_cents)}
+                    {formatMoneyCents(lessonType.price_cents)} · {form.location === "porto" ? "In Porto" : "Online"}
                     {bookingKind === "recurring"
-                      ? form.repeat === "open"
-                        ? " · every week until you stop it"
-                        : " · weekly for 4 weeks"
+                      ? ` · weekly for ${form.repeat} weeks`
                       : ""}
                   </small>
                 </span>
@@ -1447,10 +1476,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     className="lesson-card"
                     onClick={() =>
                       transitionBooking(() => {
-                        setBookingKind("once");
-                        setForm((current) => ({ ...current, repeat: "once" }));
-                        setLessonTypeId("");
-                        goTo("lesson");
+                          setBookingKind("once");
+                          setForm((current) => ({ ...current, repeat: "once" }));
+                          setLessonTypeId("");
+                          goTo("where");
                       })
                     }
                     type="button"
@@ -1470,7 +1499,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                         setBookingKind("recurring");
                         setForm((current) => ({ ...current, repeat: 4 }));
                         setLessonTypeId("");
-                        goTo("repeat");
+                        goTo("where");
                       })
                     }
                     type="button"
@@ -1488,34 +1517,72 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   </div>
                 )}
               </>
-            ) : step === "repeat" ? (
+            ) : step === "where" ? (
               <>
                 <div className="booking-workflow-step-head">
-                  <h2>How long should it repeat?</h2>
+                  <h2>Where will you have your lesson?</h2>
                   <button className="booking-back booking-back--tertiary" onClick={() => transitionBooking(() => goTo("pattern"))} type="button">
                     <ArrowLeft size={16} aria-hidden="true" /> Back
                   </button>
                 </div>
-                <div className="lesson-choice lesson-choice--repeat">
+                <fieldset className="booking-step-selector">
+                  <legend className="sr-only">Lesson location</legend>
+                  <div className={`segmented segmented--${form.location}`}>
+                    <span aria-hidden="true" className="segmented__thumb" />
+                    {(["online", "porto"] as const).map((option) => (
+                      <label className={form.location === option ? "is-active" : ""} key={option}>
+                        <input
+                          checked={form.location === option}
+                          name="booking-location"
+                          onChange={() => setForm((current) => ({ ...current, location: option }))}
+                          type="radio"
+                          value={option}
+                        />
+                        {option === "online" ? "Online" : "In Porto"}
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    className="button button--coral booking-step-selector__continue"
+                    onClick={() =>
+                      transitionBooking(() => {
+                        if (bookingKind !== "recurring" && !lessonTypeId && regularLessonTypes[0]) {
+                          setLessonTypeId(regularLessonTypes[0].id);
+                        }
+                        goTo(bookingKind === "recurring" ? "repeat" : "lesson");
+                      })
+                    }
+                    type="button"
+                  >
+                    Continue
+                  </button>
+                </fieldset>
+              </>
+            ) : step === "repeat" ? (
+              <>
+                <div className="booking-workflow-step-head">
+                  <h2>How long should it repeat?</h2>
+                  <button className="booking-back booking-back--tertiary" onClick={() => transitionBooking(() => goTo("where"))} type="button">
+                    <ArrowLeft size={16} aria-hidden="true" /> Back
+                  </button>
+                </div>
+                <div className="booking-repeat-lengths" role="group" aria-label="Number of weekly lessons">
                   {RECURRING_OPTIONS.map((option) => (
                     <button
-                      aria-label={`${option.label} · ${option.description}`}
-                      className="lesson-card"
+                      aria-label={`${option.label} of weekly lessons`}
+                      className={`booking-repeat-length${form.repeat === option.value ? " is-selected" : ""}`}
                       key={String(option.value)}
                       onClick={() =>
                         transitionBooking(() => {
                           setForm((current) => ({ ...current, repeat: option.value }));
+                          if (!lessonTypeId && regularLessonTypes[0]) setLessonTypeId(regularLessonTypes[0].id);
                           goTo("lesson");
                         })
                       }
                       type="button"
                     >
-                      <span className="lesson-card__mark lesson-card__mark--repeat" aria-hidden="true"><Repeat size={25} /></span>
-                      <span className="lesson-card__text">
-                        <strong>{option.label}</strong>
-                        <span className="lesson-card__meta">{option.description}</span>
-                      </span>
-                      <ChevronRight aria-hidden="true" size={20} />
+                      <strong>{option.label}</strong>
+                      <span>Weekly lessons</span>
                     </button>
                   ))}
                 </div>
@@ -1526,39 +1593,51 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                   <h2>Choose lesson length</h2>
                   <button
                     className="booking-back booking-back--tertiary"
-                    onClick={() => transitionBooking(() => goTo(bookingKind === "recurring" ? "repeat" : "pattern"))}
+                    onClick={() => transitionBooking(() => goTo(bookingKind === "recurring" ? "repeat" : "where"))}
                     type="button"
                   >
                     <ArrowLeft size={16} aria-hidden="true" /> Back
                   </button>
                 </div>
-                <div className="lesson-choice lesson-choice--duration">
-                  {regularLessonTypes.map((type) => (
-                    <button
-                      aria-label={`${formatLessonDuration(type.duration_minutes)} lesson · ${formatMoneyCents(type.price_cents)}`}
-                      className="lesson-card"
-                      key={type.id}
-                      onClick={() =>
-                        transitionBooking(() => {
-                          setLoadingSlots(true);
-                          setSlotsByDate({});
-                          setLessonTypeId(type.id);
-                          setCalendarWeekCount(8);
-                          setSelectedSlot("");
-                          goTo("day");
-                        })
-                      }
-                      type="button"
-                    >
-                      <LessonMark className="lesson-card__mark" lessonTypeId={type.id} />
-                      <span className="lesson-card__text">
-                        <strong>{formatLessonDuration(type.duration_minutes)}</strong>
-                        <span className="lesson-card__meta">{formatMoneyCents(type.price_cents)}</span>
-                      </span>
-                      <ChevronRight aria-hidden="true" size={20} />
-                    </button>
-                  ))}
-                </div>
+                <fieldset className="booking-step-selector">
+                  <legend className="sr-only">Lesson length</legend>
+                  <div className={`segmented${regularLessonTypes.findIndex((type) => type.id === lessonTypeId) === 1 ? " segmented--second" : ""}`}>
+                    <span aria-hidden="true" className="segmented__thumb" />
+                    {regularLessonTypes.map((type) => (
+                      <label className={lessonTypeId === type.id ? "is-active" : ""} key={type.id}>
+                        <input
+                          aria-label={`${formatLessonDuration(type.duration_minutes)} lesson · ${formatMoneyCents(type.price_cents)}`}
+                          checked={lessonTypeId === type.id}
+                          name="booking-duration"
+                          onChange={() => {
+                            setLoadingSlots(true);
+                            setSlotsByDate({});
+                            setLessonTypeId(type.id);
+                            setSelectedSlot("");
+                          }}
+                          type="radio"
+                          value={type.id}
+                        />
+                        <span>{type.duration_minutes} mins</span>
+                        <small>{formatMoneyCents(type.price_cents)}</small>
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    className="button button--coral booking-step-selector__continue"
+                    disabled={!lessonTypeId}
+                    onClick={() =>
+                      transitionBooking(() => {
+                        setCalendarWeekCount(8);
+                        setSelectedSlot("");
+                        goTo("day");
+                      })
+                    }
+                    type="button"
+                  >
+                    Choose a date
+                  </button>
+                </fieldset>
               </>
             )}
           </div>
@@ -1600,7 +1679,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
               onClick={dismissManagedDialog}
               type="button"
             >
-              <X aria-hidden="true" size={19} />
+              <X aria-hidden="true" size={22} strokeWidth={2} />
             </button>
           ) : null}
           <div className="calendar-panel unified-calendar__grid">
@@ -1672,7 +1751,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                             transitionBooking(() => {
                               setSelectedDate(cell.key);
                               setCalendarWeekCount(1);
-                              setSelectedSlot("");
+                              setSelectedSlot(
+                                managed &&
+                                manageMode === "reschedule" &&
+                                cell.key === managedDate &&
+                                (managedLessonTypeId || managed.booking.lessonType.id) === managed.booking.lessonType.id
+                                  ? managed.booking.startAt
+                                  : ""
+                              );
                               if (lessonType && !managed) {
                                 setStep("time");
                                 setSubmitError("");
@@ -1760,7 +1846,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                               setLoadingSlots(true);
                               setSlotsByDate({});
                               setManagedLessonTypeId(type.id);
-                              setSelectedSlot("");
+                              setSelectedSlot(
+                                type.id === managed.booking.lessonType.id && selectedDate === managedDate
+                                  ? managed.booking.startAt
+                                  : ""
+                              );
                             }}
                             type="radio"
                             value={type.id}
@@ -1776,6 +1866,24 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     cancel and rebook to change its length.
                   </p>
                 ) : null}
+                <fieldset className="managed-lesson__duration">
+                  <legend>Where</legend>
+                  <div className={`segmented segmented--${managedLocation}`}>
+                    <span aria-hidden="true" className="segmented__thumb" />
+                    {(["online", "porto"] as const).map((option) => (
+                      <label className={managedLocation === option ? "is-active" : ""} key={option}>
+                        <input
+                          checked={managedLocation === option}
+                          name="managed-lesson-location"
+                          onChange={() => setManagedLocation(option)}
+                          type="radio"
+                          value={option}
+                        />
+                        {option === "online" ? "Online" : "In Porto"}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
                 {manageError ? (
                   <div className="booking-alert" role="alert">
                     <AlertCircle size={18} aria-hidden="true" />
@@ -1814,7 +1922,9 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     {manageWorking
                       ? "Changing…"
                       : selectedSlot
-                        ? `Change to ${formatSlotTime(selectedSlot)}`
+                        ? selectedSlot === managed.booking.startAt
+                          ? "Save changes"
+                          : `Change to ${formatSlotTime(selectedSlot)}`
                         : "Choose a time"}
                   </button>
                   <button
@@ -1931,7 +2041,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 {form.repeat !== "once" ? (
                   <p className="booking-recap__rhythm">
                     <Repeat size={17} aria-hidden="true" />
-                    <span>{form.repeat === "open" ? "Every week until you stop it" : "Weekly for 4 weeks"}</span>
+                    <span>Weekly for {form.repeat} weeks</span>
                   </p>
                 ) : null}
                 {chosen && differingLocalTime(chosen.startAt, studentZone) ? (
@@ -2036,8 +2146,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                                 {seriesPreview.bookable.length}{" "}
                                 {seriesPreview.bookable.length === 1 ? "lesson" : "lessons"}
                               </strong>{" "}
-                              at this time
-                              {form.repeat === "open" ? ", and it keeps going until you stop it" : ""}.
+                              at this time.
                             </>
                           ) : (
                             "You can move or cancel any single lesson later without stopping the rest."

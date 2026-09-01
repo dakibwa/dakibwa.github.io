@@ -21,7 +21,7 @@ import {
   planSeriesCancellation,
   seriesTotalCents
 } from "./policy.mjs";
-import { notifySeries } from "./index.mjs";
+import { normaliseLocation, notifySeries } from "./index.mjs";
 import {
   addDaysToKey,
   dateKey,
@@ -676,6 +676,13 @@ await test("only the offered run lengths are accepted, and open-ended is distinc
   }
 });
 
+await test("rescheduling accepts either lesson location and otherwise keeps the current one", () => {
+  assert.equal(normaliseLocation("online", "porto"), "online");
+  assert.equal(normaliseLocation("porto", "online"), "porto");
+  assert.equal(normaliseLocation(undefined, "porto"), "porto");
+  assert.equal(normaliseLocation("elsewhere", "online"), "online");
+});
+
 await test("a bounded series stops asking for weeks once it has them all", () => {
   const series = { occurrences: 8, filled_to: "2026-10-28" };
   const now = new Date("2026-09-09T12:00:00.000Z");
@@ -807,6 +814,30 @@ await test("a repeating booking sends one consolidated email to the client", asy
       { kind: "student_series_booked", recipient: "ana@example.com" },
       { kind: "teacher_series_booked", recipient: "ines@example.com" }
     ]
+  );
+});
+
+await test("teacher notifications can pause without silencing the student", async () => {
+  const fixture = seriesEmailFixture();
+  fixture.env.TEACHER_NOTIFICATIONS_ENABLED = "0";
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    await notifySeries(fixture.env, {
+      rows: fixture.rows,
+      lessonType: fixture.lessonType,
+      settings: fixture.settings,
+      series: { id: "series-paused-teacher", occurrences: 6 },
+      manageUrls: fixture.manageUrls,
+      skipped: []
+    });
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.deepEqual(
+    fixture.emailLog.map(({ kind, recipient }) => ({ kind, recipient })),
+    [{ kind: "student_series_booked", recipient: "ana@example.com" }]
   );
 });
 

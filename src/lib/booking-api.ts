@@ -116,12 +116,8 @@ export function fetchAvailability(lessonType: string, from: string, to: string, 
   );
 }
 
-/**
- * How often a lesson repeats. `null` is the deliberate open-ended choice —
- * every week until the student stops it — and is not the same as omitting the
- * field, which books one lesson.
- */
-export type RepeatChoice = 4 | null;
+/** A bounded weekly run. Omitting `repeat` books one lesson. */
+export type RepeatChoice = 4 | 6 | 8;
 
 export type SeriesOutcome = {
   id: string;
@@ -205,10 +201,22 @@ export function fetchBooking(token: string) {
   return request<ManagedBooking>(`/bookings/${encodeURIComponent(token)}`);
 }
 
-export function rescheduleBooking(token: string, startAt: string, lessonType?: string) {
+export function rescheduleBooking(
+  token: string,
+  startAt: string,
+  lessonType?: string,
+  location?: "online" | "porto"
+) {
   return request<{ booking: Booking; sameDayFeeApplied: boolean }>(
     `/bookings/${encodeURIComponent(token)}/reschedule`,
-    { method: "POST", body: JSON.stringify({ startAt, ...(lessonType ? { lessonType } : {}) }) }
+    {
+      method: "POST",
+      body: JSON.stringify({
+        startAt,
+        ...(lessonType ? { lessonType } : {}),
+        ...(location ? { location } : {})
+      })
+    }
   );
 }
 
