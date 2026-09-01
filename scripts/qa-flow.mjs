@@ -1903,6 +1903,13 @@ if (stopRepeatPayloads.length !== 1 || stopRepeatPayloads[0].cancelRemaining !==
 }
 await sequenceDialog.getByRole("button", { name: "Done", exact: true }).click();
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+await accountPage.waitForFunction(
+  () =>
+    document.querySelectorAll("#account-upcoming-lessons .upcoming-lesson-group--series").length === 0 &&
+    document.querySelectorAll("#account-upcoming-lessons .upcoming-lesson-group--single").length === 12,
+  null,
+  { timeout: 10_000 }
+);
 if ((await accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group--series").count()) !== 0) {
   throw new Error("A stopped sequence should no longer appear as a recurring group.");
 }
@@ -1917,7 +1924,7 @@ if (await accountPanel.getByText(/Booked sequence|Sequence ended/i).count()) {
 // can still be exercised without creating a second mock student.
 repeatStopped = false;
 stopRepeatPayloads.length = 0;
-await accountPage.reload({ waitUntil: "domcontentloaded" });
+await accountPage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
 await accountPanel.waitFor({ state: "visible" });
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
