@@ -5380,7 +5380,7 @@ button.text-action {
 
 .site-footer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
   align-items: center;
   min-height: 0;
   padding: 1.35rem var(--page-pad);
@@ -5390,12 +5390,20 @@ button.text-action {
   gap: clamp(2.5rem, 5vw, 7rem);
 }
 
+.site-footer__brand {
+  width: min(240px, 100%);
+}
+
+.footer-wordmark {
+  width: 100%;
+}
+
 /* Flex, not a four-column grid: the account link made five items, and the
    fifth wrapped to a second row, which is what made the footer look stacked. */
 .site-footer__nav {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 0 clamp(1rem, 2.2vw, 2.6rem);
   font-family: var(--ui);
   font-size: 0.72rem;
@@ -5561,14 +5569,14 @@ button.text-action {
   }
 
   .site-footer {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(200px, 1fr) auto minmax(0, 1fr);
     gap: 2rem;
     padding-top: 2rem;
     padding-bottom: 2rem;
   }
 
   .site-footer__nav {
-    justify-content: flex-start;
+    justify-content: center;
     gap: clamp(1rem, 3vw, 2.25rem);
   }
 }
@@ -5904,7 +5912,7 @@ button.text-action {
   }
 
   .site-footer {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.75rem;
   }
 
@@ -6087,9 +6095,13 @@ button.text-action {
   }
 
   .site-footer {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
     padding-top: 1.75rem;
     padding-bottom: 1.75rem;
+  }
+
+  .site-footer__brand {
+    width: min(220px, 100%);
   }
 
   .site-footer__nav {

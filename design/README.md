@@ -107,18 +107,19 @@ The intended production state reflects Inês's 31 August feedback:
 Use the available space for orientation and decisions rather than repeating
 the same identity or action:
 
-- the shared header is the site's one full `Português com a Inês` wordmark;
-  page headings describe the visitor's current subject or task, and the footer
-  is a compact navigation utility without another wordmark;
+- the shared header is the site's primary `Português com a Inês` wordmark;
+  page headings describe the visitor's current subject or task. The footer
+  repeats the wordmark at a quieter scale in cream on dark blue as an
+  intentional sign-off, rather than introducing another headline;
 - each page has one dominant action in its content. A later section must not
   repeat the same call to action simply to fill a closing band;
 - on Home, the display heading is `European Portuguese lessons.` and the
   supporting line locates them in Porto and online. `Book a lesson` appears
   once. The quieter `How I teach` and `Lessons and prices` routes sit with that
   introduction rather than occupying a second strip beneath the hero;
-- Approach, Lessons, FAQ, and Booking follow the same hierarchy: one shared
-  brand in the header, a task-specific page heading, and only the actions that
-  meaningfully advance that page's reading path.
+- Approach, Lessons, FAQ, and Booking follow the same hierarchy: the brand
+  anchors the shared header and footer, while each page owns a task-specific
+  heading and only the actions that meaningfully advance its reading path.
 
 ## References retained in this repository
 

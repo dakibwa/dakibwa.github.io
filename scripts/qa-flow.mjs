@@ -90,12 +90,12 @@ for (const route of routes) {
     }
 
     const wordmarkCount = await page.locator(".brand-wordmark").count();
-    if (wordmarkCount !== 1) {
-      throw new Error(`${route.id} should use the shared wordmark once; found ${wordmarkCount}.`);
+    if (wordmarkCount !== 2) {
+      throw new Error(`${route.id} should use one header wordmark and one footer sign-off; found ${wordmarkCount}.`);
     }
 
-    if (await page.locator(".site-footer .brand-wordmark").count()) {
-      throw new Error(`${route.id} should keep the footer as a utility instead of repeating the wordmark.`);
+    if ((await page.locator(".site-footer .brand-wordmark").count()) !== 1) {
+      throw new Error(`${route.id} should retain the cream-on-blue footer wordmark once.`);
     }
 
     if (route.id === "home") {
