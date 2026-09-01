@@ -112,6 +112,157 @@ p {
   margin-top: 0;
 }
 
+/* Akibwa project view is intentionally external to Inês's visual system. It
+ * appears only when the portfolio sends a visitor here, stays across the
+ * site's client-side navigation, and preserves the whole Portuguese site
+ * untouched below the green rule. */
+.akibwa-project-banner {
+  position: relative;
+  z-index: 80;
+  display: none;
+  width: 100%;
+  background: #faf8f3;
+  color: #101217;
+  font-family: "Avenir Next", "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+html[data-akibwa-project="true"] .akibwa-project-banner {
+  display: block;
+}
+
+.akibwa-project-banner__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  align-items: center;
+  width: min(calc(100% - 48px), 1310px);
+  min-height: 92px;
+  margin: 0 auto;
+  padding: 14px 0 13px;
+  border-bottom: 4px solid #1b947d;
+  gap: clamp(34px, 5vw, 78px);
+}
+
+.akibwa-project-banner__identity {
+  margin: 0;
+  font-size: clamp(2rem, 3.6vw, 3.25rem);
+  font-weight: 540;
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+  white-space: nowrap;
+}
+
+.akibwa-project-banner__identity strong {
+  font-weight: 660;
+}
+
+.akibwa-project-banner__copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+  gap: clamp(20px, 3vw, 48px);
+}
+
+.akibwa-project-banner__lede {
+  margin: 0;
+  color: #101217;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: clamp(1.15rem, 1.8vw, 1.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.akibwa-project-banner__back {
+  flex: 0 0 auto;
+  color: #315d55;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration-color: transparent;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
+  transition: color 120ms ease, text-decoration-color 120ms ease;
+}
+
+.akibwa-project-banner__back:hover,
+.akibwa-project-banner__back:focus-visible {
+  color: #101217;
+  text-decoration-color: currentColor;
+}
+
+.akibwa-project-banner__back:focus-visible {
+  outline: 2px solid #1b947d;
+  outline-offset: 4px;
+}
+
+@media (max-width: 800px) {
+  .akibwa-project-banner__inner {
+    grid-template-areas:
+      "identity back"
+      "lede lede";
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 86px;
+    padding: 12px 0 10px;
+    gap: 6px 18px;
+  }
+
+  .akibwa-project-banner__identity {
+    grid-area: identity;
+    font-size: clamp(2rem, 10vw, 2.8rem);
+  }
+
+  .akibwa-project-banner__copy {
+    display: contents;
+  }
+
+  .akibwa-project-banner__lede {
+    grid-area: lede;
+    font-size: 1.05rem;
+  }
+
+  .akibwa-project-banner__back {
+    grid-area: back;
+    align-self: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .akibwa-project-banner__inner {
+    width: min(calc(100% - 32px), 1310px);
+  }
+
+  .akibwa-project-banner__identity {
+    font-size: 2rem;
+  }
+
+  .akibwa-project-banner__lede {
+    font-size: 0.95rem;
+  }
+
+  .akibwa-project-banner__back {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .akibwa-project-banner__inner {
+    grid-template-areas: "identity back";
+    min-height: 58px;
+    padding: 8px 0;
+    gap: 18px;
+  }
+
+  .akibwa-project-banner__identity {
+    font-size: 1.7rem;
+  }
+
+  .akibwa-project-banner__lede {
+    display: none;
+  }
+}
+
 /*
  * The coral ring alone drops to 2.2:1 on the blue hero and 1.5:1 on the
  * lavender panels. The cream and deep-blue halos keep at least one ring above
