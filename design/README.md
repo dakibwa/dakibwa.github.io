@@ -165,8 +165,9 @@ Preserve these desktop and mobile states:
   lilac recurring treatment. Its single `Manage` action reveals no more than four
   booked occurrences, each with its own `Manage` action. A small accessible
   tooltip explains that individual lessons can be modified up to four weeks in
-  advance; it opens as a contained inline callout rather than covering lesson
-  cards, while `Back to start` stays at the panel's upper right. In these
+  advance; it opens over the lesson list on a dark blue floating surface, so it
+  never moves the cards beneath it, while `Back to start` stays at the panel's
+  upper right. In these
   already-booked summaries, ordinary lesson product names are
   replaced by their useful compact duration (`60 mins` or `90 mins`), while a
   trial stays named. The recurring line states its weekly time or `Sequence

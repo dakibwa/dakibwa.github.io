@@ -966,27 +966,35 @@ if (!(await recurringLaterGroup.getByText(/Next:/).isVisible())) {
 }
 const modificationHint = accountPanel.getByRole("button", { name: "When individual lessons can be modified", exact: true });
 const modificationTooltip = accountPanel.locator('[role="tooltip"]');
-if ((await modificationTooltip.innerText()).trim() !== "You can modify individual lessons up to four weeks in advance.") {
+if ((await modificationTooltip.textContent())?.trim() !== "You can modify individual lessons up to four weeks in advance.") {
   throw new Error("Upcoming lessons should explain the four-week individual modification window.");
 }
 if (await accountPanel.getByText(/Recurring lessons appear once/i).count()) {
   throw new Error("Upcoming lessons should not repeat the recurring-lesson explanation outside the tooltip.");
 }
+const tooltipCardTopBefore = await recurringLaterGroup.evaluate((card) => card.getBoundingClientRect().top);
 await modificationHint.focus();
 await modificationTooltip.waitFor({ state: "visible" });
+await accountPage.waitForFunction(
+  () => getComputedStyle(document.querySelector("#upcoming-lessons-modification-tip")).opacity === "1"
+);
 const tooltipLayout = await accountPage.evaluate(() => {
   const section = document.querySelector("#account-upcoming-lessons");
   const heading = document.querySelector("#upcoming-lessons-heading");
   const tip = document.querySelector("#upcoming-lessons-modification-tip");
   const back = section?.querySelector(".booking-back");
   const firstCard = section?.querySelector(".upcoming-lesson-group");
+  const tipStyles = tip ? getComputedStyle(tip) : null;
   const bounds = (element) => element?.getBoundingClientRect() ?? null;
   return {
     section: bounds(section),
     heading: bounds(heading),
     tip: bounds(tip),
     back: bounds(back),
-    firstCard: bounds(firstCard)
+    firstCard: bounds(firstCard),
+    tipStyles: tipStyles
+      ? { backgroundColor: tipStyles.backgroundColor, opacity: tipStyles.opacity, position: tipStyles.position }
+      : null
   };
 });
 if (
@@ -995,11 +1003,17 @@ if (
   !tooltipLayout.tip ||
   !tooltipLayout.back ||
   !tooltipLayout.firstCard ||
+  !tooltipLayout.tipStyles ||
   tooltipLayout.tip.left < tooltipLayout.section.left - 1 ||
   tooltipLayout.tip.right > tooltipLayout.section.right + 1 ||
-  tooltipLayout.tip.bottom > tooltipLayout.firstCard.top + 1
+  Math.abs(tooltipLayout.firstCard.top - tooltipCardTopBefore) > 1 ||
+  tooltipLayout.tip.bottom <= tooltipLayout.firstCard.top ||
+  tooltipLayout.tip.top >= tooltipLayout.firstCard.bottom ||
+  tooltipLayout.tipStyles.position !== "absolute" ||
+  tooltipLayout.tipStyles.opacity !== "1" ||
+  tooltipLayout.tipStyles.backgroundColor !== "rgba(26, 49, 105, 0.97)"
 ) {
-  throw new Error(`The upcoming-lessons tooltip should stay inside its panel without covering a lesson card: ${JSON.stringify(tooltipLayout)}.`);
+  throw new Error(`The upcoming-lessons tooltip should float over the list on its dark surface without moving a card: ${JSON.stringify({ tooltipCardTopBefore, ...tooltipLayout })}.`);
 }
 if (Math.abs(tooltipLayout.back.top - tooltipLayout.heading.top) > 18) {
   throw new Error(`Back to start should sit at the upper right of the upcoming-lessons heading: ${JSON.stringify(tooltipLayout)}.`);
@@ -1293,24 +1307,45 @@ await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
+const mobileTooltipCardTopBefore = await accountPanel
+  .locator("#account-upcoming-lessons .upcoming-lesson-group")
+  .first()
+  .evaluate((card) => card.getBoundingClientRect().top);
 await accountPanel.getByRole("button", { name: "When individual lessons can be modified", exact: true }).focus();
 await accountPanel.locator('[role="tooltip"]').waitFor({ state: "visible" });
+await accountPage.waitForFunction(
+  () => getComputedStyle(document.querySelector("#upcoming-lessons-modification-tip")).opacity === "1"
+);
 const mobileTooltipLayout = await accountPage.evaluate(() => {
   const section = document.querySelector("#account-upcoming-lessons");
   const tip = document.querySelector("#upcoming-lessons-modification-tip");
   const firstCard = section?.querySelector(".upcoming-lesson-group");
+  const tipStyles = tip ? getComputedStyle(tip) : null;
   const bounds = (element) => element?.getBoundingClientRect() ?? null;
-  return { section: bounds(section), tip: bounds(tip), firstCard: bounds(firstCard) };
+  return {
+    section: bounds(section),
+    tip: bounds(tip),
+    firstCard: bounds(firstCard),
+    tipStyles: tipStyles
+      ? { backgroundColor: tipStyles.backgroundColor, opacity: tipStyles.opacity, position: tipStyles.position }
+      : null
+  };
 });
 if (
   !mobileTooltipLayout.section ||
   !mobileTooltipLayout.tip ||
   !mobileTooltipLayout.firstCard ||
+  !mobileTooltipLayout.tipStyles ||
   mobileTooltipLayout.tip.left < mobileTooltipLayout.section.left - 1 ||
   mobileTooltipLayout.tip.right > mobileTooltipLayout.section.right + 1 ||
-  mobileTooltipLayout.tip.bottom > mobileTooltipLayout.firstCard.top + 1
+  Math.abs(mobileTooltipLayout.firstCard.top - mobileTooltipCardTopBefore) > 1 ||
+  mobileTooltipLayout.tip.bottom <= mobileTooltipLayout.firstCard.top ||
+  mobileTooltipLayout.tip.top >= mobileTooltipLayout.firstCard.bottom ||
+  mobileTooltipLayout.tipStyles.position !== "absolute" ||
+  mobileTooltipLayout.tipStyles.opacity !== "1" ||
+  mobileTooltipLayout.tipStyles.backgroundColor !== "rgba(26, 49, 105, 0.97)"
 ) {
-  throw new Error(`The upcoming-lessons tooltip should remain contained on a phone: ${JSON.stringify(mobileTooltipLayout)}.`);
+  throw new Error(`The upcoming-lessons tooltip should float over the mobile list without moving a card: ${JSON.stringify({ mobileTooltipCardTopBefore, ...mobileTooltipLayout })}.`);
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-tooltip-mobile.png"), fullPage: true });
 await accountMenuButton.focus();
