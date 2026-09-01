@@ -60,7 +60,13 @@ The intended production state reflects Inês's 31 August feedback:
   and below those sections keep their simpler cream stacked treatment. From
   821px to 999px, the Approach teaching-list headings wrap naturally instead
   of being clipped at the right edge; from 1000px upwards they remain on one
-  line.
+  line;
+- the booking and privacy policies use a quiet editorial cream column under a
+  compact blue hero, linked from the footer rather than promoted as primary
+  navigation. When prepayment is active, a weekly booking presents its
+  recurring-card agreement as a distinct required lavender consent block next
+  to the final action; a payment configuration failure replaces action with a
+  visible inline error instead of letting an unpaid confirmation through.
 
 ## References retained in this repository
 

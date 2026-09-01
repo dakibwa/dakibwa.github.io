@@ -19,6 +19,13 @@ loadDotEnv(".env");
 const rawApiBaseUrl = process.env.NEXT_PUBLIC_BOOKING_API_BASE_URL ?? "";
 const apiBaseUrl = normalizePublicHttpUrl(rawApiBaseUrl);
 const allowPreview = process.env.ALLOW_BOOKING_PREVIEW === "1";
+const expectedStripeMode = (process.env.NEXT_PUBLIC_STRIPE_EXPECTED_MODE ?? "").trim().toLowerCase();
+const stripePublishableMode = keyMode(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "");
+
+if (expectedStripeMode && !["test", "live"].includes(expectedStripeMode)) {
+  console.error("NEXT_PUBLIC_STRIPE_EXPECTED_MODE must be either test or live.");
+  process.exit(1);
+}
 
 if (rawApiBaseUrl.trim() && !apiBaseUrl) {
   console.error("NEXT_PUBLIC_BOOKING_API_BASE_URL is set but is not a valid http(s) URL.");
@@ -57,6 +64,10 @@ console.log(
       ok: healthy,
       lessonTypes: body.lessonTypes ?? 0,
       emailMode: body.emailMode ?? "unknown",
+      paymentMode: body.paymentMode ?? "unknown",
+      stripe: body.stripe ?? "unknown",
+      stripeReady: body.stripeReady ?? false,
+      publishableKey: stripePublishableMode,
       missing: body.missing ?? []
     },
     null,
@@ -87,6 +98,28 @@ if (body.emailMode !== "live") {
   process.exit(1);
 }
 
+// Payment activation is a two-deployable switch. The Worker is deployed first,
+// then this build ships the matching publishable key and customer-facing copy.
+// Refuse to publish a mixed test/live pair: Stripe otherwise fails only after a
+// student has given us their details and tried to pay.
+if (body.paymentMode === "prepay") {
+  if (body.stripeReady !== true) {
+    console.error("Prepayment is on but the Worker reports that Stripe is not ready.");
+    process.exit(1);
+  }
+  if (expectedStripeMode && body.stripe !== expectedStripeMode) {
+    console.error(`The Worker uses Stripe ${body.stripe}, but this site expects ${expectedStripeMode}.`);
+    process.exit(1);
+  }
+  if (!stripePublishableMode || (expectedStripeMode && stripePublishableMode !== expectedStripeMode)) {
+    console.error(
+      `Prepayment is on but NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is ${stripePublishableMode || "missing/invalid"}; ` +
+        `the site expects ${expectedStripeMode || body.stripe}.`
+    );
+    process.exit(1);
+  }
+}
+
 function normalizePublicHttpUrl(value) {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -99,6 +132,13 @@ function normalizePublicHttpUrl(value) {
   } catch {
     return "";
   }
+}
+
+function keyMode(value) {
+  const key = value.trim();
+  if (/^pk_test_/.test(key)) return "test";
+  if (/^pk_live_/.test(key)) return "live";
+  return "";
 }
 
 function loadDotEnv(path) {

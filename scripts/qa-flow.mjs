@@ -9,7 +9,9 @@ const routes = [
   { id: "approach", path: "/approach", heading: "No class." },
   { id: "lessons", path: "/lessons", heading: "Lessons, and" },
   { id: "faq", path: "/faq", heading: "Questions" },
-  { id: "booking", path: "/book", heading: "Your Portuguese lessons" }
+  { id: "booking", path: "/book", heading: "Your Portuguese lessons" },
+  { id: "booking-terms", path: "/booking-terms", heading: "Booking and payment terms" },
+  { id: "privacy", path: "/privacy", heading: "Privacy notice" }
 ];
 
 await mkdir(outDir, { recursive: true });

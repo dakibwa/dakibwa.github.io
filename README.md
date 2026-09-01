@@ -87,12 +87,14 @@ request only competes with the fonts for no gain.
 - Square was removed in August 2026. Square does not onboard sellers in
   Portugal, so the account this site pointed at — Dan's UK account, set up as a
   test — could never have been hers.
-- There is no live payment rail yet — students pay Inês directly — but the
-  Stripe integration is fully built and dormant. Inês's own Stripe account now
-  exists, with Dan as Administrator. The isolated sandbox journey passed end
-  to end on 31 August 2026 (payment, webhook, refund, saved-card charge and
-  decline fallback), while production `payment_mode` remains `off`.
-  docs-booking-system.md has the security model and remaining go-live checks.
+- Live payment remains deliberately off while Inês's Stripe profile is still
+  sandbox-only. The integration itself is built and dormant in production:
+  payment creation, signed and deduplicated webhooks, refunds, recurring-card
+  consent, automatic-charge recovery and Stripe request idempotency are in
+  place. Production expects live keys and fails closed if test or incomplete
+  credentials are present. The isolated sandbox journey passed end to end on
+  31 August 2026. `docs-booking-system.md` records the final owner and live-mode
+  checks.
 - The approved product display is trial lesson €20 / 60 minutes, single lessons
   at €25 / 60 minutes or €35 / 1 hour 30 minutes. Bundles are not part of the
   public launch offer. Existing students retain their individually agreed
@@ -183,6 +185,7 @@ Copy `.env.example` to `.env.local` and point the site at the deployed Worker:
 NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking.<subdomain>.workers.dev
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=          # optional; absent hides the Google button
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=    # optional; needed for the embedded payment form once prepay is on
+NEXT_PUBLIC_STRIPE_EXPECTED_MODE=live  # use test only with the isolated staging Worker
 LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=60

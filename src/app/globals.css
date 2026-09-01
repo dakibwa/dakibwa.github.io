@@ -4521,6 +4521,44 @@ button.text-action {
   white-space: nowrap;
 }
 
+.booking-payment-consent {
+  display: grid;
+  align-items: start;
+  margin-top: 0.95rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-field);
+  padding: 0.85rem 0.95rem;
+  background: rgba(170, 164, 230, 0.1);
+  cursor: pointer;
+  gap: 0.7rem;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.booking-payment-consent input {
+  width: 18px;
+  height: 18px;
+  margin-top: 0.12rem;
+  accent-color: var(--coral-action);
+}
+
+.booking-payment-consent span {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  text-transform: none;
+}
+
+.booking-payment-consent a {
+  color: var(--coral-action);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.booking-payment-consent:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .booking-alert--warn {
   border-radius: 0 12px 12px 0;
   border-left: 3px solid var(--coral);
@@ -5108,6 +5146,69 @@ button.text-action {
 
 .schedule-exceptions li span {
   flex: 1;
+}
+
+/* Booking and privacy policies use the same editorial rhythm: one calm
+   reading column, not a wall of legal cards. */
+.policy-page {
+  min-height: 70vh;
+  background: var(--paper);
+}
+
+.policy-page__hero {
+  padding: clamp(4rem, 9vw, 7rem) var(--page-pad) clamp(2.5rem, 5vw, 4rem);
+  background: var(--blue);
+  color: var(--paper);
+}
+
+.policy-page__hero h1 {
+  max-width: 12ch;
+  margin: 0.35rem 0 1rem;
+  font-family: var(--display);
+  font-size: clamp(3rem, 7vw, 6.2rem);
+  font-weight: 400;
+  line-height: 0.98;
+}
+
+.policy-page__hero > p:last-child {
+  font-size: 0.82rem;
+  opacity: 0.72;
+}
+
+.policy-page__body {
+  width: min(760px, calc(100% - 2 * var(--page-pad)));
+  margin: 0 auto;
+  padding: clamp(2.8rem, 6vw, 5rem) 0 clamp(4rem, 8vw, 7rem);
+}
+
+.policy-page__body section + section {
+  margin-top: 2.25rem;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 2.25rem;
+}
+
+.policy-page__body h2 {
+  margin-bottom: 0.65rem;
+  color: var(--blue);
+  font-family: var(--ui);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  letter-spacing: 0.02em;
+}
+
+.policy-page__body p {
+  font-size: clamp(0.98rem, 1.6vw, 1.08rem);
+  line-height: 1.75;
+}
+
+.policy-page__body p + p {
+  margin-top: 0.9rem;
+}
+
+.policy-page__body a {
+  color: var(--coral-action);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* Footer */

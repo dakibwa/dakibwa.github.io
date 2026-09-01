@@ -359,11 +359,17 @@ Off by default. `payment_mode` is `off`, every booking confirms on creation, and
 none of the Stripe columns are read. With it set to `prepay` and Stripe
 configured:
 
+- booking fails closed with a temporary payment error if the Worker does not
+  have a complete key/webhook pair in its declared `test` or `live` mode;
 - the slot is held as `pending_payment`, not confirmed, and nothing is emailed
   until the webhook arrives — confirming first and reconciling later is how a
   student ends up with a lesson they never paid for;
 - the webhook signature is verified before the payload is trusted for anything,
   and events are recorded so each is handled exactly once;
+- Checkout creation, saved-card charges and refunds use a stable booking-based
+  Stripe idempotency key, so an infrastructure retry cannot duplicate money;
+- a student starting a prepaid weekly run must explicitly accept the later
+  automatic card charges, and the series stores when that consent was given;
 - an abandoned checkout releases its slot when the hold expires, and a series
   whose checkout was abandoned loses its orphaned `booking_series` row in the
   same sweep.
@@ -384,6 +390,11 @@ before the switch carry `payment_status = 'not_required'` and keep the fee
 terms they were booked under until they wash through. The card itself never
 touches the database — Stripe keeps it; `students` holds only the opaque
 customer and payment-method ids (migration 0009).
+
+Every successful payment also sends Inês a private operational reminder to
+issue the appropriate fiscal document in Portal das Finanças. Stripe's receipt
+does not replace that Portuguese tax document, and Stripe Tax is not enabled
+while her IVA basis remains an owner/accountant decision.
 
 **Trial lessons are first lessons.** Anyone with a booking that wasn't
 cancelled is refused the trial at creation, kindly, and pointed at a single
@@ -429,26 +440,36 @@ client secret with `initEmbeddedCheckout`.
 
 **Go-live checklist**:
 
-1. ~~Apply migration 0009 to the live database~~ — done, 28 August 2026.
+1. ~~Apply migrations 0009 and 0011 to both databases~~ — done. Migration 0011,
+   which records recurring-payment consent, was applied to staging and
+   production on 1 September 2026 while production payment remained off.
 2. ~~Open Inês's Stripe account and invite Dan as **Administrator**~~ — done,
-   31 August 2026. Her business details and payout account remain hers to keep
-   current. Enable MB WAY in payment-method settings; leave Multibanco off.
-3. Put `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in as Worker secrets
-   (test keys first). `STRIPE_UI_MODE` is already `embedded` in wrangler vars.
-4. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` for the
-   Pages build, so the embedded form can mount.
-5. Register the webhook for `checkout.session.completed` at `/stripe/webhook`.
-6. ~~Run the full test-mode journey~~ — passed in the isolated staging
+   31 August 2026. **Inês must complete Stripe's profile in her own secure
+   session**: legal/tax identity, public business details, Portuguese payout
+   bank, identity checks and Stripe declarations. The account is sandbox-only
+   until Stripe accepts that profile; this cannot be replaced by Connect API
+   onboarding because this is her standalone merchant account, not a platform.
+3. In live mode, enable cards and MB WAY; leave Multibanco off. Confirm the
+   business name, support contact, statement descriptor and payout schedule.
+4. Create a least-privilege live restricted key and install it with the live
+   webhook signing secret in the production Worker. Production's
+   `STRIPE_EXPECTED_MODE=live` rejects a sandbox key even if one is present.
+5. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to the live
+   publishable key. The Pages build's `NEXT_PUBLIC_STRIPE_EXPECTED_MODE=live`
+   refuses to mount Stripe.js with a test key.
+6. Register the live `/stripe/webhook` endpoint for
+   `checkout.session.completed`; verify a signed delivery in Stripe's event log.
+7. ~~Run the full test-mode journey~~ — passed in the isolated staging
    environment on 31 August 2026: embedded single-lesson payment, signed
    webhook confirmation, cancellation and refund; four-week first payment and
    saved card; successful day-of automatic charge; declined day-of charge to
    `payment_due`, hosted pay-now link, and dry-run student/teacher notices.
-7. Set the `payment_mode` settings row to `prepay`, and in the same breath ship
-   the static-copy commit (FAQ, policy band, lessons note, and the README payment bullets) that states the
-   prepaid terms — the page's dynamic copy follows the API on its own, the
-   static prose does not.
-8. Swap to live keys and repeat the single-lesson journey with a real card
-   before telling anyone.
+8. Deploy the customer terms, privacy notice and required recurring-charge
+   checkbox while production still has `payment_mode=off`.
+9. With explicit action-time approval for the real charge, run one live
+   single-lesson payment and cancellation/refund; verify Stripe, the Worker,
+   email and the public return journey. Only then set `payment_mode=prepay` and
+   re-run the production health/release gate.
 
 ### Same-day changes
 
@@ -502,6 +523,8 @@ a different origin, pass `--var ALLOWED_ORIGIN:… --var SITE_URL:…` to
 
 ```bash
 NEXT_PUBLIC_BOOKING_API_BASE_URL=https://ines-booking.<subdomain>.workers.dev
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_STRIPE_EXPECTED_MODE=live
 LESSON_PRICE_CENTS=2500
 LESSON_CURRENCY=eur
 NEXT_PUBLIC_LESSON_DURATION_MINUTES=60
@@ -514,9 +537,9 @@ students at WhatsApp, rather than rendering a calendar that cannot work.
 ## Not yet built
 
 - **Live payment activation.** The account and sandbox path exist, but
-  `payment_mode` stays `off` until the signing secret is installed, the full
-  sandbox journey passes, the live restricted key is provisioned, and the
-  customer-facing prepaid terms ship in the same release.
+  `payment_mode` stays `off` until Inês completes the owner-only Stripe profile,
+  live keys and the live webhook replace the sandbox values, and the approved
+  real-charge/refund smoke test passes.
 - **Fiscal documents.** She must issue a fatura-recibo per lesson, and CIVA art.
   36.º gives 5 working days from the lesson. See
   `Documents/Work/Português com a Inês/Billing and Booking - Operating Context

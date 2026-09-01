@@ -13,10 +13,11 @@ import {
   chargeSavedCard,
   checkoutSessionProblem,
   createCheckoutSession,
-  isTestMode,
   refundPayment,
   retrievePaymentIntent,
   stripeConfigured,
+  stripeMode,
+  stripeReady,
   verifyWebhook
 } from "./stripe.mjs";
 import { changePolicy } from "./policy.mjs";
@@ -75,6 +76,22 @@ function json(data, status, request, env) {
 
 function fail(message, status, request, env) {
   return json({ error: message }, status, request, env);
+}
+
+export function bookingPaymentProblem({ paymentRequired, stripeIsReady, wantsRepeat, recurringPaymentConsent }) {
+  if (paymentRequired && !stripeIsReady) {
+    return {
+      status: 503,
+      message: "Payment isn't available just now. Please try again in a few minutes, or message Inês."
+    };
+  }
+  if (paymentRequired && wantsRepeat && recurringPaymentConsent !== true) {
+    return {
+      status: 400,
+      message: "Please agree to the recurring payment terms before booking weekly lessons."
+    };
+  }
+  return null;
 }
 
 /**
@@ -303,7 +320,9 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
       // The invitation carries PARTSTAT=ACCEPTED, so there is nothing for her
       // to accept — telling her to was instructing a step that doesn't exist.
       intro: `${row.student_name} has booked a lesson. The attached invitation goes straight into your calendar.`,
-      callout: ""
+      callout: isPaid
+        ? `Stripe received €${((row.amount_cents ?? lessonType.price_cents) / 100).toFixed(0)} today. Issue the appropriate Portal das Finanças document for this payment today.`
+        : ""
     },
     rescheduled: {
       subject: byTeacher
@@ -529,7 +548,10 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
             reason === "extended"
               ? `${first.student_name}'s open-ended weekly slot has been carried forward. The new lessons are in the calendar attachment.`
               : `${first.student_name} booked the same slot each week. Every lesson is in the calendar attachment.`,
-          callout: skippedNote,
+          callout:
+            reason !== "extended" && seriesFirstPaid
+              ? `${skippedNote ? `${skippedNote} ` : ""}Stripe received €${((first.amount_cents ?? lessonType.price_cents) / 100).toFixed(0)} today for the first lesson. Issue the appropriate Portal das Finanças document for this payment today.`
+              : skippedNote,
           hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
           heroNote: "",
           preheader: `${first.student_name} · ${cadence}`,
@@ -751,7 +773,7 @@ const worker = {
         return json(
           {
             lessonTypes: await listLessonTypes(env),
-            prepay: settings.paymentMode === "prepay" && stripeConfigured(env)
+            prepay: settings.paymentMode === "prepay" && stripeReady(env)
           },
           200,
           request,
@@ -827,7 +849,7 @@ const worker = {
  * is marked 'payment_due' so it is never charged twice.
  */
 async function chargeDueLessons(env) {
-  if (!stripeConfigured(env)) return;
+  if (!stripeReady(env)) return;
 
   const todayKey = dateKey(new Date(), PORTO);
   const { results } = await env.DB.prepare(
@@ -847,6 +869,7 @@ async function chargeDueLessons(env) {
       if (student.stripe_customer_id && student.stripe_payment_method) {
         try {
           const intent = await chargeSavedCard(env, {
+            bookingId: row.id,
             customer: student.stripe_customer_id,
             paymentMethod: student.stripe_payment_method,
             amountCents: row.amount_cents ?? lessonType.price_cents,
@@ -881,29 +904,59 @@ async function chargeDueLessons(env) {
 
 async function notifyLessonCharged(env, { row, lessonType }) {
   const settings = await loadSettings(env);
+  const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
   const start = new Date(row.starts_at);
   const amount = `€${((row.amount_cents ?? lessonType.price_cents) / 100).toFixed(0)}`;
 
-  await deliver(env, {
-    to: row.student_email,
-    subject: `Today's lesson is paid — ${formatShort(start, PORTO)}`,
-    kind: "student_lesson_charged",
-    bookingId: row.id,
-    dedupeKey: `charged:${row.id}`,
-    replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail || undefined,
-    content: {
-      heading: "Today's lesson is paid",
-      preheader: `${lessonType.name} · ${amount} to your saved card`,
-      intro: `Olá ${row.student_name.split(" ")[0]}, ${amount} for today's ${lessonType.name.toLowerCase()} went to your saved card, as booked. See you at ${formatInZone(start, PORTO).split(", ").pop()}, Porto time.`,
-      callout: "",
-      rows: [
-        { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
-        { label: "Reference", value: row.reference }
-      ],
-      action: null,
-      footer: "Sent automatically by the booking system on portuguesewithines.com."
-    }
-  });
+  const sends = [
+    deliver(env, {
+      to: row.student_email,
+      subject: `Today's lesson is paid — ${formatShort(start, PORTO)}`,
+      kind: "student_lesson_charged",
+      bookingId: row.id,
+      dedupeKey: `charged:${row.id}`,
+      replyTo: settings.replyToEmail || teacherEmail || undefined,
+      content: {
+        heading: "Today's lesson is paid",
+        preheader: `${lessonType.name} · ${amount} to your saved card`,
+        intro: `Olá ${row.student_name.split(" ")[0]}, ${amount} for today's ${lessonType.name.toLowerCase()} went to your saved card, as booked. See you at ${formatInZone(start, PORTO).split(", ").pop()}, Porto time.`,
+        callout: "",
+        rows: [
+          { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
+          { label: "Reference", value: row.reference }
+        ],
+        action: null,
+        footer: "Sent automatically by the booking system on portuguesewithines.com."
+      }
+    })
+  ];
+
+  if (teacherEmail) {
+    sends.push(
+      deliver(env, {
+        to: teacherEmail,
+        subject: `Payment received — ${row.student_name}, ${formatShort(start, PORTO)}`,
+        kind: "teacher_lesson_charged",
+        bookingId: row.id,
+        dedupeKey: `charged-teacher:${row.id}`,
+        replyTo: row.student_email,
+        content: {
+          heading: "A lesson was paid",
+          preheader: `${row.student_name} · ${lessonType.name} · ${amount}`,
+          intro: `${amount} for ${row.student_name}'s lesson was charged successfully this morning.`,
+          callout: "Issue the appropriate Portal das Finanças document for this payment today.",
+          rows: [
+            { label: "Lesson", value: `${lessonType.name} · ${formatInZone(start, PORTO)}` },
+            { label: "Reference", value: row.reference }
+          ],
+          action: null,
+          footer: "Sent automatically by the booking system on portuguesewithines.com."
+        }
+      })
+    );
+  }
+
+  return Promise.allSettled(sends);
 }
 
 async function notifyPaymentDue(env, { row, lessonType }) {
@@ -919,6 +972,7 @@ async function notifyPaymentDue(env, { row, lessonType }) {
       lessonType,
       customerEmail: row.student_email,
       forceHosted: true,
+      checkoutPurpose: "payment-due",
       successUrl: siteUrl(env, "/book/?view=lessons&paid=1"),
       cancelUrl: siteUrl(env, "/book/?view=lessons")
     });
@@ -1119,6 +1173,17 @@ async function handleHealth(request, env) {
     // Already reported through `missing` above.
   }
 
+  // Dormant payments are allowed to carry sandbox credentials while the live
+  // account is prepared. The instant prepay is requested, both secrets and
+  // the environment's declared test/live mode become health requirements.
+  if (paymentMode === "prepay") {
+    if (!env.STRIPE_SECRET_KEY) missing.push("STRIPE_SECRET_KEY");
+    if (!env.STRIPE_WEBHOOK_SECRET) missing.push("STRIPE_WEBHOOK_SECRET");
+    if (stripeConfigured(env) && !stripeReady(env)) {
+      missing.push(`STRIPE_MODE_EXPECTED_${String(env.STRIPE_EXPECTED_MODE ?? "configured").toUpperCase()}`);
+    }
+  }
+
   return json(
     {
       ok: missing.length === 0,
@@ -1126,7 +1191,8 @@ async function handleHealth(request, env) {
       lessonTypes,
       emailMode: env.RESEND_API_KEY && env.EMAIL_DRY_RUN !== "1" ? "live" : "dry-run",
       paymentMode,
-      stripe: stripeConfigured(env) ? (isTestMode(env) ? "test" : "live") : "not-configured",
+      stripe: stripeMode(env),
+      stripeReady: stripeReady(env),
       googleSignIn: env.GOOGLE_CLIENT_ID ? "configured" : "not-configured"
     },
     // A health check that always answers 200 cannot be alerted on. Nothing reads
@@ -1253,7 +1319,21 @@ async function handleCreate(request, env, ctx) {
   if (!check.ok) return fail(check.reason, 409, request, env);
 
   const settings = await loadSettings(env);
-  const prepay = settings.paymentMode === "prepay" && stripeConfigured(env);
+  const paymentRequired = settings.paymentMode === "prepay";
+  const stripeIsReady = stripeReady(env);
+  const paymentProblem = bookingPaymentProblem({
+    paymentRequired,
+    stripeIsReady,
+    wantsRepeat,
+    recurringPaymentConsent: body.recurringPaymentConsent
+  });
+  if (paymentProblem?.status === 503) {
+    console.error("stripe-not-ready", `expected=${env.STRIPE_EXPECTED_MODE || "unset"} actual=${stripeMode(env)}`);
+  }
+  if (paymentProblem) {
+    return fail(paymentProblem.message, paymentProblem.status, request, env);
+  }
+  const prepay = paymentRequired;
 
   // A repeat under prepay charges the first lesson now — saving the card, with
   // Stripe's own consent wording — and each later lesson charges itself on its
@@ -1358,8 +1438,8 @@ async function handleCreate(request, env, ctx) {
 
     await env.DB.prepare(
       `INSERT INTO booking_series (id, student_id, lesson_type_id, location, notes, weekday, minute_of_day,
-         occurrences, status, filled_to, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`
+         occurrences, status, filled_to, payment_consent_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)`
     )
       .bind(
         seriesId,
@@ -1371,6 +1451,7 @@ async function handleCreate(request, env, ctx) {
         slot.minuteOfDay,
         repeatWeeks,
         slot.dateKey,
+        prepay ? timestamp : null,
         timestamp,
         timestamp
       )
@@ -1836,7 +1917,11 @@ async function handleCancel(request, env, ctx, token) {
   const refunded = policy.refundOnCancel ? 1 : 0;
   if (policy.refundOnCancel) {
     try {
-      await refundPayment(env, row.stripe_payment_intent, row.amount_cents ?? undefined);
+      await refundPayment(env, {
+        bookingId: row.id,
+        paymentIntent: row.stripe_payment_intent,
+        amountCents: row.amount_cents ?? undefined
+      });
     } catch (error) {
       const message = String(error?.message ?? error);
       if (!/already been refunded|charge_already_refunded/i.test(message)) {
@@ -1881,6 +1966,7 @@ async function handleCancel(request, env, ctx, token) {
  */
 async function handleStripeWebhook(request, env, ctx) {
   if (!env.STRIPE_WEBHOOK_SECRET) return new Response("Not configured.", { status: 503 });
+  if (!stripeReady(env)) return new Response("Stripe mode is not ready.", { status: 503 });
 
   const payload = await request.text();
   const verified = await verifyWebhook(payload, request.headers.get("Stripe-Signature"), env.STRIPE_WEBHOOK_SECRET);
@@ -1955,9 +2041,11 @@ async function handleStripeWebhook(request, env, ctx) {
       .bind(settled.lesson_type_id)
       .first();
     const settings = await loadSettings(env);
+    const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
+    const amount = `€${((settled.amount_cents ?? lessonType?.price_cents ?? 0) / 100).toFixed(0)}`;
     // This is safe to schedule again after a crash: `deliver` owns a unique
     // dedupe key, so only the first attempt can send the message.
-    ctx.waitUntil(
+    const sends = [
       deliver(env, {
         to: settled.student_email,
         subject: `Paid — thank you`,
@@ -1975,7 +2063,29 @@ async function handleStripeWebhook(request, env, ctx) {
           footer: "Sent automatically by the booking system on portuguesewithines.com."
         }
       })
-    );
+    ];
+    if (teacherEmail) {
+      sends.push(
+        deliver(env, {
+          to: teacherEmail,
+          subject: `Payment received — ${settled.student_name}, ${formatShort(new Date(settled.starts_at), PORTO)}`,
+          kind: "teacher_payment_received",
+          bookingId: settled.id,
+          dedupeKey: `link-paid-teacher:${settled.id}`,
+          replyTo: settled.student_email,
+          content: {
+            heading: "The outstanding payment arrived",
+            preheader: `${settled.student_name} · ${lessonType?.name ?? "Lesson"} · ${amount}`,
+            intro: `${settled.student_name} paid ${amount} using the secure link.`,
+            callout: "Issue the appropriate Portal das Finanças document for this payment today.",
+            rows: [{ label: "Reference", value: settled.reference }],
+            action: null,
+            footer: "Sent automatically by the booking system on portuguesewithines.com."
+          }
+        })
+      );
+    }
+    ctx.waitUntil(Promise.allSettled(sends));
     response = new Response("ok", { status: 200 });
   } else {
     await env.DB.prepare(
@@ -2863,7 +2973,11 @@ async function handleAdmin(request, env, ctx, url, path) {
     const refunded = row.payment_status === "paid" && row.stripe_payment_intent ? 1 : 0;
     if (refunded) {
       try {
-        await refundPayment(env, row.stripe_payment_intent, row.amount_cents ?? undefined);
+        await refundPayment(env, {
+          bookingId: row.id,
+          paymentIntent: row.stripe_payment_intent,
+          amountCents: row.amount_cents ?? undefined
+        });
       } catch (error) {
         const message = String(error?.message ?? error);
         if (!/already been refunded|charge_already_refunded/i.test(message)) {

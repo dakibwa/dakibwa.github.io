@@ -67,7 +67,7 @@ export default function LessonsPage() {
           </section>
 
           <section className="lessons-note">
-            <p>Pick a time on the booking page. You pay on the day, in person with Inês.</p>
+            <p>The booking page shows exactly when payment is due. Secure online checkout is handled by Stripe.</p>
             <Link className="text-action" href="/faq#faq-payment">Payment questions</Link>
           </section>
         </div>

@@ -13,6 +13,8 @@ export function SiteFooter() {
         <Link href="/lessons">Lessons</Link>
         <Link href="/faq">FAQ</Link>
         <Link href="/book">Booking</Link>
+        <Link href="/booking-terms">Terms</Link>
+        <Link href="/privacy">Privacy</Link>
       </nav>
       {/* Just the way back to the rest of the site. "Message Inês" lives in the
           header and on the FAQ, and a third copy down here was the loudest thing

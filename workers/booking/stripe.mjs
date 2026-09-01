@@ -13,11 +13,12 @@ const API = "https://api.stripe.com/v1";
 const API_VERSION = "2026-08-26.dahlia";
 const INTEGRATION_IDENTIFIER = "portugues-com-a-ines-qjmrbzva";
 
-function stripeHeaders(env, contentType = false) {
+function stripeHeaders(env, { contentType = false, idempotencyKey = "" } = {}) {
   return {
     Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
     "Stripe-Version": API_VERSION,
-    ...(contentType ? { "Content-Type": "application/x-www-form-urlencoded" } : {})
+    ...(contentType ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+    ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {})
   };
 }
 
@@ -41,10 +42,10 @@ function formEncode(values, prefix = "") {
   return parts.filter(Boolean).join("&");
 }
 
-async function stripeRequest(env, path, body) {
+async function stripeRequest(env, path, body, { idempotencyKey = "" } = {}) {
   const response = await fetch(`${API}${path}`, {
     method: "POST",
-    headers: stripeHeaders(env, true),
+    headers: stripeHeaders(env, { contentType: true, idempotencyKey }),
     body: formEncode(body)
   });
 
@@ -77,17 +78,30 @@ export function retrievePaymentIntent(env, paymentIntentId) {
  * the student consented to at their first checkout; a decline throws, and the
  * caller emails a pay-now link instead of pretending it can't happen.
  */
-export function chargeSavedCard(env, { customer, paymentMethod, amountCents, description, metadata }) {
-  return stripeRequest(env, "/payment_intents", {
+export async function chargeSavedCard(env, { bookingId, customer, paymentMethod, amountCents, description, metadata }) {
+  const intent = await stripeRequest(env, "/payment_intents", {
     amount: amountCents,
     currency: "eur",
     customer,
     payment_method: paymentMethod,
     off_session: "true",
     confirm: "true",
+    // This Worker has nobody present to complete 3DS. Ask Stripe to turn that
+    // state into a failed attempt, then send the student through Checkout
+    // rather than recording an unauthenticated PaymentIntent as paid.
+    error_on_requires_action: "true",
     description,
     ...(metadata ? { metadata } : {})
-  });
+  }, { idempotencyKey: `ines:charge:${bookingId}` });
+
+  // `confirm=true` can still answer with a non-terminal PaymentIntent. Money
+  // only moved when Stripe says `succeeded`; every other state follows the
+  // ordinary payment-due recovery path.
+  if (intent?.status !== "succeeded") {
+    throw new Error(`Stripe payment did not succeed (${intent?.status ?? "unknown status"})`);
+  }
+
+  return intent;
 }
 
 /**
@@ -129,6 +143,7 @@ export function createCheckoutSession(
     saveCard = false,
     seriesId = null,
     forceHosted = false,
+    checkoutPurpose = "initial",
     skippedStartAts = []
   }
 ) {
@@ -172,21 +187,20 @@ export function createCheckoutSession(
       ...(seriesId ? { series_id: seriesId } : {}),
       ...(skippedStartAts.length && skipped.length <= 480 ? { skipped } : {})
     }
-  });
+  }, { idempotencyKey: `ines:checkout:${booking.id}:${checkoutPurpose}` });
 }
 
 /**
  * Refund a payment, wholly or partly.
  *
- * `amountCents` matters for series: one payment intent covers the whole run,
- * so cancelling a single lesson refunds that lesson's amount against the
- * shared intent. Omitting it refunds whatever remains refundable.
+ * `amountCents` allows a bounded refund when a lesson's policy calls for one;
+ * omitting it refunds whatever remains refundable on that PaymentIntent.
  */
-export function refundPayment(env, paymentIntent, amountCents) {
+export function refundPayment(env, { bookingId, paymentIntent, amountCents }) {
   return stripeRequest(env, "/refunds", {
     payment_intent: paymentIntent,
     ...(amountCents ? { amount: amountCents } : {})
-  });
+  }, { idempotencyKey: `ines:refund:${bookingId}` });
 }
 
 /**
@@ -252,4 +266,23 @@ export function stripeConfigured(env) {
 
 export function isTestMode(env) {
   return /^(?:sk|rk)_test_/.test(String(env.STRIPE_SECRET_KEY ?? ""));
+}
+
+export function stripeMode(env) {
+  const key = String(env.STRIPE_SECRET_KEY ?? "");
+  if (/^(?:sk|rk)_test_/.test(key)) return "test";
+  if (/^(?:sk|rk)_live_/.test(key)) return "live";
+  return stripeConfigured(env) ? "unknown" : "not-configured";
+}
+
+/**
+ * A present key is not necessarily a safe key. Production spent a day with
+ * sandbox secrets installed under the production names; without this check a
+ * single D1 setting change would have opened a test checkout on the live site.
+ */
+export function stripeReady(env) {
+  if (!stripeConfigured(env)) return false;
+  const mode = stripeMode(env);
+  const expected = String(env.STRIPE_EXPECTED_MODE ?? "").trim();
+  return (mode === "test" || mode === "live") && (!expected || mode === expected);
 }

@@ -164,6 +164,8 @@ export function createBooking(
     timezone: string;
     /** Omitted entirely for a one-off lesson. */
     repeat?: RepeatChoice;
+    /** Required when a prepaid weekly run will charge the saved card later. */
+    recurringPaymentConsent?: boolean;
   }
 ) {
   return request<{

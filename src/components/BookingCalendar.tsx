@@ -63,6 +63,7 @@ import {
   CONTACT_WHATSAPP_URL,
   SAME_DAY_RESCHEDULE_FEE_CENTS,
   STRIPE_PUBLISHABLE_KEY,
+  STRIPE_PUBLISHABLE_READY,
   formatLessonDuration
 } from "@/lib/config";
 import { staticLessonTypes } from "@/lib/lesson-products";
@@ -262,6 +263,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   // Payment at booking: set from the API, so the page tells the truth in
   // either mode without a rebuild when the switch is flipped.
   const [prepay, setPrepay] = useState(false);
+  const [paymentConfigurationError, setPaymentConfigurationError] = useState("");
+  const [recurringPaymentConsent, setRecurringPaymentConsent] = useState(false);
   const [payment, setPayment] = useState<{ clientSecret: string } | null>(null);
   const [paymentError, setPaymentError] = useState("");
   const paymentMountRef = useRef<HTMLDivElement>(null);
@@ -270,7 +273,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   // student backs out. Completion never reaches this effect — Stripe returns
   // the student back to this workspace itself.
   useEffect(() => {
-    if (!payment || !STRIPE_PUBLISHABLE_KEY) return;
+    if (!payment || !STRIPE_PUBLISHABLE_READY) return;
     let cancelled = false;
     let mounted: { destroy: () => void } | null = null;
 
@@ -365,6 +368,14 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     listLessonTypes()
       .then(({ lessonTypes: types, prepay: prepayOn }) => {
         setLessonTypes(types);
+        if (prepayOn && !STRIPE_PUBLISHABLE_READY) {
+          setPrepay(false);
+          setPaymentConfigurationError(
+            "Online payment is temporarily unavailable, so booking is paused. Please message Inês instead."
+          );
+          return;
+        }
+        setPaymentConfigurationError("");
         setPrepay(Boolean(prepayOn));
       })
       .catch((error: Error) => setLoadError(error.message));
@@ -616,7 +627,12 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     };
   }, [form.repeat, chosen, lessonType, student]);
 
-  const canSubmit = Boolean(chosen && lessonType && student) && !submitting;
+  const needsRecurringPaymentConsent = prepay && form.repeat !== "once";
+  const canSubmit =
+    Boolean(chosen && lessonType && student) &&
+    !submitting &&
+    !paymentConfigurationError &&
+    (!needsRecurringPaymentConsent || recurringPaymentConsent);
 
   /*
    * The confirmation mounts its region and its text in one commit, which is the
@@ -691,6 +707,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     setStep("lesson");
     setPayment(null);
     setPaymentError("");
+    setRecurringPaymentConsent(false);
   }
 
   function returnToJourneyStart() {
@@ -727,13 +744,18 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         location: form.location,
         timezone: studentZone,
         // Omitted entirely for a one-off: `null` means "every week" on the wire.
-        ...(repeat === undefined ? {} : { repeat })
+        ...(repeat === undefined
+          ? {}
+          : {
+              repeat,
+              recurringPaymentConsent
+            })
       });
 
       // With prepayment on, the slot is only held: Stripe finishes the booking.
       // Embedded mode mounts the payment form right here; hosted redirects.
       if (result.checkoutClientSecret) {
-        if (STRIPE_PUBLISHABLE_KEY) {
+        if (STRIPE_PUBLISHABLE_READY) {
           setPaymentError("");
           setPayment({ clientSecret: result.checkoutClientSecret });
           return;
@@ -1810,7 +1832,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                           <input
                             checked={form.repeat === option.value}
                             name="repeat"
-                            onChange={() => setForm((current) => ({ ...current, repeat: option.value }))}
+                            onChange={() => {
+                              setForm((current) => ({ ...current, repeat: option.value }));
+                              setRecurringPaymentConsent(false);
+                            }}
                             type="radio"
                             value={String(option.value)}
                           />
@@ -1884,6 +1909,29 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                       <AlertCircle size={18} aria-hidden="true" />
                       <p>{submitError}</p>
                     </div>
+                  ) : null}
+
+                  {paymentConfigurationError ? (
+                    <div className="booking-alert" role="alert">
+                      <AlertCircle size={18} aria-hidden="true" />
+                      <p>{paymentConfigurationError}</p>
+                    </div>
+                  ) : null}
+
+                  {needsRecurringPaymentConsent ? (
+                    <label className="booking-payment-consent">
+                      <input
+                        checked={recurringPaymentConsent}
+                        onChange={(event) => setRecurringPaymentConsent(event.target.checked)}
+                        required
+                        type="checkbox"
+                      />
+                      <span>
+                        I agree that the first lesson is paid now and each later lesson in this weekly run is charged
+                        to this card on the morning of the lesson. I can stop future lessons at any time. See the{" "}
+                        <a href="/booking-terms">booking and payment terms</a>.
+                      </span>
+                    </label>
                   ) : null}
 
                   {/* Says what is actually about to happen. "Confirm this lesson"

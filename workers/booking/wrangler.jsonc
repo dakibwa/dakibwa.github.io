@@ -34,6 +34,9 @@
     // Checkout mounts inside the booking page rather than redirecting to
     // Stripe. Inert until the Stripe secrets exist and payment_mode is prepay.
     "STRIPE_UI_MODE": "embedded",
+    // A sandbox key under the production secret name must never be enough to
+    // open checkout. Health and booking both fail closed until this is live.
+    "STRIPE_EXPECTED_MODE": "live",
     // Google Sign-In. Public by design — it identifies the app, and the Worker
     // verifies every ID token's signature and audience against it. The client
     // *secret* is not needed: this is the ID-token flow, not the server-side
@@ -73,6 +76,7 @@
         "MAIL_SENDER_ADDRESS": "bookings@portuguesewithines.com",
         "EMAIL_DRY_RUN": "1",
         "STRIPE_UI_MODE": "embedded",
+        "STRIPE_EXPECTED_MODE": "test",
         "GOOGLE_CLIENT_ID": "174786285888-cq6vhf2jifpn5bdjutade6fe8an5i9ob.apps.googleusercontent.com",
         "TEACHER_EMAIL": "test@example.invalid"
       },

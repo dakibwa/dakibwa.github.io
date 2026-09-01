@@ -45,6 +45,15 @@ export const BOOKING_CONFIGURED = Boolean(BOOKING_API_BASE_URL);
  * checkout if the Worker ever answers embedded without this being set.
  */
 export const STRIPE_PUBLISHABLE_KEY = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").trim();
+export const STRIPE_EXPECTED_MODE = (process.env.NEXT_PUBLIC_STRIPE_EXPECTED_MODE ?? "").trim();
+export const STRIPE_PUBLISHABLE_MODE = STRIPE_PUBLISHABLE_KEY.startsWith("pk_live_")
+  ? "live"
+  : STRIPE_PUBLISHABLE_KEY.startsWith("pk_test_")
+    ? "test"
+    : "";
+export const STRIPE_PUBLISHABLE_READY = Boolean(
+  STRIPE_PUBLISHABLE_MODE && (!STRIPE_EXPECTED_MODE || STRIPE_PUBLISHABLE_MODE === STRIPE_EXPECTED_MODE)
+);
 
 /**
  * Google Sign-In client id. Public by design — it identifies the app, it is not

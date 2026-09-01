@@ -160,7 +160,7 @@ const faqSections = [
       {
         question: "How do I pay?",
         answer:
-          "You don’t pay when you book. Your slot is held as soon as you confirm it. You pay on the day, in person with Inês."
+          "The booking page tells you before you confirm. When secure online checkout is shown, you pay through Stripe as part of booking. If checkout isn’t shown, you pay Inês directly on the day."
       },
       {
         question: "How much does a lesson cost?",
@@ -179,17 +179,17 @@ const faqSections = [
     questions: [
       {
         question: "Can I reschedule?",
-        answer: `${changeBookingInstructions} Move to any time that’s free. It costs nothing if you change it the day before or earlier; on the day itself there’s a ${sameDayFee} fee.`
+        answer: `${changeBookingInstructions} Move to any time that’s free. A lesson paid online moves free until the day before and locks on its own day. A lesson originally booked without online payment keeps the older ${sameDayFee} same-day change rule.`
       },
       {
         question: `When does the ${sameDayFee} fee apply?`,
         answer:
-          "Only if you change the lesson on the day it’s due, counting by Porto time. Any earlier and it’s free."
+          "Only to a lesson originally booked without online payment, if you change it on the day it’s due in Porto. A paid online lesson has no fee instead: it simply can’t be moved or cancelled on its own day."
       },
       {
         question: "Can I cancel?",
         answer:
-          "There’s a cancellation link in your confirmation email. If you’re not sure what to do, message me first."
+          "There’s a cancellation link in your confirmation email. A paid lesson cancelled by the day before is refunded automatically. If you’re not sure what to do, message me first."
       },
       {
         question: "What if I don’t turn up?",

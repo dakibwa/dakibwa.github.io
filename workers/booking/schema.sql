@@ -207,6 +207,9 @@ CREATE TABLE IF NOT EXISTS booking_series (
   -- Booked under prepay: each topped-up lesson is charged on its own day to
   -- the card saved at the first checkout (migration 0009).
   prepaid        INTEGER NOT NULL DEFAULT 0,
+  -- Evidence that the student explicitly agreed to future automatic charges
+  -- when starting a prepaid weekly run (migration 0011).
+  payment_consent_at TEXT,
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL,
   ended_at       TEXT
