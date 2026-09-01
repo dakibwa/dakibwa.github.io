@@ -776,7 +776,8 @@ for (const oldToggleName of ["Account", "Close", "Close account"]) {
   }
 }
 const accountMenuButton = accountPanel.getByRole("button", { name: "Menu", exact: true });
-await accountMenuButton.waitFor();
+const accountActions = accountPanel.locator("#account-menu");
+await accountActions.waitFor({ state: "visible" });
 
 async function bookQaLessonAndReturnToUpcoming({ recurring }) {
   await accountPage.getByRole("button", { name: /Book a (?:new )?lesson/, exact: true }).click();
@@ -906,7 +907,6 @@ if (
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-lessons-overview-desktop.png"), fullPage: true });
 
-await accountMenuButton.click();
 const initialAccountMenu = accountPanel.locator("#account-menu");
 await initialAccountMenu.waitFor({ state: "visible" });
 if ((await initialAccountMenu.getByRole("button").count()) !== 5) {
@@ -917,6 +917,29 @@ if (!(await initialAccountMenu.getByRole("button", { name: /View lessons/ }).isV
 }
 if (!(await initialAccountMenu.getByRole("button", { name: "Book a lesson", exact: true }).isVisible())) {
   throw new Error("Booking should be a primary account-menu shortcut.");
+}
+const desktopAccountBarActions = await accountPanel.evaluate((panel) => {
+  const account = panel.querySelector(".unified-account-controls")?.getBoundingClientRect();
+  const actions = panel.querySelector("#account-menu")?.getBoundingClientRect();
+  const book = panel.querySelector(".my-lessons__menu-book");
+  const bookStyles = book ? window.getComputedStyle(book) : null;
+  return {
+    account: account ? { top: account.top, right: account.right, bottom: account.bottom, left: account.left } : null,
+    actions: actions ? { top: actions.top, right: actions.right, bottom: actions.bottom, left: actions.left } : null,
+    bookBackground: bookStyles?.backgroundColor ?? ""
+  };
+});
+if (
+  !desktopAccountBarActions.account ||
+  !desktopAccountBarActions.actions ||
+  desktopAccountBarActions.actions.top < desktopAccountBarActions.account.top - 1 ||
+  desktopAccountBarActions.actions.right > desktopAccountBarActions.account.right + 1 ||
+  desktopAccountBarActions.actions.bottom > desktopAccountBarActions.account.bottom + 1 ||
+  desktopAccountBarActions.bookBackground !== "rgb(180, 58, 38)" ||
+  (await accountMenuButton.isVisible()) ||
+  (await accountPanel.locator(".upcoming-lessons__book-action").isVisible())
+) {
+  throw new Error(`Desktop account actions should sit directly in the bar with one highlighted booking action: ${JSON.stringify(desktopAccountBarActions)}.`);
 }
 if (!(await initialAccountMenu.getByRole("button", { name: /Past lessons/ }).isVisible())) {
   throw new Error("Past lessons should not require entering the lesson calendar first.");
@@ -931,7 +954,6 @@ if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4
 }
 await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
 await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
-await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: "Edit details", exact: true }).click();
 await accountPanel.locator(".my-lessons__details").waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
@@ -965,7 +987,6 @@ if (desktopDetailRows.length !== 2 || desktopDetailRows.some((row) => row.action
   throw new Error(`Account field actions should sit beside their fields when they fit: ${JSON.stringify(desktopDetailRows)}.`);
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-account-edit-desktop.png"), fullPage: true });
-await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: "Done editing", exact: true }).click();
 await accountPanel.locator(".my-lessons__details").waitFor({ state: "detached" });
 
@@ -984,7 +1005,6 @@ if (await accountPage.getByRole("button", { name: "Stop repeating", exact: true 
 if (await accountPage.getByRole("button", { name: "Cancel all booked lessons", exact: true }).count()) {
   throw new Error("Bulk sequence cancellation should appear only when one recurring lesson is selected.");
 }
-await accountMenuButton.click();
 const lessonsAccountMenu = accountPanel.locator("#account-menu");
 if ((await lessonsAccountMenu.getByRole("button").count()) !== 5) {
   throw new Error("View lessons, Book a lesson, Past lessons, Edit details and Sign out should live together in the account menu.");
@@ -1012,12 +1032,10 @@ await accountPage.getByRole("heading", { name: "What would you like to do?", exa
 await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 
-await accountMenuButton.click();
 const laterLessonsToggle = accountPanel.getByRole("button", { name: /View lessons/ });
 if (!/3\s*$/.test((await laterLessonsToggle.innerText()).trim())) {
   throw new Error("The Upcoming lessons badge should count each repeating schedule once, plus each one-off lesson.");
 }
-await accountMenuButton.click();
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
 const calendarToolbarAlignment = await accountPage.evaluate(() => {
@@ -1129,7 +1147,7 @@ if (Math.abs(tooltipLayout.back.top - tooltipLayout.heading.top) > 18) {
   throw new Error(`Back to start should sit at the upper right of the upcoming-lessons heading: ${JSON.stringify(tooltipLayout)}.`);
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-tooltip-desktop.png"), fullPage: true });
-await accountMenuButton.focus();
+await accountActions.getByRole("button", { name: /View lessons/ }).focus();
 if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4) {
   throw new Error("The four-week calendar should remain as a visual beneath upcoming lessons.");
 }
@@ -1222,7 +1240,6 @@ await upcomingManagePanel.getByRole("button", { name: "Back", exact: true }).cli
 await upcomingManageDialog.waitFor({ state: "visible" });
 await upcomingManageDialog.getByRole("button", { name: "Close lesson management", exact: true }).click();
 await upcomingManageDialog.waitFor({ state: "detached" });
-await accountMenuButton.click();
 const managedAccountMenu = accountPanel.locator("#account-menu");
 await managedAccountMenu.getByRole("button", { name: /Past lessons/ }).waitFor();
 await managedAccountMenu.getByRole("button", { name: /Past lessons/ }).click();
@@ -1255,8 +1272,8 @@ await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visibl
 if (await accountPage.locator(".booking-workflow-context, #lesson-calendar .unified-calendar__panel").count()) {
   throw new Error("The lesson overview should not repeat its context or selected-day panel beneath Upcoming lessons.");
 }
-if ((await accountMenuButton.getAttribute("aria-expanded")) !== "false") {
-  throw new Error("Managing an upcoming occurrence should leave the account menu neatly closed when returning to the lesson list.");
+if (!(await accountActions.isVisible())) {
+  throw new Error("Managing an upcoming occurrence should return to the visible desktop account actions.");
 }
 await waitForOrientation(accountPage);
 if (await accountPage.locator(`#lesson-calendar [data-date-key="${qaLaterDate}"]`).count()) {
@@ -1451,6 +1468,8 @@ await waitForOrientation(accountPage);
 
 await accountPage.setViewportSize({ width: 390, height: 844 });
 await accountPage.waitForTimeout(300);
+await accountMenuButton.waitFor({ state: "visible" });
+await accountActions.waitFor({ state: "hidden" });
 const mobileAccountName = await accountPanel.locator(".my-lessons__account-name strong").evaluate((name) => ({
   clientWidth: name.clientWidth,
   scrollWidth: name.scrollWidth
@@ -1461,7 +1480,7 @@ if (mobileAccountName.scrollWidth > mobileAccountName.clientWidth + 1) {
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: /Past lessons/ }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "visible" });
-await accountPanel.locator("#account-menu").waitFor({ state: "detached" });
+await accountPanel.locator("#account-menu").waitFor({ state: "hidden" });
 await waitForOrientation(accountPage);
 const mobilePastLessonsLayout = await accountPage.evaluate(() => ({
   clientWidth: document.documentElement.clientWidth,
@@ -1926,7 +1945,7 @@ await accountMenuButton.click();
 const confirmationAccountMenu = accountPanel.locator("#account-menu");
 await confirmationAccountMenu.getByRole("button", { name: /Past lessons/ }).waitFor();
 await accountMenuButton.click();
-await confirmationAccountMenu.waitFor({ state: "detached" });
+await confirmationAccountMenu.waitFor({ state: "hidden" });
 for (const duplicateIdentity of ["Signed in as", "Booking as", "Not you?"]) {
   if (await accountPage.getByText(duplicateIdentity, { exact: false }).count()) {
     throw new Error(`Confirmation still repeats the account identity as “${duplicateIdentity}”.`);
