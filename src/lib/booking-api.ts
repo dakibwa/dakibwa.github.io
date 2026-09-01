@@ -32,8 +32,9 @@ export type Booking = {
   notes: string;
   rescheduleCount: number;
   sameDayFeeCents: number;
-  /** Prepayment states appear once Stripe is on; older bookings say 'not_required'. */
-  paymentStatus?: "not_required" | "pending" | "paid" | "scheduled" | "payment_due" | "refunded";
+  sameDayFeeAutomatic?: boolean;
+  /** Automatic-payment states appear once Stripe is on; older bookings say 'not_required'. */
+  paymentStatus?: "not_required" | "pending" | "scheduled" | "processing" | "paid" | "payment_due" | "refunded";
   amountCents?: number | null;
 };
 
@@ -41,6 +42,7 @@ export type ManagedBooking = {
   booking: Booking;
   isPast: boolean;
   sameDayFeeApplies: boolean;
+  sameDayFeeAutomatic?: boolean;
   /** A paid lesson on its own Porto day: no moves, no cancellation, no refund. */
   changeLocked?: boolean;
   /** Cancelling now returns the money automatically. */
@@ -49,8 +51,10 @@ export type ManagedBooking = {
 
 export type LessonTypesResponse = {
   lessonTypes: LessonType[];
-  /** True when students pay at booking — the page adapts its copy and options. */
-  prepay?: boolean;
+  paymentMode?: "off" | "prepay" | "postpay";
+  /** True when students save a card and the lesson charges after it ends. */
+  postpay?: boolean;
+  paymentReady?: boolean;
 };
 
 export class BookingApiError extends Error {
@@ -160,14 +164,14 @@ export function createBooking(
     timezone: string;
     /** Omitted entirely for a one-off lesson. */
     repeat?: RepeatChoice;
+    /** Required whenever the saved-card, after-lesson payment mode is active. */
+    paymentConsent?: boolean;
   }
 ) {
   return request<{
     booking: Booking;
-    // Present only when prepayment is switched on: hosted checkout answers
-    // with a URL to redirect to, embedded with a client secret to mount
-    // Stripe's payment form from — the booking is not confirmed until the
-    // webhook arrives either way.
+    // Present when a card still needs to be saved: hosted checkout answers with
+    // a URL, embedded with a client secret. No money is taken in this step.
     checkoutUrl?: string;
     checkoutClientSecret?: string;
     manageUrl?: string;

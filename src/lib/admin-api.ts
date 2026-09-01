@@ -17,7 +17,10 @@ export type AdminBooking = {
   location: "online" | "porto";
   notes: string;
   same_day_change: number;
+  same_day_fee_status: "not_required" | "scheduled" | "processing" | "paid" | "payment_due";
   reschedule_count: number;
+  payment_status: "not_required" | "pending" | "scheduled" | "processing" | "paid" | "payment_due" | "refunded";
+  attendance_status: "expected" | "no_show";
 };
 
 async function adminRequest<T>(token: string, path: string, init?: RequestInit): Promise<T> {
@@ -97,6 +100,13 @@ export function cancelBookingAs(token: string, bookingId: string) {
   return adminRequest<{ booking: { reference: string } }>(token, `/admin/bookings/${bookingId}/cancel`, {
     method: "POST",
     body: "{}"
+  });
+}
+
+export function setNoShow(token: string, bookingId: string, noShow: boolean) {
+  return adminRequest<{ booking: AdminBooking }>(token, `/admin/bookings/${bookingId}/no-show`, {
+    method: "POST",
+    body: JSON.stringify({ noShow })
   });
 }
 

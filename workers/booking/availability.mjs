@@ -73,9 +73,11 @@ export async function loadSettings(env) {
     bookingHorizonDays: Number(settings.booking_horizon_days ?? DEFAULT_BOOKING_HORIZON_DAYS),
     slotIntervalMinutes: Number(settings.slot_interval_minutes ?? 30),
     sameDayChangeFeeCents: Number(settings.same_day_change_fee_cents ?? 500),
-    // 'off' keeps every booking confirmed on creation, as it was before
-    // payments existed. 'prepay' holds the slot until Stripe confirms.
-    paymentMode: settings.payment_mode === "prepay" ? "prepay" : "off",
+    // 'off' preserves the original pay-in-person flow. 'postpay' saves a card
+    // at booking and charges it only when the lesson ends. The retired
+    // 'prepay' value remains readable only so a half-finished rollout fails
+    // visibly rather than silently behaving as pay-in-person.
+    paymentMode: ["postpay", "prepay"].includes(settings.payment_mode) ? settings.payment_mode : "off",
     teacherName: settings.teacher_name || "Inês Dias Baía",
     teacherEmail: settings.teacher_email || "",
     replyToEmail: settings.reply_to_email || ""

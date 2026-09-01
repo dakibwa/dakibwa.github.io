@@ -8,7 +8,19 @@
 
 import assert from "node:assert/strict";
 import { candidateStartMinutes, computeAvailability, DEFAULT_BOOKING_HORIZON_DAYS } from "./availability.mjs";
-import { checkoutSessionProblem, createCheckoutSession, isTestMode, verifyWebhook } from "./stripe.mjs";
+import {
+  chargeSavedCard,
+  checkoutSessionProblem,
+  createCardSetupSession,
+  createCheckoutSession,
+  isTestMode,
+  refundPayment,
+  setupSessionProblem,
+  stripeMode,
+  stripeProblemIsRetryable,
+  stripeReady,
+  verifyWebhook
+} from "./stripe.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
 import { hashPassword, verifyPassword, passwordProblem } from "./auth.mjs";
 import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./ics.mjs";
@@ -18,10 +30,9 @@ import {
   amountAfterLessonTypeChange,
   changePolicy,
   lessonTypeChangeProblem,
-  planSeriesCancellation,
-  seriesTotalCents
+  planSeriesCancellation
 } from "./policy.mjs";
-import { normaliseLocation, notifySeries } from "./index.mjs";
+import { bookingPaymentProblem, lessonChargePlan, noShowProblem, normaliseLocation, notifySeries } from "./index.mjs";
 import {
   addDaysToKey,
   dateKey,
@@ -469,6 +480,101 @@ await test("restricted and standard sandbox keys are both recognised as test mod
   assert.equal(isTestMode({ STRIPE_SECRET_KEY: "sk_live_example" }), false);
 });
 
+await test("Stripe readiness refuses a test key in the live Worker", () => {
+  const shared = { STRIPE_WEBHOOK_SECRET: "whsec_example" };
+  assert.equal(
+    stripeReady({ ...shared, STRIPE_SECRET_KEY: "rk_test_example", STRIPE_EXPECTED_MODE: "live" }),
+    false
+  );
+  assert.equal(
+    stripeReady({ ...shared, STRIPE_SECRET_KEY: "rk_live_example", STRIPE_EXPECTED_MODE: "live" }),
+    true
+  );
+  assert.equal(stripeMode({ ...shared, STRIPE_SECRET_KEY: "rk_live_example" }), "live");
+  assert.equal(stripeMode({ ...shared, STRIPE_SECRET_KEY: "something_else" }), "unknown");
+});
+
+await test("saved-card charging fails closed and every booking requires explicit consent", () => {
+  assert.deepEqual(
+    bookingPaymentProblem({ paymentRequired: true, stripeIsReady: false, paymentConsent: true }),
+    {
+      status: 503,
+      message: "Payment isn't available just now. Please try again in a few minutes, or message Inês."
+    }
+  );
+  assert.equal(
+    bookingPaymentProblem({
+      paymentRequired: true,
+      stripeIsReady: true,
+      paymentConsent: false
+    })?.status,
+    400
+  );
+  assert.equal(
+    bookingPaymentProblem({
+      paymentRequired: true,
+      stripeIsReady: true,
+      paymentConsent: true
+    }),
+    null
+  );
+  assert.equal(
+    bookingPaymentProblem({ paymentRequired: false, stripeIsReady: false, paymentConsent: false }),
+    null
+  );
+});
+
+await test("a completed setup session must match the held booking", () => {
+  const booking = { stripe_session_id: "cs_test_setup" };
+  const session = {
+    id: "cs_test_setup",
+    mode: "setup",
+    status: "complete",
+    setup_intent: "seti_test_saved",
+    customer: "cus_test"
+  };
+  assert.equal(setupSessionProblem(session, booking), "");
+  assert.equal(setupSessionProblem({ ...session, status: "open" }, booking), "card setup is not complete");
+  assert.equal(setupSessionProblem({ ...session, id: "cs_other" }, booking), "session does not match");
+  assert.equal(setupSessionProblem({ ...session, setup_intent: null }, booking), "setup intent is missing");
+});
+
+await test("card setup saves for off-session use and never creates a charge", async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return new Response(JSON.stringify({ id: "cs_test_setup", client_secret: "cs_test_secret_setup" }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  };
+
+  try {
+    await createCardSetupSession(
+      { STRIPE_SECRET_KEY: "rk_test_example", STRIPE_UI_MODE: "embedded" },
+      {
+        booking: { id: "booking_setup", reference: "PT-SET123" },
+        customerEmail: "student@example.com",
+        successUrl: "https://portuguesewithines.com/book/?card=saved",
+        cancelUrl: "https://portuguesewithines.com/book/?cancelled=1"
+      }
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const body = new URLSearchParams(request.options.body);
+  assert.equal(body.get("mode"), "setup");
+  assert.equal(body.get("customer_creation"), "always");
+  assert.equal(body.get("customer_email"), "student@example.com");
+  assert.equal(body.has("customer"), false);
+  // SetupIntents default to off_session; Checkout's setup_intent_data subset
+  // does not accept a usage override.
+  assert.equal(body.has("setup_intent_data[usage]"), false);
+  assert.equal(body.has("line_items[0][price_data][unit_amount]"), false);
+  assert.equal(request.options.headers["Idempotency-Key"], "ines:setup:booking_setup");
+});
+
 await test("a paid Checkout Session must match the booking exactly", () => {
   const booking = { amount_cents: 2500, stripe_session_id: "cs_test_expected" };
   const session = {
@@ -516,6 +622,7 @@ await test("Stripe requests pin the API version and identify this checkout integ
 
   assert.equal(request.url, "https://api.stripe.com/v1/checkout/sessions");
   assert.equal(request.options.headers["Stripe-Version"], "2026-08-26.dahlia");
+  assert.equal(request.options.headers["Idempotency-Key"], "ines:checkout:booking_1:initial");
   const body = new URLSearchParams(request.options.body);
   assert.match(body.get("integration_identifier"), /^portugues-com-a-ines-[a-z]{8}$/);
   assert.equal(body.get("ui_mode"), "embedded_page");
@@ -525,6 +632,100 @@ await test("Stripe requests pin the API version and identify this checkout integ
   assert.equal(body.has("payment_method_types"), false);
   assert.equal(body.has("transfer_data[destination]"), false);
   assert.equal(body.has("on_behalf_of"), false);
+});
+
+await test("an automatic charge is idempotent and only returns a succeeded PaymentIntent", async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return new Response(JSON.stringify({ id: "pi_test_paid", status: "succeeded" }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  };
+
+  try {
+    const intent = await chargeSavedCard(
+      { STRIPE_SECRET_KEY: "rk_test_example" },
+      {
+        bookingId: "booking_2",
+        customer: "cus_test",
+        paymentMethod: "pm_test",
+        amountCents: 2500,
+        description: "Single lesson · PT-ABC234"
+      }
+    );
+    assert.equal(intent.status, "succeeded");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(request.url, "https://api.stripe.com/v1/payment_intents");
+  assert.equal(request.options.headers["Idempotency-Key"], "ines:charge:booking_2:lesson");
+  const body = new URLSearchParams(request.options.body);
+  assert.equal(body.get("confirm"), "true");
+  assert.equal(body.get("off_session"), "true");
+  assert.equal(body.get("error_on_requires_action"), "true");
+  assert.equal(body.has("payment_method_types"), false);
+});
+
+await test("an automatic charge that still requires customer action is not treated as paid", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ id: "pi_test_action", status: "requires_action" }), {
+      headers: { "Content-Type": "application/json" }
+    });
+
+  try {
+    await assert.rejects(
+      chargeSavedCard(
+        { STRIPE_SECRET_KEY: "rk_test_example" },
+        {
+          bookingId: "booking_3",
+          customer: "cus_test",
+          paymentMethod: "pm_test",
+          amountCents: 2500,
+          description: "Single lesson · PT-ABC234"
+        }
+      ),
+      /did not succeed \(requires_action\)/
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test("ambiguous Stripe failures retry the same idempotency key instead of opening a second payment", () => {
+  assert.equal(stripeProblemIsRetryable(new TypeError("network failed")), true);
+  assert.equal(stripeProblemIsRetryable(Object.assign(new Error("Stripe busy"), { stripeStatus: 503 })), true);
+  assert.equal(stripeProblemIsRetryable(Object.assign(new Error("rate limited"), { stripeStatus: 429 })), true);
+  assert.equal(stripeProblemIsRetryable(Object.assign(new Error("card declined"), { stripeStatus: 402 })), false);
+});
+
+await test("a refund is idempotent for one booking", async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return new Response(JSON.stringify({ id: "re_test_refund" }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  };
+
+  try {
+    await refundPayment(
+      { STRIPE_SECRET_KEY: "rk_test_example" },
+      { bookingId: "booking_4", paymentIntent: "pi_test_paid", amountCents: 2500 }
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(request.url, "https://api.stripe.com/v1/refunds");
+  assert.equal(request.options.headers["Idempotency-Key"], "ines:refund:booking_4");
+  const body = new URLSearchParams(request.options.body);
+  assert.equal(body.get("payment_intent"), "pi_test_paid");
+  assert.equal(body.get("amount"), "2500");
 });
 
 // --- Password hashing --------------------------------------------------------
@@ -1003,18 +1204,46 @@ await test("a pending payment is not treated as paid", () => {
   assert.equal(policy.locked, false);
 });
 
-await test("a scheduled lesson locks on its day but refunds nothing when cancelled ahead", () => {
+await test("a scheduled saved-card lesson stays changeable on its day", () => {
   const row = { payment_status: "scheduled", starts_at: "2026-09-09T16:30:00.000Z" };
   const onDay = changePolicy(row, new Date("2026-09-09T08:00:00.000Z"));
-  assert.equal(onDay.locked, true);
+  assert.equal(onDay.locked, false);
+  assert.equal(onDay.sameDay, true);
   const ahead = changePolicy(row, new Date("2026-09-08T11:00:00.000Z"));
   assert.equal(ahead.locked, false);
   assert.equal(ahead.refundOnCancel, false);
 });
 
-await test("a lesson with payment due behaves like a scheduled one", () => {
+await test("a lesson with payment due is not mistaken for an already-paid legacy lesson", () => {
   const row = { payment_status: "payment_due", starts_at: "2026-09-09T16:30:00.000Z" };
-  assert.equal(changePolicy(row, new Date("2026-09-09T08:00:00.000Z")).locked, true);
+  assert.equal(changePolicy(row, new Date("2026-09-09T08:00:00.000Z")).locked, false);
+});
+
+await test("a no-show replaces the lesson price with exactly the configured fee", () => {
+  const lessonType = { price_cents: 3500 };
+  const settings = { sameDayChangeFeeCents: 500 };
+  assert.deepEqual(
+    lessonChargePlan({ attendance_status: "no_show", amount_cents: 3500 }, lessonType, settings),
+    { noShow: true, amountCents: 500, purpose: "no-show" }
+  );
+  assert.deepEqual(
+    lessonChargePlan({ attendance_status: "expected", amount_cents: 3500 }, lessonType, settings),
+    { noShow: false, amountCents: 3500, purpose: "lesson" }
+  );
+});
+
+await test("a no-show can only be changed after the lesson starts and before its charge begins", () => {
+  const row = {
+    status: "confirmed",
+    payment_status: "scheduled",
+    starts_at: "2026-09-09T16:00:00.000Z",
+    ends_at: "2026-09-09T17:00:00.000Z"
+  };
+  assert.match(noShowProblem(row, new Date("2026-09-09T15:59:59.000Z")), /starts/i);
+  assert.equal(noShowProblem(row, new Date("2026-09-09T16:00:00.000Z")), "");
+  assert.equal(noShowProblem(row, new Date("2026-09-09T16:59:59.000Z")), "");
+  assert.match(noShowProblem(row, new Date("2026-09-09T17:00:00.000Z")), /ended/i);
+  assert.match(noShowProblem({ ...row, payment_status: "processing" }, new Date("2026-09-09T16:30:00.000Z")), /already started/i);
 });
 
 await test("bulk sequence cancellation keeps today and refunds only paid future lessons", () => {
@@ -1067,12 +1296,6 @@ await test("a trial cannot be converted into a standard lesson", () => {
   const trial = { id: "trial", price_cents: 2000 };
   const single = { id: "single", price_cents: 2500 };
   assert.match(lessonTypeChangeProblem(row, trial, single), /trial lesson/i);
-});
-
-await test("a run's checkout total is count times the lesson price", () => {
-  assert.equal(seriesTotalCents(4, 2500), 10000);
-  assert.equal(seriesTotalCents(1, 2000), 2000);
-  assert.throws(() => seriesTotalCents(0, 2500));
 });
 
 // --- Report -----------------------------------------------------------------

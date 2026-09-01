@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { SiteNav } from "@/components/SiteNav";
 
-export type SitePage = "home" | "approach" | "lessons" | "faq" | "book" | "my-lessons";
+export type SitePage = "home" | "approach" | "lessons" | "faq" | "book" | "my-lessons" | "terms" | "privacy";
 
 type SiteHeaderProps = {
   currentPage?: SitePage;

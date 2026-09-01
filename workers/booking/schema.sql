@@ -152,6 +152,23 @@ CREATE TABLE IF NOT EXISTS bookings (
   stripe_session_id TEXT,
   stripe_payment_intent TEXT,
   hold_expires_at   TEXT,
+  -- Explicit agreement to an amount decided by the chosen lesson, charged
+  -- automatically when that lesson ends. Stripe stores the card itself.
+  payment_consent_at TEXT,
+  payment_consent_version TEXT,
+  attendance_status TEXT NOT NULL DEFAULT 'expected'
+                    CHECK (attendance_status IN ('expected', 'no_show')),
+  no_show_marked_at TEXT,
+  -- The amount actually taken can be the normal lesson price or the EUR 5
+  -- no-show amount. Keep it separate from amount_cents, which is the booked
+  -- lesson price and must remain available for audit.
+  charged_cents INTEGER,
+  -- A same-day move/cancellation is a separate charge from the later lesson.
+  -- One booking can incur it at most once, even if the action is retried.
+  same_day_fee_status TEXT NOT NULL DEFAULT 'not_required',
+  same_day_fee_cents INTEGER,
+  same_day_fee_payment_intent TEXT,
+  same_day_fee_session_id TEXT,
   -- Set when this lesson is one occurrence of a weekly series. Nullable: a
   -- one-off booking has no series, and everything else about the row behaves
   -- identically either way.
@@ -164,6 +181,8 @@ CREATE INDEX IF NOT EXISTS idx_bookings_window ON bookings (status, starts_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings (student_email);
 CREATE INDEX IF NOT EXISTS idx_bookings_student ON bookings (student_id, starts_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_session ON bookings (stripe_session_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_due_charge ON bookings (payment_status, ends_at);
+CREATE INDEX IF NOT EXISTS idx_bookings_due_same_day_fee ON bookings (same_day_fee_status, updated_at);
 
 -- Stripe delivers webhooks at least once; this makes handling them exactly once.
 CREATE TABLE IF NOT EXISTS stripe_events (
@@ -204,9 +223,13 @@ CREATE TABLE IF NOT EXISTS booking_series (
   occurrences    INTEGER CHECK (occurrences IS NULL OR occurrences > 0),
   status         TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ended')),
   filled_to      TEXT,
-  -- Booked under prepay: each topped-up lesson is charged on its own day to
-  -- the card saved at the first checkout (migration 0009).
+  -- Legacy flag from the earlier prepay experiment (migration 0009).
   prepaid        INTEGER NOT NULL DEFAULT 0,
+  -- New series use automatic_payment. `prepaid` remains only so old rows keep
+  -- the promise they were created under.
+  automatic_payment INTEGER NOT NULL DEFAULT 0,
+  payment_consent_at TEXT,
+  payment_consent_version TEXT,
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL,
   ended_at       TEXT
