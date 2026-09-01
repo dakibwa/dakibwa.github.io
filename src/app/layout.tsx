@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Beth_Ellen, Montserrat } from "next/font/google";
 import { preload } from "react-dom";
+import {
+  AKIBWA_PROJECT_VIEW_BOOTSTRAP,
+  AkibwaProjectBanner
+} from "@/components/AkibwaProjectBanner";
 import { publicAssetPath, publicAssetUrl } from "@/lib/paths";
 import "./globals.css";
 
@@ -85,12 +89,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={`${bethEllen.variable} ${montserrat.variable}`}
       lang="en"
       data-scroll-behavior="smooth"
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: AKIBWA_PROJECT_VIEW_BOOTSTRAP }} />
+      </head>
       <body
         style={{
           ["--paper-texture" as string]: publicAssetUrl("/visuals/paper-grain.svg")
         }}
       >
+        <AkibwaProjectBanner />
         {children}
       </body>
     </html>
