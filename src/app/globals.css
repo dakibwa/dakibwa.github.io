@@ -4018,9 +4018,11 @@ button.text-action {
 }
 
 .upcoming-lessons__title-line {
+  position: relative;
   display: flex;
+  width: max-content;
+  max-width: 100%;
   min-width: 0;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem 0.55rem;
 }
@@ -4044,30 +4046,55 @@ button.text-action {
 }
 
 .upcoming-lessons__tip {
-  display: none;
-  min-width: min(220px, 100%);
-  max-width: 290px;
-  flex: 1 1 220px;
-  border: 1px solid var(--rule);
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: min(300px, calc(100vw - 5rem));
+  border: 1px solid rgba(220, 216, 245, 0.72);
   border-radius: 12px 20px 14px 18px;
-  padding: 0.52rem 0.68rem;
-  background: var(--cream);
-  box-shadow: 0 8px 20px rgba(24, 45, 104, 0.12);
-  color: var(--ink);
+  padding: 0.62rem 0.76rem;
+  background: rgba(26, 49, 105, 0.97);
+  box-shadow: 0 14px 30px rgba(17, 31, 72, 0.3);
+  color: var(--paper-light);
   font-family: var(--body);
   font-size: 0.72rem;
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1.4;
+  opacity: 0;
   pointer-events: none;
   text-align: left;
   text-transform: none;
+  transform: translateY(-6px) scale(0.985);
+  transform-origin: top left;
+  transition:
+    opacity 140ms ease-out,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 180ms;
+  visibility: hidden;
+}
+
+.upcoming-lessons__tip::before {
+  position: absolute;
+  top: -5px;
+  left: 11.45rem;
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid rgba(220, 216, 245, 0.72);
+  border-left: 1px solid rgba(220, 216, 245, 0.72);
+  background: rgba(26, 49, 105, 0.97);
+  content: "";
+  transform: rotate(45deg);
 }
 
 .upcoming-lessons__hint:hover + .upcoming-lessons__tip,
 .upcoming-lessons__hint:focus + .upcoming-lessons__tip,
 .upcoming-lessons__hint:focus-visible + .upcoming-lessons__tip {
-  display: block;
+  opacity: 1;
+  transform: none;
+  transition-delay: 0s;
+  visibility: visible;
 }
 
 .my-lessons__account-section .lesson-list {
@@ -6081,6 +6108,10 @@ button.text-action {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .upcoming-lessons__tip {
+    transition: none;
+  }
+
   .lesson-manage-overlay,
   .lesson-manage-dialog {
     animation: none;
