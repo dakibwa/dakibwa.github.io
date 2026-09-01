@@ -144,7 +144,10 @@ Preserve these desktop and mobile states:
   and 440 px at roughly 29% of the viewport; the cream booking workspace owns
   the remaining width;
 - the workspace opens with one decision: `Book a new lesson` or `View your
-  lessons`. Booking then asks for the lesson type before showing the calendar;
+  lessons`. Booking then asks whether this is one lesson or a recurring lesson.
+  A recurring booking chooses four weeks or `Until I stop it`, then both routes
+  choose `60 minutes` or `90 minutes` before showing the calendar. An eligible
+  first-time student also sees the separate fixed-length trial route;
   viewing lessons opens the upcoming-lesson list, with the same calendar kept
   beneath it as a four-week visual overview and without displaying free times.
   A signed-out visitor can browse lesson types, dates, and times first; sign-in
@@ -167,12 +170,14 @@ Preserve these desktop and mobile states:
   tooltip explains that individual lessons can be modified up to four weeks in
   advance; it opens over the lesson list on a dark blue floating surface, so it
   never moves the cards beneath it, while `Back to start` stays at the panel's
-  upper right. In these
+  upper right. Stopping a repeat immediately returns every retained date to the
+  ordinary individual lesson cards; only an active repeat is grouped. In these
   already-booked summaries, ordinary lesson product names are
   replaced by their useful compact duration (`60 mins` or `90 mins`), while a
-  trial stays named. The recurring line states its weekly time or `Sequence
-  ended` without repeating the number of booked dates. One-off lessons remain
-  individual entries.
+  trial stays named. The recurring line states its weekly time without repeating
+  the number of booked dates. One-off and stopped-sequence lessons remain
+  individual entries. Each card gains a quiet colour wash on hover or keyboard
+  focus without lifting, jumping, or shifting the list.
   There is no second `My lessons` navigation destination.
   The account bar, workflow choices, calendar, and selected-day workspace share
   the same left and right edges. Profile fields open directly inside the account
@@ -203,7 +208,10 @@ Preserve these desktop and mobile states:
   The booking overview says `Next 8
   weeks`
   explicitly and contains no more than eight Monday-to-Sunday rows; the
-  inclusive 56-day API boundary must not create a ninth visible row;
+  calendar key and range label share one visual centre. The final booking recap
+  uses the selected date and time as its display heading instead of repeating
+  `Single lesson`. The inclusive 56-day API boundary must not create a ninth
+  visible row;
 - days with two bookings show both booked times on separate lines. Do not use a
   small `2x` count badge beside the date. Each selected existing lesson uses a
   coral-tinted card with an explicit `Booked` status;
@@ -234,6 +242,12 @@ all cancellable upcoming dates as well. Confirm either action at desktop and
 mobile sizes before changing anything. The bulk-cancel confirmation must state
 that paid cancellable lessons are refunded automatically and that a lesson
 happening today remains booked under the existing same-day policy.
+
+The change workflow has no decorative horizontal dividers. Lesson length uses
+the same sliding two-option control as `Online` / `In Porto`, so changing an
+existing lesson feels like the booking flow rather than a separate tool. The
+policy band contains the current fee and missed-lesson terms, not instructions
+for finding the management controls.
 
 ## Superseded work
 

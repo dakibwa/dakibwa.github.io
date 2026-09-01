@@ -277,11 +277,16 @@ export function MyLessons({
   const upcoming = bookings
     .filter((booking) => !booking.isPast && booking.status === "confirmed")
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const activeSeriesIds = new Set(series.map((entry) => entry.id));
   const upcomingGroups = Array.from(
     upcoming
       .reduce<Map<string, UpcomingLessonGroup>>((groups, booking) => {
-        const id = booking.seriesId ? `series:${booking.seriesId}` : `booking:${booking.reference}`;
-        const group = groups.get(id) ?? { id, seriesId: booking.seriesId, bookings: [] };
+        // A series id records where a booking came from; the active series list
+        // says whether it is still repeating. Once a student stops the repeat,
+        // the dates they kept become ordinary individual commitments again.
+        const seriesId = booking.seriesId && activeSeriesIds.has(booking.seriesId) ? booking.seriesId : null;
+        const id = seriesId ? `series:${seriesId}` : `booking:${booking.reference}`;
+        const group = groups.get(id) ?? { id, seriesId, bookings: [] };
         group.bookings.push(booking);
         groups.set(id, group);
         return groups;
@@ -664,20 +669,16 @@ export function MyLessons({
                     <span className="lesson-calendar__lesson-copy">
                       <span className={`lesson-calendar__status${isSeries ? " lesson-calendar__status--recurring" : ""}`}>
                         {isSeries ? <Repeat size={13} aria-hidden="true" /> : <CheckCircle2 size={13} aria-hidden="true" />}
-                        {isSeries ? (activeSeries ? "Recurring lesson" : "Booked sequence") : "Booked"}
+                        {isSeries ? "Recurring lesson" : "Booked"}
                       </span>
                       <strong>{isSeries ? "Next: " : ""}{formatLongDate(nextBooking.startAt)}, {formatSlotTime(nextBooking.startAt)}</strong>
                       <span>
                         {formatBookedLessonLabel(nextBooking.lessonType)} · {nextBooking.location === "porto" ? "In Porto" : "Online"}
                       </span>
-                      {isSeries ? (
+                      {isSeries && activeSeries ? (
                         <small>
                           <Repeat size={13} aria-hidden="true" />
-                          <span>
-                            {activeSeries
-                              ? `Every ${WEEKDAYS[activeSeries.weekday]} at ${minutesToClock(activeSeries.minuteOfDay)} Porto time`
-                              : "Sequence ended"}
-                          </span>
+                          <span>Every {WEEKDAYS[activeSeries.weekday]} at {minutesToClock(activeSeries.minuteOfDay)} Porto time</span>
                         </small>
                       ) : null}
                     </span>

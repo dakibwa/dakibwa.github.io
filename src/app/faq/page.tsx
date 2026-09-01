@@ -188,13 +188,11 @@ const faqSections = [
       },
       {
         question: "Can I cancel?",
-        answer:
-          "There’s a cancellation link in your confirmation email. If you’re not sure what to do, message me first."
+        answer: `${changeBookingInstructions} Cancelling is free until the day before; on the lesson day the ${sameDayFee} fee applies.`
       },
       {
         question: "What if I don’t turn up?",
-        answer:
-          "Cancelling is always better than not coming, even at the last minute, so the time isn’t held for nothing. If something happened, message me. I’d rather sort it out than worry about it.",
+        answer: `Please cancel rather than simply not coming, even at the last minute, so I know you’re safe. There is no separate no-show fee under the current pay-on-the-day terms; the ${sameDayFee} same-day fee applies when you change or cancel on the lesson day. If something happened, message me and we’ll sort it out.`,
         // Placed under cancelling rather than payment on purpose — the answer is
         // mostly "cancel instead", and that is the thing worth reading.
       },
