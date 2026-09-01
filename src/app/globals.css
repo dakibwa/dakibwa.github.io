@@ -2884,8 +2884,10 @@ html.booking-fallback-transitioning .booking-confirmation-stage {
 
 .slot-grid button small {
   display: block;
-  font-size: 0.66rem;
+  font-size: 0.58rem;
+  line-height: 1.05;
   opacity: 0.72;
+  white-space: nowrap;
 }
 
 /* Step 4 — details */
