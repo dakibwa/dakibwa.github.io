@@ -102,6 +102,24 @@ The intended production state reflects Inês's 31 August feedback:
   through scrolling and internal navigation in that tab, and its plain “Back
   to projects” link clears the visit state. Direct visits never show it.
 
+## Public-page hierarchy — 2026-09-01
+
+Use the available space for orientation and decisions rather than repeating
+the same identity or action:
+
+- the shared header is the site's one full `Português com a Inês` wordmark;
+  page headings describe the visitor's current subject or task, and the footer
+  is a compact navigation utility without another wordmark;
+- each page has one dominant action in its content. A later section must not
+  repeat the same call to action simply to fill a closing band;
+- on Home, the display heading is `European Portuguese lessons.` and the
+  supporting line locates them in Porto and online. `Book a lesson` appears
+  once. The quieter `How I teach` and `Lessons and prices` routes sit with that
+  introduction rather than occupying a second strip beneath the hero;
+- Approach, Lessons, FAQ, and Booking follow the same hierarchy: one shared
+  brand in the header, a task-specific page heading, and only the actions that
+  meaningfully advance that page's reading path.
+
 ## References retained in this repository
 
 `design/business-cards/` contains the original business-card exports. They are

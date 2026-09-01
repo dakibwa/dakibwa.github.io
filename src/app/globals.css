@@ -522,6 +522,20 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
   transform: scaleX(1);
 }
 
+.text-action--on-dark {
+  border-color: rgba(245, 236, 217, 0.42);
+  color: var(--paper);
+}
+
+.text-action--on-dark::after {
+  background: var(--lavender);
+}
+
+.text-action--on-dark:hover,
+.text-action--on-dark:focus-visible {
+  color: var(--lavender);
+}
+
 .eyebrow {
   color: var(--lavender-ink);
   font-family: var(--ui);
@@ -589,43 +603,49 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 }
 
 .home-hero__copy h1 {
-  display: grid;
-  grid-template-columns: max-content max-content;
-  column-gap: 0.12em;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  max-width: 660px;
+  max-width: 720px;
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(2.6rem, 5vw, 6.5rem);
+  font-size: clamp(2.6rem, 4.8vw, 5.9rem);
   font-weight: 400;
   letter-spacing: -0.035em;
-  line-height: 0.96;
-}
-
-.home-hero__copy h1 > span:first-child {
-  grid-column: 1 / -1;
+  line-height: 1.02;
 }
 
 .home-hero__copy h1 > span {
-  white-space: nowrap;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .home-title__script {
-  align-self: end;
   color: var(--lavender);
   font-style: italic;
   letter-spacing: -0.04em;
-}
-
-.home-hero__copy h1 > span:last-child {
-  align-self: end;
-  margin-left: 0;
 }
 
 .home-hero__copy > p {
   margin-bottom: 1.7rem;
   font-size: clamp(1.35rem, 2vw, 1.8rem);
   line-height: 1.25;
+}
+
+.home-hero__actions {
+  display: flex;
+  width: min(100%, 470px);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.home-hero__links {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1.6rem;
 }
 
 .principles-strip {
@@ -674,22 +694,6 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
   margin: 0;
   font-size: 1.05rem;
   line-height: 1.3;
-}
-
-.home-closing {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.6rem var(--page-pad);
-  border-bottom: 1px solid var(--rule-soft);
-  gap: 2rem;
-}
-
-.home-closing__links {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2rem;
 }
 
 /* Approach */
@@ -5376,10 +5380,7 @@ button.text-action {
 
 .site-footer {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1fr)
-    minmax(0, auto)
-    minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   min-height: 0;
   padding: 1.35rem var(--page-pad);
@@ -5389,16 +5390,12 @@ button.text-action {
   gap: clamp(2.5rem, 5vw, 7rem);
 }
 
-.footer-wordmark {
-  width: min(260px, 100%);
-}
-
 /* Flex, not a four-column grid: the account link made five items, and the
    fifth wrapped to a second row, which is what made the footer look stacked. */
 .site-footer__nav {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0 clamp(1rem, 2.2vw, 2.6rem);
   font-family: var(--ui);
   font-size: 0.72rem;
@@ -5564,27 +5561,15 @@ button.text-action {
   }
 
   .site-footer {
-    grid-template-areas:
-      "brand nav"
-      "brand contact";
-    grid-template-columns: minmax(280px, 1fr) auto;
-    gap: 0.35rem 2rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2rem;
     padding-top: 2rem;
     padding-bottom: 2rem;
   }
 
-  .site-footer__brand {
-    grid-area: brand;
-  }
-
   .site-footer__nav {
-    grid-area: nav;
-    justify-content: end;
+    justify-content: flex-start;
     gap: clamp(1rem, 3vw, 2.25rem);
-  }
-
-  .site-footer__contact {
-    grid-area: contact;
   }
 }
 
@@ -5919,10 +5904,6 @@ button.text-action {
   }
 
   .site-footer {
-    grid-template-areas:
-      "brand"
-      "nav"
-      "contact";
     grid-template-columns: 1fr;
     gap: 0.75rem;
   }
@@ -5938,12 +5919,6 @@ button.text-action {
     text-align: right;
   }
 
-  /* One control now, so it sits on the wordmark's line rather than under it. */
-  .site-footer {
-    grid-template-areas: "brand contact";
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-  }
 }
 
 @media (max-width: 560px) {
@@ -5990,15 +5965,13 @@ button.text-action {
     gap: 1.2rem;
   }
 
-  .home-closing {
+  .home-hero__actions {
     align-items: stretch;
-    flex-direction: column;
-    gap: 1.25rem;
   }
 
-  .home-closing__links {
+  .home-hero__links {
     justify-content: space-between;
-    gap: 1.25rem;
+    gap: 0.4rem 1.15rem;
   }
 
   .approach-intro {
@@ -6119,14 +6092,6 @@ button.text-action {
     padding-bottom: 1.75rem;
   }
 
-  .site-footer__brand {
-    grid-area: brand;
-  }
-
-  .footer-wordmark {
-    width: min(250px, 100%);
-  }
-
   .site-footer__nav {
     width: min(100%, 320px);
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6134,7 +6099,6 @@ button.text-action {
   }
 
   .site-footer__contact {
-    grid-area: contact;
     flex-wrap: wrap;
     gap: 0 1rem;
   }

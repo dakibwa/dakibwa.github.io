@@ -30,15 +30,20 @@ export default function Home() {
         <section className="home-hero" aria-labelledby="home-title">
           <div className="home-hero__copy">
             <h1 id="home-title">
-              <span>Português</span>
-              <span className="home-title__script">com a</span>
-              <span>Inês</span>
+              <span>European Portuguese</span>
+              <span className="home-title__script">lessons.</span>
             </h1>
             <div className="editorial-rule" aria-hidden="true" />
-            <p>European Portuguese lessons in Porto.<br />Or online, wherever you are.</p>
-            <Link className="button button--coral" href="/book">
-              Book a lesson
-            </Link>
+            <p>One to one in Porto.<br />Or online, wherever you are.</p>
+            <div className="home-hero__actions">
+              <Link className="button button--coral" href="/book">
+                Book a lesson
+              </Link>
+              <nav className="home-hero__links" aria-label="Learn more about lessons">
+                <Link className="text-action text-action--on-dark" href="/approach">How I teach</Link>
+                <Link className="text-action text-action--on-dark" href="/lessons">Lessons and prices</Link>
+              </nav>
+            </div>
           </div>
 
           <section className="principles-strip" aria-label="How lessons work">
@@ -55,16 +60,6 @@ export default function Home() {
               );
             })}
           </section>
-        </section>
-
-        <section className="home-closing" aria-label="Read more or book a lesson">
-          <div className="home-closing__links">
-            <Link className="text-action" href="/approach">How I teach</Link>
-            <Link className="text-action" href="/lessons">Lessons and prices</Link>
-          </div>
-          <Link className="button button--coral" href="/book">
-            Book a lesson
-          </Link>
         </section>
       </main>
 
