@@ -77,6 +77,7 @@ const state = () => page.evaluate(() => {
     flag: document.documentElement.getAttribute("data-akibwa-project"),
     identity: document.querySelector(".akibwa-project-banner__identity")?.textContent.trim(),
     lede: document.querySelector(".akibwa-project-banner__lede")?.textContent.trim(),
+    ledeDisplay: getComputedStyle(document.querySelector(".akibwa-project-banner__lede")).display,
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     siteHeader: rect(".site-header")
   };
@@ -146,6 +147,17 @@ try {
   await page.evaluate(() => scrollTo(0, Math.min(500, document.documentElement.scrollHeight - innerHeight)));
   current = await state();
   check(Math.abs(current.banner.top) <= 1, "the masthead remains pinned after phone scrolling");
+
+  process.stdout.write("\n■ short landscape composition\n");
+  await page.setViewportSize({ width: 740, height: 390 });
+  await page.goto(`${origin}/?from=akibwa`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('html[data-akibwa-project="true"] .akibwa-project-banner');
+  current = await state();
+  check(current.banner.height <= 60, `the landscape masthead stays compact [${current.banner.height.toFixed(1)}px]`);
+  check(current.ledeDisplay !== "none" && current.lede === "Building in the Intelligence Age.",
+    "the landscape masthead keeps the portfolio proposition visible");
+  check(current.siteHeader.top === current.banner.bottom, "the landscape site starts below the green boundary");
+  check(current.overflow <= 1, `the landscape entry has no horizontal overflow [${current.overflow}px]`);
 
   if (process.env.PORTFOLIO_SCREENSHOT) {
     await page.screenshot({ path: process.env.PORTFOLIO_SCREENSHOT, fullPage: false });

@@ -249,18 +249,32 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 
 @media (max-height: 560px) and (orientation: landscape) {
   .akibwa-project-banner__inner {
-    grid-template-areas: "identity back";
+    grid-template-areas: "identity lede back";
+    grid-template-columns: auto minmax(0, 1fr) auto;
     min-height: 58px;
     padding: 8px 0;
     gap: 18px;
   }
 
   .akibwa-project-banner__identity {
+    grid-area: identity;
     font-size: 1.7rem;
   }
 
+  .akibwa-project-banner__copy {
+    display: contents;
+  }
+
   .akibwa-project-banner__lede {
-    display: none;
+    display: block;
+    grid-area: lede;
+    font-size: clamp(0.82rem, 2.4vw, 1rem);
+    line-height: 1;
+    white-space: normal;
+  }
+
+  .akibwa-project-banner__back {
+    grid-area: back;
   }
 }
 
