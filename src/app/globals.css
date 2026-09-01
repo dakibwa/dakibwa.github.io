@@ -1661,7 +1661,6 @@ textarea,
     grid-row: 2;
     grid-column: 1;
     min-width: 0;
-    height: 100%;
     margin: 0;
   }
 

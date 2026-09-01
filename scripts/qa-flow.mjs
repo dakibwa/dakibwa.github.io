@@ -1331,6 +1331,7 @@ const desktopAccountLayout = await accountPage.evaluate(() => {
       : null;
   };
   return {
+    alignItems: getComputedStyle(document.querySelector(".booking-stage--lessons")).alignItems,
     composition: bounds(".booking-composition"),
     intro: bounds(".booking-intro"),
     provider: bounds(".booking-provider"),
@@ -1346,11 +1347,11 @@ if (
   !desktopAccountLayout.panel ||
   !desktopAccountLayout.upcoming ||
   !desktopAccountLayout.calendar ||
+  desktopAccountLayout.alignItems !== "stretch" ||
   desktopAccountLayout.intro.bottom > desktopAccountLayout.provider.top + 1 ||
   desktopAccountLayout.panel.bottom > Math.min(desktopAccountLayout.upcoming.top, desktopAccountLayout.calendar.top) + 1 ||
   desktopAccountLayout.upcoming.right >= desktopAccountLayout.calendar.left ||
-  Math.abs(desktopAccountLayout.upcoming.top - desktopAccountLayout.calendar.top) > 2 ||
-  Math.abs(desktopAccountLayout.upcoming.bottom - desktopAccountLayout.calendar.bottom) > 2
+  Math.abs(desktopAccountLayout.upcoming.top - desktopAccountLayout.calendar.top) > 2
 ) {
   throw new Error(
     `The compact banner and signed-in desktop overview should form one aligned workspace: ${JSON.stringify(desktopAccountLayout)}.`
