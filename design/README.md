@@ -143,9 +143,11 @@ Preserve these desktop and mobile states:
   full eight-week availability horizon and returns there from a selected week,
   with the time or lesson detail beside it on desktop and immediately below it
   on mobile. A free day shows the available times without redundant “no lesson
-  booked” or lesson-summary copy; booked days retain their lesson details. The
-  four-week lesson overview stops before later repeating dates; those future
-  lessons remain in the list instead of stretching the calendar. Opening any
+  booked” or lesson-summary copy. Those times form one compact grid without
+  morning, afternoon, or evening subheadings; buttons keep an accessible touch
+  target while fitting three across on a phone. Booked days retain their lesson
+  details. The four-week lesson overview stops before later repeating dates;
+  those future lessons remain in the list instead of stretching the calendar. Opening any
   lesson keeps the list and calendar in place and adds a compact overlay asking
   whether to change or cancel it. `Change` returns to the same calendar and its
   time picker; cancellation stays inside the overlay until explicitly confirmed.

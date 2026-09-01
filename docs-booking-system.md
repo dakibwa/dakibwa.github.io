@@ -113,7 +113,9 @@ depending on them having kept the right confirmation email.
   keeps the calendar beneath it as a four-week visual without free-time choices.
   Every booked lesson is marked there. Choosing a booked day
   or a free day reduces the calendar to that one week, putting the
-  selected lesson or available times immediately beneath it on a phone. Each
+  selected lesson or available times immediately beneath it on a phone.
+  Available times use one compact grid, without part-of-day headings, and fit
+  three accessible time buttons across on a phone. Each
   completed choice becomes a compact summary and the page moves the next
   decision into view. Viewing lessons stays within a four-week calendar while
   `Upcoming lessons` contains every future booking, including dates beyond it.
