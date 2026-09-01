@@ -105,25 +105,6 @@ type Confirmation = {
 };
 
 /**
- * Times read more easily grouped by part of day than as one long grid, and it
- * keeps each group short enough to scan on a phone.
- */
-function groupSlots(slots: Slot[]) {
-  const groups: { label: string; slots: Slot[] }[] = [
-    { label: "Morning", slots: [] },
-    { label: "Afternoon", slots: [] },
-    { label: "Evening", slots: [] }
-  ];
-
-  for (const slot of slots) {
-    const hour = Number(formatSlotTime(slot.startAt).slice(0, 2));
-    groups[hour < 12 ? 0 : hour < 17 ? 1 : 2].slots.push(slot);
-  }
-
-  return groups.filter((group) => group.slots.length);
-}
-
-/**
  * Stripe's embedded checkout: their payment form, mounted inside this page, so
  * paying never means leaving the site. The script is loaded only at the moment
  * a payment actually starts — the booking page carries no Stripe weight for
@@ -1677,32 +1658,25 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     ) : loadingSlots ? (
                       <p className="booking-state-note">Checking what&rsquo;s free…</p>
                     ) : daySlots.length ? (
-                      <div className="time-groups" key={selectedDate}>
-                        {groupSlots(daySlots).map((group) => (
-                          <div className="time-group" key={group.label}>
-                            <h4>{group.label}</h4>
-                            <div className="slot-grid">
-                              {group.slots.map((slot) => {
-                                const local = differingLocalTime(slot.startAt, studentZone);
-                                return (
-                                  <button
-                                    key={slot.startAt}
-                                    onClick={() =>
-                                      transitionBooking(() => {
-                                        setSelectedSlot(slot.startAt);
-                                        goTo("details");
-                                      })
-                                    }
-                                    type="button"
-                                  >
-                                    {formatSlotTime(slot.startAt)}
-                                    {local ? <small>{local} your time</small> : null}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="slot-grid" key={selectedDate}>
+                        {daySlots.map((slot) => {
+                          const local = differingLocalTime(slot.startAt, studentZone);
+                          return (
+                            <button
+                              key={slot.startAt}
+                              onClick={() =>
+                                transitionBooking(() => {
+                                  setSelectedSlot(slot.startAt);
+                                  goTo("details");
+                                })
+                              }
+                              type="button"
+                            >
+                              {formatSlotTime(slot.startAt)}
+                              {local ? <small>{local} your time</small> : null}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="booking-state-note">No free times on this day.</p>

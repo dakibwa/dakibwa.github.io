@@ -272,8 +272,12 @@ const qaEnd = new Date(qaStart.getTime() + 60 * 60_000);
 const qaSecondStart = new Date(qaStart.getTime() + 2 * 60 * 60_000);
 const qaSecondEnd = new Date(qaSecondStart.getTime() + 60 * 60_000);
 const qaFreeStart = new Date(qaStart.getTime() + 24 * 60 * 60_000);
-const qaFreeEnd = new Date(qaFreeStart.getTime() + 60 * 60_000);
 const qaFreeDate = qaFreeStart.toISOString().slice(0, 10);
+const qaFreeSlots = Array.from({ length: 5 }, (_, index) => {
+  const start = new Date(qaFreeStart.getTime() + index * 30 * 60_000);
+  const end = new Date(start.getTime() + 60 * 60_000);
+  return { startAt: start.toISOString(), endAt: end.toISOString() };
+});
 const qaPastStart = new Date(Date.now() - 7 * 24 * 60 * 60_000);
 qaPastStart.setUTCHours(15, 0, 0, 0);
 const qaPastEnd = new Date(qaPastStart.getTime() + 60 * 60_000);
@@ -352,7 +356,7 @@ await accountPage.route("**/availability?*", async (route) => {
     headers: { "Access-Control-Allow-Origin": "*" },
     body: JSON.stringify({
       slotsByDate: {
-        [qaFreeDate]: [{ startAt: qaFreeStart.toISOString(), endAt: qaFreeEnd.toISOString() }]
+        [qaFreeDate]: qaFreeSlots
       },
       timeZone: "Europe/Lisbon",
       minimumNoticeHours: 24,
@@ -690,7 +694,7 @@ await accountMenuButton.waitFor();
 async function bookQaLessonAndReturnToUpcoming({ recurring }) {
   await accountPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
   await accountPage.getByRole("button", { name: "Single lesson 60 minutes · €25", exact: true }).click();
-  await accountPage.getByRole("button", { name: /1 times free/ }).first().click();
+  await accountPage.getByRole("button", { name: /times free/ }).first().click();
   await accountPage.locator("#lesson-calendar .unified-calendar__availability .slot-grid button").first().click();
   await accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true }).waitFor();
 
@@ -1433,7 +1437,7 @@ await changeLesson.click();
 await accountPage.getByRole("button", { name: "Single lesson 60 minutes · €25", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Single lesson 60 minutes · €25", exact: true }).click();
 await lessonSummary.waitFor({ state: "visible" });
-const freeDay = accountPage.getByRole("button", { name: /1 times free/ }).first();
+const freeDay = accountPage.getByRole("button", { name: /5 times free/ }).first();
 await freeDay.waitFor({ state: "visible" });
 await freeDay.click();
 const backToEightWeeks = accountPage.getByRole("button", { name: "Back to 8 weeks", exact: true });
@@ -1456,8 +1460,28 @@ if (freeCompactWeekCount !== 1) {
 const availableTimeCount = await accountPage
   .locator("#lesson-calendar .unified-calendar__availability .slot-grid button")
   .count();
-if (availableTimeCount !== 1) {
+if (availableTimeCount !== 5) {
   throw new Error(`The free-day details should appear below the compact calendar; found ${availableTimeCount} times.`);
+}
+const compactTimeGrid = await accountPage
+  .locator("#lesson-calendar .unified-calendar__availability .slot-grid")
+  .evaluate((grid) => {
+    const buttons = [...grid.querySelectorAll("button")].map((button) => button.getBoundingClientRect());
+    return {
+      buttonHeight: buttons[0]?.height ?? 0,
+      firstRowTops: buttons.slice(0, 3).map((button) => button.top),
+      fourthTop: buttons[3]?.top ?? 0,
+      headingCount: grid.parentElement?.querySelectorAll("h3, h4").length ?? -1
+    };
+  });
+if (
+  compactTimeGrid.headingCount !== 0 ||
+  compactTimeGrid.buttonHeight < 44 ||
+  compactTimeGrid.buttonHeight > 54 ||
+  compactTimeGrid.firstRowTops.some((top) => Math.abs(top - compactTimeGrid.firstRowTops[0]) > 1) ||
+  compactTimeGrid.fourthTop <= compactTimeGrid.firstRowTops[0] + 1
+) {
+  throw new Error(`Available times should use a compact, three-across mobile grid: ${JSON.stringify(compactTimeGrid)}.`);
 }
 if (
   (await accountPage.getByText("No lesson booked on this day.", { exact: true }).count()) ||
