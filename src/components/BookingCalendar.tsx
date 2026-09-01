@@ -107,45 +107,40 @@ function repeatLabel(option: RepeatOption) {
 
 function RepeatAvailability({
   chosen,
-  ongoing,
+  error,
   previewing,
   preview,
   setup = false
 }: {
   chosen: boolean;
-  ongoing: boolean;
+  error: string;
   previewing: boolean;
   preview: { bookable: string[]; skipped: string[] } | null;
   setup?: boolean;
 }) {
+  // A fully available repeat is the expected state, so it should not consume
+  // space. Guidance, loading, a failed check, and clashing weeks are the only
+  // states that need to ask for attention.
+  if (chosen && !previewing && !error && preview && !preview.skipped.length) return null;
+
   return (
     <section
       className={`booking-repeat-choice${setup ? " booking-repeat-choice--setup" : ""}`}
       aria-label="Recurring lesson availability"
     >
-      <p className="booking-repeat-note" role="status">
-        {!chosen ? (
-          "Choose a time and we'll check every week before you book."
-        ) : previewing ? (
-          "Checking which weeks are free…"
-        ) : preview ? (
-          ongoing ? (
-            <>
-              <strong>The next {preview.bookable.length + preview.skipped.length} weeks are checked.</strong>{" "}
-              It keeps repeating until you stop it.
-            </>
+      {!preview?.skipped.length ? (
+        <p className="booking-repeat-note" role="status">
+          {!chosen ? (
+            "Choose a time and we'll check every week before you book."
+          ) : previewing || (!preview && !error) ? (
+            "Checking which weeks are free…"
+          ) : error ? (
+            error
           ) : (
-            <>
-              <strong>
-                {preview.bookable.length} {preview.bookable.length === 1 ? "lesson" : "lessons"}
-              </strong>{" "}
-              fit at this time.
-            </>
-          )
-        ) : (
-          "We couldn't check the later weeks just now. Nothing is booked until you confirm."
-        )}
-      </p>
+            "We couldn't check the later weeks just now. Nothing is booked until you confirm."
+          )}
+        </p>
+      ) : null}
 
       {!previewing && preview?.skipped.length ? (
         <div className="booking-alert booking-alert--warn booking-skipped" role="status">
@@ -338,6 +333,7 @@ export function BookingCalendar({
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [seriesPreview, setSeriesPreview] = useState<{ bookable: string[]; skipped: string[] } | null>(null);
+  const [seriesPreviewError, setSeriesPreviewError] = useState("");
   const [previewing, setPreviewing] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [studentZone, setStudentZone] = useState(BOOKING_TIME_ZONE);
@@ -370,6 +366,7 @@ export function BookingCalendar({
   const [managedCalendarPlaceholderHeight, setManagedCalendarPlaceholderHeight] = useState(0);
   const [showAccountSignIn, setShowAccountSignIn] = useState(false);
   const [upcomingRequestKey, setUpcomingRequestKey] = useState(0);
+  const [focusUpcomingOnOpen, setFocusUpcomingOnOpen] = useState(true);
   const [upcomingBookingFocus, setUpcomingBookingFocus] = useState<UpcomingBookingFocusRequest | null>(null);
   const manageDialogRef = useRef<HTMLDivElement>(null);
   const managedRescheduleRef = useRef<HTMLDivElement>(null);
@@ -407,10 +404,11 @@ export function BookingCalendar({
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
     const key = portoDateKey(new Date());
     setTodayKey(key);
     setStudentZone(browserTimeZone());
-    if (new URLSearchParams(window.location.search).get("view") === "lessons") {
+    if (params.get("view") === "lessons") {
       setIntent("lessons");
       if (!readSession()) setShowAccountSignIn(true);
     }
@@ -427,6 +425,24 @@ export function BookingCalendar({
     // interruption (including a quick reload while this request is in flight)
     // must not sign the student out as a side effect.
     refreshStudent()
+      .then((data) => {
+        // Returning students came here for their next commitment, not for a
+        // fork asking whether they want to see it. Explicit lesson, sign-in,
+        // and emailed-management URLs retain their own destination.
+        if (
+          data?.student &&
+          params.get("view") !== "lessons" &&
+          !params.has("manage") &&
+          !params.has("token") &&
+          !params.has("emailToken")
+        ) {
+          setIntent("lessons");
+          setCalendarWeekCount(4);
+          setStep("day");
+          setFocusUpcomingOnOpen(false);
+          setUpcomingRequestKey((current) => current + 1);
+        }
+      })
       .catch(() => undefined)
       .finally(() => setCheckingSession(false));
   }, [onPaymentModeChange, refreshStudent]);
@@ -638,7 +654,7 @@ export function BookingCalendar({
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
   const isConfirmingBooking = step === "details" && Boolean(lessonType && chosen) && !managed;
   const needsLessonsSignIn = intent === "lessons" && showAccountSignIn && !student;
-  const showStartChoice = intent === "choose" && !managed && !isConfirmingBooking;
+  const showStartChoice = intent === "choose" && !checkingSession && !managed && !isConfirmingBooking;
   const showLessonChoice = intent === "book" && !managed && !isConfirmingBooking;
   const showWorkflowCalendar =
     !isConfirmingBooking &&
@@ -669,11 +685,13 @@ export function BookingCalendar({
     const repeat = repeatPayload(form.repeat);
     if (repeat === undefined || !chosen || !lessonType) {
       setSeriesPreview(null);
+      setSeriesPreviewError("");
       setPreviewing(false);
       return;
     }
 
     let cancelled = false;
+    setSeriesPreviewError("");
     setPreviewing(true);
 
     previewSeries(readSession(), { lessonType: lessonType.id, startAt: chosen.startAt, weeks: repeat })
@@ -684,7 +702,10 @@ export function BookingCalendar({
       .catch(() => {
         // The confirm step re-checks every week anyway, so a failed preview
         // costs a reassurance, not correctness.
-        if (!cancelled) setSeriesPreview(null);
+        if (!cancelled) {
+          setSeriesPreview(null);
+          setSeriesPreviewError("We couldn't check the later weeks just now. Nothing is booked until you confirm.");
+        }
       })
       .finally(() => {
         if (!cancelled) setPreviewing(false);
@@ -751,6 +772,7 @@ export function BookingCalendar({
       setLessonTypeId("");
       setSelectedSlot("");
       setCalendarWeekCount(4);
+      setFocusUpcomingOnOpen(true);
       setUpcomingRequestKey((current) => current + 1);
       setUpcomingBookingFocus(null);
       setStep("day");
@@ -974,6 +996,7 @@ export function BookingCalendar({
   const returnFromManagedLesson = useCallback(() => {
     transitionBooking(() => {
       closeManagedLesson();
+      setFocusUpcomingOnOpen(true);
       setUpcomingRequestKey((current) => current + 1);
     });
   }, [closeManagedLesson]);
@@ -1057,6 +1080,7 @@ export function BookingCalendar({
       setSeriesPreview(null);
       setPayment(null);
       setPaymentError("");
+      setFocusUpcomingOnOpen(true);
       setUpcomingRequestKey((current) => current + 1);
     });
   }
@@ -1169,7 +1193,7 @@ export function BookingCalendar({
         </div>
       ) : null}
 
-      <div className="booking-stage">
+      <div className={`booking-stage${intent === "lessons" && student ? " booking-stage--lessons" : ""}`}>
         {student ? (
           <section
             className="unified-account-area"
@@ -1189,6 +1213,7 @@ export function BookingCalendar({
               onOpenAccountSection={openAccountShortcut}
               onTransition={transitionBooking}
               focusUpcomingBooking={upcomingBookingFocus}
+              focusUpcomingOnOpen={focusUpcomingOnOpen}
               onSignedOut={() => {
                 setStudent(null);
                 setMyBookings([]);
@@ -1445,6 +1470,10 @@ export function BookingCalendar({
             </div>
             ) : null}
           </div>
+        ) : null}
+
+        {checkingSession && intent === "choose" && !managed ? (
+          <p className="booking-state-note booking-state-note--initial">Loading your lessons…</p>
         ) : null}
 
         {showStartChoice ? (
@@ -1715,7 +1744,7 @@ export function BookingCalendar({
                   {bookingKind === "recurring" ? (
                     <RepeatAvailability
                       chosen={Boolean(chosen)}
-                      ongoing={form.repeat === null}
+                      error={seriesPreviewError}
                       preview={seriesPreview}
                       previewing={previewing}
                       setup
@@ -2233,7 +2262,7 @@ export function BookingCalendar({
                   {form.repeat !== "once" ? (
                     <RepeatAvailability
                       chosen={Boolean(chosen)}
-                      ongoing={form.repeat === null}
+                      error={seriesPreviewError}
                       preview={seriesPreview}
                       previewing={previewing}
                     />

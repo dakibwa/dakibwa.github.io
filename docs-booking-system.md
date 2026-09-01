@@ -108,15 +108,21 @@ depending on them having kept the right confirmation email.
 - The emailed manage link still works on its own, so a forgotten password never
   blocks someone from changing a lesson.
 - **Booking, the learner's calendar, and lesson changes share one workspace.**
-  The first screen at `/book` asks only whether the student wants to book a new
-  lesson or view existing lessons. Booking asks for one lesson or a recurring
+  A signed-out visitor's first screen at `/book` asks only whether they want to
+  book a new lesson or view existing lessons. A returning signed-in student
+  opens directly on Upcoming lessons; the account menu remains the shortcut to
+  start a new booking. Booking asks for one lesson or a recurring
   lesson first. Both ordinary routes then keep Online/In Porto and the 60/90-minute
   choices together as compact sliding selectors on one setup screen; recurring
   adds 4, 6, 8 weeks, or `Ongoing` on that same screen. After the starting time
-  is chosen, that screen shows every clashing week before confirmation. The first-time
+  is chosen, a fully available repeat stays quiet; that screen reports only the
+  weeks that clash or a failed availability check before confirmation. The first-time
   trial remains a separate fixed-length route with its own location choice.
-  Viewing lessons leads with the upcoming-lesson list and
-  keeps the calendar beneath it as a four-week visual without free-time choices.
+  Viewing lessons leads with the upcoming-lesson list and keeps the calendar as
+  a four-week visual without free-time choices. On a wide desktop, the compact
+  blue introduction runs across the top and the upcoming list and calendar sit
+  alongside one another beneath the full-width account bar. Narrow layouts keep
+  the same information in account, lessons, calendar reading order.
   Signed-out visitors can browse lesson types, dates, and times before they are
   asked to sign in; `View your lessons` asks immediately because the data is
   private, while booking asks only at confirmation.

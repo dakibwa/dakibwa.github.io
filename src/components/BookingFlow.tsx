@@ -42,9 +42,9 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
         <section className="booking-composition" aria-labelledby="booking-title">
           <aside className="booking-intro">
             <h1 id="booking-title">
-              Your
+              Your{" "}
               <br />
-              Portuguese
+              Portuguese{" "}
               <br />
               lessons
             </h1>

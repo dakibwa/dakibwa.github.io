@@ -791,11 +791,18 @@ async function bookQaLessonAndReturnToUpcoming({ recurring }) {
   await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
   await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
   await accountPage.getByRole("button", { name: /times free/ }).first().click();
+  const recurrencePreview = recurring
+    ? accountPage.waitForResponse(
+        (response) =>
+          response.url().includes("/bookings/series/preview") && response.request().method() === "POST"
+      )
+    : null;
   await accountPage.locator("#lesson-calendar .unified-calendar__availability .slot-grid button").first().click();
 
   if (recurring) {
     await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
-    await accountPage.getByText("4 lessons fit at this time", { exact: false }).waitFor();
+    await recurrencePreview;
+    await accountPage.locator(".booking-repeat-choice").waitFor({ state: "detached" });
     if (await accountPage.getByText(/week clashes/i).count()) {
       throw new Error("The no-clash recurring fixture unexpectedly reported a clash.");
     }
@@ -804,8 +811,8 @@ async function bookQaLessonAndReturnToUpcoming({ recurring }) {
 
   await accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true }).waitFor();
 
-  if (recurring) {
-    await accountPage.getByText("4 lessons fit at this time", { exact: false }).waitFor();
+  if (recurring && (await accountPage.locator(".booking-repeat-choice").count())) {
+    throw new Error("A fully available recurrence should not spend confirmation space repeating an all-clear.");
   }
 
   await accountPage
@@ -838,7 +845,8 @@ async function bookQaLessonAndReturnToUpcoming({ recurring }) {
   qaCreatedSeries = [];
   await accountPage.reload({ waitUntil: "domcontentloaded" });
   await accountPanel.waitFor({ state: "visible" });
-  await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+  await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+  await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 }
 
 if ((await accountPanel.getByText("Ana Martins", { exact: true }).count()) !== 1) {
@@ -852,40 +860,51 @@ for (const duplicateIdentity of ["Signed in as", "Booking as", "Not you?"]) {
 if (await accountPage.locator(".booking-history").count()) {
   throw new Error("The old detached history disclosure is still rendered below the calendar.");
 }
-await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
-await accountPage.getByLabel("3 upcoming lessons", { exact: true }).waitFor();
-if (await accountPage.locator("#lesson-calendar").count()) {
-  throw new Error("The calendar should not compete with the first book-or-view decision.");
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
+await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
+if (await accountPage.locator("#booking-journey-start").count()) {
+  throw new Error("A returning signed-in student should open on their lessons, not the book-or-view fork.");
 }
 if (await accountPage.locator(".unified-booking__lesson-picker").count()) {
   throw new Error("Lesson types should wait until the student chooses to book.");
 }
-for (const hiddenUntilViewing of [/View lessons/, /Stop repeating/, /Cancel all booked lessons/]) {
+for (const hiddenUntilViewing of [/Stop repeating/, /Cancel all booked lessons/]) {
   if (await accountPanel.getByRole("button", { name: hiddenUntilViewing }).count()) {
-    throw new Error(`${hiddenUntilViewing} should not compete with the first workflow choice.`);
+    throw new Error(`${hiddenUntilViewing} should appear only after one recurrence is selected.`);
   }
 }
 const initialWorkflowLayout = await accountPage.evaluate(() => {
-  const account = document.querySelector("#account-controls")?.getBoundingClientRect();
-  const start = document.querySelector("#booking-journey-start")?.getBoundingClientRect();
+  const account = document.querySelector(".unified-account-controls")?.getBoundingClientRect();
+  const upcoming = document.querySelector("#account-upcoming-lessons")?.getBoundingClientRect();
+  const calendar = document.querySelector("#lesson-calendar")?.getBoundingClientRect();
   const accountName = document.querySelector(".my-lessons__account-name")?.getBoundingClientRect();
   return {
     accountLeft: account?.left ?? 0,
     accountRight: account?.right ?? 0,
-    startLeft: start?.left ?? 0,
-    startRight: start?.right ?? 0,
+    upcomingLeft: upcoming?.left ?? 0,
+    upcomingRight: upcoming?.right ?? 0,
+    upcomingTop: upcoming?.top ?? 0,
+    upcomingBottom: upcoming?.bottom ?? 0,
+    calendarLeft: calendar?.left ?? 0,
+    calendarRight: calendar?.right ?? 0,
+    calendarTop: calendar?.top ?? 0,
+    calendarBottom: calendar?.bottom ?? 0,
     accountTop: account?.top ?? 0,
+    accountBottom: account?.bottom ?? 0,
     nameTop: accountName?.top ?? 0
   };
 });
 if (
-  Math.abs(initialWorkflowLayout.accountLeft - initialWorkflowLayout.startLeft) > 2 ||
-  Math.abs(initialWorkflowLayout.accountRight - initialWorkflowLayout.startRight) > 2 ||
+  initialWorkflowLayout.accountBottom > Math.min(initialWorkflowLayout.upcomingTop, initialWorkflowLayout.calendarTop) + 1 ||
+  initialWorkflowLayout.upcomingRight >= initialWorkflowLayout.calendarLeft ||
+  Math.abs(initialWorkflowLayout.upcomingTop - initialWorkflowLayout.calendarTop) > 2 ||
+  initialWorkflowLayout.upcomingBottom <= initialWorkflowLayout.calendarTop ||
+  initialWorkflowLayout.calendarBottom <= initialWorkflowLayout.upcomingTop ||
   initialWorkflowLayout.nameTop - initialWorkflowLayout.accountTop < 16
 ) {
-  throw new Error(`The first workflow and account bar are not cleanly aligned and padded: ${JSON.stringify(initialWorkflowLayout)}.`);
+  throw new Error(`The signed-in desktop overview should align its account bar above lessons and calendar: ${JSON.stringify(initialWorkflowLayout)}.`);
 }
-await accountPage.screenshot({ path: path.join(outDir, "booking-workflow-start-desktop.png"), fullPage: true });
+await accountPage.screenshot({ path: path.join(outDir, "booking-lessons-overview-desktop.png"), fullPage: true });
 
 await accountMenuButton.click();
 const initialAccountMenu = accountPanel.locator("#account-menu");
@@ -1261,7 +1280,8 @@ const desktopAccountLayout = await accountPage.evaluate(() => {
     composition: bounds(".booking-composition"),
     intro: bounds(".booking-intro"),
     provider: bounds(".booking-provider"),
-    panel: bounds("#account-controls"),
+    panel: bounds(".unified-account-controls"),
+    upcoming: bounds("#account-upcoming-lessons"),
     calendar: bounds("#lesson-calendar")
   };
 });
@@ -1270,20 +1290,22 @@ if (
   !desktopAccountLayout.intro ||
   !desktopAccountLayout.provider ||
   !desktopAccountLayout.panel ||
+  !desktopAccountLayout.upcoming ||
   !desktopAccountLayout.calendar ||
-  desktopAccountLayout.panel.bottom > desktopAccountLayout.calendar.top + 1 ||
-  Math.abs(desktopAccountLayout.panel.left - desktopAccountLayout.calendar.left) > 2 ||
-  Math.abs(desktopAccountLayout.panel.right - desktopAccountLayout.calendar.right) > 2
+  desktopAccountLayout.intro.bottom > desktopAccountLayout.provider.top + 1 ||
+  desktopAccountLayout.panel.bottom > Math.min(desktopAccountLayout.upcoming.top, desktopAccountLayout.calendar.top) + 1 ||
+  desktopAccountLayout.upcoming.right >= desktopAccountLayout.calendar.left ||
+  Math.abs(desktopAccountLayout.upcoming.top - desktopAccountLayout.calendar.top) > 2
 ) {
   throw new Error(
-    `The account controls and active workflow should share one aligned workspace: ${JSON.stringify(desktopAccountLayout)}.`
+    `The compact banner and signed-in desktop overview should form one aligned workspace: ${JSON.stringify(desktopAccountLayout)}.`
   );
 }
 if (
-  desktopAccountLayout.intro.width / desktopAccountLayout.composition.width > 0.34 ||
-  desktopAccountLayout.provider.width <= desktopAccountLayout.intro.width
+  Math.abs(desktopAccountLayout.intro.width - desktopAccountLayout.composition.width) > 2 ||
+  Math.abs(desktopAccountLayout.provider.width - desktopAccountLayout.composition.width) > 2
 ) {
-  throw new Error("The desktop introduction still takes too much space from the booking task.");
+  throw new Error("The desktop banner and booking workspace should both use the full available width.");
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-account-desktop.png"), fullPage: true });
 
@@ -1948,7 +1970,6 @@ await accountPage.getByRole("heading", { name: "How would you like to book?", ex
 await accountPage.getByRole("button", { name: "Back", exact: true }).click();
 await bookQaLessonAndReturnToUpcoming({ recurring: false });
 await bookQaLessonAndReturnToUpcoming({ recurring: true });
-await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 const recurringLaterLesson = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group--series");
@@ -2008,7 +2029,6 @@ repeatStopped = false;
 stopRepeatPayloads.length = 0;
 await accountPage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
 await accountPanel.waitFor({ state: "visible" });
-await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 const restoredRecurringLesson = accountPanel.locator("#account-upcoming-lessons .upcoming-lesson-group--series");
 await restoredRecurringLesson.getByRole("button", { name: "Manage recurrence", exact: true }).click();

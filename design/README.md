@@ -162,20 +162,25 @@ immediately without animation or smooth scrolling.
 
 Preserve these desktop and mobile states:
 
-- on desktop the blue introduction is a supporting rail, clamped between 300
-  and 440 px at roughly 29% of the viewport; the cream booking workspace owns
-  the remaining width;
+- on desktop the blue introduction is a compact horizontal banner above the
+  cream booking workspace, not a full-height side rail. It keeps the page title
+  and three reassurances while returning the full viewport width to the task;
 - the workspace opens with one decision: `Book a new lesson` or `View your
   lessons`. Booking then asks whether this is one lesson or a recurring lesson.
   The selected route puts Online/In Porto and `60 minutes`/`90 minutes` together
   as compact sliding selectors on one setup screen; a recurring booking adds 4,
   6, 8 weeks, or `Ongoing` there as a third selector. The recurring route name
   is not repeated above `Choose your lesson`. Once a starting time is chosen,
-  the same setup surface lists any clashing weeks before confirmation. An eligible
+  the expected all-clear stays silent; the same setup surface appears only when
+  it needs to list clashing weeks before confirmation. An eligible
   first-time student also sees the separate fixed-length trial route, followed
   by its Online/In Porto choice;
-  viewing lessons opens the upcoming-lesson list, with the same calendar kept
-  beneath it as a four-week visual overview and without displaying free times.
+  a returning signed-in student opens directly on the upcoming-lesson list
+  rather than the book-or-view fork. On a wide desktop the account bar spans
+  the workspace above a two-column overview: upcoming lessons on the left and
+  the same four-week visual calendar on the right. At narrower widths they keep
+  the accessible stacked order of account, lessons, then calendar. Free times
+  do not appear in this lesson overview.
   A signed-out visitor can browse lesson types, dates, and times first; sign-in
   is requested only when they open their lessons or confirm a booking.
   Completed decisions collapse into a compact row, so account tools,
