@@ -187,10 +187,11 @@ export function createBooking(
 
 /**
  * Stop a repeating booking. By default the lessons already in the calendar are
- * kept — someone who stops the repeat usually still intends to come to those.
+ * kept. The explicit bulk-cancel route returns how many were cancelled,
+ * retained under the same-day policy, and refunded.
  */
 export function stopSeries(session: string, seriesId: string, cancelRemaining = false) {
-  return request<{ ok: true; stopped: true; cancelled: number }>(
+  return request<{ ok: true; stopped: true; cancelled: number; kept: number; refunded: number }>(
     `/series/${encodeURIComponent(seriesId)}/stop`,
     {
       method: "POST",

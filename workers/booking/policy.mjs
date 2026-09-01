@@ -38,6 +38,23 @@ export function changePolicy(row, now = new Date()) {
 }
 
 /**
+ * Split a recurring run for the destructive bulk action. Unlike cancelling one
+ * legacy lesson, bulk cancellation never applies a same-day fee behind the
+ * scenes: today's occurrence stays and every later occurrence can go.
+ */
+export function planSeriesCancellation(rows, now = new Date()) {
+  const cancellable = [];
+  const kept = [];
+
+  for (const row of rows) {
+    if (dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO)) kept.push(row);
+    else cancellable.push({ row, refund: changePolicy(row, now).refundOnCancel });
+  }
+
+  return { cancellable, kept };
+}
+
+/**
  * A duration change is also a price change. Legacy pay-in-person bookings and
  * future recurring lessons that have not charged yet can change safely. A paid
  * lesson would need a partial refund or a second charge, while a payment-due

@@ -2350,6 +2350,10 @@ html.booking-transitioning .booking-confirmation-stage {
   justify-self: center;
 }
 
+.lesson-manage-dialog__actions--sequence {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .lesson-manage-dialog__series {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
