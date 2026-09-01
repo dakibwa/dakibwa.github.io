@@ -17,6 +17,40 @@ The current direction is:
 - generous spacing and strong contrast, with no horizontal lines baked into
   the artwork.
 
+## How this contract evolves
+
+Keep each accepted correction in the narrowest place that can enforce it:
+
+- this file owns the reader's job, information hierarchy, composition, copy
+  tone, responsive behaviour, reachable states, and named failure patterns;
+- `app/globals.css`, components, and `public/visuals/` own exact reusable
+  colours, type, spacing, controls, layouts, and production assets;
+- focused scripts and tests own failures that can be detected mechanically.
+
+Add or change a rule here only after a deliberate product decision or when the
+same accepted correction recurs. For agent-generated visual work, keep the
+brief, inputs, model, and viewport stable for a matched before/after comparison,
+retain the first result, and check that the correction helps both desktop and
+mobile without weakening another important state. A one-off preference stays
+with its change until there is evidence that it should govern later work.
+
+## Named failure patterns
+
+Use these names in review so recurring problems are easy to recognise:
+
+- **Business-card transplant:** treating historical print artwork as a web
+  layout or placing the business card itself in the hero.
+- **Panel pile-up:** giving every piece of content its own framed region until
+  no single task or reading path is dominant.
+- **Booking pile-up:** showing account tools, choices, calendar, lesson detail,
+  and confirmation at equal prominence instead of letting completed decisions
+  collapse.
+- **Intermediate-width squeeze:** preserving a wide desktop composition after
+  headings, controls, or the seven-column calendar have started to clip or
+  wrap unnaturally.
+- **Decorative motion:** adding ambient loops, entrance choreography, click
+  delay, or movement that does not explain a state change.
+
 ## Contrast and accessibility
 
 Three visible colour choices are required for accessible contrast:
