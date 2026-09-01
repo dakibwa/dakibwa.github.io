@@ -5,9 +5,11 @@ import { AssetMark } from "@/components/BrandMarks";
 import { BookingCalendar } from "@/components/BookingCalendar";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { BOOKING_CONFIGURED, CONTACT_WHATSAPP_URL } from "@/lib/config";
+import { BOOKING_CONFIGURED, CONTACT_WHATSAPP_URL, SAME_DAY_RESCHEDULE_FEE_CENTS, formatMoney } from "@/lib/config";
 
 type BookingView = "book" | "lessons" | "manage";
+
+const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 
 /**
  * Booking, the learner's calendar and lesson management are one surface.
@@ -88,10 +90,10 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
         <section className="booking-policy" id="change-booking">
           <AssetMark asset="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg" />
           <div>
-            <p className="eyebrow">Changing a lesson</p>
+            <p className="eyebrow">Changes and missed lessons</p>
             <p>
-              Move your lesson for free until the day before using your confirmation email or by choosing{" "}
-              <strong>View your lessons</strong> above.
+              Move or cancel free until the day before. A same-day change or cancellation costs <strong>{sameDayFee}</strong>.{" "}
+              Missed lessons do not carry a separate no-show fee.
             </p>
           </div>
         </section>

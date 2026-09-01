@@ -108,8 +108,10 @@ depending on them having kept the right confirmation email.
   blocks someone from changing a lesson.
 - **Booking, the learner's calendar, and lesson changes share one workspace.**
   The first screen at `/book` asks only whether the student wants to book a new
-  lesson or view existing lessons. Booking asks for the lesson type and then
-  reveals the calendar; viewing lessons leads with the upcoming-lesson list and
+  lesson or view existing lessons. Booking asks for one lesson or a recurring
+  lesson first; a recurring route chooses four weeks or open-ended, then both
+  routes choose 60 or 90 minutes before the calendar appears. The first-time
+  trial remains a separate fixed-length route. Viewing lessons leads with the upcoming-lesson list and
   keeps the calendar beneath it as a four-week visual without free-time choices.
   Signed-out visitors can browse lesson types, dates, and times before they are
   asked to sign in; `View your lessons` asks immediately because the data is
@@ -150,18 +152,21 @@ depending on them having kept the right confirmation email.
   actions. An accessible tooltip explains the four-week individual-change
   window. Once booked, ordinary lessons use the compact duration label (`60
   mins` or `90 mins`) instead of repeating the product name; trial lessons keep
-  their name. Recurring summaries show the weekly time or `Sequence ended`
-  without repeating a booked-date count. The calendar remains underneath as
+  their name. Active recurring summaries show the weekly time without repeating
+  a booked-date count. The calendar remains underneath as
   supporting context. Opening an
   occurrence leaves the list and calendar where they are and shows a compact
   `Change` or `Cancel` overlay. `Change` reuses the existing calendar date and
   time picker and, when payment state permits, offers the ordinary `60 mins`
-  and `90 mins` lengths in the same panel; `Cancel` stays in the overlay for
+  and `90 mins` lengths in the same sliding control used for location, without
+  decorative section rules; `Cancel` stays in the overlay for
   explicit confirmation. Recurring
   occurrences are identified there as part of a sequence: either action affects
   only that lesson, while `Manage sequence` leads to the separately confirmed
   stop-repeating action in the same overlay. Stopping prevents future top-ups
-  without cancelling dates that are already booked.
+  without cancelling dates that are already booked, and those retained dates
+  then return to the ordinary individual lesson cards instead of remaining a
+  grouped `Booked sequence`.
 
 ### Repeating bookings
 
