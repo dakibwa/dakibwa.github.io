@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, FormEvent, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import dynamic from "next/dynamic";
 import type { UpcomingBookingFocusRequest } from "@/components/MyLessons";
@@ -75,6 +75,7 @@ const weekdayNames = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays
 type Step = "pattern" | "setup" | "day" | "time" | "details";
 type BookingIntent = "choose" | "book" | "lessons";
 type BookingKind = "" | "trial" | "once" | "recurring";
+type SetupFocus = "location" | "duration" | "repeat" | null;
 type CalendarWeekCount = 1 | 4 | 8;
 
 /** "once" is a real choice; `null` is the deliberate ongoing weekly run. */
@@ -97,12 +98,6 @@ const RECURRING_OPTIONS: { value: Exclude<RepeatOption, "once">; label: string }
 function repeatPayload(option: RepeatOption): RepeatChoice | undefined {
   if (option === "once") return undefined;
   return option;
-}
-
-function repeatLabel(option: RepeatOption) {
-  if (option === null) return "ongoing";
-  if (option === "once") return "once";
-  return `${option} weeks`;
 }
 
 function RepeatAvailability({
@@ -163,6 +158,46 @@ function RepeatAvailability({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function BookingSelectionSummary({
+  actionLabel,
+  ariaLabel,
+  detail,
+  eyebrow,
+  mark,
+  onAction,
+  title
+}: {
+  actionLabel?: string;
+  ariaLabel: string;
+  detail?: string;
+  eyebrow: string;
+  mark: ReactNode;
+  onAction?: () => void;
+  title: string;
+}) {
+  return (
+    <div className="booking-selection-summary" aria-label={ariaLabel}>
+      <span className="booking-selection-summary__mark" aria-hidden="true">
+        {mark}
+      </span>
+      <span className="booking-choice-summary__copy">
+        <span className="eyebrow">{eyebrow}</span>
+        <strong>{title}</strong>
+        {detail ? <small>{detail}</small> : null}
+      </span>
+      {actionLabel && onAction ? (
+        <button
+          className="text-action booking-choice-summary__change"
+          onClick={onAction}
+          type="button"
+        >
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -251,7 +286,7 @@ function orientTo(id: string, focus = false, forceOnMobile = false) {
         const shouldGuideMobile = forceOnMobile && window.matchMedia("(max-width: 699px)").matches;
         if (enoughVisible && !shouldGuideMobile) return;
         target.scrollIntoView({
-          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+          behavior: shouldGuideMobile || window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
           block: "start"
         });
       });
@@ -321,6 +356,7 @@ export function BookingCalendar({
   }, [payment]);
   const [lessonTypeId, setLessonTypeId] = useState("");
   const [bookingKind, setBookingKind] = useState<BookingKind>("");
+  const [setupFocus, setSetupFocus] = useState<SetupFocus>(null);
   const [todayKey, setTodayKey] = useState("");
   const [horizonDays, setHorizonDays] = useState(BOOKING_HORIZON_DAYS_FALLBACK);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
@@ -456,6 +492,7 @@ export function BookingCalendar({
     transitionBooking(() => {
       setIntent("book");
       setBookingKind("");
+      setSetupFocus(null);
       setLessonTypeId("");
       setSelectedDate("");
       setSelectedSlot("");
@@ -721,6 +758,14 @@ export function BookingCalendar({
 
   const canSubmit = Boolean(chosen && lessonType && student) && !submitting && !previewing;
 
+  useEffect(() => {
+    if (!isConfirmingBooking) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById("booking-step-heading")?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isConfirmingBooking]);
+
   /*
    * The confirmation mounts its region and its text in one commit, which is the
    * case a live region is least reliable at announcing. Moving focus to the
@@ -737,11 +782,12 @@ export function BookingCalendar({
     setStep(next);
     setSubmitError("");
     if (next === "details") {
-      // Moving focus to the heading is what makes a stepped flow usable with a
-      // screen reader; without it the change is silent.
-      orientTo("booking-step-heading", true);
+      // The selected cards are now the review itself, so reveal their top.
+      // Focus moves to the confirmation heading separately without dragging
+      // the viewport past the choices the student has just made.
+      orientTo("booking-confirmation-stage");
     } else if (next === "time") {
-      orientTo("booking-next-step");
+      orientTo("booking-next-step", false, true);
     } else if (next === "day") {
       orientTo("lesson-calendar");
     } else if (next === "pattern" || next === "setup") {
@@ -758,6 +804,7 @@ export function BookingCalendar({
       setManagedLessonTypeId("");
       setManageMode("view");
       setBookingKind("");
+      setSetupFocus(null);
       setLessonTypeId("");
       setSelectedDate("");
       setSelectedSlot("");
@@ -772,6 +819,7 @@ export function BookingCalendar({
     transitionBooking(() => {
       setIntent("lessons");
       setBookingKind("");
+      setSetupFocus(null);
       setLessonTypeId("");
       setSelectedSlot("");
       setCalendarWeekCount(4);
@@ -790,6 +838,7 @@ export function BookingCalendar({
     setIntent("choose");
     setShowAccountSignIn(false);
     setBookingKind("");
+    setSetupFocus(null);
     setLessonTypeId("");
     setSelectedDate("");
     setSelectedSlot("");
@@ -809,6 +858,7 @@ export function BookingCalendar({
     setIntent("lessons");
     setShowAccountSignIn(false);
     setBookingKind("");
+    setSetupFocus(null);
     setLessonTypeId("");
     setSelectedSlot("");
     setCalendarWeekCount(4);
@@ -1074,6 +1124,7 @@ export function BookingCalendar({
       setConfirmation(null);
       setIntent("lessons");
       setBookingKind("");
+      setSetupFocus(null);
       setLessonTypeId("");
       setSelectedSlot("");
       setCalendarWeekCount(4);
@@ -1086,6 +1137,140 @@ export function BookingCalendar({
       setFocusUpcomingOnOpen(true);
       setUpcomingRequestKey((current) => current + 1);
     });
+  }
+
+  function changeLessonChoice() {
+    transitionBooking(() => {
+      setBookingKind("");
+      setSetupFocus(null);
+      setLessonTypeId("");
+      setSelectedDate("");
+      setSelectedSlot("");
+      setSlotsByDate({});
+      setCalendarWeekCount(8);
+      goTo("pattern");
+    });
+  }
+
+  function editSetupChoice(focus: Exclude<SetupFocus, null>) {
+    transitionBooking(() => {
+      setSetupFocus(focus);
+      goTo("setup");
+    });
+  }
+
+  function changeDateChoice() {
+    transitionBooking(() => {
+      setSetupFocus(null);
+      setSelectedDate("");
+      setSelectedSlot("");
+      setCalendarWeekCount(8);
+      goTo("day");
+    });
+  }
+
+  function changeTimeChoice() {
+    transitionBooking(() => {
+      setSetupFocus(null);
+      setSelectedSlot("");
+      goTo("time");
+    });
+  }
+
+  function finishSetupChoice() {
+    transitionBooking(() => {
+      setSetupFocus(null);
+      if (chosen) {
+        goTo("details");
+      } else if (selectedDate) {
+        goTo("time");
+      } else {
+        setCalendarWeekCount(8);
+        goTo("day");
+      }
+    });
+  }
+
+  function bookingSelectionSummaries(includeSchedule = false) {
+    if (!lessonType || !bookingKind) return null;
+    const lessonKindLabel = bookingKind === "recurring"
+      ? "Recurring lessons"
+      : bookingKind === "trial"
+        ? "Trial lesson"
+        : "One lesson";
+    const localTime = chosen ? differingLocalTime(chosen.startAt, studentZone) : "";
+
+    return (
+      <div className="booking-selection-stack" aria-label="Your booking choices">
+        <BookingSelectionSummary
+          actionLabel="Change lesson"
+          ariaLabel="Selected lesson"
+          detail={bookingKind === "recurring" ? "Same weekly time" : undefined}
+          eyebrow="Lesson"
+          mark={(
+            <LessonMark
+              className="booking-selection-summary__lesson-mark"
+              durationMinutes={lessonType.duration_minutes}
+              lessonTypeId={lessonType.id}
+              location={form.location}
+              recurring={bookingKind === "recurring"}
+            />
+          )}
+          onAction={changeLessonChoice}
+          title={lessonKindLabel}
+        />
+        <BookingSelectionSummary
+          actionLabel="Change location"
+          ariaLabel="Selected location"
+          eyebrow="Where"
+          mark={form.location === "porto" ? <MapPin size={25} /> : <Globe2 size={25} />}
+          onAction={() => editSetupChoice("location")}
+          title={form.location === "porto" ? "In Porto" : "Online"}
+        />
+        <BookingSelectionSummary
+          actionLabel={bookingKind === "trial" ? undefined : "Change length"}
+          ariaLabel="Selected lesson length"
+          detail={formatMoneyCents(lessonType.price_cents)}
+          eyebrow="Lesson length"
+          mark={<Clock3 size={25} />}
+          onAction={bookingKind === "trial" ? undefined : () => editSetupChoice("duration")}
+          title={formatLessonDuration(lessonType.duration_minutes)}
+        />
+        {bookingKind === "recurring" ? (
+          <BookingSelectionSummary
+            actionLabel="Change repeat"
+            ariaLabel="Selected repeat"
+            detail="Same day and time each week"
+            eyebrow="Repeat for"
+            mark={<Repeat size={25} />}
+            onAction={() => editSetupChoice("repeat")}
+            title={form.repeat === null ? "Ongoing" : `${form.repeat} weeks`}
+          />
+        ) : null}
+        {includeSchedule && selectedDate ? (
+          <BookingSelectionSummary
+            actionLabel="Change date"
+            ariaLabel="Selected date"
+            detail="Porto time"
+            eyebrow="Date selected"
+            mark={<CalendarDays size={25} />}
+            onAction={changeDateChoice}
+            title={formatLongDate(`${selectedDate}T12:00:00Z`)}
+          />
+        ) : null}
+        {includeSchedule && chosen ? (
+          <BookingSelectionSummary
+            actionLabel="Change time"
+            ariaLabel="Selected time"
+            detail={localTime ? `${localTime} your time` : "Porto time"}
+            eyebrow="Time selected"
+            mark={<Clock3 size={25} />}
+            onAction={changeTimeChoice}
+            title={formatSlotTime(chosen.startAt)}
+          />
+        ) : null}
+      </div>
+    );
   }
 
   if (confirmation) {
@@ -1536,42 +1721,7 @@ export function BookingCalendar({
         {showLessonChoice ? (
           <div className="unified-booking__lesson-picker" id="booking-lesson-choice" tabIndex={-1}>
             {lessonType && !["pattern", "setup"].includes(step) ? (
-              <div className="booking-choice-summary" aria-label="Booking choices">
-                <LessonMark
-                  className="booking-choice-summary__mark"
-                  durationMinutes={lessonType.duration_minutes}
-                  lessonTypeId={lessonType.id}
-                  location={form.location}
-                  recurring={bookingKind === "recurring"}
-                />
-                <span className="booking-choice-summary__copy">
-                  <span className="eyebrow">
-                    {bookingKind === "recurring" ? "Recurring lessons" : bookingKind === "trial" ? "Trial lesson" : "One lesson"}
-                  </span>
-                  <strong>{formatLessonDuration(lessonType.duration_minutes)}</strong>
-                  <small>
-                    {formatMoneyCents(lessonType.price_cents)} · {form.location === "porto" ? "In Porto" : "Online"}
-                    {bookingKind === "recurring"
-                      ? ` · weekly · ${repeatLabel(form.repeat)}`
-                      : ""}
-                  </small>
-                </span>
-                <button
-                  className="text-action booking-choice-summary__change"
-                  onClick={() =>
-                    transitionBooking(() => {
-                      setBookingKind("");
-                      setLessonTypeId("");
-                      setSelectedSlot("");
-                      setCalendarWeekCount(8);
-                      goTo("pattern");
-                    })
-                  }
-                  type="button"
-                >
-                  Change choices
-                </button>
-              </div>
+              bookingSelectionSummaries()
             ) : step === "pattern" ? (
               <>
                 <div className="booking-workflow-step-head">
@@ -1591,6 +1741,7 @@ export function BookingCalendar({
                       onClick={() =>
                         transitionBooking(() => {
                           setBookingKind("trial");
+                          setSetupFocus(null);
                           setForm((current) => ({ ...current, repeat: "once" }));
                           setLoadingSlots(true);
                           setSlotsByDate({});
@@ -1618,6 +1769,7 @@ export function BookingCalendar({
                     onClick={() =>
                       transitionBooking(() => {
                           setBookingKind("once");
+                          setSetupFocus(null);
                           setForm((current) => ({ ...current, repeat: "once" }));
                           setLessonTypeId(regularLessonTypes[0]?.id ?? "");
                           setSelectedSlot("");
@@ -1639,6 +1791,7 @@ export function BookingCalendar({
                     onClick={() =>
                       transitionBooking(() => {
                         setBookingKind("recurring");
+                        setSetupFocus(null);
                         setForm((current) => ({ ...current, repeat: 4 }));
                         setLessonTypeId(regularLessonTypes[0]?.id ?? "");
                         setSelectedSlot("");
@@ -1663,12 +1816,36 @@ export function BookingCalendar({
             ) : (
               <>
                 <div className="booking-workflow-step-head">
-                  <h2>Choose your lesson</h2>
-                  <button className="booking-back booking-back--tertiary" onClick={() => transitionBooking(() => goTo("pattern"))} type="button">
+                  <h2>
+                    {setupFocus === "location"
+                      ? "Change location"
+                      : setupFocus === "duration"
+                        ? "Change lesson length"
+                        : setupFocus === "repeat"
+                          ? "Change repeat"
+                          : "Choose your lesson"}
+                  </h2>
+                  <button
+                    className="booking-back booking-back--tertiary"
+                    onClick={() =>
+                      transitionBooking(() => {
+                        if (!setupFocus) {
+                          goTo("pattern");
+                          return;
+                        }
+                        setSetupFocus(null);
+                        if (chosen) goTo("details");
+                        else if (selectedDate) goTo("time");
+                        else goTo("day");
+                      })
+                    }
+                    type="button"
+                  >
                     <ArrowLeft size={16} aria-hidden="true" /> Back
                   </button>
                 </div>
                 <div className="booking-setup">
+                  {!setupFocus || setupFocus === "location" ? (
                   <fieldset className="booking-setup__group">
                     <legend>Where</legend>
                     <div className={`segmented segmented--${form.location}`}>
@@ -1688,8 +1865,9 @@ export function BookingCalendar({
                     ))}
                     </div>
                   </fieldset>
+                  ) : null}
 
-                  {bookingKind !== "trial" ? (
+                  {bookingKind !== "trial" && (!setupFocus || setupFocus === "duration") ? (
                     <fieldset className="booking-setup__group">
                       <legend>Lesson length</legend>
                       <div
@@ -1718,7 +1896,7 @@ export function BookingCalendar({
                     </fieldset>
                   ) : null}
 
-                  {bookingKind === "recurring" ? (
+                  {bookingKind === "recurring" && (!setupFocus || setupFocus === "repeat") ? (
                     <fieldset className="booking-setup__group">
                       <legend>Repeat for</legend>
                       <div
@@ -1744,7 +1922,7 @@ export function BookingCalendar({
                     </fieldset>
                   ) : null}
 
-                  {bookingKind === "recurring" && chosen ? (
+                  {bookingKind === "recurring" && chosen && (!setupFocus || setupFocus === "repeat") ? (
                     <RepeatAvailability
                       chosen={Boolean(chosen)}
                       error={seriesPreviewError}
@@ -1757,20 +1935,20 @@ export function BookingCalendar({
                   <button
                     className="button button--coral booking-setup__continue"
                     disabled={!lessonTypeId}
-                    onClick={() =>
-                      transitionBooking(() => {
-                        if (chosen) {
-                          goTo("details");
-                        } else {
-                          setCalendarWeekCount(8);
-                          setSelectedSlot("");
-                          goTo("day");
-                        }
-                      })
-                    }
+                    onClick={finishSetupChoice}
                     type="button"
                   >
-                    {chosen ? "Continue" : "Choose a date"}
+                    {setupFocus === "location"
+                      ? "Save location"
+                      : setupFocus === "repeat"
+                        ? "Save repeat"
+                        : setupFocus === "duration" && selectedDate
+                          ? chosen
+                            ? "Save length"
+                            : "Choose a time"
+                          : chosen
+                            ? "Continue"
+                            : "Choose a date"}
                   </button>
                 </div>
               </>
@@ -2208,7 +2386,9 @@ export function BookingCalendar({
         ) : null}
 
         {isConfirmingBooking ? (
-          <div className="booking-confirmation-stage">
+          <div className="booking-confirmation-stage" id="booking-confirmation-stage">
+            {bookingSelectionSummaries(true)}
+
             <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
               {student
                 ? form.repeat === "once"
@@ -2218,50 +2398,6 @@ export function BookingCalendar({
             </h2>
 
             <div className="booking-final">
-              <aside className="booking-recap">
-                <LessonMark
-                  className="booking-recap__mark"
-                  durationMinutes={lessonType?.duration_minutes}
-                  lessonTypeId={lessonType?.id ?? "single"}
-                  location={form.location}
-                  recurring={bookingKind === "recurring"}
-                />
-                <h3>{chosen ? `${formatLongDate(chosen.startAt)}, ${formatSlotTime(chosen.startAt)}` : "Choose a time"}</h3>
-                {form.repeat !== "once" ? (
-                  <p className="booking-recap__rhythm">
-                    <Repeat size={17} aria-hidden="true" />
-                    <span>{form.repeat === null ? "Weekly until you stop it" : `Weekly for ${form.repeat} weeks`}</span>
-                  </p>
-                ) : null}
-                {chosen && differingLocalTime(chosen.startAt, studentZone) ? (
-                  <p>
-                    <Globe2 size={17} aria-hidden="true" />
-                    {differingLocalTime(chosen.startAt, studentZone)} your time
-                  </p>
-                ) : null}
-                <div className="booking-recap__pair">
-                  <p>
-                    <Clock3 size={17} aria-hidden="true" />
-                    {lessonType ? formatLessonDuration(lessonType.duration_minutes) : "Not selected"}
-                  </p>
-                  <p>
-                    <MapPin size={17} aria-hidden="true" />
-                    {form.location === "porto" ? "In Porto" : "Online"}
-                  </p>
-                </div>
-                <div className="booking-recap__foot">
-                  {lessonType ? <strong>{formatMoneyCents(lessonType.price_cents)}</strong> : null}
-                  <button
-                    className="booking-recap__change"
-                    onClick={() => transitionBooking(() => goTo("setup"))}
-                    type="button"
-                  >
-                    <ArrowLeft size={14} aria-hidden="true" />
-                    Change details
-                  </button>
-                </div>
-              </aside>
-
               {payment ? (
                 <div className="booking-payment">
                   <p className="booking-payment__summary">
