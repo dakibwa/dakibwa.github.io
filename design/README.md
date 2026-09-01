@@ -164,8 +164,9 @@ Preserve these desktop and mobile states:
   the remaining width;
 - the workspace opens with one decision: `Book a new lesson` or `View your
   lessons`. Booking then asks whether this is one lesson or a recurring lesson.
-  A recurring booking chooses four weeks or `Until I stop it`, then both routes
-  choose `60 minutes` or `90 minutes` before showing the calendar. An eligible
+  Both routes choose Online or In Porto next. A recurring booking then chooses
+  4, 6, or 8 weeks, and both routes use the same compact selector to choose
+  `60 minutes` or `90 minutes` before showing the calendar. An eligible
   first-time student also sees the separate fixed-length trial route;
   viewing lessons opens the upcoming-lesson list, with the same calendar kept
   beneath it as a four-week visual overview and without displaying free times.
@@ -184,8 +185,10 @@ Preserve these desktop and mobile states:
   Each destination panel has `Back to start`, which restores the initial
   book-or-view choice. A repeating schedule appears once in Upcoming lessons,
   led by its nearest date and distinguished from coral one-off bookings with a
-  lilac recurring treatment. Its single `Manage` action reveals no more than four
-  booked occurrences, each with its own `Manage` action. A small accessible
+  lilac recurring treatment and a subtle lilac hover/focus wash.
+  `Manage recurrence` opens the schedule-level choices directly;
+  `View next 4 lessons` reveals no more than four separate occurrence cards,
+  each with its own `Manage` action. A small accessible
   tooltip explains that individual lessons can be modified up to four weeks in
   advance; it opens over the lesson list on a dark blue floating surface, so it
   never moves the cards beneath it, while `Back to start` stays at the panel's
@@ -221,8 +224,10 @@ Preserve these desktop and mobile states:
   lesson keeps the list and calendar in place and adds a compact overlay asking
   whether to change or cancel it. `Change` keeps the page dimmed and lifts that
   same calendar and time picker into the overlay; it never dismisses the modal
-  or scrolls the student down the underlying page. Eligible ordinary lessons can switch between the same compact
-  `60 mins` and `90 mins` choices there; a paid lesson is never silently
+  or scrolls the student down the underlying page. The overlay is one surface,
+  without framed cards nested inside it. Eligible ordinary lessons can switch
+  between the same compact `60 mins` and `90 mins` choices and Online/In Porto
+  there, with the current date and time already selected; a paid lesson is never silently
   repriced. Cancellation stays inside the overlay until explicitly confirmed.
   The booking overview says `Next 8
   weeks`

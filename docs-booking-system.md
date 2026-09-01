@@ -109,8 +109,9 @@ depending on them having kept the right confirmation email.
 - **Booking, the learner's calendar, and lesson changes share one workspace.**
   The first screen at `/book` asks only whether the student wants to book a new
   lesson or view existing lessons. Booking asks for one lesson or a recurring
-  lesson first; a recurring route chooses four weeks or open-ended, then both
-  routes choose 60 or 90 minutes before the calendar appears. The first-time
+  lesson first. Both ordinary routes choose Online or In Porto next; a recurring
+  route then chooses 4, 6, or 8 weeks, and both routes finish with the compact
+  60/90-minute selector before the calendar appears. The first-time
   trial remains a separate fixed-length route. Viewing lessons leads with the upcoming-lesson list and
   keeps the calendar beneath it as a four-week visual without free-time choices.
   Signed-out visitors can browse lesson types, dates, and times before they are
@@ -146,10 +147,11 @@ depending on them having kept the right confirmation email.
   when a signed-in student chooses `View your lessons` and remains available as
   a menu shortcut. After a successful booking, `Back to upcoming lessons` opens
   this same list rather than returning to the generic start choice. Recurring
-  schedules use a distinct lilac treatment and lead with their next occurrence;
-  one-off bookings remain coral cards. A recurring card's single `Manage`
-  action reveals at most four booked occurrences with individual `Manage`
-  actions. An accessible tooltip explains the four-week individual-change
+  schedules use a distinct lilac treatment, a visible lilac hover/focus state,
+  and lead with their next occurrence; one-off bookings remain coral cards.
+  `Manage recurrence` opens the schedule-level stop/cancel choices directly,
+  while `View next 4 lessons` reveals at most four separate occurrence cards,
+  each with its own `Manage` action. An accessible tooltip explains the four-week individual-change
   window. Once booked, ordinary lessons use the compact duration label (`60
   mins` or `90 mins`) instead of repeating the product name; trial lessons keep
   their name. Active recurring summaries show the weekly time without repeating
@@ -158,20 +160,21 @@ depending on them having kept the right confirmation email.
   occurrence leaves the list and calendar where they are and shows a compact
   `Change` or `Cancel` overlay. `Change` reuses the existing calendar date and
   time picker and, when payment state permits, offers the ordinary `60 mins`
-  and `90 mins` lengths in the same sliding control used for location, without
-  decorative section rules; `Cancel` stays in the overlay for
+  and `90 mins` lengths plus Online/In Porto in matching sliding controls.
+  The current date and time are selected when it opens, and the calendar and
+  choices sit on one modal surface without nested framed panels. `Cancel` stays in the overlay for
   explicit confirmation. Recurring
   occurrences are identified there as part of a sequence: either action affects
-  only that lesson, while `Manage sequence` leads to the separately confirmed
-  stop-repeating action in the same overlay. Stopping prevents future top-ups
+  only that lesson. Stopping prevents future top-ups
   without cancelling dates that are already booked, and those retained dates
   then return to the ordinary individual lesson cards instead of remaining a
   grouped `Booked sequence`.
 
 ### Repeating bookings
 
-A student can hold the same slot every week: 4 weeks, or open-ended until they
-stop it.
+A student can hold the same slot every week for 4, 6, or 8 weeks. Existing
+open-ended schedules continue to work and top up, but the public flow no longer
+creates new ones.
 
 - **The occurrences are ordinary rows in `bookings`.** A series is only the
   recipe that made them. That is what puts the time in Ines's calendar for real,
@@ -193,9 +196,10 @@ stop it.
   file**, each event under its own booking's UID so a later change to one week
   still matches the entry already in her calendar. Twelve lessons must not mean
   twelve emails. When an open-ended run is topped up, the new lesson appears in
-  the student's booking calendar without another confirmation email; Inês gets
-  one calendar update so the added time reaches her external calendar.
-- **Open-ended series are topped up by a nightly cron**, not on a page view: her
+  the student's booking calendar without another confirmation email. When
+  teacher notifications are enabled, Inês gets one calendar update so the added
+  time reaches her external calendar; that copy is currently paused during development.
+- **Existing open-ended series are topped up by a nightly cron**, not on a page view: her
   calendar has to be right whether or not anyone has opened the site, and a read
   path that quietly writes bookings is impossible to reason about later.
 - **Stopping a repeat keeps the lessons already booked.** Someone who stops
@@ -507,6 +511,9 @@ Secrets, each via `npx wrangler secret put <NAME> --config workers/booking/wrang
 
 Non-secret vars in `wrangler.jsonc`: `GOOGLE_CLIENT_ID` enables Google Sign-In
 (it is public by design — the Worker verifies every token against it).
+`TEACHER_NOTIFICATIONS_ENABLED=0` pauses only Inês's notification copies while
+the booking experience is being refined; student confirmations, account mail,
+and calendar updates remain live, and `TEACHER_EMAIL` remains their reply-to.
 
 Then set `EMAIL_DRY_RUN=0` in `wrangler.jsonc` and redeploy. Until that happens
 the Worker records every message in `email_log` and sends nothing — and

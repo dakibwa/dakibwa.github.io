@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, CircleHelp, Globe2, Menu as MenuIcon, Repeat } from "lucide-react";
 import { AuthPanel } from "@/components/AuthPanel";
 import { LessonMark } from "@/components/LessonMarks";
@@ -62,7 +62,7 @@ export function MyLessons({
   embedded?: boolean;
   onBackToStart?: () => void;
   onBook?: () => void;
-  onManage?: (token: string, seriesId: string | null) => void;
+  onManage?: (token: string, seriesId: string | null, openSeries?: boolean) => void;
   onOpenAccountSection?: (section: "history" | "upcoming") => void;
   onSignedOut?: () => void;
   onTransition?: (update: () => void) => void;
@@ -314,12 +314,12 @@ export function MyLessons({
   const calendarWeeks = todayKey ? buildBookingWeeks(todayKey, calendarHorizon) : [];
   const selectedBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
 
-  function manage(booking: MyBooking) {
+  function manage(booking: MyBooking, openSeries = false) {
     // Management now opens as a small decision over this same workspace. Keep
     // the lesson list in place so closing it returns the student to exactly the
     // recurring sequence or one-off lesson they were looking at.
     setMenuOpen(false);
-    if (onManage) onManage(booking.manageToken, booking.seriesId);
+    if (onManage) onManage(booking.manageToken, booking.seriesId, openSeries);
     else window.location.assign(`/book/?manage=${encodeURIComponent(booking.manageToken)}`);
   }
 
@@ -660,9 +660,9 @@ export function MyLessons({
               const activeSeries = group.seriesId ? series.find((entry) => entry.id === group.seriesId) ?? null : null;
               const visibleOccurrences = isSeries ? group.bookings.slice(0, 4) : group.bookings;
               return (
+                <Fragment key={group.id}>
                 <article
                   className={`upcoming-lesson-group ${isSeries ? "upcoming-lesson-group--series" : "upcoming-lesson-group--single"}`}
-                  key={group.id}
                 >
                   <div className="upcoming-lesson-group__summary">
                     <LessonMark className="lesson-calendar__mark" lessonTypeId={nextBooking.lessonType.id} />
@@ -684,20 +684,29 @@ export function MyLessons({
                     </span>
                     <div className="upcoming-lesson-group__actions">
                       {isSeries ? (
-                        <button
-                          aria-controls={datesId}
-                          aria-expanded={isExpanded}
-                          className="text-action upcoming-lesson-group__dates-toggle"
-                          onClick={() =>
-                            applyTransition(() => setExpandedUpcomingGroup((current) => current === group.id ? "" : group.id))
-                          }
-                          type="button"
-                        >
-                          Manage
-                          {isExpanded
-                            ? <ChevronUp aria-hidden="true" size={17} />
-                            : <ChevronDown aria-hidden="true" size={17} />}
-                        </button>
+                        <>
+                          <button
+                            className="text-action upcoming-lesson-group__recurrence-action"
+                            onClick={() => manage(nextBooking, true)}
+                            type="button"
+                          >
+                            Manage recurrence <ChevronRight aria-hidden="true" size={17} />
+                          </button>
+                          <button
+                            aria-controls={datesId}
+                            aria-expanded={isExpanded}
+                            className="text-action upcoming-lesson-group__dates-toggle"
+                            onClick={() =>
+                              applyTransition(() => setExpandedUpcomingGroup((current) => current === group.id ? "" : group.id))
+                            }
+                            type="button"
+                          >
+                            {isExpanded ? "Hide lessons" : "View next 4 lessons"}
+                            {isExpanded
+                              ? <ChevronUp aria-hidden="true" size={17} />
+                              : <ChevronDown aria-hidden="true" size={17} />}
+                          </button>
+                        </>
                       ) : (
                         <button className="text-action upcoming-lesson-group__action" onClick={() => manage(nextBooking)} type="button">
                           Manage <ChevronRight aria-hidden="true" size={17} />
@@ -706,11 +715,13 @@ export function MyLessons({
                     </div>
                   </div>
 
+                </article>
+
                   {isExpanded ? (
-                    <div aria-label="Next recurring lessons" className="upcoming-lesson-group__dates" id={datesId}>
+                    <div aria-label="Next recurring lessons" className="upcoming-lesson-occurrences" id={datesId}>
                       {visibleOccurrences.map((booking) => (
                         <button
-                          className="upcoming-lesson-group__date"
+                          className="upcoming-lesson-occurrence"
                           key={booking.reference}
                           onClick={() => manage(booking)}
                           type="button"
@@ -726,7 +737,7 @@ export function MyLessons({
                       ))}
                     </div>
                   ) : null}
-                </article>
+                </Fragment>
               );
             })}
             {!upcomingGroups.length ? <p className="booking-state-note">No upcoming lessons yet.</p> : null}
