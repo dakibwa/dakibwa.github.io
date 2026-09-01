@@ -2723,7 +2723,7 @@ html.booking-transitioning .booking-confirmation-stage {
   border-color: rgba(82, 74, 150, 0.42);
   background:
     linear-gradient(115deg, rgba(170, 164, 230, 0.24), rgba(255, 255, 255, 0.16)),
-    var(--cream);
+    var(--paper-light);
   box-shadow: inset 4px 0 0 rgba(82, 74, 150, 0.72);
 }
 
@@ -2732,7 +2732,7 @@ html.booking-transitioning .booking-confirmation-stage {
   border-color: rgba(82, 74, 150, 0.62);
   background:
     linear-gradient(115deg, rgba(170, 164, 230, 0.42), rgba(255, 255, 255, 0.28)),
-    var(--cream);
+    var(--paper-light);
   box-shadow: inset 4px 0 0 rgba(82, 74, 150, 0.8), 0 9px 24px rgba(82, 74, 150, 0.12);
 }
 
