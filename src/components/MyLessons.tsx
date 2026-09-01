@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, CircleHelp, Globe2, Menu as MenuIcon, Repeat } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, CircleHelp, CircleX, Globe2, Menu as MenuIcon, Repeat } from "lucide-react";
 import { AuthPanel } from "@/components/AuthPanel";
 import { LessonMark } from "@/components/LessonMarks";
 import {
@@ -51,6 +51,34 @@ function upcomingBookingId(reference: string) {
 
 function minutesToClock(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+function HistoryLessonCard({ booking }: { booking: MyBooking }) {
+  const cancelled = booking.status === "cancelled";
+
+  return (
+    <article className={`upcoming-lesson-group history-lesson-card history-lesson-card--${cancelled ? "cancelled" : "completed"}`}>
+      <div className="upcoming-lesson-group__summary history-lesson-card__summary">
+        <LessonMark
+          className="lesson-calendar__mark"
+          durationMinutes={booking.lessonType.durationMinutes}
+          lessonTypeId={booking.lessonType.id}
+          location={booking.location}
+        />
+        <span className="lesson-calendar__lesson-copy">
+          <span className={`lesson-calendar__status history-lesson-card__status--${cancelled ? "cancelled" : "completed"}`}>
+            {cancelled ? <CircleX size={13} aria-hidden="true" /> : <CheckCircle2 size={13} aria-hidden="true" />}
+            {cancelled ? "Cancelled" : "Completed"}
+          </span>
+          <strong>{formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}</strong>
+          <span>
+            {formatBookedLessonLabel(booking.lessonType)} · {booking.location === "porto" ? "In Porto" : "Online"}
+          </span>
+          <small className="history-lesson-card__reference">Reference {booking.reference}</small>
+        </span>
+      </div>
+    </article>
+  );
 }
 
 export function MyLessons({
@@ -712,7 +740,7 @@ export function MyLessons({
                 <CircleHelp size={16} aria-hidden="true" />
               </button>
               <span className="upcoming-lessons__tip" id="upcoming-lessons-modification-tip" role="tooltip">
-                You can modify individual lessons up to four weeks in advance.
+                You can modify individual lessons up to six weeks in advance.
               </span>
             </div>
             {onBook ? (
@@ -728,7 +756,7 @@ export function MyLessons({
               const isExpanded = isSeries && expandedUpcomingGroup === group.id;
               const datesId = group.seriesId ? `upcoming-series-dates-${group.seriesId}` : "";
               const activeSeries = group.seriesId ? series.find((entry) => entry.id === group.seriesId) ?? null : null;
-              const visibleOccurrences = isSeries ? group.bookings.slice(0, 4) : group.bookings;
+              const visibleOccurrences = isSeries ? group.bookings.slice(0, 6) : group.bookings;
               return (
                 <Fragment key={group.id}>
                 <article
@@ -781,7 +809,7 @@ export function MyLessons({
                             }
                             type="button"
                           >
-                            {isExpanded ? "Hide lessons" : "View next 4 lessons"}
+                            {isExpanded ? "Hide lessons" : "View next 6 lessons"}
                             {isExpanded
                               ? <ChevronUp aria-hidden="true" size={17} />
                               : <ChevronDown aria-hidden="true" size={17} />}
@@ -839,23 +867,9 @@ export function MyLessons({
             ) : null}
           </div>
           {past.length ? (
-            <ul className="lesson-list lesson-list--past">
-              {past.map((booking) => (
-                <li key={booking.reference}>
-                  <div className="lesson-list__body">
-                    <h3>
-                      {formatBookedLessonLabel(booking.lessonType)}
-                      {booking.status === "cancelled" ? <em> · cancelled</em> : null}
-                    </h3>
-                    <p>
-                      <CalendarDays size={16} aria-hidden="true" />
-                      {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
-                    </p>
-                  </div>
-                  <span className="lesson-list__reference">{booking.reference}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="my-lessons__history-bookings">
+              {past.map((booking) => <HistoryLessonCard booking={booking} key={booking.reference} />)}
+            </div>
           ) : (
             <p className="booking-state-note">No past lessons yet.</p>
           )}
@@ -978,23 +992,9 @@ export function MyLessons({
       {!embedded && showHistory && past.length ? (
         <section className="my-lessons__group">
           <h2>History</h2>
-          <ul className="lesson-list lesson-list--past">
-            {past.map((booking) => (
-              <li key={booking.reference}>
-                <div className="lesson-list__body">
-                  <h3>
-                    {formatBookedLessonLabel(booking.lessonType)}
-                    {booking.status === "cancelled" ? <em> · cancelled</em> : null}
-                  </h3>
-                  <p>
-                    <CalendarDays size={16} aria-hidden="true" />
-                    {formatLongDate(booking.startAt)}, {formatSlotTime(booking.startAt)}
-                  </p>
-                </div>
-                <span className="lesson-list__reference">{booking.reference}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="my-lessons__history-bookings">
+            {past.map((booking) => <HistoryLessonCard booking={booking} key={booking.reference} />)}
+          </div>
         </section>
       ) : null}
     </div>

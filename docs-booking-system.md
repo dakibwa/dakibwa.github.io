@@ -167,8 +167,8 @@ depending on them having kept the right confirmation email.
   schedules use a distinct lilac treatment, a visible lilac hover/focus state,
   and lead with their next occurrence; one-off bookings remain coral cards.
   `Manage recurrence` opens the schedule-level move/stop/cancel choices directly,
-  while `View next 4 lessons` reveals at most four separate occurrence cards,
-  each with its own `Manage` action. An accessible tooltip explains the four-week individual-change
+  while `View next 6 lessons` reveals at most six separate occurrence cards,
+  each with its own `Manage` action. An accessible tooltip explains the six-week individual-change
   window. Once booked, ordinary lessons use the compact duration label (`60
   mins` or `90 mins`) instead of repeating the product name; trial lessons keep
   their name. Active recurring summaries show the weekly time without repeating
@@ -178,6 +178,10 @@ depending on them having kept the right confirmation email.
   `Change` or `Cancel` overlay. `Change` reuses the existing calendar date and
   time picker and, when payment state permits, offers the ordinary `60 mins`
   and `90 mins` lengths plus Online/In Porto in matching sliding controls.
+- **Past and cancelled lessons keep the same readable card hierarchy.** Their
+  status, mark, date, compact duration, location and booking reference mirror
+  Upcoming lessons, without an action treatment that suggests they can still
+  be managed.
   The current date and time are selected when it opens, and the calendar and
   choices sit on one modal surface without nested framed panels. `Cancel` stays in the overlay for
   explicit confirmation. Recurring
