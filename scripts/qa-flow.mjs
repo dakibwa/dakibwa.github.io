@@ -1110,7 +1110,6 @@ const tooltipLayout = await accountPage.evaluate(() => {
   const section = document.querySelector("#account-upcoming-lessons");
   const heading = document.querySelector("#upcoming-lessons-heading");
   const tip = document.querySelector("#upcoming-lessons-modification-tip");
-  const back = section?.querySelector(".booking-back");
   const firstCard = section?.querySelector(".upcoming-lesson-group");
   const tipStyles = tip ? getComputedStyle(tip) : null;
   const bounds = (element) => element?.getBoundingClientRect() ?? null;
@@ -1118,7 +1117,6 @@ const tooltipLayout = await accountPage.evaluate(() => {
     section: bounds(section),
     heading: bounds(heading),
     tip: bounds(tip),
-    back: bounds(back),
     firstCard: bounds(firstCard),
     tipStyles: tipStyles
       ? { backgroundColor: tipStyles.backgroundColor, opacity: tipStyles.opacity, position: tipStyles.position }
@@ -1129,7 +1127,6 @@ if (
   !tooltipLayout.section ||
   !tooltipLayout.heading ||
   !tooltipLayout.tip ||
-  !tooltipLayout.back ||
   !tooltipLayout.firstCard ||
   !tooltipLayout.tipStyles ||
   tooltipLayout.tip.left < tooltipLayout.section.left - 1 ||
@@ -1142,9 +1139,6 @@ if (
   tooltipLayout.tipStyles.backgroundColor !== "rgba(26, 49, 105, 0.97)"
 ) {
   throw new Error(`The upcoming-lessons tooltip should float over the list on its dark surface without moving a card: ${JSON.stringify({ tooltipCardTopBefore, ...tooltipLayout })}.`);
-}
-if (Math.abs(tooltipLayout.back.top - tooltipLayout.heading.top) > 18) {
-  throw new Error(`Back to start should sit at the upper right of the upcoming-lessons heading: ${JSON.stringify(tooltipLayout)}.`);
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-tooltip-desktop.png"), fullPage: true });
 await accountActions.getByRole("button", { name: /View lessons/ }).focus();
@@ -1470,6 +1464,29 @@ await accountPage.setViewportSize({ width: 390, height: 844 });
 await accountPage.waitForTimeout(300);
 await accountMenuButton.waitFor({ state: "visible" });
 await accountActions.waitFor({ state: "hidden" });
+const mobileBookingActionLayout = await accountPanel.evaluate((panel) => {
+  const section = panel.querySelector("#account-upcoming-lessons")?.getBoundingClientRect();
+  const heading = panel.querySelector("#upcoming-lessons-heading")?.getBoundingClientRect();
+  const action = panel.querySelector(".upcoming-lessons__book-action");
+  const actionBounds = action?.getBoundingClientRect();
+  return {
+    section: section ? { top: section.top, right: section.right, left: section.left } : null,
+    heading: heading ? { top: heading.top, right: heading.right, left: heading.left } : null,
+    action: actionBounds ? { top: actionBounds.top, right: actionBounds.right, left: actionBounds.left } : null,
+    actionBackground: action ? getComputedStyle(action).backgroundColor : ""
+  };
+});
+if (
+  !mobileBookingActionLayout.section ||
+  !mobileBookingActionLayout.heading ||
+  !mobileBookingActionLayout.action ||
+  mobileBookingActionLayout.action.right > mobileBookingActionLayout.section.right - 12 ||
+  mobileBookingActionLayout.action.left <= mobileBookingActionLayout.heading.right ||
+  Math.abs(mobileBookingActionLayout.action.top - mobileBookingActionLayout.heading.top) > 18 ||
+  mobileBookingActionLayout.actionBackground !== "rgb(180, 58, 38)"
+) {
+  throw new Error(`The compact booking action should stay highlighted at the top right on mobile: ${JSON.stringify(mobileBookingActionLayout)}.`);
+}
 const mobileAccountName = await accountPanel.locator(".my-lessons__account-name strong").evaluate((name) => ({
   clientWidth: name.clientWidth,
   scrollWidth: name.scrollWidth
