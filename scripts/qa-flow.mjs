@@ -34,8 +34,7 @@ await localMotionPage
   .waitFor({ state: "visible", timeout: 10_000 });
 await localMotionPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
 await localMotionPage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
-await localMotionPage.getByRole("heading", { name: "Where will you have your lesson?", exact: true }).waitFor();
-await localMotionPage.getByRole("button", { name: "Continue", exact: true }).click();
+await localMotionPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
 const localMotionSingleLesson = localMotionPage.getByRole("radio", {
   name: "60 minutes lesson · €25",
   exact: true
@@ -782,10 +781,6 @@ async function bookQaLessonAndReturnToUpcoming({ recurring }) {
       exact: true
     })
     .click();
-  await accountPage.getByRole("button", { name: "Continue", exact: true }).click();
-  if (recurring) {
-    await accountPage.getByRole("button", { name: "4 weeks of weekly lessons", exact: true }).click();
-  }
   await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
   await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
   await accountPage.getByRole("button", { name: /times free/ }).first().click();
@@ -848,7 +843,7 @@ if (await accountPage.locator("#lesson-calendar").count()) {
 if (await accountPage.locator(".unified-booking__lesson-picker").count()) {
   throw new Error("Lesson types should wait until the student chooses to book.");
 }
-for (const hiddenUntilViewing of [/Upcoming lessons/, /Stop repeating/, /Cancel all booked lessons/]) {
+for (const hiddenUntilViewing of [/View lessons/, /Stop repeating/, /Cancel all booked lessons/]) {
   if (await accountPanel.getByRole("button", { name: hiddenUntilViewing }).count()) {
     throw new Error(`${hiddenUntilViewing} should not compete with the first workflow choice.`);
   }
@@ -878,14 +873,20 @@ await accountPage.screenshot({ path: path.join(outDir, "booking-workflow-start-d
 await accountMenuButton.click();
 const initialAccountMenu = accountPanel.locator("#account-menu");
 await initialAccountMenu.waitFor({ state: "visible" });
-if ((await initialAccountMenu.getByRole("button").count()) !== 4) {
-  throw new Error("Upcoming lessons, Past lessons, Edit details and Sign out should remain available from the initial account menu.");
+if ((await initialAccountMenu.getByRole("button").count()) !== 5) {
+  throw new Error("View lessons, Book a lesson, Past lessons, Edit details and Sign out should remain available from the initial account menu.");
 }
-if (!(await initialAccountMenu.getByRole("button", { name: /Upcoming lessons/ }).isVisible())) {
-  throw new Error("Upcoming lessons should not require entering the lesson calendar first.");
+if (!(await initialAccountMenu.getByRole("button", { name: /View lessons/ }).isVisible())) {
+  throw new Error("View lessons should not require entering the lesson calendar first.");
+}
+if (!(await initialAccountMenu.getByRole("button", { name: "Book a lesson", exact: true }).isVisible())) {
+  throw new Error("Booking should be a primary account-menu shortcut.");
 }
 if (!(await initialAccountMenu.getByRole("button", { name: /Past lessons/ }).isVisible())) {
   throw new Error("Past lessons should not require entering the lesson calendar first.");
+}
+if (/\d/.test(await initialAccountMenu.getByRole("button", { name: /Past lessons/ }).innerText())) {
+  throw new Error("Past lessons should not carry an attention-grabbing count.");
 }
 await initialAccountMenu.getByRole("button", { name: /Past lessons/ }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "visible" });
@@ -949,8 +950,8 @@ if (await accountPage.getByRole("button", { name: "Cancel all booked lessons", e
 }
 await accountMenuButton.click();
 const lessonsAccountMenu = accountPanel.locator("#account-menu");
-if ((await lessonsAccountMenu.getByRole("button").count()) !== 4) {
-  throw new Error("Upcoming lessons, Past lessons, Edit details and Sign out should live together in the account menu.");
+if ((await lessonsAccountMenu.getByRole("button").count()) !== 5) {
+  throw new Error("View lessons, Book a lesson, Past lessons, Edit details and Sign out should live together in the account menu.");
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-account-menu-desktop.png"), fullPage: true });
 const pastLessonsToggle = lessonsAccountMenu.getByRole("button", { name: /Past lessons/ });
@@ -976,7 +977,7 @@ await accountPage.getByRole("button", { name: /View your lessons/ }).click();
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 
 await accountMenuButton.click();
-const laterLessonsToggle = accountPanel.getByRole("button", { name: /Upcoming lessons/ });
+const laterLessonsToggle = accountPanel.getByRole("button", { name: /View lessons/ });
 if (!/3\s*$/.test((await laterLessonsToggle.innerText()).trim())) {
   throw new Error("The Upcoming lessons badge should count each repeating schedule once, plus each one-off lesson.");
 }
@@ -1532,7 +1533,7 @@ if (mobileLaterLessonsLayout.scrollWidth > mobileLaterLessonsLayout.clientWidth 
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-mobile.png"), fullPage: true });
 await accountMenuButton.click();
-await accountPanel.getByRole("button", { name: /Upcoming lessons/ }).click();
+await accountPanel.getByRole("button", { name: /View lessons/ }).click();
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "detached" });
 const mobileAccountLayout = await accountPage.evaluate(() => {
   const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid");
@@ -1779,28 +1780,25 @@ if (await accountPage.getByText(/The trial is for a first lesson/i).count()) {
 const lessonCardCount = await accountPage.locator(".unified-booking__lesson-picker .lesson-card").count();
 if (lessonCardCount !== 2) throw new Error(`Expected one-off and recurring choices; found ${lessonCardCount}.`);
 await accountPage.getByRole("button", { name: "Recurring lessons · keep the same weekly time", exact: true }).click();
-await accountPage.getByRole("heading", { name: "Where will you have your lesson?", exact: true }).waitFor();
-if ((await accountPage.locator(".booking-step-selector .segmented").count()) !== 1) {
-  throw new Error("Location should be the next compact choice after selecting a recurring lesson.");
+await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
+if ((await accountPage.locator(".booking-setup .segmented").count()) !== 0) {
+  throw new Error("Initial booking choices should use cards, not the compact change-booking slider.");
+}
+if ((await accountPage.locator(".booking-option-card").count()) !== 7) {
+  throw new Error("Recurring booking should keep location, lesson length, and 4/6/8-week choices on one screen.");
 }
 await accountPage.getByRole("radio", { name: "In Porto", exact: true }).check();
-await accountPage.getByRole("button", { name: "Continue", exact: true }).click();
-await accountPage.getByRole("heading", { name: "How long should it repeat?", exact: true }).waitFor();
-if ((await accountPage.locator(".booking-repeat-length").count()) !== 3) {
+if ((await accountPage.locator("input[name='booking-repeat']").count()) !== 3) {
   throw new Error("Recurring booking should offer 4, 6, or 8 weeks.");
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-repeat-length-mobile.png"), fullPage: true });
 await accountPage.getByRole("button", { name: "Back", exact: true }).click();
-await accountPage.getByRole("heading", { name: "Where will you have your lesson?", exact: true }).waitFor();
-await accountPage.getByRole("button", { name: "Back", exact: true }).click();
 await accountPage.getByRole("heading", { name: "How would you like to book?", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
-await accountPage.getByRole("heading", { name: "Where will you have your lesson?", exact: true }).waitFor();
+await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
 await accountPage.getByRole("radio", { name: "Online", exact: true }).check();
-await accountPage.getByRole("button", { name: "Continue", exact: true }).click();
-await accountPage.getByRole("heading", { name: "Choose lesson length", exact: true }).waitFor();
-if ((await accountPage.locator(".booking-step-selector input[name='booking-duration']").count()) !== 2) {
-  throw new Error("One-off booking should offer 60 and 90 minutes in the compact selector.");
+if ((await accountPage.locator(".booking-option-card input[name='booking-duration']").count()) !== 2) {
+  throw new Error("One-off booking should offer 60 and 90 minutes as visible cards.");
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-duration-mobile.png"), fullPage: true });
 await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
@@ -1830,7 +1828,6 @@ if (
 }
 await changeLesson.click();
 await accountPage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
-await accountPage.getByRole("button", { name: "Continue", exact: true }).click();
 await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).waitFor();
 await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
 await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
@@ -1966,9 +1963,22 @@ const recurringLaterLesson = accountPanel.locator("#account-upcoming-lessons .up
 await recurringLaterLesson.getByRole("button", { name: "Manage recurrence", exact: true }).click();
 const sequenceDialog = accountPage.locator(".lesson-manage-dialog");
 await sequenceDialog.getByRole("heading", { name: "Manage recurring lesson", exact: true }).waitFor();
+if (await sequenceDialog.getByText(/Choose whether to keep/i).count()) {
+  throw new Error("The recurrence actions should not repeat what their button labels already explain.");
+}
+const moveRecurrence = sequenceDialog.getByRole("button", { name: "Move recurrence", exact: true });
 const stopRepeating = sequenceDialog.getByRole("button", { name: "Stop repeating", exact: true });
 const cancelAllBooked = sequenceDialog.getByRole("button", { name: "Cancel all booked lessons", exact: true });
 await cancelAllBooked.waitFor();
+await moveRecurrence.click();
+const moveRecurrenceDialog = accountPage.getByRole("dialog", { name: "Choose a new weekly day and time", exact: true });
+await moveRecurrenceDialog.waitFor({ state: "visible" });
+if ((await moveRecurrenceDialog.locator(".segmented").count()) !== 2) {
+  throw new Error("Moving a recurrence should retain the compact length and location sliders.");
+}
+await moveRecurrenceDialog.getByText(/Currently repeats from/i).waitFor();
+await moveRecurrenceDialog.getByRole("button", { name: "Back", exact: true }).click();
+await sequenceDialog.getByRole("heading", { name: "Manage recurring lesson", exact: true }).waitFor();
 await stopRepeating.click();
 if (stopRepeatPayloads.length !== 0) throw new Error("Opening the repeat confirmation called the stop endpoint.");
 await sequenceDialog.getByText("Your booked lessons will stay.", { exact: false }).waitFor();

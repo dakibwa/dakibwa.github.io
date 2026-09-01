@@ -480,14 +480,28 @@ export function MyLessons({
               </button>
               {menuOpen ? (
                 <div className="my-lessons__menu-panel" id="account-menu">
-                  {showUpcomingLessons && upcoming.length ? (
+                  {showUpcomingLessons ? (
                     <button
                       aria-controls="account-upcoming-lessons"
                       aria-expanded={accountSection === "upcoming"}
                       onClick={() => toggleAccountSection("upcoming")}
                       type="button"
                     >
-                      Upcoming lessons <span>{upcomingGroups.length}</span>
+                      View lessons {upcomingGroups.length ? <span>{upcomingGroups.length}</span> : null}
+                    </button>
+                  ) : null}
+                  {onBook ? (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setEditing(false);
+                        setAccountSection("");
+                        setExpandedUpcomingGroup("");
+                        onBook();
+                      }}
+                      type="button"
+                    >
+                      Book a lesson
                     </button>
                   ) : null}
                   {showHistory ? (
@@ -497,7 +511,7 @@ export function MyLessons({
                       onClick={() => toggleAccountSection("history")}
                       type="button"
                     >
-                      Past lessons <span>{past.length}</span>
+                      Past lessons
                     </button>
                   ) : null}
                   <button

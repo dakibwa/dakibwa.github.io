@@ -3,6 +3,7 @@ import {
   OPEN_ENDED_HORIZON_WEEKS,
   SERIES_LENGTHS,
   normaliseWeeks,
+  occurrenceInstants,
   outstandingFor,
   planOccurrences,
   slotOf
@@ -515,6 +516,7 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
   const seriesFooter = seriesOnCard
     ? "Move or cancel any single lesson free until the day before it — a lesson not yet charged is never charged, and one already paid is refunded automatically. On a lesson's own day it's yours — no changes and no refunds."
     : `Changing a lesson on the day it happens costs €${(settings.sameDayChangeFeeCents / 100).toFixed(0)}; any earlier is free.`;
+  const moved = reason === "moved";
 
   const sends = [];
 
@@ -527,17 +529,23 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
     sends.push(
       deliver(env, {
         to: first.student_email,
-        subject: `Your weekly Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
-        kind: "student_series_booked",
+        subject: moved
+          ? `Your weekly Portuguese lessons have moved — from ${formatShort(new Date(first.starts_at), PORTO)}`
+          : `Your weekly Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
+        kind: moved ? "student_series_moved" : "student_series_booked",
         bookingId: first.id,
-        dedupeKey: `student:series:${series.id}:${rows[0].id}`,
+        dedupeKey: moved
+          ? `student:series-moved:${series.id}:${first.sequence}`
+          : `student:series:${series.id}:${rows[0].id}`,
         replyTo,
         calendar: { body: invite({ name: first.student_name, email: first.student_email }), method: "REQUEST" },
         content: {
-          heading: "Your weekly slot is booked",
-          intro: series.occurrences
-            ? `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on your lesson calendar.`
-            : `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Your current lessons are in the calendar attachment, and new weeks will appear automatically on your lesson calendar without extra confirmation emails.`,
+          heading: moved ? "Your weekly lessons have moved" : "Your weekly slot is booked",
+          intro: moved
+            ? `Olá ${first.student_name.split(" ")[0]}, your upcoming weekly lessons now use this new time. The updated dates are in the calendar attachment, and you can still manage any one lesson from your lesson calendar.`
+            : series.occurrences
+              ? `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on your lesson calendar.`
+              : `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Your current lessons are in the calendar attachment, and new weeks will appear automatically on your lesson calendar without extra confirmation emails.`,
           callout: skippedNote,
           hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
           heroNote: differingZonedTime(new Date(first.starts_at), studentZone) ? `${differingZonedTime(new Date(first.starts_at), studentZone)} — your time` : "",
@@ -557,17 +565,23 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
         subject:
           reason === "extended"
             ? `Weekly slot extended — ${first.student_name}, to ${formatShort(new Date(rows[rows.length - 1].starts_at), PORTO)}`
+            : moved
+              ? `Weekly slot moved — ${first.student_name}, from ${formatShort(new Date(first.starts_at), PORTO)}`
             : `Weekly booking — ${first.student_name}, from ${formatShort(new Date(first.starts_at), PORTO)}`,
-        kind: reason === "extended" ? "teacher_series_extended" : "teacher_series_booked",
+        kind: reason === "extended" ? "teacher_series_extended" : moved ? "teacher_series_moved" : "teacher_series_booked",
         bookingId: first.id,
-        dedupeKey: `teacher:series:${series.id}:${rows[0].id}`,
+        dedupeKey: moved
+          ? `teacher:series-moved:${series.id}:${first.sequence}`
+          : `teacher:series:${series.id}:${rows[0].id}`,
         replyTo: first.student_email,
         calendar: { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "REQUEST" },
         content: {
-          heading: reason === "extended" ? "A weekly slot was extended" : "A weekly slot was booked",
+          heading: reason === "extended" ? "A weekly slot was extended" : moved ? "A weekly slot was moved" : "A weekly slot was booked",
           intro:
             reason === "extended"
               ? `${first.student_name}'s open-ended weekly slot has been carried forward. The new lessons are in the calendar attachment.`
+              : moved
+                ? `${first.student_name}'s upcoming weekly lessons have moved. The updated events are in the calendar attachment.`
               : `${first.student_name} booked the same slot each week. Every lesson is in the calendar attachment.`,
           callout: skippedNote,
           hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
@@ -822,6 +836,11 @@ const worker = {
 
       const stopSeries = path.match(/^\/series\/([^/]+)\/stop$/);
       if (stopSeries && request.method === "POST") return await handleStopSeries(request, env, ctx, stopSeries[1]);
+
+      const rescheduleSeries = path.match(/^\/series\/([^/]+)\/reschedule$/);
+      if (rescheduleSeries && request.method === "POST") {
+        return await handleRescheduleSeries(request, env, ctx, rescheduleSeries[1]);
+      }
 
       const manage = path.match(/^\/bookings\/([^/]+)$/);
       if (manage && request.method === "GET") return await handleGetBooking(request, env, manage[1]);
@@ -1779,6 +1798,238 @@ async function handleStopSeries(request, env, ctx, seriesId) {
   }
 
   return json({ ok: true, stopped: true, cancelled, kept, refunded }, 200, request, env);
+}
+
+/**
+ * Move every future occurrence of an active sequence to a new weekly slot.
+ *
+ * The availability preview necessarily happens before the write, so the write
+ * repeats the conflict check for the complete proposed run. One CTE-backed
+ * UPDATE moves every row or none: a cancellation, individual move, or newly
+ * claimed slot arriving during the preview cannot leave half a sequence on the
+ * old schedule and half on the new one.
+ */
+async function handleRescheduleSeries(request, env, ctx, seriesId) {
+  const student = await currentStudent(request, env);
+  if (!student) return fail("Please sign in.", 401, request, env);
+
+  const series = await env.DB.prepare(
+    "SELECT * FROM booking_series WHERE id = ? AND student_id = ? AND status = 'active'"
+  )
+    .bind(seriesId, student.id)
+    .first();
+  if (!series) return fail("That recurring lesson could not be found.", 404, request, env);
+
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const { results } = await env.DB.prepare(
+    "SELECT * FROM bookings WHERE series_id = ? AND status = 'confirmed' AND starts_at > ? ORDER BY starts_at"
+  )
+    .bind(seriesId, nowIso)
+    .all();
+  const rows = results ?? [];
+  if (!rows.length) return fail("There are no upcoming lessons in this sequence to move.", 409, request, env);
+
+  // Moving a whole run must not become a route around the day-of-lesson rule.
+  if (rows.some((row) => dateKey(now, PORTO) === dateKey(new Date(row.starts_at), PORTO))) {
+    return fail("Today's lesson stays where it is. Move any later lessons individually, or try again after today.", 409, request, env);
+  }
+
+  const body = await readJson(request);
+  const requestedStart = new Date(body.startAt);
+  if (Number.isNaN(requestedStart.getTime())) return fail("That time could not be understood.", 400, request, env);
+
+  const previousLessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
+    .bind(series.lesson_type_id)
+    .first();
+  const lessonTypeId = cleanText(body.lessonType, 40) || series.lesson_type_id;
+  const lessonType = await loadLessonType(env, lessonTypeId);
+  if (!lessonType) return fail("That lesson type is not available.", 400, request, env);
+  const location = normaliseLocation(body.location, series.location);
+
+  const currentLessonTypes = new Map([[previousLessonType.id, previousLessonType]]);
+  for (const row of rows) {
+    if (!currentLessonTypes.has(row.lesson_type_id)) {
+      currentLessonTypes.set(
+        row.lesson_type_id,
+        await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(row.lesson_type_id).first()
+      );
+    }
+    const currentLessonType = currentLessonTypes.get(row.lesson_type_id);
+    const typeChangeProblem = lessonTypeChangeProblem(row, currentLessonType, lessonType);
+    if (typeChangeProblem) return fail(typeChangeProblem, 409, request, env);
+  }
+
+  const requestedSlot = slotOf(requestedStart);
+  const occurrences = occurrenceInstants({
+    fromKey: requestedSlot.dateKey,
+    minuteOfDay: requestedSlot.minuteOfDay,
+    count: rows.length
+  });
+  if (occurrences.length !== rows.length) return fail("That weekly schedule could not be understood.", 400, request, env);
+
+  const planned = [];
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
+    const occurrence = occurrences[index];
+    const check = await isSlotBookable(env, {
+      startAt: occurrence.startAt.toISOString(),
+      lessonType,
+      now,
+      ignoreSeriesId: seriesId,
+      ignoreHorizon: true
+    });
+    if (!check.ok) {
+      return fail(
+        `${formatShort(occurrence.startAt, PORTO)} is not free for the new weekly time. Choose another day or time.`,
+        409,
+        request,
+        env
+      );
+    }
+    planned.push({
+      id: row.id,
+      oldStart: row.starts_at,
+      oldLessonType: row.lesson_type_id,
+      oldLocation: row.location,
+      startAt: occurrence.startAt.toISOString(),
+      endAt: check.endAt.toISOString(),
+      amountCents: amountAfterLessonTypeChange(row, lessonType),
+      key: occurrence.key
+    });
+  }
+
+  const proposedValues = planned.map(() => "(?, ?, ?, ?, ?, ?, ?)").join(", ");
+  const proposedBindings = planned.flatMap((entry) => [
+    entry.id,
+    entry.oldStart,
+    entry.oldLessonType,
+    entry.oldLocation,
+    entry.startAt,
+    entry.endAt,
+    entry.amountCents
+  ]);
+  const expectedValues = planned.map(() => "(?, ?, ?)").join(", ");
+  const expectedBindings = planned.flatMap((entry) => [entry.id, entry.startAt, entry.endAt]);
+
+  const moveBookings = env.DB.prepare(
+    `WITH proposed(id, old_start, old_lesson_type, old_location, new_start, new_end, new_amount) AS (
+       VALUES ${proposedValues}
+     )
+     UPDATE bookings
+     SET lesson_type_id = ?, location = ?, previous_starts_at = starts_at,
+         starts_at = (SELECT new_start FROM proposed WHERE id = bookings.id),
+         ends_at = (SELECT new_end FROM proposed WHERE id = bookings.id),
+         amount_cents = (SELECT new_amount FROM proposed WHERE id = bookings.id),
+         sequence = sequence + 1, reschedule_count = reschedule_count + 1,
+         same_day_change = 0, updated_at = ?
+     WHERE series_id = ? AND status = 'confirmed' AND starts_at > ?
+       AND EXISTS (
+         SELECT 1 FROM proposed p
+         WHERE p.id = bookings.id AND p.old_start = bookings.starts_at
+           AND p.old_lesson_type = bookings.lesson_type_id AND p.old_location = bookings.location
+       )
+       AND (SELECT COUNT(*) FROM bookings current
+            WHERE current.series_id = ? AND current.status = 'confirmed' AND current.starts_at > ?) = ?
+       AND (SELECT COUNT(*) FROM bookings current
+            JOIN proposed p ON p.id = current.id AND p.old_start = current.starts_at
+              AND p.old_lesson_type = current.lesson_type_id AND p.old_location = current.location
+            WHERE current.series_id = ? AND current.status = 'confirmed' AND current.starts_at > ?) = ?
+       AND (SELECT status FROM booking_series WHERE id = ? AND student_id = ?) = 'active'
+       AND NOT EXISTS (
+         SELECT 1 FROM bookings other JOIN proposed p
+           ON other.starts_at < p.new_end AND other.ends_at > p.new_start
+         WHERE (other.status = 'confirmed'
+                OR (other.status = 'pending_payment' AND other.hold_expires_at > ?))
+           AND (other.series_id IS NULL OR other.series_id != ?)
+       )`
+  ).bind(
+    ...proposedBindings,
+    lessonType.id,
+    location,
+    nowIso,
+    seriesId,
+    nowIso,
+    seriesId,
+    nowIso,
+    planned.length,
+    seriesId,
+    nowIso,
+    planned.length,
+    seriesId,
+    student.id,
+    nowIso,
+    seriesId
+  );
+
+  // The recipe only moves if the first statement produced every expected row.
+  const updateSeries = env.DB.prepare(
+    `WITH expected(id, new_start, new_end) AS (VALUES ${expectedValues})
+     UPDATE booking_series
+     SET lesson_type_id = ?, location = ?, weekday = ?, minute_of_day = ?, filled_to = ?, updated_at = ?
+     WHERE id = ? AND student_id = ? AND status = 'active'
+       AND (SELECT COUNT(*) FROM bookings b JOIN expected e
+            ON e.id = b.id AND e.new_start = b.starts_at AND e.new_end = b.ends_at
+            WHERE b.series_id = ? AND b.status = 'confirmed') = ?`
+  ).bind(
+    ...expectedBindings,
+    lessonType.id,
+    location,
+    requestedSlot.weekday,
+    requestedSlot.minuteOfDay,
+    planned[planned.length - 1].key,
+    nowIso,
+    seriesId,
+    student.id,
+    seriesId,
+    planned.length
+  );
+
+  const [bookingResult, seriesResult] = await env.DB.batch([moveBookings, updateSeries]);
+  if (
+    (bookingResult?.meta?.changes ?? 0) !== planned.length ||
+    (seriesResult?.meta?.changes ?? 0) !== 1
+  ) {
+    return fail("That sequence or one of its times has just changed. Please reload and try again.", 409, request, env);
+  }
+
+  const placeholders = planned.map(() => "?").join(", ");
+  const { results: updatedResults } = await env.DB.prepare(
+    `SELECT * FROM bookings WHERE id IN (${placeholders}) ORDER BY starts_at`
+  )
+    .bind(...planned.map((entry) => entry.id))
+    .all();
+  const updatedRows = updatedResults ?? [];
+  const updatedSeries = await env.DB.prepare("SELECT * FROM booking_series WHERE id = ?").bind(seriesId).first();
+  const settings = await loadSettings(env);
+  const manageUrls = {};
+  for (const row of updatedRows) {
+    const token = await createManageToken(row.id, env.BOOKING_TOKEN_SECRET);
+    manageUrls[row.id] = studentManageUrl(env, token);
+  }
+
+  ctx.waitUntil(
+    notifySeries(env, {
+      rows: updatedRows,
+      lessonType,
+      settings,
+      series: updatedSeries,
+      manageUrls,
+      skipped: [],
+      reason: "moved"
+    })
+  );
+
+  return json(
+    {
+      ok: true,
+      moved: updatedRows.length,
+      bookings: updatedRows.map((row) => publicBooking(row, lessonType, settings))
+    },
+    200,
+    request,
+    env
+  );
 }
 
 async function handleGetBooking(request, env, token) {

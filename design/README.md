@@ -167,9 +167,10 @@ Preserve these desktop and mobile states:
   the remaining width;
 - the workspace opens with one decision: `Book a new lesson` or `View your
   lessons`. Booking then asks whether this is one lesson or a recurring lesson.
-  Both routes choose Online or In Porto next. A recurring booking then chooses
-  4, 6, or 8 weeks, and both routes use the same compact selector to choose
-  `60 minutes` or `90 minutes` before showing the calendar. An eligible
+  The selected route puts Online/In Porto and `60 minutes`/`90 minutes` together
+  as clear choice cards on one setup screen; a recurring booking adds 4, 6, or
+  8 weeks there as a third group. Sliding selectors are reserved for changing
+  an existing booking, where their smaller footprint is useful. An eligible
   first-time student also sees the separate fixed-length trial route;
   viewing lessons opens the upcoming-lesson list, with the same calendar kept
   beneath it as a four-week visual overview and without displaying free times.
@@ -178,8 +179,10 @@ Preserve these desktop and mobile states:
   Completed decisions collapse into a compact row, so account tools,
   lesson cards, the calendar, and confirmation never compete at once;
 - the signed-in identity appears once, inside a generously padded account bar.
-  A small `Menu` contains `Upcoming lessons`, `Past lessons`, `Edit details`, and
-  `Sign out`. `Past lessons` remains present even before the student chooses
+  A small `Menu` contains `View lessons`, `Book a lesson`, `Past lessons`, `Edit
+  details`, and `Sign out`, in that order. `View lessons` may show the useful
+  upcoming count; `Past lessons` deliberately has no count competing for
+  attention. It remains present even before the student chooses
   `View your lessons`, while booking, and while an individual lesson is open;
   an empty history says so instead of removing the shortcut. The Upcoming
   lessons panel contains every future commitment. Choosing either lesson shortcut
@@ -189,7 +192,8 @@ Preserve these desktop and mobile states:
   book-or-view choice. A repeating schedule appears once in Upcoming lessons,
   led by its nearest date and distinguished from coral one-off bookings with a
   lilac recurring treatment and a subtle lilac hover/focus wash.
-  `Manage recurrence` opens the schedule-level choices directly;
+  `Manage recurrence` opens the schedule-level choices directly, including
+  moving every upcoming occurrence to a new weekly slot;
   `View next 4 lessons` reveals no more than four separate occurrence cards,
   each with its own `Manage` action. A small accessible
   tooltip explains that individual lessons can be modified up to four weeks in
@@ -263,10 +267,12 @@ Preserve these desktop and mobile states:
 
 Selecting an occurrence from a recurring sequence identifies it in the compact
 management overlay. `Change` and `Cancel` affect only that date; `Manage
-sequence` owns the recurring schedule in that same overlay. It offers two
-distinct routes: stop adding new lessons while keeping booked dates, or cancel
-all cancellable upcoming dates as well. Confirm either action at desktop and
-mobile sizes before changing anything. The bulk-cancel confirmation must state
+sequence` owns the recurring schedule in that same overlay. It can move the
+upcoming recurrence with the compact length, location, day, and time controls;
+stop adding new lessons while keeping booked dates; or cancel all cancellable
+upcoming dates as well. The action labels stand alone without an explanatory
+sentence above them. Confirm either destructive action at desktop and mobile
+sizes before changing anything. The bulk-cancel confirmation must state
 that paid cancellable lessons are refunded automatically and that a lesson
 happening today remains booked under the existing same-day policy.
 

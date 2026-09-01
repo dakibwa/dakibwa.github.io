@@ -96,10 +96,12 @@ export async function listLessonTypes(env) {
 /**
  * @param ignoreBookingId lets a reschedule offer the slot the booking already
  *        occupies, instead of the student's own lesson blocking their move.
+ * @param ignoreSeriesId does the same for every future occurrence while a
+ *        whole weekly sequence is being moved.
  */
 export async function computeAvailability(
   env,
-  { fromKey, toKey, lessonType, now, ignoreBookingId = null, ignoreHorizon = false }
+  { fromKey, toKey, lessonType, now, ignoreBookingId = null, ignoreSeriesId = null, ignoreHorizon = false }
 ) {
   const settings = await loadSettings(env);
   const duration = Number(lessonType.duration_minutes);
@@ -136,7 +138,7 @@ export async function computeAvailability(
     // checkout that has not been abandoned yet — otherwise two students could
     // pay for the same time. An expired hold stops counting automatically.
     env.DB.prepare(
-      `SELECT id, starts_at, ends_at FROM bookings
+      `SELECT id, series_id, starts_at, ends_at FROM bookings
        WHERE ends_at > ? AND starts_at < ?
          AND (status = 'confirmed' OR (status = 'pending_payment' AND hold_expires_at > ?))`
     )
@@ -168,7 +170,7 @@ export async function computeAvailability(
   }
 
   const busy = (booked.results ?? [])
-    .filter((row) => row.id !== ignoreBookingId)
+    .filter((row) => row.id !== ignoreBookingId && row.series_id !== ignoreSeriesId)
     .map((row) => ({ start: new Date(row.starts_at).getTime(), end: new Date(row.ends_at).getTime() }));
 
   const slotsByDate = {};
@@ -222,7 +224,7 @@ export async function computeAvailability(
  */
 export async function isSlotBookable(
   env,
-  { startAt, lessonType, now, ignoreBookingId = null, ignoreHorizon = false }
+  { startAt, lessonType, now, ignoreBookingId = null, ignoreSeriesId = null, ignoreHorizon = false }
 ) {
   const start = new Date(startAt);
   if (Number.isNaN(start.getTime())) return { ok: false, reason: "That time could not be understood." };
@@ -234,6 +236,7 @@ export async function isSlotBookable(
     lessonType,
     now,
     ignoreBookingId,
+    ignoreSeriesId,
     ignoreHorizon
   });
 
