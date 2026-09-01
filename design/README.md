@@ -96,11 +96,14 @@ The intended production state reflects Inês's 31 August feedback:
   of being clipped at the right edge; from 1000px upwards they remain on one
   line;
 - a visit launched from Akibwa with `?from=akibwa` carries a compact, neutral,
-  pinned “I’m Akibwa” portfolio masthead with “Building in the Intelligence
-  Age.” above this site's own header. Its green rule is the boundary: everything
-  below it remains the real Português com a Inês site. The masthead persists
-  through scrolling and internal navigation in that tab, and its plain “Back
-  to projects” link clears the visit state. Direct visits never show it.
+  pinned version of the portfolio masthead above this site's own header. It
+  retains the original “I’m Daniel” / “I’m Akibwa” flick, the exact “Building
+  in the age of AI.” line, and the coloured Home, Projects, Career and Taste
+  Library links. Its green rule spans the full viewport and is the boundary:
+  everything below it remains the real Português com a Inês site. The masthead
+  persists through scrolling and internal navigation in that tab; leaving by
+  one of its portfolio links clears the visit state. Direct visits never show
+  it. Reduced-motion visitors see the Daniel state without animation.
 
 ## Public-page hierarchy — 2026-09-01
 
