@@ -201,9 +201,11 @@ the deployment steps are in [docs-booking-system.md](./docs-booking-system.md).
 ## Publication
 
 The canonical production site is deployed to Cloudflare Pages at
-`https://portuguesewithines.com/`. The Portuguese-spelling domain
-`https://portuguescomaines.com/` redirects to the canonical domain while
-preserving the requested path and query string.
+`https://portuguesewithines.com/`. A minimal Custom Domain Worker redirects
+`www.portuguesewithines.com` to that apex while preserving the path and query;
+Cloudflare owns the generated DNS record and certificate. The
+Portuguese-spelling domain `https://portuguescomaines.com/` redirects to the
+canonical domain while preserving the requested path and query string.
 
 **Merging to `main` publishes the site.** `.github/workflows/deploy-pages.yml`
 builds once and deploys that build to Cloudflare Pages, which is what the live
@@ -237,6 +239,11 @@ The alias is a separate Pages redirect project so it cannot accidentally serve
 a duplicate copy of the site. It is not part of the workflow, since its
 configuration changes only rarely; deploy it with
 `npm run deploy:cloudflare:redirect`.
+
+The `www` redirect is similarly small and changes only when the canonical host
+changes. Its source and Custom Domain configuration live in
+`workers/www-redirect`; validate it with `npm run worker:www:dry-run` and deploy
+it with `npm run worker:www:deploy`.
 
 The Akibwa website does not contain a copy of this build. Its Portuguese with
 Inês project card and former `/portugal/` route point to the canonical site.
