@@ -321,7 +321,9 @@ export function formatLongDate(value: string | Date, timeZone = BOOKING_TIME_ZON
  */
 export function shortMonth(monthNumber: number, yearHint: string) {
   const [year] = yearHint.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+  return new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" }).format(
+    new Date(Date.UTC(year, monthNumber - 1, 1))
+  );
 }
 
 /**
@@ -450,7 +452,10 @@ export function buildBookingWeeks(fromKey: string, horizonDays: number): Booking
 
   // No year: the window is 30 days, so it can only ever be this year or the
   // turn of one, and the month alone is what tells you where you are.
-  const monthName = new Intl.DateTimeFormat("en-GB", { month: "long" });
+  // These are calendar date keys, not instants in the visitor's time zone. A
+  // behind-UTC browser would otherwise render midnight UTC as the previous
+  // month (for example 1 October as 30 September).
+  const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" });
   const weeks: BookingWeek[] = [];
   let previousMonth = "";
 

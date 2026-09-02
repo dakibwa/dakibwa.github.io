@@ -21,6 +21,30 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const logs = [];
 const results = [];
 
+function colourChannels(value) {
+  const colour = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(colour)) {
+    return [1, 3, 5].map((index) => Number.parseInt(colour.slice(index, index + 2), 16));
+  }
+
+  const channels = colour.match(/[\d.]+/g)?.slice(0, 3).map(Number);
+  if (!channels || channels.length !== 3) throw new Error(`Could not read colour: ${value}`);
+  return channels;
+}
+
+function relativeLuminance(value) {
+  const [red, green, blue] = colourChannels(value).map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return red * 0.2126 + green * 0.7152 + blue * 0.0722;
+}
+
+function contrastRatio(foreground, background) {
+  const values = [relativeLuminance(foreground), relativeLuminance(background)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
 page.on("pageerror", (error) => logs.push(`pageerror:${error.message}`));
 page.on("console", (message) => {
   if (message.type() === "error") logs.push(`console:${message.text()}`);
@@ -72,7 +96,128 @@ if (
 ) {
   throw new Error("Booking decisions should receive the lightweight local surface transition.");
 }
+
+for (const viewport of [
+  { id: "mobile", width: 390, height: 844 },
+  { id: "desktop", width: 1280, height: 900 }
+]) {
+  await localMotionPage.setViewportSize({ width: viewport.width, height: viewport.height });
+  const summaryStyles = await localMotionPage.evaluate(() => {
+    const elements = [
+      ...document.querySelectorAll(".booking-choice-summary__copy .eyebrow, .booking-choice-summary__change")
+    ];
+    return {
+      background: getComputedStyle(document.documentElement).getPropertyValue("--lavender").trim(),
+      entries: elements.map((element) => {
+        const style = getComputedStyle(element);
+        return {
+          colour: style.color,
+          fontSize: Number.parseFloat(style.fontSize),
+          label: element.textContent?.trim() ?? "",
+          overflow: element.scrollWidth > element.clientWidth + 1
+        };
+      })
+    };
+  });
+
+  for (const entry of summaryStyles.entries) {
+    const ratio = contrastRatio(entry.colour, summaryStyles.background);
+    if (entry.fontSize < 14 || ratio < 4.5 || entry.overflow) {
+      throw new Error(
+        `Booking summary text should remain at least 14px and 4.5:1 without clipping at ${viewport.id}: ` +
+          JSON.stringify({ ...entry, contrast: ratio })
+      );
+    }
+  }
+}
 await localMotionPage.close();
+
+// Calendar dates are Porto wall-clock keys. Formatting their month captions in
+// a behind-UTC browser must not move midnight UTC back into the previous month.
+const calendarZoneContext = await browser.newContext({
+  timezoneId: "America/Los_Angeles",
+  viewport: { width: 390, height: 844 }
+});
+const calendarZonePage = await calendarZoneContext.newPage();
+await calendarZonePage.clock.setFixedTime(new Date("2026-09-02T12:00:00Z"));
+await calendarZonePage.route("**/lesson-types", async (route) => {
+  await route.fulfill({
+    contentType: "application/json",
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({
+      lessonTypes: [
+        {
+          id: "single-60",
+          slug: "single-lesson",
+          name: "Single lesson",
+          description: "One hour of Portuguese practice.",
+          duration_minutes: 60,
+          price_cents: 2500
+        }
+      ],
+      paymentMode: "off",
+      postpay: false,
+      paymentReady: true
+    })
+  });
+});
+await calendarZonePage.route("**/availability?*", async (route) => {
+  await route.fulfill({
+    contentType: "application/json",
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: JSON.stringify({
+      slotsByDate: {
+        "2026-09-03": [
+          { startAt: "2026-09-03T16:00:00.000Z", endAt: "2026-09-03T17:00:00.000Z" }
+        ]
+      },
+      timeZone: "Europe/Lisbon",
+      minimumNoticeHours: 24,
+      horizonDays: 56,
+      lessonType: { id: "single-60", name: "Single lesson", durationMinutes: 60, priceCents: 2500 }
+    })
+  });
+});
+await calendarZonePage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
+await calendarZonePage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
+await calendarZonePage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
+await calendarZonePage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
+await calendarZonePage.getByRole("button", { name: "Choose a date", exact: true }).click();
+await calendarZonePage.locator("#booking-calendar-weeks").waitFor({ state: "visible", timeout: 10_000 });
+
+const calendarDateLabels = await calendarZonePage.evaluate(() => ({
+  headings: [...document.querySelectorAll(".calendar-month")].map((element) => element.textContent?.trim()),
+  spillovers: Object.fromEntries(
+    ["2026-08-31", "2026-09-28", "2026-09-29", "2026-09-30"].map((key) => {
+      const cell = document.querySelector(`[data-date-key="${key}"]`);
+      return [
+        key,
+        { ariaLabel: cell?.getAttribute("aria-label"), month: cell?.querySelector("em")?.textContent?.trim().toUpperCase() }
+      ];
+    })
+  )
+}));
+
+if (
+  calendarDateLabels.spillovers["2026-08-31"].month !== "AUG" ||
+  calendarDateLabels.spillovers["2026-08-31"].ariaLabel !== "Monday, 31 August 2026, unavailable" ||
+  ["2026-09-28", "2026-09-29", "2026-09-30"].some(
+    (key) => calendarDateLabels.spillovers[key].month !== "SEPT"
+  ) ||
+  !calendarDateLabels.headings.includes("October")
+) {
+  throw new Error(`Calendar month labels moved in America/Los_Angeles: ${JSON.stringify(calendarDateLabels)}.`);
+}
+
+await calendarZonePage.locator('[data-date-key="2026-09-03"]').click();
+const calendarDualTime = (await calendarZonePage.locator(".slot-grid button").first().innerText())
+  .replace(/\s+/g, " ")
+  .trim();
+if (calendarDualTime !== "17:00 09:00 your time") {
+  throw new Error(`Calendar dual time changed in America/Los_Angeles: ${calendarDualTime}.`);
+}
+await calendarZonePage.close();
+await calendarZoneContext.close();
 
 for (const route of routes) {
   for (const viewport of [
@@ -100,6 +245,27 @@ for (const route of routes) {
 
     if ((await page.locator(".site-footer .brand-wordmark").count()) !== 1) {
       throw new Error(`${route.id} should retain the cream-on-blue footer wordmark once.`);
+    }
+
+    if (route.id === "booking-terms" || route.id === "privacy") {
+      const policyDetails = await page.evaluate(() => {
+        const hero = document.querySelector(".policy-page__hero");
+        const eyebrow = hero?.querySelector(".eyebrow");
+        return {
+          background: hero ? getComputedStyle(hero).backgroundColor : "",
+          colour: eyebrow ? getComputedStyle(eyebrow).color : "",
+          emailHref: document.querySelector('.policy-page__body a[href^="mailto:"]')?.getAttribute("href"),
+          updated: hero?.querySelector("p:last-child")?.textContent?.trim()
+        };
+      });
+      const policyContrast = contrastRatio(policyDetails.colour, policyDetails.background);
+      if (
+        policyContrast < 4.5 ||
+        policyDetails.emailHref !== "mailto:bookings@portuguesewithines.com" ||
+        policyDetails.updated !== "Last updated 1 September 2026"
+      ) {
+        throw new Error(`${route.id} policy hero or contact regressed: ${JSON.stringify({ ...policyDetails, contrast: policyContrast })}.`);
+      }
     }
 
     if (viewport.id === "desktop") {
@@ -319,8 +485,24 @@ if (bookingCalendar) {
   await toggle.click();
   await page.waitForTimeout(400);
   if ((await toggle.getAttribute("aria-expanded")) !== "true") throw new Error("The mobile menu did not open.");
+  const lockedOverflow = await page.evaluate(() => ({
+    body: getComputedStyle(document.body).overflow,
+    html: getComputedStyle(document.documentElement).overflow
+  }));
+  if (lockedOverflow.body !== "hidden" || lockedOverflow.html !== "hidden") {
+    throw new Error(`The mobile menu should lock both scroll roots: ${JSON.stringify(lockedOverflow)}.`);
+  }
   if ((await page.locator("#site-nav-mobile a").count()) !== 4) {
     throw new Error("The mobile menu should contain the four primary destinations once each.");
+  }
+  await toggle.click();
+  await page.waitForTimeout(250);
+  const restoredOverflow = await page.evaluate(() => ({
+    body: getComputedStyle(document.body).overflow,
+    html: getComputedStyle(document.documentElement).overflow
+  }));
+  if (restoredOverflow.body === "hidden" || restoredOverflow.html === "hidden") {
+    throw new Error(`The mobile menu did not restore page scrolling: ${JSON.stringify(restoredOverflow)}.`);
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
 }

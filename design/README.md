@@ -62,7 +62,9 @@ Three visible colour choices are required for accessible contrast:
   clears AA on the lavender and cream panels. Both are imperceptible on cream
   and neither changes a fill colour;
 - booking reassurance labels use `#dcd8f5` to clear AA on the blue booking
-  panel.
+  panel; policy-page hero eyebrows use that same light lilac on blue;
+- completed booking-choice eyebrows and change actions use body ink at no less
+  than 14 px, so both remain readable on the lavender mobile surface.
 
 The `--blue`, `--blue-deep`, `--lavender`, `--paper`, and `--coral` fill
 colours are unchanged.
@@ -280,6 +282,9 @@ Preserve these desktop and mobile states:
   recap page or combined `Change details` route. The optional notes textarea
   uses one clear blue focus boundary rather than stacking coral and blue rings. The inclusive 56-day API boundary must
   not create a ninth visible row;
+- calendar month headings and spillover abbreviations come from the Porto date
+  key itself, so a visitor behind UTC sees `31 AUG` rather than `31 JUL`; this
+  date-label rule does not alter the separate Porto/visitor slot times;
 - days with two bookings show both booked times on separate lines. Do not use a
   small `2x` count badge beside the date;
 - primary coral and secondary outline actions share a 52 px height, Montserrat
@@ -297,7 +302,9 @@ Preserve these desktop and mobile states:
   Reduced motion removes both the transitions and smooth scrolling;
 - preserve the current mobile reading order and full-width stacked lesson
   choices. The mobile calendar must keep all seven columns and its legend inside
-  the card after resize or orientation changes.
+  the card after resize or orientation changes. Opening either the header
+  hamburger or footer `Menu` locks the page behind the drawer; closing it by
+  toggle, link, route change, or Escape restores the previous scroll state.
 
 ## Account interaction states
 
