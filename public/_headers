@@ -49,10 +49,12 @@
   Cache-Control: public, max-age=600, must-revalidate
 
 /booking-terms/
-  Cache-Control: public, max-age=600, must-revalidate
+  # Keep the real mailto link in the HTML. Cloudflare's email obfuscation
+  # rewrites it to a JavaScript-only /cdn-cgi/ URL that 404s without scripts.
+  Cache-Control: public, max-age=600, must-revalidate, no-transform
 
 /privacy/
-  Cache-Control: public, max-age=600, must-revalidate
+  Cache-Control: public, max-age=600, must-revalidate, no-transform
 
 # The account pages were missing from this list entirely, so they fell back to
 # the Pages default of four hours — a deploy took that long to reach anyone

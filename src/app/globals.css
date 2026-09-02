@@ -2226,7 +2226,9 @@ html.booking-transitioning .booking-confirmation-stage {
 
 .booking-choice-summary__copy .eyebrow {
   margin: 0;
-  font-size: 0.6rem;
+  color: var(--ink);
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
 }
 
 .booking-choice-summary__copy strong {
@@ -2241,10 +2243,22 @@ html.booking-transitioning .booking-confirmation-stage {
   opacity: 0.72;
 }
 
-.booking-choice-summary__change {
+.booking-provider button.booking-choice-summary__change {
   justify-self: end;
   margin-left: auto;
+  color: var(--ink);
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
   white-space: nowrap;
+}
+
+.booking-provider button.booking-choice-summary__change:hover,
+.booking-provider button.booking-choice-summary__change:focus-visible {
+  color: var(--ink);
+}
+
+.booking-provider button.booking-choice-summary__change::after {
+  background: var(--ink);
 }
 
 .unified-calendar__empty-summary {
@@ -5900,6 +5914,10 @@ button.text-action {
   padding: clamp(4rem, 9vw, 7rem) var(--page-pad) clamp(2.5rem, 5vw, 4rem);
   background: var(--blue);
   color: var(--paper);
+}
+
+.policy-page__hero > .eyebrow {
+  color: var(--lavender-soft);
 }
 
 .policy-page__hero h1 {
