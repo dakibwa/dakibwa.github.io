@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "check:fast": "npm run typecheck && npm run lint && npm run test:booking",
+    "check:fast": "npm run typecheck && npm run lint && npm run test:booking && npm run test:www-redirect",
     "check:release": "npm run check:booking && npm run build",
     "check:booking": "node scripts/check-booking-link.mjs",
     "test:portfolio-banner": "node scripts/check-portfolio-banner.mjs",
@@ -22,6 +22,9 @@
     "worker:schema": "wrangler d1 execute ines-booking --remote --config workers/booking/wrangler.jsonc --file workers/booking/schema.sql",
     "worker:seed": "wrangler d1 execute ines-booking --remote --config workers/booking/wrangler.jsonc --file workers/booking/seed.sql",
     "test:booking": "node workers/booking/test.mjs",
+    "worker:www:dry-run": "wrangler deploy --config workers/www-redirect/wrangler.jsonc --dry-run",
+    "worker:www:deploy": "wrangler deploy --config workers/www-redirect/wrangler.jsonc",
+    "test:www-redirect": "node workers/www-redirect/test.mjs",
     "build:email-banner": "node scripts/build-email-banner.mjs",
     "build:og-image": "node scripts/build-og-image.mjs"
   },
