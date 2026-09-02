@@ -3309,13 +3309,20 @@ html.booking-transitioning .booking-confirmation-stage {
   }
 
   .booking-date-summary {
-    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    padding: 0.65rem;
+    gap: 0.45rem;
   }
 
   .booking-selection-summary__mark,
-  .booking-choice-summary__mark {
+  .booking-choice-summary__mark,
+  .booking-date-summary__mark {
     width: 38px;
     height: 38px;
+  }
+
+  .booking-date-summary .booking-choice-summary__change {
+    letter-spacing: 0.02em;
   }
 
   .booking-choice-summary__change {
