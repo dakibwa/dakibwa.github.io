@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { X } from "lucide-react";
@@ -20,6 +20,7 @@ const navigation: NavItem[] = [
 export function SiteNav({ currentPage }: { currentPage: SitePage }) {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const [menuTop, setMenuTop] = useState(0);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -28,6 +29,12 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
   const previousPathname = useRef(pathname);
 
   useEffect(() => { setReady(true); }, []);
+
+  const positionMenu = useCallback(() => {
+    const header = toggleRef.current?.closest(".site-header")?.getBoundingClientRect();
+    // Match a visible header exactly; a footer opener uses the viewport top.
+    setMenuTop(header && header.bottom > 0 ? header.top : 0);
+  }, []);
 
   // Navigating away must close the panel, or it stays open over the new page.
   useEffect(() => {
@@ -42,12 +49,13 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
   useEffect(() => {
     function onRequest() {
       openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      positionMenu();
       setOpen(true);
     }
 
     window.addEventListener("ines:open-menu", onRequest);
     return () => window.removeEventListener("ines:open-menu", onRequest);
-  }, []);
+  }, [positionMenu]);
 
   useEffect(() => {
     if (!open) return;
@@ -57,7 +65,7 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
     const previousBodyOverflow = document.body.style.overflow;
     root.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
-    const background = [...document.querySelectorAll<HTMLElement>("main, .site-footer, .akibwa-project-banner, .site-header__brand")]
+    const background = [...document.querySelectorAll<HTMLElement>("main, .site-footer, .akibwa-project-banner, .site-header")]
       .filter((element) => !element.inert);
     background.forEach((element) => { element.inert = true; });
     const focusFrame = requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
@@ -65,6 +73,7 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
     const desktop = window.matchMedia("(min-width: 821px)");
     const closeOnDesktop = () => { if (desktop.matches) setOpen(false); };
     desktop.addEventListener("change", closeOnDesktop);
+    window.addEventListener("resize", positionMenu);
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -88,8 +97,9 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
       background.forEach((element) => { element.inert = false; });
       cancelAnimationFrame(focusFrame);
       desktop.removeEventListener("change", closeOnDesktop);
+      window.removeEventListener("resize", positionMenu);
     };
-  }, [open]);
+  }, [open, positionMenu]);
 
   return (
     <>
@@ -113,8 +123,10 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
         className={`nav-toggle${open ? " is-open" : ""}`}
         disabled={!ready}
         onClick={() => {
-          if (!open) openerRef.current = toggleRef.current;
-          else requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+          if (!open) {
+            openerRef.current = toggleRef.current;
+            positionMenu();
+          } else requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
           setOpen((value) => !value);
         }}
         ref={toggleRef}
@@ -132,6 +144,7 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
           The portal also keeps the dialog above the optional portfolio banner. */}
       {ready ? createPortal(<div
         className={`nav-mobile${open ? " is-open" : ""}`}
+        style={{ top: menuTop }}
         id="site-nav-mobile"
         ref={menuRef}
         inert={!open || undefined}
@@ -140,8 +153,10 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
         aria-label="Site navigation"
       >
         <div className="nav-mobile__inner">
-          <div className="nav-mobile__heading">
-            <BrandWordmark className="nav-mobile__wordmark" />
+          <div className="site-header__inner nav-mobile__heading">
+            <div className="site-header__brand">
+              <BrandWordmark className="header-wordmark" />
+            </div>
             <button
               aria-label="Close menu"
               className="nav-mobile__close"
@@ -155,17 +170,19 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
               <X aria-hidden="true" size={26} strokeWidth={1.8} />
             </button>
           </div>
-          {navigation.map((item) => (
-            <Link
-              aria-current={currentPage === item.id ? "page" : undefined}
-              className="nav-mobile__link"
-              href={item.href}
-              key={item.id}
-              onClick={() => setOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
+          <div className="nav-mobile__links">
+            {navigation.map((item) => (
+              <Link
+                aria-current={currentPage === item.id ? "page" : undefined}
+                className="nav-mobile__link"
+                href={item.href}
+                key={item.id}
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>, document.body) : null}
     </>
