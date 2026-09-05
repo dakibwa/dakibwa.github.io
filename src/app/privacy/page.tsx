@@ -3,7 +3,7 @@ import { PolicyRedirect } from "@/components/PolicyRedirect";
 
 export const metadata: Metadata = {
   title: "Terms & privacy | Português com a Inês",
-  alternates: { canonical: "/terms/" },
+  alternates: { canonical: "/book/" },
   robots: { index: false, follow: true }
 };
 

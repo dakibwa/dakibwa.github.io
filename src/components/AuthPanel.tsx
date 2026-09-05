@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { AlertCircle, Lock, Mail, UserRound } from "lucide-react";
 import { AssetMark } from "@/components/BrandMarks";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { PrivacyNotice } from "@/components/PolicyInformation";
 import { browserTimeZone } from "@/lib/booking-api";
 import { login, register, requestPasswordReset, storeSession, type Student } from "@/lib/auth-api";
 
@@ -100,6 +101,7 @@ export function AuthPanel({
 
       {mode !== "forgot" ? (
         <>
+          <PrivacyNotice />
           <GoogleSignInButton onError={setError} onSignedIn={onSignedIn} />
           <p className="booking-state-note">Your first Google sign-in replaces any previous password for this email. You can set a new password using the forgotten-password link.</p>
         </>

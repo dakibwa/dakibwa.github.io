@@ -1543,28 +1543,6 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
   font-weight: 400;
 }
 
-.booking-policy {
-  display: grid;
-  grid-template-columns: 90px 1fr auto;
-  align-items: center;
-  min-height: 100px;
-  padding: 1rem var(--page-pad);
-  background-color: var(--lavender);
-  background-image: var(--paper-texture);
-  gap: 1.5rem;
-}
-
-.booking-policy .asset-mark {
-  width: 72px;
-  height: 72px;
-}
-
-.booking-policy p {
-  margin: 0;
-}
-
-/* The fee is the part people need to have registered, so it carries weight
-   rather than trailing the sentence in the same voice as everything else. */
 /*
  * The page reads as an interface rather than a document, so dragging across it
  * should not paint a selection. Anything a student may genuinely need to copy —
@@ -1585,50 +1563,6 @@ textarea,
 .schedule-bookings__meta {
   -webkit-user-select: text;
   user-select: text;
-}
-
-/*
- * Ink, not coral. Her coral on the lavender band measures 2.56:1 — the fee is
- * the one number on that line a student needs to read, and it was the least
- * readable thing on it. Weight carries the emphasis instead; no coral survives
- * this background at AA.
- */
-.booking-policy strong {
-  color: var(--ink);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.booking-policy .eyebrow {
-  color: var(--ink);
-}
-
-/*
- * A link inside a sentence stays in the sentence. These selectors once pointed
- * at rules whose bodies were removed in a cleanup, which left them dangling
- * into the next rule — the anchor inherited `display: flow-root` and broke out
- * of its paragraph onto its own line, stranding the full stop behind it.
- */
-.booking-policy a,
-.booking-policy button.text-action {
-  border: 0;
-  border-bottom: 1px solid currentColor;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  letter-spacing: inherit;
-  text-decoration: underline;
-  text-transform: none;
-  text-underline-offset: 2px;
-}
-
-.booking-policy a:hover,
-.booking-policy a:focus-visible,
-.booking-policy button.text-action:hover,
-.booking-policy button.text-action:focus-visible {
-  color: var(--coral-action);
 }
 
 /* Stepped booking: lesson, then day, then time, then details. Each step gets
@@ -5303,8 +5237,7 @@ button.text-action {
   opacity: 0.86;
 }
 
-.booking-form-note a,
-.booking-form-note__calendar {
+.booking-form-note a {
   border: 0;
   padding: 0;
   background: transparent;
@@ -5316,8 +5249,7 @@ button.text-action {
 }
 
 .booking-form-note a:hover,
-.booking-form-note__calendar:hover,
-.booking-form-note__calendar:focus-visible {
+.booking-form-note a:focus-visible {
   color: var(--coral-action);
 }
 
@@ -5953,98 +5885,107 @@ button.text-action {
   flex: 1;
 }
 
-/* Terms and privacy share one reading column with clear section headings. */
-.policy-page {
-  min-height: 70vh;
-  background: var(--paper);
+/* Required information stays with booking and sign-up, one click from the summary. */
+.booking-information {
+  padding: 1rem var(--page-pad) 1.5rem;
+  background-color: var(--paper);
+  background-image: var(--paper-texture);
 }
 
-.policy-page__hero {
-  padding: clamp(2.5rem, 5vw, 4rem) var(--page-pad);
-  background: var(--blue);
-  color: var(--paper);
+.booking-information > .policy-disclosure {
+  max-width: 720px;
 }
 
-.policy-page__hero h1 {
-  max-width: 760px;
-  margin: 0 auto 1.25rem;
-  font-family: var(--display);
-  font-size: clamp(2.15rem, 4.6vw, 3.8rem);
-  font-weight: 400;
-  line-height: 1.35;
-}
-
-.policy-page__hero > p {
-  max-width: 760px;
-  margin-inline: auto;
-  line-height: 1.5;
-}
-
-.policy-page__hero > p:last-child {
-  margin-top: 0.8rem;
-  font-size: 0.82rem;
-  opacity: 0.72;
-}
-
-.policy-page__body {
-  width: min(760px, calc(100% - 2 * var(--page-pad)));
-  margin: 0 auto;
-  padding: clamp(2.8rem, 6vw, 5rem) 0 clamp(4rem, 8vw, 7rem);
-}
-
-.policy-page__index {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.75rem;
-  margin-bottom: 2.5rem;
-}
-
-.policy-page__index a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-}
-
-.policy-page__body section {
+.policy-disclosure {
   scroll-margin-top: 2rem;
+  text-align: left;
 }
 
-.policy-page__body section + section {
-  margin-top: 2.25rem;
-  border-top: 1px solid var(--rule-soft);
-  padding-top: 2.25rem;
-}
-
-.policy-page__body h2 {
-  margin-bottom: 0.65rem;
-  color: var(--blue);
+.policy-disclosure > summary {
+  display: flex;
+  min-height: 44px;
+  width: fit-content;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--ink);
+  cursor: pointer;
   font-family: var(--ui);
-  font-size: clamp(1.35rem, 2.8vw, 1.75rem);
-  letter-spacing: 0.02em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  list-style: none;
+  text-transform: uppercase;
 }
 
-.policy-page__body h3 {
-  margin: 1.75rem 0 0.5rem;
-  font-family: var(--ui);
-  font-size: 1.05rem;
-  line-height: 1.5;
+.policy-disclosure > summary::-webkit-details-marker {
+  display: none;
 }
 
-.policy-page__body p {
-  font-size: clamp(0.98rem, 1.6vw, 1.08rem);
-  line-height: 1.75;
+.policy-disclosure > summary::after {
+  content: "+";
+  color: var(--coral-action);
+  font-size: 1.2rem;
+  font-weight: 400;
 }
 
-.policy-page__body p + p {
+.policy-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.policy-disclosure > summary:hover,
+.policy-disclosure > summary:focus-visible {
+  color: var(--coral-action);
+}
+
+.policy-information {
+  max-width: 68ch;
+  padding: 0.5rem 0 1.25rem;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.policy-information p {
+  margin: 0;
+}
+
+.policy-information p + p {
   margin-top: 0.9rem;
 }
 
-.policy-page__body a {
+.policy-information a,
+.policy-redirect a {
   color: var(--coral-action);
-  font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;
-  overflow-wrap: anywhere;
+}
+
+.privacy-notice {
+  margin: 0 0 1rem;
+  text-align: left;
+}
+
+.privacy-notice > p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.privacy-notice .policy-information {
+  font-size: 0.85rem;
+}
+
+.policy-redirect {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 3rem var(--page-pad);
+}
+
+.policy-redirect h1 {
+  font-family: var(--display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
 }
 
 /* Footer */
@@ -6108,10 +6049,12 @@ button.text-action {
   grid-column: 2;
   justify-content: flex-end;
   gap: 1.25rem;
-  color: #dcd8f5;
+  color: var(--lavender-soft);
   font-family: var(--ui);
-  font-size: 0.8125rem;
-  font-weight: 400;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .site-footer__legal a {
@@ -6563,15 +6506,6 @@ button.text-action {
     padding-top: 1.75rem;
   }
 
-  .booking-policy {
-    grid-template-columns: 70px 1fr;
-  }
-
-  .booking-policy a {
-    grid-column: 2;
-    justify-self: start;
-  }
-
   .manage-booking__facts > div {
     grid-template-columns: 1fr;
     gap: 0.15rem;
@@ -6798,17 +6732,6 @@ button.text-action {
 
   .booking-intro h1 {
     font-size: clamp(2.5rem, 11vw, 4.2rem);
-  }
-
-  .booking-policy {
-    grid-template-columns: 55px 1fr;
-    padding-top: 1.5rem;
-    padding-bottom: 1.5rem;
-  }
-
-  .booking-policy .asset-mark {
-    width: 52px;
-    height: 52px;
   }
 
   .slot-grid {

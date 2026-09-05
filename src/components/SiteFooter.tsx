@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BackToTop } from "@/components/BackToTop";
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { publicAssetPath } from "@/lib/paths";
 
 export function SiteFooter() {
   return (
@@ -19,8 +20,8 @@ export function SiteFooter() {
           <BackToTop />
         </div>
       </div>
-      <nav className="site-footer__legal" aria-label="Booking and privacy information">
-        <Link href="/terms">Terms &amp; privacy</Link>
+      <nav className="site-footer__legal" aria-label="Privacy information">
+        <a href={publicAssetPath("/book/#privacy")}>Privacy</a>
       </nav>
     </footer>
   );

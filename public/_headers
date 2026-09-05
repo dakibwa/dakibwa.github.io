@@ -46,11 +46,11 @@
   Cache-Control: public, max-age=600, must-revalidate
 
 /book/
-  Cache-Control: public, max-age=600, must-revalidate
-
-/terms/
   # Keep the real mailto link in the HTML. Cloudflare's email obfuscation
   # rewrites it to a JavaScript-only /cdn-cgi/ URL that 404s without scripts.
+  Cache-Control: public, max-age=600, must-revalidate, no-transform
+
+/terms/
   Cache-Control: public, max-age=600, must-revalidate, no-transform
 
 /booking-terms/
@@ -64,10 +64,10 @@
 # already carrying the old shell. Their contents come from the API at runtime,
 # so this is about the page itself catching up, not the lessons in it.
 /my-lessons/
-  Cache-Control: public, max-age=600, must-revalidate
+  Cache-Control: public, max-age=600, must-revalidate, no-transform
 
 /booking/
-  Cache-Control: public, max-age=600, must-revalidate
+  Cache-Control: public, max-age=600, must-revalidate, no-transform
 
 /schedule/
   Cache-Control: public, max-age=600, must-revalidate

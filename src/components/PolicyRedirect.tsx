@@ -1,17 +1,25 @@
+"use client";
+
+import { useEffect } from "react";
 import Link from "next/link";
 import { publicAssetPath } from "@/lib/paths";
 
-// Cloudflare redirects these addresses before serving HTML. This fallback also
-// works in the static GitHub preview and without JavaScript.
-export function PolicyRedirect({ section }: { section: "booking" | "privacy" }) {
-  const destination = `/terms/#${section}`;
+// Cloudflare handles these old URLs. The static preview preserves fragments too;
+// the ordinary link remains usable without JavaScript.
+export function PolicyRedirect({ section }: { section?: "booking" | "privacy" }) {
+  const destination = `/book/${section ? `#${section}` : ""}`;
+
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    const target = hash === "booking" || hash === "privacy" ? `/book/#${hash}` : destination;
+    window.location.replace(publicAssetPath(target));
+  }, [destination]);
 
   return (
     <>
-      <meta httpEquiv="refresh" content={`0;url=${publicAssetPath(destination)}`} />
-      <main className="policy-page__body" id="main-content">
-        <h1>Terms &amp; privacy</h1>
-        <p><Link href={destination}>Read our terms and privacy information</Link>.</p>
+      <main className="policy-redirect" id="main-content">
+        <h1>Booking information</h1>
+        <p><Link href={destination}>Read the booking and privacy information</Link>.</p>
       </main>
     </>
   );
