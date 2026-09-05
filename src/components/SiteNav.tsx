@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { BrandWordmark } from "@/components/BrandWordmark";
 import type { SitePage } from "@/components/SiteHeader";
 
 type NavItem = { href: string; id: SitePage; label: string };
@@ -139,19 +140,21 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
         aria-label="Site navigation"
       >
         <div className="nav-mobile__inner">
-          <button
-            aria-label="Close menu"
-            className="nav-mobile__close"
-            ref={closeRef}
-            onClick={() => {
-              setOpen(false);
-              requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
-            }}
-            type="button"
-          >
-            <X aria-hidden="true" size={26} strokeWidth={1.8} />
-          </button>
-          <p className="eyebrow nav-mobile__title">Português com a Inês</p>
+          <div className="nav-mobile__heading">
+            <BrandWordmark className="nav-mobile__wordmark" />
+            <button
+              aria-label="Close menu"
+              className="nav-mobile__close"
+              ref={closeRef}
+              onClick={() => {
+                setOpen(false);
+                requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+              }}
+              type="button"
+            >
+              <X aria-hidden="true" size={26} strokeWidth={1.8} />
+            </button>
+          </div>
           {navigation.map((item) => (
             <Link
               aria-current={currentPage === item.id ? "page" : undefined}

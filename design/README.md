@@ -339,7 +339,10 @@ Preserve these desktop and mobile states:
   choices. The mobile calendar must keep all seven columns and its legend inside
   the card after resize or orientation changes. Opening either the header
   hamburger or footer `Menu` opens the same four main destinations over the
-  current viewport. It does not scroll the page to the
+  current viewport. The panel retains the original handwritten wordmark beside
+  its close button; do not replace that brand identity with an uppercase text
+  label. Its destination links keep the shared Montserrat navigation font.
+  It does not scroll the page to the
   header first. Focus stays inside the menu; closing it or pressing Escape
   returns focus to its opener and retains the page position. Navigation and
   resizing to desktop release the scroll lock. Short screens can scroll the

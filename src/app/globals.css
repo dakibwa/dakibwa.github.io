@@ -4272,19 +4272,21 @@ html.booking-transitioning .booking-confirmation-stage {
   padding: 1.5rem var(--page-pad) 2rem;
 }
 
-.nav-mobile__title {
+.nav-mobile__heading {
   display: flex;
   align-items: center;
-  min-height: 46px;
-  margin: 0 3.5rem 1.5rem 0;
-  color: var(--lavender-ink);
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.nav-mobile__wordmark {
+  width: min(230px, calc(100% - 4rem));
 }
 
 .nav-mobile__close {
-  position: absolute;
-  top: 1.5rem;
-  right: var(--page-pad);
   display: grid;
+  flex: 0 0 46px;
   width: 46px;
   height: 46px;
   place-items: center;

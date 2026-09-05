@@ -237,7 +237,8 @@ for (const route of routes) {
       throw new Error(`${route.id} should have exactly one h1; found ${headingCount}.`);
     }
 
-    const wordmarkCount = await page.locator(".brand-wordmark").count();
+    // The closed, inert mobile dialog has its own wordmark for when it opens.
+    const wordmarkCount = await page.locator(".brand-wordmark:visible").count();
     if (wordmarkCount !== 2) {
       throw new Error(`${route.id} should use one header wordmark and one footer sign-off; found ${wordmarkCount}.`);
     }
