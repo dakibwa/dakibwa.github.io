@@ -495,7 +495,8 @@ client secret with `initEmbeddedCheckout`.
    Inês Dias Baía and its business is Português com a Inês. Fiscal treatment
    remains the owner's responsibility; do not infer tax registration from
    payments activation.
-3. In live mode, enable cards; leave the other payment methods off. Confirm the
+3. Checkout explicitly allows cards only for setup and payment recovery. In live
+   mode, leave other payment methods off. Confirm the
    business name, support contact, statement descriptor and payout schedule.
 4. Create a least-privilege live restricted key and install it with the live
    webhook signing secret in the production Worker. Production's
@@ -503,8 +504,10 @@ client secret with `initEmbeddedCheckout`.
 5. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to the live
    publishable key. The Pages build's `NEXT_PUBLIC_STRIPE_EXPECTED_MODE=live`
    refuses to mount Stripe.js with a test key.
-6. Register the live `/stripe/webhook` endpoint for
-   `checkout.session.completed`; verify a signed delivery in Stripe's event log.
+6. The live `/stripe/webhook` destination was created and verified Active on
+   5 September for `checkout.session.completed` only. Its signing secret remains
+   masked and not installed. After secure installation, verify a signed delivery
+   in Stripe's event log.
 7. Run the redesigned full test-mode journey: setup mode takes no money;
    signed webhook confirmation; full lesson-end charge; no-show €5 replacement;
    same-day move/cancel €5; decline to `payment_due`; and dry-run notices.

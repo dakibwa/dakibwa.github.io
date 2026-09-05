@@ -144,6 +144,7 @@ export function createCardSetupSession(
       integration_identifier: INTEGRATION_IDENTIFIER,
       mode: "setup",
       currency: "eur",
+      payment_method_types: { 0: "card" },
       client_reference_id: booking.id,
       ...(customer ? { customer } : { customer_creation: "always", customer_email: customerEmail }),
       setup_intent_data: {
@@ -221,6 +222,7 @@ export function createCheckoutSession(
   return stripeRequest(env, "/checkout/sessions", {
     integration_identifier: INTEGRATION_IDENTIFIER,
     mode: "payment",
+    payment_method_types: { 0: "card" },
     client_reference_id: booking.id,
     ...(customer ? { customer } : { customer_email: customerEmail }),
     ...(saveCard ? { customer_creation: "always" } : {}),
