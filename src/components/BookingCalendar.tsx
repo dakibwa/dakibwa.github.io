@@ -166,7 +166,6 @@ function BookingSelectionSummary({
   actionLabel,
   ariaLabel,
   detail,
-  eyebrow,
   mark,
   onAction,
   title
@@ -174,7 +173,6 @@ function BookingSelectionSummary({
   actionLabel?: string;
   ariaLabel: string;
   detail?: string;
-  eyebrow: string;
   mark: string;
   onAction?: () => void;
   title: string;
@@ -183,17 +181,18 @@ function BookingSelectionSummary({
     <div className="booking-selection-summary" aria-label={ariaLabel}>
       <AssetMark asset={mark} className="booking-selection-summary__mark" />
       <span className="booking-choice-summary__copy">
-        <span className="eyebrow">{eyebrow}</span>
         <strong>{title}</strong>
         {detail ? <small>{detail}</small> : null}
       </span>
       {actionLabel && onAction ? (
         <button
+          aria-label={actionLabel}
           className="text-action booking-choice-summary__change"
           onClick={onAction}
           type="button"
         >
-          {actionLabel}
+          <span className="booking-choice-summary__change-label">{actionLabel}</span>
+          <span className="booking-choice-summary__change-short" aria-hidden="true">Change</span>
         </button>
       ) : null}
     </div>
@@ -1304,8 +1303,6 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
         <BookingSelectionSummary
           actionLabel="Change lesson"
           ariaLabel="Selected lesson"
-          detail={bookingKind === "recurring" ? "Same weekly time" : undefined}
-          eyebrow="Lesson"
           mark="/visuals/v2-splats/lesson-format-splat-v2.svg"
           onAction={changeLessonChoice}
           title={lessonKindLabel}
@@ -1313,7 +1310,6 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
         <BookingSelectionSummary
           actionLabel="Change location"
           ariaLabel="Selected location"
-          eyebrow="Where"
           mark="/visuals/v2-splats/in-porto-or-online-splat-v2.svg"
           onAction={() => editSetupChoice("location")}
           title={form.location === "porto" ? "In Porto" : "Online"}
@@ -1322,7 +1318,6 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           actionLabel={bookingKind === "trial" ? undefined : "Change length"}
           ariaLabel="Selected lesson length"
           detail={formatMoneyCents(lessonType.price_cents)}
-          eyebrow="Lesson length"
           mark="/visuals/v2-splats/built-around-you-splat-v2.svg"
           onAction={bookingKind === "trial" ? undefined : () => editSetupChoice("duration")}
           title={formatLessonDuration(lessonType.duration_minutes)}
@@ -1331,19 +1326,15 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           <BookingSelectionSummary
             actionLabel="Change repeat"
             ariaLabel="Selected repeat"
-            detail="Same day and time each week"
-            eyebrow="Repeat for"
             mark="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg"
             onAction={() => editSetupChoice("repeat")}
-            title={form.repeat === null ? "Ongoing" : `${form.repeat} weeks`}
+            title={form.repeat === null ? "Ongoing" : `Repeat for ${form.repeat} weeks`}
           />
         ) : null}
         {includeSchedule && selectedDate ? (
           <BookingSelectionSummary
             actionLabel="Change date"
             ariaLabel="Selected date"
-            detail="Porto time"
-            eyebrow="Date selected"
             mark="/visuals/v2-splats/booking-availability-splat-v2.svg"
             onAction={changeDateChoice}
             title={formatLongDate(`${selectedDate}T12:00:00Z`)}
@@ -1353,11 +1344,10 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           <BookingSelectionSummary
             actionLabel="Change time"
             ariaLabel="Selected time"
-            detail={localTime ? `${localTime} your time` : "Porto time"}
-            eyebrow="Time selected"
+            detail={localTime ? `${localTime} your time` : undefined}
             mark="/visuals/v2-splats/relaxed-practical-splat-v2.svg"
             onAction={changeTimeChoice}
-            title={formatSlotTime(chosen.startAt)}
+            title={`${formatSlotTime(chosen.startAt)} Porto time`}
           />
         ) : null}
       </div>
@@ -2106,11 +2096,10 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                 className="booking-date-summary__mark"
               />
               <span className="booking-choice-summary__copy">
-                <span className="eyebrow">Date selected</span>
                 <strong>{formatLongDate(`${selectedDate}T12:00:00Z`)}</strong>
-                <small>Porto time</small>
               </span>
               <button
+                aria-label="Change date"
                 className="text-action booking-choice-summary__change"
                 onClick={() =>
                   transitionBooking(() => {
@@ -2122,7 +2111,8 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                 }
                 type="button"
               >
-                Change date
+                <span className="booking-choice-summary__change-label">Change date</span>
+                <span className="booking-choice-summary__change-short" aria-hidden="true">Change</span>
               </button>
             </div>
           ) : (

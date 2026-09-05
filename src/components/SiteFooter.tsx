@@ -14,13 +14,15 @@ export function SiteFooter() {
           <Link href="/lessons">Lessons</Link>
           <Link href="/faq">FAQ</Link>
           <Link href="/book">Booking</Link>
-          <Link href="/booking-terms">Terms</Link>
-          <Link href="/privacy">Privacy</Link>
         </nav>
         <div className="site-footer__contact">
           <BackToTop />
         </div>
       </div>
+      <nav className="site-footer__legal" aria-label="Booking and privacy information">
+        <Link href="/booking-terms">Terms</Link>
+        <Link href="/privacy">Privacy</Link>
+      </nav>
     </footer>
   );
 }

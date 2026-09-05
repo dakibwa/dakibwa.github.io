@@ -213,6 +213,7 @@ export default function FAQPage() {
       <main className="faq-page" id="main-content">
         <section className="faq-hero" aria-labelledby="faq-title">
           <h1 id="faq-title">Questions<br />before booking?</h1>
+          <AssetMark asset="/visuals/v2-splats/faq-answers-splat-v2.svg" className="faq-hero__mark" priority />
         </section>
 
         <section className="faq-reference" aria-label="Frequently asked questions">

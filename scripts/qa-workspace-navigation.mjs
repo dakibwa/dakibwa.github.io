@@ -129,9 +129,9 @@ try {
   await menu.waitFor();
   await settle();
   aligned(before, await page.evaluate(() => scrollY), "Footer menu preserves page position");
-  assert.equal(await menu.getByRole("link").count(), 6);
+  assert.equal(await menu.getByRole("link").count(), 4);
   await page.keyboard.press("Shift+Tab");
-  assert.equal(await page.evaluate(() => document.activeElement.textContent), "Privacy");
+  assert.equal(await page.evaluate(() => document.activeElement.textContent), "Booking");
   await page.keyboard.press("Tab");
   assert.equal(await page.evaluate(() => document.activeElement.getAttribute("aria-label")), "Close menu");
   await page.screenshot({ path: `${out}/menu-mobile.png` });
@@ -141,8 +141,7 @@ try {
   aligned(before, await page.evaluate(() => scrollY), "Closing menu preserves page position");
   assert.ok(await page.evaluate(() => document.activeElement.classList.contains("site-footer__menu")));
   assert.equal(await page.locator("main").getAttribute("inert"), null);
-  await page.locator(".site-footer__menu").click();
-  await menu.getByRole("link", { name: "Terms", exact: true }).click();
+  await page.locator(".site-footer__legal").getByRole("link", { name: "Terms", exact: true }).click();
   await page.getByRole("heading", { name: "Booking and payment terms", exact: true }).waitFor();
   await page.goBack();
   await page.getByRole("heading", { name: "Questions before booking?", exact: true }).waitFor();
@@ -155,7 +154,11 @@ try {
   assert.equal(motion.duration, "0s");
   await page.setViewportSize({ width: 1100, height: 900 });
   await menu.waitFor({ state: "hidden" });
-  assert.notEqual(await page.evaluate(() => getComputedStyle(document.body).overflow), "hidden");
+  // CSS hides the menu before React's resize handler releases the scroll lock.
+  await page.waitForFunction(() =>
+    getComputedStyle(document.body).overflow !== "hidden" &&
+    getComputedStyle(document.documentElement).overflow !== "hidden"
+  );
 
   await page.setViewportSize({ width: 390, height: 420 });
   await page.goto(`${base}/faq/?from=akibwa`);
@@ -163,7 +166,9 @@ try {
   await menu.waitFor();
   await settle();
   await page.screenshot({ path: `${out}/menu-with-portfolio-mobile.png` });
-  await menu.getByRole("link", { name: "Privacy", exact: true }).click();
+  await menu.getByRole("link", { name: "Booking", exact: true }).click();
+  await page.locator("#booking-title").waitFor();
+  await page.locator(".site-footer__legal").getByRole("link", { name: "Privacy", exact: true }).click();
   await page.getByRole("heading", { name: "Privacy notice", exact: true }).waitFor();
 
   const legacy = await browser.newPage({ viewport: { width: 390, height: 844 } });
