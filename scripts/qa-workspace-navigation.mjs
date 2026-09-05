@@ -37,6 +37,27 @@ async function accountAction(name) {
 
 function aligned(a, b, message) { assert.ok(Math.abs(a - b) <= 2, `${message}: ${a} / ${b}`); }
 
+async function openMenuWithStationaryHeader(label) {
+  const toggle = page.getByRole("button", { name: "Open menu", exact: true });
+  await toggle.scrollIntoViewIfNeeded();
+  await settle();
+  const beforeLogo = await page.locator(".site-header .header-wordmark").boundingBox();
+  const beforeToggle = await toggle.boundingBox();
+  await toggle.click();
+  const menu = page.getByRole("dialog", { name: "Site navigation" });
+  await menu.waitFor();
+  // Check during opening as well as after the links' entrance transition.
+  for (const stage of ["opening", "open"]) {
+    const logo = await menu.getByRole("img", { name: "Português com a Inês", exact: true }).boundingBox();
+    const close = await menu.getByRole("button", { name: "Close menu", exact: true }).boundingBox();
+    for (const edge of ["x", "y", "width", "height"]) {
+      aligned(beforeLogo[edge], logo[edge], `${label} ${stage} logo ${edge}`);
+      aligned(beforeToggle[edge], close[edge], `${label} ${stage} control ${edge}`);
+    }
+    if (stage === "opening") await settle();
+  }
+}
+
 try {
   await page.goto(`${base}/book/`);
   await page.locator("#account-upcoming-lessons").waitFor();
@@ -119,6 +140,14 @@ try {
   aligned(tallList.y + tallList.height, tallCalendar.y + tallCalendar.height, "A long lesson list keeps the calendar border aligned");
   await page.screenshot({ path: `${out}/upcoming-long-desktop.png`, fullPage: true });
 
+  for (const width of [320, 390, 820]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(`${base}/`);
+    await openMenuWithStationaryHeader(`${width}px header`);
+    await page.keyboard.press("Escape");
+    await settle();
+  }
+
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${base}/faq/`);
   await page.locator(".site-footer__menu").scrollIntoViewIfNeeded();
@@ -163,9 +192,7 @@ try {
 
   await page.setViewportSize({ width: 390, height: 420 });
   await page.goto(`${base}/faq/?from=akibwa`);
-  await page.getByRole("button", { name: "Open menu", exact: true }).click();
-  await menu.waitFor();
-  await settle();
+  await openMenuWithStationaryHeader("Portfolio header");
   await page.screenshot({ path: `${out}/menu-with-portfolio-mobile.png` });
   await menu.getByRole("link", { name: "Booking", exact: true }).click();
   await page.locator("#booking-title").waitFor();

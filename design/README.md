@@ -344,9 +344,13 @@ Preserve these desktop and mobile states:
   choices. The mobile calendar must keep all seven columns and its legend inside
   the card after resize or orientation changes. Opening either the header
   hamburger or footer `Menu` opens the same four main destinations over the
-  current viewport. The panel retains the original handwritten wordmark beside
-  its close button; do not replace that brand identity with an uppercase text
-  label. Its destination links keep the shared Montserrat navigation font.
+  current viewport. When opened from the header, its handwritten wordmark and
+  close control retain the header's exact position and size, including beneath
+  the optional portfolio banner. Share the header's layout rules; do not give
+  the menu a separately sized or animated logo. Only the destination links drop
+  down beneath that stationary row. A footer opener places the same row at the
+  viewport top. Do not replace the wordmark with an uppercase text label. Its
+  destination links keep the shared Montserrat navigation font.
   It does not scroll the page to the
   header first. Focus stays inside the menu; closing it or pressing Escape
   returns focus to its opener and retains the page position. Navigation and

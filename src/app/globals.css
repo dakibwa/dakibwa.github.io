@@ -4143,8 +4143,8 @@ html.booking-transitioning .booking-confirmation-stage {
   color: var(--lavender-ink);
 }
 
-/* The phone menu opens over the current viewport, including from the footer.
-   Its own scroll area keeps every destination reachable on short screens. */
+/* The menu shares the header's geometry so its wordmark stays still. Only
+   the links drop down. Its own scroll area also works from a footer opener. */
 .nav-toggle {
   display: none;
   width: 46px;
@@ -4187,35 +4187,37 @@ html.booking-transitioning .booking-confirmation-stage {
   overflow-y: auto;
   overscroll-behavior: contain;
   opacity: 0;
-  transform: translateY(-6px);
   background-color: var(--paper);
   background-image: var(--paper-texture);
-  transition: opacity 180ms ease, transform 220ms var(--motion-ease), visibility 0s linear 220ms;
+  transition: opacity 180ms ease, visibility 0s linear 220ms;
 }
 
 .nav-mobile.is-open {
   visibility: visible;
   opacity: 1;
-  transform: none;
-  transition: opacity 180ms ease, transform 220ms var(--motion-ease), visibility 0s;
+  transition: opacity 180ms ease, visibility 0s;
 }
 
 .nav-mobile__inner {
   display: flex;
   flex-direction: column;
-  padding: 1.5rem var(--page-pad) 2rem;
 }
 
 .nav-mobile__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(11, 81, 57, 0.1);
 }
 
-.nav-mobile__wordmark {
-  width: min(230px, calc(100% - 4rem));
+.nav-mobile__links {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--page-pad) 2rem;
+  transform: translateY(-6px);
+  transition: transform 220ms var(--motion-ease);
+}
+
+.nav-mobile.is-open .nav-mobile__links {
+  transform: none;
 }
 
 .nav-mobile__close {
@@ -6762,7 +6764,9 @@ button.text-action {
 
 @media (prefers-reduced-motion: reduce) {
   .nav-mobile,
-  .nav-mobile.is-open {
+  .nav-mobile.is-open,
+  .nav-mobile__links,
+  .nav-mobile.is-open .nav-mobile__links {
     transform: none;
     transition: none;
   }
