@@ -200,7 +200,9 @@ Preserve these desktop and mobile states:
   rather than the book-or-view fork. On a wide desktop the account bar spans
   the workspace above a two-column overview: upcoming lessons on the left and
   the same four-week visual calendar on the right. Those two panels share their
-  top and bottom edges even when the upcoming list is short. At narrower widths they keep
+  top and bottom edges even when the upcoming list is short or empty. The visible
+  calendar border, not only its wrapper, reaches the account bar's right edge
+  at wide desktop sizes. At narrower widths they keep
   the accessible stacked order of account, lessons, then calendar. Free times
   do not appear in this lesson overview.
   A signed-out visitor can browse lesson types, dates, and times first; sign-in
@@ -217,10 +219,15 @@ Preserve these desktop and mobile states:
   attention. It remains present even before the student chooses
   `View your lessons`, while booking, and while an individual lesson is open;
   an empty history says so instead of removing the shortcut. The Upcoming
-  lessons panel contains every future commitment. Choosing either lesson shortcut
-  dismisses the active booking detail, opens its own panel below
-  the account bar, and establishes the four-week lesson workspace beneath it.
-  Past lessons has `Back to start`. Below the wide-desktop account-bar layout,
+  lessons panel contains every future commitment. Account destinations open
+  consistently: selecting the current view again keeps it open. Upcoming lessons
+  owns the four-week calendar. History uses the full width beneath the account
+  bar, with two readable columns of records on wide desktop and one on mobile;
+  its `Upcoming lessons` action returns directly to the current schedule.
+  Profile editing uses the account bar on its own, with paired fields on wide
+  desktop; `Done editing` returns to Upcoming lessons. History and profile
+  editing never leave a future calendar floating beside or underneath them.
+  Below the wide-desktop account-bar layout,
   the more useful top-right action in Upcoming lessons remains `Book a lesson`,
   uses the same coral emphasis, and opens the booking choices directly.
   A repeating schedule appears once in Upcoming lessons,
@@ -252,7 +259,8 @@ Preserve these desktop and mobile states:
   The account bar, workflow choices, and calendar share the same left and right
   edges. Profile fields open directly inside the account
   bar, without a second framed card; their actions sit beside the field whenever
-  the available width permits;
+  the available width permits. Profile inputs use the same single blue focus
+  boundary as the booking notes field;
 - after a successful one-off or recurring booking, the confirmation's primary
   back action opens `Upcoming lessons` so the new booking is immediately visible;
 - the calendar is the stable visual surface beneath the lesson-management
@@ -306,12 +314,24 @@ Preserve these desktop and mobile states:
   change instead of waiting for decoration to finish, and the page scrolls only
   when the next decision is not already comfortably visible. Loading copy and
   its replacement controls dissolve into one another rather than snapping.
-  Reduced motion removes both the transitions and smooth scrolling;
+  The account bar stays still while the opened history, lesson list, profile
+  fields or recurring occurrences settle into place. Buttons stay responsive
+  during motion. Reduced motion removes both the transitions and smooth scrolling;
 - preserve the current mobile reading order and full-width stacked lesson
   choices. The mobile calendar must keep all seven columns and its legend inside
   the card after resize or orientation changes. Opening either the header
-  hamburger or footer `Menu` locks the page behind the drawer; closing it by
-  toggle, link, route change, or Escape restores the previous scroll state.
+  hamburger or footer `Menu` opens the same complete menu over the current
+  viewport, including Terms and Privacy. It does not scroll the page to the
+  header first. Focus stays inside the menu; closing it or pressing Escape
+  returns focus to its opener and retains the page position. Navigation and
+  resizing to desktop release the scroll lock. Short screens can scroll the
+  menu itself to reach every link.
+
+Public `Book a lesson` calls to action explicitly open new booking, including
+for returning students. `Book a trial lesson` opens the trial's location choice;
+existing students receive their eligible ordinary choices. The main `Booking`
+navigation still opens a returning student's schedule. Old `/my-lessons` and
+emailed `/booking` links retain their destination and tokens in `/book/`.
 
 ## Account interaction states
 

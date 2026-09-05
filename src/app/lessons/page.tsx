@@ -63,7 +63,7 @@ export default function LessonsPage() {
               <AssetMark asset="/visuals/v2-splats/in-porto-or-online-splat-v2.svg" className="lesson-location-band__mark" />
               <p>In Porto or online</p>
             </div>
-            <Link className="button button--coral" href="/book">Book a lesson</Link>
+            <Link className="button button--coral" href="/book/?view=book">Book a lesson</Link>
           </section>
 
           <section className="lessons-note">

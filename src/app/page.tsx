@@ -36,7 +36,7 @@ export default function Home() {
             <div className="editorial-rule" aria-hidden="true" />
             <p>One to one in Porto.<br />Or online, wherever you are.</p>
             <div className="home-hero__actions">
-              <Link className="button button--coral" href="/book">
+              <Link className="button button--coral" href="/book/?view=book">
                 Book a lesson
               </Link>
               <nav className="home-hero__links" aria-label="Learn more about lessons">

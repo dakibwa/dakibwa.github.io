@@ -155,12 +155,14 @@ depending on them having kept the right confirmation email.
   inside one compact menu at narrower widths. `Book a lesson` is the coral
   primary action. The upcoming count may
   sit beside `View lessons`; Past lessons has no badge. Choosing view or past lessons opens a
-  separate panel below the account bar and switches away from any active booking
-  or lesson-management detail, so they work as shortcuts rather than stacked
-  disclosures. `Past lessons` stays in the menu throughout every signed-in
+  complete view and switches away from any active booking or lesson-management
+  detail. Clicking the current destination keeps it open. History occupies the
+  full workspace without the future calendar. Profile editing also hides the
+  calendar; `Done editing` returns to Upcoming lessons.
+  `Past lessons` stays in the menu throughout every signed-in
   booking state, including before `View your lessons` is chosen and while a
   recurring occurrence is open; an empty history gets an empty state rather
-  than losing the menu item. Past lessons offers `Back to start`; below the
+  than losing the menu item. History returns through `Upcoming lessons`; below the
   wide-desktop bar layout, Upcoming lessons instead offers the same coral
   `Book a lesson` shortcut, opening the booking choices directly.
   There is only one `Booking`
@@ -670,10 +672,11 @@ students at WhatsApp, rather than rendering a calendar that cannot work.
 
 ## Not yet built
 
-- **Live payment activation.** The account and sandbox path exist, but
-  `payment_mode` stays `off` until Inês completes the owner-only Stripe profile,
-  live keys and the live webhook replace the sandbox values, and the approved
-  real-charge/refund smoke test passes.
+- **Live payment activation.** The live merchant was rechecked on 5 September:
+  its business URL matches this site, charges and payouts are enabled, and no
+  requirements are currently due. `payment_mode` stays `off` until the live key
+  and webhook secret are installed securely and the explicitly approved
+  real-money acceptance checks pass.
 - **Fiscal documents.** She must issue a fatura-recibo per lesson, and CIVA art.
   36.º gives 5 working days from the lesson. See
   `Documents/Work/Português com a Inês/Billing and Booking - Operating Context

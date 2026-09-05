@@ -26,7 +26,11 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
 
     if (window.location.pathname === "/book/") return;
     const target = new URL("/book/", window.location.origin);
-    if (token) target.searchParams.set("manage", token);
+    target.search = params.toString();
+    if (token) {
+      target.searchParams.set("manage", token);
+      target.searchParams.delete("token");
+    }
     else if (initialView === "lessons" || params.has("emailToken")) target.searchParams.set("view", "lessons");
     const emailToken = params.get("emailToken");
     if (emailToken) target.searchParams.set("emailToken", emailToken);
@@ -70,7 +74,7 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
 
           <section className="booking-provider" aria-label="Your lesson calendar">
             {BOOKING_CONFIGURED ? (
-              <BookingCalendar initialManageToken={manageToken} />
+              <BookingCalendar initialManageToken={manageToken} initialLessonsView={initialView === "lessons"} />
             ) : (
               <div className="booking-placeholder" aria-label="Booking setup placeholder">
                 <p className="eyebrow">Not yet available</p>
