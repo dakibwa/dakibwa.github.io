@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS students (
   -- 'teacher' grants the admin endpoints. Inês signs in as herself rather than
   -- pasting a shared token, though ADMIN_TOKEN remains as a way back in.
   role          TEXT NOT NULL DEFAULT 'student',
+  session_version INTEGER NOT NULL DEFAULT 0,
   -- Stripe's opaque identifiers for charging a saved card again (migration
   -- 0009). The card itself lives at Stripe; these are references, not secrets.
   stripe_customer_id    TEXT,
@@ -118,6 +119,10 @@ CREATE TABLE IF NOT EXISTS email_changes (
 CREATE INDEX IF NOT EXISTS idx_email_changes_student ON email_changes (student_id);
 
 CREATE TABLE IF NOT EXISTS bookings (
+  charge_started_at TEXT,
+  same_day_fee_started_at TEXT,
+  charge_request TEXT,
+  same_day_fee_request TEXT,
   id                TEXT PRIMARY KEY,
   reference         TEXT NOT NULL UNIQUE,
   lesson_type_id    TEXT NOT NULL REFERENCES lesson_types (id),
@@ -173,6 +178,16 @@ CREATE TABLE IF NOT EXISTS bookings (
   -- one-off booking has no series, and everything else about the row behaves
   -- identically either way.
   series_id         TEXT REFERENCES booking_series (id)
+);
+
+CREATE TABLE IF NOT EXISTS booking_refunds (
+  booking_id TEXT PRIMARY KEY REFERENCES bookings(id),
+  request TEXT NOT NULL,
+  requested_by TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  stripe_refund_id TEXT,
+  created_at TEXT NOT NULL,
+  attempted_at TEXT
 );
 
 -- Availability is computed by subtracting confirmed bookings from the rules,
@@ -239,3 +254,13 @@ CREATE INDEX IF NOT EXISTS idx_students_google ON students (google_sub);
 CREATE INDEX IF NOT EXISTS idx_bookings_series ON bookings (series_id);
 CREATE INDEX IF NOT EXISTS idx_series_student ON booking_series (student_id);
 CREATE INDEX IF NOT EXISTS idx_series_active ON booking_series (status, filled_to);
+
+CREATE TABLE IF NOT EXISTS student_recurring_rates (
+  student_id TEXT NOT NULL REFERENCES students(id),
+  duration_minutes INTEGER NOT NULL CHECK (duration_minutes IN (60, 90)),
+  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+  redeemed_at TEXT NOT NULL,
+  PRIMARY KEY (student_id, duration_minutes)
+);
+CREATE TABLE IF NOT EXISTS request_limits (key TEXT PRIMARY KEY, window INTEGER NOT NULL, attempts INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS revoked_sessions (token_hash TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);

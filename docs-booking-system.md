@@ -99,12 +99,15 @@ depending on them having kept the right confirmation email.
   accepted trade against guessing.
 - Reset links are single-use and last an hour. A Google-only account has no
   password; using "forgot password" is how such a student sets one.
-- Sessions are stateless bearer tokens in `localStorage`, not cookies: the site
+- Sessions are signed bearer tokens in `localStorage`, not cookies: the site
   and the API are different origins, so a cookie would need `SameSite=None` and
   would be dropped by any browser blocking third-party cookies. Signing out
-  cannot revoke a token server-side, and changing a password does not invalidate
-  existing ones — worth knowing before this is reused for anything more
-  sensitive than a lesson calendar.
+  revokes the presented token server-side when connected. Password reset and
+  verified email changes increment the account session version, invalidating
+  older sessions. Email changes also unlink the old Google identity. Legacy
+  sessions remain version zero until revoked; emailed manage links keep their
+  existing scheme. Offline sign-out clears this device but cannot reach the
+  revocation endpoint.
 - The emailed manage link still works on its own, so a forgotten password never
   blocks someone from changing a lesson.
 - **Booking, the learner's calendar, and lesson changes share one workspace.**
@@ -481,18 +484,37 @@ The source-level `STRIPE_UI_MODE=embedded` setting maps to Stripe API
 2026-08-26.dahlia's `ui_mode=embedded_page`. Stripe.js still mounts the returned
 client secret with `initEmbeddedCheckout`.
 
+The 5 September 2026 sandbox acceptance used a labelled `example.invalid`
+student and published Stripe test cards only: declined setup remained
+unconfirmed; successful setup saved the card without payment; signed Checkout
+delivery confirmed the booking; a same-day move charged €5 separately, then
+the minute cron charged €25 after the moved lesson's end; hosted €25 recovery
+completed and a later cancellation completed an actual sandbox refund. Emails
+were dry-run. Synthetic dates were moved in the isolated D1 database to exercise
+the time boundaries; concurrency, DST, no-show and ambiguous provider outcomes
+are covered by the real-SQLite integration suite.
+
+This run corrected the sandbox webhook destination to the staging Worker (it
+had pointed at production), verified a recovered signed delivery answered 200,
+and found that off-session PaymentIntents must explicitly select `card` when
+using `error_on_requires_action`. Checkout also disables Adaptive Pricing per
+session, keeping the agreed EUR amount instead of inheriting an optional
+Dashboard currency conversion with an additional FX fee. These sandbox results
+do not establish live-key or real-money acceptance.
+
 **Go-live checklist**:
 
-1. Apply migration 0012 to both databases while production payment remains
+1. Apply migrations 0012–0015 to both databases while production payment remains
    off. It adds lesson-end charge state, attendance, no-show and independent
    same-day-fee fields.
 2. ~~Open Inês's Stripe account and invite Dan as **Administrator**~~ — done,
-   31 August 2026. **Inês must complete Stripe's profile in her own secure
-   session**: legal/tax identity, public business details, Portuguese payout
-   bank, identity checks and Stripe declarations. The account is sandbox-only
-   until Stripe accepts that profile; this cannot be replaced by Connect API
-   onboarding because this is her standalone merchant account, not a platform.
-3. In live mode, enable cards; leave the other payment methods off. Confirm the
+   31 August 2026. On 5 September 2026 the live merchant's account status showed
+   Payments and Payouts active with no outstanding tasks. Its representative is
+   Inês Dias Baía and its business is Português com a Inês. Fiscal treatment
+   remains the owner's responsibility; do not infer tax registration from
+   payments activation.
+3. Checkout explicitly allows cards only for setup and payment recovery. In live
+   mode, leave other payment methods off. Confirm the
    business name, support contact, statement descriptor and payout schedule.
 4. Create a least-privilege live restricted key and install it with the live
    webhook signing secret in the production Worker. Production's
@@ -500,8 +522,10 @@ client secret with `initEmbeddedCheckout`.
 5. Set the repository variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to the live
    publishable key. The Pages build's `NEXT_PUBLIC_STRIPE_EXPECTED_MODE=live`
    refuses to mount Stripe.js with a test key.
-6. Register the live `/stripe/webhook` endpoint for
-   `checkout.session.completed`; verify a signed delivery in Stripe's event log.
+6. The live `/stripe/webhook` destination was created and verified Active on
+   5 September for `checkout.session.completed` only. Its signing secret remains
+   masked and not installed. After secure installation, verify a signed delivery
+   in Stripe's event log.
 7. Run the redesigned full test-mode journey: setup mode takes no money;
    signed webhook confirmation; full lesson-end charge; no-show €5 replacement;
    same-day move/cancel €5; decline to `payment_due`; and dry-run notices.
@@ -527,6 +551,72 @@ booking time are kept:
   the new end time; a cancellation removes the full lesson charge.
 - **Booked without automatic payment**: the original pay-in-person promise is
   retained and no new card charge is invented.
+
+### Private recurring rates and security
+
+`PRIVATE_RECURRING_CODES` is a private Worker binding containing the exact
+approved code, duration and cents triples. The canonical owner list is outside
+this public repository. `scripts/private-recurring-catalogue.mjs` reads that
+private Markdown list and pipes JSON directly to `wrangler secret put
+PRIVATE_RECURRING_CODES`; do not print the catalogue or add it to public Git.
+Authenticated `GET/POST /me/recurring-rates` exposes only the current student's
+saved prices. Eight redemption attempts per account per 15 minute window are
+reserved atomically, including parallel guesses. Case and outer whitespace are
+normalised; prefixes/suffixes are never pricing authority.
+
+An account's first grant for each duration wins; codes remain reusable by other
+accounts and removing a code does not revoke prior grants. Recurring creation
+and top-ups snapshot the saved rate in `bookings.amount_cents`, including when
+payment is off. Existing rows keep their price when moved at the same duration;
+a new duration uses its own saved rate or public price. Single/trial bookings
+and €5 fees never use these rates. No booked row is repriced merely by redeeming.
+
+The charge claim rechecks current status and end time atomically. A successful
+cancel or move wins against a previously selected charge, while already
+processing payments reject concurrent changes. Student and teacher moves use
+conditional conflict/sequence checks. No-op moves do not schedule fees. Payment
+and fee retries stop automatically after 23 hours of ambiguity, before Stripe's
+minimum idempotency retention can lapse; an owner must reconcile that payment
+in Stripe before any further attempt. Such rows are excluded from the 50-item
+sweeps so newer payments are not starved; the owner-only bookings response has
+`manualPaymentReconciliation`, and Worker warnings signal outstanding counts.
+The first claim freezes every Stripe charge parameter in the booking, including
+the saved card, amount and purpose. An idempotency-parameter error remains
+ambiguous and never opens a second hosted payment path.
+
+Failed recovery-link creation retries on the scheduled sweep. Recovery emails
+open the durable booking-management page; its separate lesson/fee buttons reuse
+an open Checkout session and only replace one after Stripe confirms it expired.
+A completed, unknown or unreachable session never permits a replacement. Each
+replacement uses its expired predecessor as a stable idempotency generation and
+an atomic session-pointer update. Setup and payment requests use Stripe's default
+expiry rather than recomputing a timestamp under an existing idempotency key;
+the database still rejects setup confirmation after its 35-minute booking hold.
+
+On a first Google link to a password-created email, verified Google ownership
+retains the same account and lessons but clears the unverified password and
+invalidates all earlier sessions and pending account-change/reset requests.
+Subsequent logins match the stable Google id without repeating that transition.
+The sign-in page explains that an email password reset can restore a password.
+
+Paid cancellations first create a durable `booking_refunds` operation and lock
+the booking atomically. Only then is the frozen refund request sent to Stripe.
+A move winning first prevents the refund entirely; a refund claim winning first
+blocks student, series and teacher moves. Pending/ambiguous refunds keep the
+slot reserved and surface in the teacher diary. A scheduled reconciliation
+retrieves a known refund id, or retries the same request for at most 23 hours
+when the response/id was lost. Only a succeeded refund marks the booking
+cancelled/refunded; never manually retry money without first checking Stripe.
+Teacher creation uses the same atomic slot claim as student creation, and all
+move paths ignore expired setup holds. Whole-series duration changes require
+the displayed new price; unchanged-duration rows retain each agreed snapshot.
+
+Writes reject unapproved browser origins and non-JSON content; request bodies
+are bounded while streaming. Authentication has an edge-IP rate limit and
+account failure limits. API responses are not cacheable. Password derivation
+uses six supported 100,000-iteration rounds for new passwords, retaining older
+hash verification. Webhooks check signature, environment, session, customer,
+amount and currency; expired card-setup holds cannot reclaim a slot.
 
 ## Deploying the Worker
 

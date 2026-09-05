@@ -66,7 +66,7 @@ async function stripeRequest(env, path, body, { idempotencyKey = "" } = {}) {
  */
 export function stripeProblemIsRetryable(error) {
   const status = Number(error?.stripeStatus ?? 0);
-  return status === 0 || status === 409 || status === 429 || status >= 500;
+  return error?.stripeType === "idempotency_error" || status === 0 || status === 409 || status === 429 || status >= 500;
 }
 
 async function stripeGet(env, path) {
@@ -89,6 +89,14 @@ export function retrieveSetupIntent(env, setupIntentId) {
   return stripeGet(env, `/setup_intents/${encodeURIComponent(setupIntentId)}`);
 }
 
+export function retrieveCheckoutSession(env, sessionId) {
+  return stripeGet(env, `/checkout/sessions/${encodeURIComponent(sessionId)}`);
+}
+
+export function retrieveRefund(env, refundId) {
+  return stripeGet(env, `/refunds/${encodeURIComponent(refundId)}`);
+}
+
 /**
  * Charge a saved card with nobody present — how a weekly lesson pays for
  * itself after its scheduled end. `off_session` tells Stripe to use the exemption
@@ -104,6 +112,7 @@ export async function chargeSavedCard(
     currency: "eur",
     customer,
     payment_method: paymentMethod,
+    payment_method_types: { 0: "card" },
     off_session: "true",
     confirm: "true",
     // This Worker has nobody present to complete 3DS. Ask Stripe to turn that
@@ -140,6 +149,7 @@ export function createCardSetupSession(
       integration_identifier: INTEGRATION_IDENTIFIER,
       mode: "setup",
       currency: "eur",
+      payment_method_types: { 0: "card" },
       client_reference_id: booking.id,
       ...(customer ? { customer } : { customer_creation: "always", customer_email: customerEmail }),
       setup_intent_data: {
@@ -149,7 +159,8 @@ export function createCardSetupSession(
         }
       },
       ...uiModeFields(env, { successUrl, cancelUrl, forceHosted: false }),
-      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+      // Keep retry parameters identical. The database's 35-minute hold is
+      // authoritative even though Stripe's default session lasts longer.
       metadata: {
         purpose: "card_setup",
         booking_reference: booking.reference,
@@ -205,7 +216,8 @@ export function createCheckoutSession(
     amountCents = null,
     productName = "",
     productDescription = "",
-    skippedStartAts = []
+    skippedStartAts = [],
+    recoveryGeneration = ""
   }
 ) {
   // The webhook rebuilds the run's confirmation email, and the "these weeks
@@ -215,6 +227,10 @@ export function createCheckoutSession(
   return stripeRequest(env, "/checkout/sessions", {
     integration_identifier: INTEGRATION_IDENTIFIER,
     mode: "payment",
+    payment_method_types: { 0: "card" },
+    // Agreed lesson and policy amounts are in euros. Do not inherit the
+    // Dashboard's optional currency-conversion offer and extra FX fee.
+    adaptive_pricing: { enabled: false },
     client_reference_id: booking.id,
     ...(customer ? { customer } : { customer_email: customerEmail }),
     ...(saveCard ? { customer_creation: "always" } : {}),
@@ -226,9 +242,8 @@ export function createCheckoutSession(
         }
       : {}),
     ...uiModeFields(env, { successUrl, cancelUrl, forceHosted }),
-    // Stripe expires the session itself, which is the backstop for a student
-    // who opens checkout and wanders off.
-    expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+    // Stripe's default expiry keeps request parameters stable on retries.
+    // A recovery session may only be replaced after Stripe reports expired.
     line_items: {
       0: {
         quantity: 1,
@@ -250,7 +265,7 @@ export function createCheckoutSession(
       ...(seriesId ? { series_id: seriesId } : {}),
       ...(skippedStartAts.length && skipped.length <= 480 ? { skipped } : {})
     }
-  }, { idempotencyKey: `ines:checkout:${booking.id}:${checkoutPurpose}` });
+  }, { idempotencyKey: `ines:checkout:${booking.id}:${checkoutPurpose}${recoveryGeneration ? `:${recoveryGeneration}` : ""}` });
 }
 
 /**

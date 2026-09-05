@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, FormEvent, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, FormEvent, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import dynamic from "next/dynamic";
 import type { UpcomingBookingFocusRequest } from "@/components/MyLessons";
@@ -42,6 +42,9 @@ import {
   differingLocalTime,
   fetchAvailability,
   fetchBooking,
+  fetchRecurringRates,
+  redeemRecurringRate,
+  recoverBookingPayment,
   formatBookedLessonLabel,
   formatLongDate,
   formatMoneyCents,
@@ -371,6 +374,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [studentZone, setStudentZone] = useState(BOOKING_TIME_ZONE);
   const [student, setStudent] = useState<Student | null>(null);
+  const [recurringRates, setRecurringRates] = useState<Record<number, number>>({});
+  const [rateCode, setRateCode] = useState("");
+  const [rateMessage, setRateMessage] = useState("");
+  const [rateWorking, setRateWorking] = useState(false);
+  const [ratesReady, setRatesReady] = useState(false);
   const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
   const [lessonSeries, setLessonSeries] = useState<LessonSeries[]>([]);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -404,7 +412,48 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const manageDialogRef = useRef<HTMLDivElement>(null);
   const managedRescheduleRef = useRef<HTMLDivElement>(null);
 
-  const lessonType = lessonTypes.find((type) => type.id === lessonTypeId) ?? null;
+  const lessonType = useMemo(() => {
+    const type = lessonTypes.find((item) => item.id === lessonTypeId);
+    if (!type) return null;
+    return form.repeat !== "once" && type.id !== "trial"
+      ? { ...type, price_cents: recurringRates[type.duration_minutes] ?? type.price_cents }
+      : type;
+  }, [lessonTypes, lessonTypeId, form.repeat, recurringRates]);
+
+  const rateStudentId = student?.id;
+  useEffect(() => {
+    let active = true;
+    setRatesReady(false);
+    setRecurringRates({});
+    setRateCode("");
+    setRateMessage("");
+    if (rateStudentId) {
+      fetchRecurringRates(readSession()).then((data) => {
+        if (active) { setRecurringRates(data.rates); setRatesReady(true); }
+      }).catch(() => {
+        if (active) setRateMessage("We couldn't check your agreed rate. Please reload before booking recurring lessons.");
+      });
+    }
+    return () => { active = false; };
+  }, [rateStudentId]);
+
+  async function applyRate() {
+    const chosenType = managed ? lessonTypes.find((type) => type.id === managedLessonTypeId) : lessonType;
+    if (!chosenType || rateWorking) return;
+    setRateWorking(true);
+    setRateMessage("");
+    try {
+      const data = await redeemRecurringRate(readSession(), rateCode, chosenType.duration_minutes);
+      setRecurringRates(data.rates);
+      setRatesReady(true);
+      if (managed) setManaged({ ...managed, durationPrices: data.rates });
+      setPaymentConsent(false);
+      setRateCode("");
+      setRateMessage("Your recurring rate is saved for future lessons of this length. Existing bookings keep their agreed price.");
+    } catch (error) {
+      setRateMessage(error instanceof Error ? error.message : "We couldn't apply that code. Try again.");
+    } finally { setRateWorking(false); }
+  }
   const managedDurationChoices = managed?.booking.lessonType.id === "trial"
     ? []
     : lessonTypes
@@ -414,6 +463,12 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             choices.findIndex((choice) => choice.duration_minutes === type.duration_minutes) === index
         );
   const managedPaymentStatus = managed?.booking.paymentStatus ?? "not_required";
+  const selectedManagedType = lessonTypes.find((type) => type.id === managedLessonTypeId);
+  const managedPrice = managed && selectedManagedType
+    ? selectedManagedType.id === managed.booking.lessonType.id
+      ? managed.booking.amountCents ?? managed.booking.lessonType.priceCents
+      : managed.durationPrices?.[selectedManagedType.duration_minutes] ?? selectedManagedType.price_cents
+    : undefined;
   const isManagedReschedule = manageMode === "reschedule" || manageMode === "reschedule-sequence";
   const canChangeManagedDuration =
     managedDurationChoices.length > 1 && ["not_required", "scheduled"].includes(managedPaymentStatus);
@@ -765,6 +820,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const canSubmit =
     Boolean(chosen && lessonType && student) &&
     !submitting &&
+    !rateWorking &&
+    (form.repeat === "once" || ratesReady) &&
     !previewing &&
     !paymentConfigurationError &&
     (!needsPaymentConsent || paymentConsent);
@@ -896,6 +953,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         location: form.location,
         timezone: studentZone,
         paymentConsent,
+        expectedPriceCents: lessonType.price_cents,
         // Omitted entirely for a one-off: `null` means "every week" on the wire.
         ...(repeat === undefined ? {} : { repeat })
       });
@@ -954,14 +1012,16 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           resolvedManagedSeriesId,
           selectedSlot,
           managedLessonTypeId || previousLessonTypeId,
-          managedLocation
+          managedLocation,
+          managedPrice
         );
       } else {
         const result = await rescheduleBooking(
           managedToken,
           selectedSlot,
           managedLessonTypeId || previousLessonTypeId,
-          managedLocation
+          managedLocation,
+          managedPrice
         );
         sameDayFeeApplied = result.sameDayFeeApplied;
       }
@@ -1036,8 +1096,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
         const cancelledLessons = `${result.cancelled} ${result.cancelled === 1 ? "lesson" : "lessons"}`;
         setManageOutcome(
-          result.kept
-            ? `This sequence has stopped and ${cancelledLessons} ${result.cancelled === 1 ? "was" : "were"} cancelled. Today’s lesson stays booked.`
+          result.pendingRefunds
+            ? `This sequence has stopped and ${cancelledLessons} were cancelled. ${result.pendingRefunds} refunds are being confirmed; those lessons stay reserved and locked until then.`
+            : result.kept
+            ? `This sequence has stopped and ${cancelledLessons} ${result.cancelled === 1 ? "was" : "were"} cancelled. Today’s lesson and any lesson whose payment or details changed stay booked; check your calendar.`
             : result.cancelled
               ? `This sequence has stopped and ${cancelledLessons} ${result.cancelled === 1 ? "was" : "were"} cancelled.`
               : "This sequence has stopped. There were no future booked lessons to cancel."
@@ -1528,6 +1590,22 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
                   {!manageOutcome && manageMode === "view" ? (
                     <>
+                      {([ ["lesson", managed.paymentsDue?.lesson, "lesson payment"], ["same-day-fee", managed.paymentsDue?.sameDayFee, "same-day fee"] ] as const).map(([purpose, amount, label]) => amount != null ? (
+                        <div className="lesson-calendar__notice" key={purpose}>
+                          <p>Your {label} of {formatMoneyCents(amount)} is still to pay.</p>
+                          <button className="button button--coral" disabled={manageWorking} type="button" onClick={async () => {
+                            if (!managedToken) return;
+                            setManageWorking(true); setManageError("");
+                            try {
+                              const result = await recoverBookingPayment(managedToken, purpose);
+                              window.location.assign(result.url);
+                            } catch (error) {
+                              setManageError(error instanceof Error ? error.message : "Please try again shortly.");
+                              setManageWorking(false);
+                            }
+                          }}>{manageWorking ? "Opening secure payment…" : `Pay ${formatMoneyCents(amount)} securely`}</button>
+                        </div>
+                      ) : null)}
                       {managed.changeLocked && managed.booking.status !== "cancelled" ? (
                         <p className="lesson-calendar__notice">This lesson is today and can&rsquo;t be changed or cancelled.</p>
                       ) : managed.sameDayFeeApplies && managed.booking.status !== "cancelled" ? (
@@ -2242,6 +2320,21 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     cancel and rebook to change its length.
                   </p>
                 ) : null}
+                {managedPrice !== undefined ? <p className="booking-state-note">{manageMode === "reschedule-sequence"
+                  ? managedLessonTypeId === managed.booking.lessonType.id
+                    ? "Lessons that keep their length keep their existing agreed prices."
+                    : `Changed-length lessons: ${formatMoneyCents(managedPrice)} each. Lessons already this length keep their agreed prices.`
+                  : `${formatMoneyCents(managedPrice)} per lesson${managed.recurring ? " · recurring rate" : ""}`}</p> : null}
+                {managed.recurring && student && managedLessonTypeId !== managed.booking.lessonType.id ? (
+                  <details className="booking-recurring-rate">
+                    <summary>Have a code for this lesson length?</summary>
+                    <label><span>Your code for {selectedManagedType?.duration_minutes} minute lessons</span>
+                      <input value={rateCode} onChange={(event) => setRateCode(event.target.value)} maxLength={40} autoComplete="off" />
+                    </label>
+                    <button className="text-action" type="button" disabled={!rateCode.trim() || rateWorking} onClick={() => void applyRate()}>Apply and save rate</button>
+                    {rateMessage ? <p role="status">{rateMessage}</p> : null}
+                  </details>
+                ) : null}
                 <fieldset className="managed-lesson__duration">
                   <legend>Where</legend>
                   <div className={`segmented segmented--${managedLocation}`}>
@@ -2460,6 +2553,22 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 />
               ) : (
                 <form className="student-details-form" onSubmit={submit}>
+                  {form.repeat !== "once" && lessonType?.id !== "trial" ? (
+                    <div className="booking-recurring-rate">
+                      <p><strong>{lessonType ? formatMoneyCents(lessonType.price_cents) : ""} per recurring lesson</strong></p>
+                      <details>
+                        <summary>Have a code from Inês?</summary>
+                        <label>
+                          <span>Your code for {lessonType?.duration_minutes} minute lessons</span>
+                          <input value={rateCode} onChange={(event) => setRateCode(event.target.value)} maxLength={40} autoComplete="off" autoCapitalize="characters" />
+                        </label>
+                        <button className="text-action" type="button" disabled={!rateCode.trim() || rateWorking} onClick={() => void applyRate()}>
+                          {rateWorking ? "Applying…" : "Apply and save rate"}
+                        </button>
+                      </details>
+                      {rateMessage ? <p role="status">{rateMessage}</p> : null}
+                    </div>
+                  ) : null}
                   {form.repeat !== "once" ? (
                     <RepeatAvailability
                       chosen={Boolean(chosen)}

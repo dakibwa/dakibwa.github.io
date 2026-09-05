@@ -18,7 +18,7 @@ five responsive routes:
   `/book` workspace (noindex)
 - `/reset-password` — reached from a reset email (noindex)
 - `/schedule` — Inês's own view: teaching hours, days off, and what is booked
-  (noindex, access key required)
+  (noindex, teacher account or emergency access key required)
 
 Every route carries a booking action within reach of its closing content, not
 only in the header: the home page closes on one, and the FAQ ends with a route
@@ -94,8 +94,9 @@ request only competes with the fonts for no gain.
   present. `docs-booking-system.md` records the activation boundary.
 - The approved product display is trial lesson €20 / 60 minutes, single lessons
   at €25 / 60 minutes or €35 / 1 hour 30 minutes. Bundles are not part of the
-  public launch offer. Existing students retain their individually agreed
-  legacy €20 / €30 pricing, which is not advertised publicly.
+  public launch offer. Authenticated students can save a private, reusable
+  duration-specific recurring-rate code supplied by Inês. Grants persist for
+  future recurring lessons without changing existing bookings or the €5 fees.
   The Worker's `lesson_types` table decides what is actually bookable; the
   lessons page is the copy a visitor reads. Keep the two in step.
 - The rescheduling rule is free before the lesson day, with a €5 fee charged
@@ -122,9 +123,10 @@ npm run check:release  # live booking health probe and production build once at 
 npm run test:flow
 ```
 
-`test:booking` needs neither a server nor a network. It covers the parts that
-are genuinely easy to get wrong: the 23- and 25-hour DST days, iCalendar folding
-of accented text at 75 octets, and rejection of tampered manage links.
+`test:booking` needs Node 22 or newer but neither a server nor a network. It
+covers timezone/calendar/token logic and real SQLite booking/payment state
+transitions: concurrent changes, late fees, recurring prices, recovery,
+webhooks, permissions and session revocation. Stripe and email are isolated.
 
 `test:flow` expects a running static or development server. Set
 `QA_BASE_URL` when it is not `http://localhost:3000`.

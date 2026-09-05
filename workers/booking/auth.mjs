@@ -13,16 +13,16 @@ const encoder = new TextEncoder();
 /**
  * The Workers runtime refuses PBKDF2 above 100,000 iterations
  * ("iteration counts above 100000 are not supported"), which is below the
- * OWASP figure of 210,000 for PBKDF2-HMAC-SHA256. Miniflare does not enforce
+ * OWASP figure of 600,000 for PBKDF2-HMAC-SHA256. Miniflare does not enforce
  * that cap, so this only surfaced against the deployed Worker.
  *
  * Rather than accept half the work factor, the derivation is chained: each
  * round runs at the platform maximum and feeds the next, so N rounds cost N ×
- * 100,000 iterations while every individual call stays legal. Two rounds
- * exceeds the OWASP figure.
+ * 100,000 iterations while every individual call stays legal. Six rounds
+ * provide 600,000 total derivation iterations. Existing hashes retain their cost.
  */
 const PBKDF2_ITERATIONS = 100000;
-const PBKDF2_ROUNDS = 2;
+const PBKDF2_ROUNDS = 6;
 const SESSION_DAYS = 90;
 
 function base64Url(bytes) {
@@ -119,27 +119,24 @@ async function sign(value, secret) {
 }
 
 /**
- * A stateless bearer token: "<studentId>.<expiryMs>.<signature>".
- *
- * Stateless means signing out cannot revoke it server-side, which is the
- * trade accepted here: the alternative is a session row read on every request,
- * and the blast radius of a leaked 90-day token for a lesson calendar is small.
- * Changing a password does not invalidate existing tokens either — worth
- * knowing before this is reused for anything more sensitive.
+ * Signed bearer token carrying the account's session version. The Worker also
+ * checks that version and the logout revocation table. Legacy three-part tokens
+ * mean version zero, preserving sign-in until explicitly revoked/reset.
  */
-export async function createSession(studentId, secret) {
+export async function createSession(studentId, secret, version = 0) {
   const expiry = Date.now() + SESSION_DAYS * 86400000;
-  const payload = `${studentId}.${expiry}`;
+  const payload = `${studentId}.${expiry}.${version}`;
   return `${payload}.${await sign(payload, secret)}`;
 }
 
 export async function readSession(token, secret) {
   const raw = String(token ?? "");
   const parts = raw.split(".");
-  if (parts.length !== 3) return null;
+  if (![3, 4].includes(parts.length)) return null;
 
-  const [studentId, expiry, signature] = parts;
-  const expected = await sign(`${studentId}.${expiry}`, secret);
+  const [studentId, expiry] = parts;
+  const signature = parts.at(-1);
+  const expected = await sign(parts.slice(0, -1).join("."), secret);
   if (signature.length !== expected.length) return null;
 
   let mismatch = 0;
@@ -150,6 +147,15 @@ export async function readSession(token, secret) {
   if (!Number(expiry) || Number(expiry) < Date.now()) return null;
 
   return studentId;
+}
+
+export function sessionVersion(token) {
+  const parts = String(token ?? "").split(".");
+  return parts.length === 3 ? 0 : Number(parts[2]);
+}
+
+export async function sessionHash(token) {
+  return base64Url(await crypto.subtle.digest("SHA-256", encoder.encode(token)));
 }
 
 /** Single-use, short-lived token for a password reset link. */

@@ -43,7 +43,7 @@ export function fetchSchedule(token: string) {
 }
 
 export function fetchBookings(token: string) {
-  return adminRequest<{ bookings: AdminBooking[] }>(token, "/admin/bookings");
+  return adminRequest<{ bookings: AdminBooking[]; manualPaymentReconciliation?: { id: string; reference: string }[] }>(token, "/admin/bookings");
 }
 
 export function saveRules(token: string, rules: { weekday: number; startMinute: number; lastStartMinute: number }[]) {

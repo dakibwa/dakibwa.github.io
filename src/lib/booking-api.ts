@@ -39,6 +39,9 @@ export type Booking = {
 };
 
 export type ManagedBooking = {
+  paymentsDue?: { lesson: number | null; sameDayFee: number | null };
+  recurring?: boolean;
+  durationPrices?: Record<number, number>;
   booking: Booking;
   isPast: boolean;
   sameDayFeeApplies: boolean;
@@ -166,6 +169,7 @@ export function createBooking(
     repeat?: RepeatChoice;
     /** Required whenever the saved-card, after-lesson payment mode is active. */
     paymentConsent?: boolean;
+    expectedPriceCents?: number;
   }
 ) {
   return request<{
@@ -185,13 +189,33 @@ export function createBooking(
   });
 }
 
+export function fetchRecurringRates(session: string) {
+  return request<{ rates: Record<number, number> }>("/me/recurring-rates", {
+    headers: { Authorization: `Bearer ${session}` }
+  });
+}
+
+export function redeemRecurringRate(session: string, code: string, durationMinutes: number) {
+  return request<{ rates: Record<number, number> }>("/me/recurring-rates", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session}` },
+    body: JSON.stringify({ code, durationMinutes })
+  });
+}
+
+export function recoverBookingPayment(token: string, purpose: "lesson" | "same-day-fee") {
+  return request<{ url: string }>(`/bookings/${encodeURIComponent(token)}/payment`, {
+    method: "POST", body: JSON.stringify({ purpose })
+  });
+}
+
 /**
  * Stop a repeating booking. By default the lessons already in the calendar are
  * kept. The explicit bulk-cancel route returns how many were cancelled,
  * retained under the same-day policy, and refunded.
  */
 export function stopSeries(session: string, seriesId: string, cancelRemaining = false) {
-  return request<{ ok: true; stopped: true; cancelled: number; kept: number; refunded: number }>(
+  return request<{ ok: true; stopped: true; cancelled: number; kept: number; refunded: number; pendingRefunds?: number }>(
     `/series/${encodeURIComponent(seriesId)}/stop`,
     {
       method: "POST",
@@ -207,7 +231,8 @@ export function rescheduleSeries(
   seriesId: string,
   startAt: string,
   lessonType?: string,
-  location?: "online" | "porto"
+  location?: "online" | "porto",
+  expectedPriceCents?: number
 ) {
   return request<{ ok: true; moved: number; bookings: Booking[] }>(
     `/series/${encodeURIComponent(seriesId)}/reschedule`,
@@ -216,6 +241,7 @@ export function rescheduleSeries(
       headers: { Authorization: `Bearer ${session}` },
       body: JSON.stringify({
         startAt,
+        ...(expectedPriceCents === undefined ? {} : { expectedPriceCents }),
         ...(lessonType ? { lessonType } : {}),
         ...(location ? { location } : {})
       })
@@ -231,7 +257,8 @@ export function rescheduleBooking(
   token: string,
   startAt: string,
   lessonType?: string,
-  location?: "online" | "porto"
+  location?: "online" | "porto",
+  expectedPriceCents?: number
 ) {
   return request<{ booking: Booking; sameDayFeeApplied: boolean }>(
     `/bookings/${encodeURIComponent(token)}/reschedule`,
@@ -239,6 +266,7 @@ export function rescheduleBooking(
       method: "POST",
       body: JSON.stringify({
         startAt,
+        ...(expectedPriceCents === undefined ? {} : { expectedPriceCents }),
         ...(lessonType ? { lessonType } : {}),
         ...(location ? { location } : {})
       })

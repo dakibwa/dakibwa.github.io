@@ -629,7 +629,8 @@ await test("Stripe requests pin the API version and identify this checkout integ
   assert.equal(body.get("return_url"), "https://portuguesewithines.com/book/?payment=return");
   assert.equal(body.has("success_url"), false);
   assert.equal(body.has("cancel_url"), false);
-  assert.equal(body.has("payment_method_types"), false);
+  assert.equal(body.get("payment_method_types[0]"), "card");
+  assert.equal(body.get("adaptive_pricing[enabled]"), "false");
   assert.equal(body.has("transfer_data[destination]"), false);
   assert.equal(body.has("on_behalf_of"), false);
 });
@@ -666,7 +667,7 @@ await test("an automatic charge is idempotent and only returns a succeeded Payme
   assert.equal(body.get("confirm"), "true");
   assert.equal(body.get("off_session"), "true");
   assert.equal(body.get("error_on_requires_action"), "true");
-  assert.equal(body.has("payment_method_types"), false);
+  assert.equal(body.get("payment_method_types[0]"), "card");
 });
 
 await test("an automatic charge that still requires customer action is not treated as paid", async () => {

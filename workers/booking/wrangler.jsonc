@@ -21,7 +21,7 @@
   ],
   "vars": {
     // Origins allowed to call this API. The live domains plus local development.
-    "ALLOWED_ORIGIN": "https://portuguesewithines.com,https://portuguescomaines.com,https://dakibwa.github.io,http://localhost:3002,http://127.0.0.1:3002,http://localhost:3000",
+    "ALLOWED_ORIGIN": "https://portuguesewithines.com,https://portuguescomaines.com,https://dakibwa.github.io,http://localhost:3002,http://127.0.0.1:3002,http://localhost:3000,http://localhost:3211",
     "SITE_URL": "https://portuguesewithines.com",
     "MAIL_FROM": "Português com a Inês <bookings@portuguesewithines.com>",
     "MAIL_SENDER_ADDRESS": "bookings@portuguesewithines.com",
@@ -73,8 +73,8 @@
         }
       ],
       "vars": {
-        "ALLOWED_ORIGIN": "http://localhost:3002,http://127.0.0.1:3002,http://localhost:3000,http://127.0.0.1:3000",
-        "SITE_URL": "http://localhost:3000",
+        "ALLOWED_ORIGIN": "http://localhost:3002,http://127.0.0.1:3002,http://localhost:3000,http://127.0.0.1:3000,http://localhost:3211",
+        "SITE_URL": "http://localhost:3211",
         "MAIL_FROM": "Português com a Inês <bookings@portuguesewithines.com>",
         "MAIL_SENDER_ADDRESS": "bookings@portuguesewithines.com",
         "EMAIL_DRY_RUN": "1",
