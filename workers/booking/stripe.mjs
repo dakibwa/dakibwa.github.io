@@ -93,6 +93,10 @@ export function retrieveCheckoutSession(env, sessionId) {
   return stripeGet(env, `/checkout/sessions/${encodeURIComponent(sessionId)}`);
 }
 
+export function retrieveRefund(env, refundId) {
+  return stripeGet(env, `/refunds/${encodeURIComponent(refundId)}`);
+}
+
 /**
  * Charge a saved card with nobody present — how a weekly lesson pays for
  * itself after its scheduled end. `off_session` tells Stripe to use the exemption

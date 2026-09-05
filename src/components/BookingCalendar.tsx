@@ -1012,7 +1012,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
           resolvedManagedSeriesId,
           selectedSlot,
           managedLessonTypeId || previousLessonTypeId,
-          managedLocation
+          managedLocation,
+          managedPrice
         );
       } else {
         const result = await rescheduleBooking(
@@ -1095,8 +1096,10 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
         const cancelledLessons = `${result.cancelled} ${result.cancelled === 1 ? "lesson" : "lessons"}`;
         setManageOutcome(
-          result.kept
-            ? `This sequence has stopped and ${cancelledLessons} ${result.cancelled === 1 ? "was" : "were"} cancelled. Today’s lesson stays booked.`
+          result.pendingRefunds
+            ? `This sequence has stopped and ${cancelledLessons} were cancelled. ${result.pendingRefunds} refunds are being confirmed; those lessons stay reserved and locked until then.`
+            : result.kept
+            ? `This sequence has stopped and ${cancelledLessons} ${result.cancelled === 1 ? "was" : "were"} cancelled. Today’s lesson and any lesson whose payment or details changed stay booked; check your calendar.`
             : result.cancelled
               ? `This sequence has stopped and ${cancelledLessons} ${result.cancelled === 1 ? "was" : "were"} cancelled.`
               : "This sequence has stopped. There were no future booked lessons to cancel."
@@ -2317,7 +2320,11 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                     cancel and rebook to change its length.
                   </p>
                 ) : null}
-                {managedPrice !== undefined ? <p className="booking-state-note">{formatMoneyCents(managedPrice)} per lesson{managed.recurring ? " · recurring rate" : ""}</p> : null}
+                {managedPrice !== undefined ? <p className="booking-state-note">{manageMode === "reschedule-sequence"
+                  ? managedLessonTypeId === managed.booking.lessonType.id
+                    ? "Lessons that keep their length keep their existing agreed prices."
+                    : `Changed-length lessons: ${formatMoneyCents(managedPrice)} each. Lessons already this length keep their agreed prices.`
+                  : `${formatMoneyCents(managedPrice)} per lesson${managed.recurring ? " · recurring rate" : ""}`}</p> : null}
                 {managed.recurring && student && managedLessonTypeId !== managed.booking.lessonType.id ? (
                   <details className="booking-recurring-rate">
                     <summary>Have a code for this lesson length?</summary>

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import worker, { chargeDueLessons, chargeDueSameDayFees, retryPaymentRecovery } from "./index.mjs";
+import worker, { chargeDueLessons, chargeDueSameDayFees, retryPaymentRecovery, retryRefunds } from "./index.mjs";
 import { createSession, createResetToken, sessionVersion } from "./auth.mjs";
 import { createManageToken } from "./tokens.mjs";
 import { findRecurringCode, recurringLessonType, priceForMove } from "./rates.mjs";
@@ -14,12 +14,27 @@ globalThis.Date = class extends NativeDate {
 const nativeFetch = globalThis.fetch;
 const charges = [];
 const checkoutRequests = [];
+const refunds = [];
+let duringRefund = null;
+let refundUnavailable = false;
+let refundStatus = "succeeded";
+let refundLookups = 0;
 let checkoutStatus = "open";
 let chargeError = null;
 let googleJwk = null;
 let checkoutUnavailable = false;
 let decline = false;
 globalThis.fetch = async (url, options) => {
+  if (String(url).startsWith("https://api.stripe.com/v1/refunds/")) {
+    refundLookups++;
+    return Response.json({ id: String(url).split("/").at(-1), status: refundStatus });
+  }
+  if (String(url) === "https://api.stripe.com/v1/refunds") {
+    refunds.push({ body: options.body, key: options.headers["Idempotency-Key"] });
+    await duringRefund?.();
+    if (refundUnavailable) return Response.json({ error: { message: "Isolated refund response loss" } }, { status: 503 });
+    return Response.json({ id: `re_${refunds.length}`, status: refundStatus });
+  }
   if (String(url) === "https://www.googleapis.com/oauth2/v3/certs") return Response.json({ keys: [googleJwk] });
   if (String(url).startsWith("https://api.stripe.com/v1/checkout/sessions/")) {
     if (checkoutUnavailable) throw new Error("Isolated lookup outage");
@@ -242,7 +257,7 @@ await test("cancel wins before selected due charge is claimed", async () => {
 await test("move wins before selected due charge is claimed", async () => {
   booking("race-move", { start: "2026-01-01T12:00:00.000Z", end: "2026-01-01T13:00:00.000Z" });
   beforeRun = (sql) => { if (sql.includes("SET payment_status = 'processing'")) {
-    beforeRun = null; db.prepare("UPDATE bookings SET ends_at='2099-01-01T13:00:00.000Z' WHERE id='race-move'").run();
+    beforeRun = null; db.prepare("UPDATE bookings SET starts_at='2099-01-01T12:00:00.000Z',ends_at='2099-01-01T13:00:00.000Z' WHERE id='race-move'").run();
   } };
   await chargeDueLessons(env);
   assert.equal(db.prepare("SELECT payment_status FROM bookings WHERE id='race-move'").get().payment_status, "scheduled");
@@ -378,6 +393,119 @@ await test("logout revokes only the presented session and reset invalidates prev
   assert.equal((await call("/me/recurring-rates", { method: "GET", token: result.session })).status, 200);
   sessions.alice = result.session;
   assert.equal((await call("/auth/reset", { user: null, body: { token: reset, password: "second-isolated-password" } })).status, 400);
+});
+
+await test("teacher creation atomically loses to a concurrent student claim", async () => {
+  beforeRun = (sql) => {
+    if (sql.startsWith("INSERT INTO bookings")) {
+      beforeRun = null;
+      booking("student-wins-admin-race", { start: "2026-09-16T11:00:00.000Z", end: "2026-09-16T12:00:00.000Z" });
+    }
+  };
+  const response = await call("/admin/bookings", { user: "teacher", body: { email: "alice@example.invalid", lessonType: "single", startAt: "2026-09-16T11:00:00.000Z" } });
+  assert.equal(response.status, 409);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM bookings WHERE starts_at='2026-09-16T11:00:00.000Z'").get().count, 1);
+});
+await test("expired setup holds do not block either student or teacher moves", async () => {
+  booking("old-hold", { start: "2026-09-17T16:00:00.000Z", end: "2026-09-17T17:00:00.000Z", payment: "pending" });
+  db.prepare("UPDATE bookings SET status='pending_payment',hold_expires_at='2026-09-05T09:00:00.000Z' WHERE id='old-hold'").run();
+  booking("move-past-hold", { start: "2026-09-17T12:00:00.000Z", end: "2026-09-17T13:00:00.000Z" });
+  const response = await call(`/bookings/${await token("move-past-hold")}/reschedule`, { body: { startAt: "2026-09-17T16:00:00.000Z" } });
+  assert.equal(response.status, 200, await response.clone().text());
+  db.prepare("UPDATE bookings SET status='cancelled' WHERE id='move-past-hold'").run();
+  booking("teacher-past-hold", { start: "2026-09-17T12:00:00.000Z", end: "2026-09-17T13:00:00.000Z" });
+  assert.equal((await call("/admin/bookings/teacher-past-hold/reschedule", { user: "teacher", body: { startAt: "2026-09-17T16:00:00.000Z" } })).status, 200);
+});
+await test("paid student and teacher cancellation claim before refund; concurrent move cannot escape", async () => {
+  for (const actor of ["student", "teacher"]) {
+    const id = `refund-${actor}`;
+    booking(id, { payment: "paid", start: "2026-09-25T12:00:00.000Z", end: "2026-09-25T13:00:00.000Z" });
+    db.prepare("UPDATE bookings SET stripe_payment_intent=? WHERE id=?").run(`pi_${id}`, id);
+    duringRefund = async () => {
+      const moved = await call(`/admin/bookings/${id}/reschedule`, { user: "teacher", body: { startAt: "2026-09-24T11:00:00.000Z" } });
+      assert.equal(moved.status, 409);
+    };
+    const path = actor === "teacher" ? `/admin/bookings/${id}/cancel` : `/bookings/${await token(id)}/cancel`;
+    const response = await call(path, { user: actor === "teacher" ? "teacher" : "alice" });
+    assert.equal(response.status, 200, await response.clone().text());
+    assert.deepEqual({ ...db.prepare("SELECT status,payment_status FROM bookings WHERE id=?").get(id) }, { status: "cancelled", payment_status: "refunded" });
+    duringRefund = null;
+  }
+});
+await test("a move winning before the refund claim prevents any refund call", async () => {
+  booking("refund-lost", { payment: "paid" });
+  db.prepare("UPDATE bookings SET stripe_payment_intent='pi_refund_lost' WHERE id='refund-lost'").run();
+  beforeRun = (sql) => {
+    if (sql.startsWith("INSERT OR IGNORE INTO booking_refunds")) {
+      beforeRun = null;
+      db.prepare("UPDATE bookings SET sequence=sequence+1,starts_at='2026-09-09T08:00:00.000Z',ends_at='2026-09-09T09:00:00.000Z' WHERE id='refund-lost'").run();
+    }
+  };
+  const count = refunds.length;
+  assert.equal((await call(`/bookings/${await token("refund-lost")}/cancel`)).status, 409);
+  assert.equal(refunds.length, count);
+});
+await test("ambiguous refund stays reserved and reconciles same immutable request before cancelling", async () => {
+  booking("refund-ambiguous", { payment: "paid" });
+  db.prepare("UPDATE bookings SET stripe_payment_intent='pi_refund_ambiguous' WHERE id='refund-ambiguous'").run();
+  refundUnavailable = true;
+  const count = refunds.length;
+  const response = await call(`/bookings/${await token("refund-ambiguous")}/cancel`);
+  assert.equal(response.status, 503);
+  assert.equal(db.prepare("SELECT status FROM bookings WHERE id='refund-ambiguous'").get().status, "confirmed");
+  // A paid postpay lesson retains its original charge timestamp. The refund
+  // lock must never be mistaken for an abandoned lesson-charge claim.
+  db.prepare("UPDATE bookings SET charge_started_at='2026-09-05T09:00:00.000Z',updated_at='2026-09-05T09:00:00.000Z' WHERE id='refund-ambiguous'").run();
+  const chargeCount = charges.length;
+  await chargeDueLessons(env);
+  assert.equal(charges.length, chargeCount);
+  assert.equal((await call("/admin/bookings/refund-ambiguous/reschedule", { user: "teacher", body: { startAt: "2026-09-24T11:00:00.000Z" } })).status, 409);
+  db.prepare("UPDATE bookings SET amount_cents=9900 WHERE id='refund-ambiguous'").run();
+  db.prepare("UPDATE booking_refunds SET attempted_at='2026-09-05T09:00:00.000Z' WHERE booking_id='refund-ambiguous'").run();
+  refundUnavailable = false;
+  await retryRefunds(env);
+  assert.deepEqual(refunds[count], refunds[count + 1]);
+  assert.equal(db.prepare("SELECT payment_status FROM bookings WHERE id='refund-ambiguous'").get().payment_status, "refunded");
+});
+await test("pending provider refunds reconcile by id, never create another refund", async () => {
+  booking("refund-pending", { payment: "paid" });
+  db.prepare("UPDATE bookings SET stripe_payment_intent='pi_refund_pending' WHERE id='refund-pending'").run();
+  refundStatus = "pending";
+  assert.equal((await call(`/bookings/${await token("refund-pending")}/cancel`)).status, 503);
+  const count = refunds.length;
+  const lookups = refundLookups;
+  db.prepare("UPDATE booking_refunds SET attempted_at='2026-09-05T09:00:00.000Z' WHERE booking_id='refund-pending'").run();
+  refundStatus = "succeeded";
+  await retryRefunds(env);
+  assert.equal(refunds.length, count);
+  assert.equal(refundLookups, lookups + 1);
+  assert.equal(db.prepare("SELECT status FROM bookings WHERE id='refund-pending'").get().status, "cancelled");
+});
+await test("whole-series duration changes require the displayed rate while unchanged durations preserve mixed prices", async () => {
+  db.prepare("INSERT INTO booking_series (id,student_id,lesson_type_id,weekday,minute_of_day,created_at,updated_at) VALUES ('mixed-series','alice','single',1,660,?,?)").run(new Date().toISOString(), new Date().toISOString());
+  booking("mixed-a", { series: "mixed-series", start: "2026-10-05T10:00:00.000Z", end: "2026-10-05T11:00:00.000Z" });
+  booking("mixed-b", { series: "mixed-series", start: "2026-10-12T10:00:00.000Z", end: "2026-10-12T11:00:00.000Z" });
+  db.prepare("UPDATE bookings SET amount_cents=1800 WHERE id='mixed-b'").run();
+  const payload = { lessonType: "long", startAt: "2026-10-05T12:00:00.000Z" };
+  assert.equal((await call("/series/mixed-series/reschedule", { body: payload })).status, 409);
+  assert.equal((await call("/series/mixed-series/reschedule", { body: { ...payload, expectedPriceCents: 1 } })).status, 409);
+  const sameLength = await call("/series/mixed-series/reschedule", { body: { ...payload, lessonType: "single", expectedPriceCents: 1500 } });
+  assert.equal(sameLength.status, 200, await sameLength.clone().text());
+  assert.deepEqual(db.prepare("SELECT amount_cents FROM bookings WHERE series_id='mixed-series' ORDER BY id").all().map((row) => row.amount_cents), [1500, 1800]);
+  const newLength = await call("/series/mixed-series/reschedule", { body: { ...payload, expectedPriceCents: 2700 } });
+  assert.equal(newLength.status, 200, await newLength.clone().text());
+  assert.deepEqual(db.prepare("SELECT amount_cents FROM bookings WHERE series_id='mixed-series' ORDER BY id").all().map((row) => row.amount_cents), [2700, 2700]);
+});
+await test("series cancellation locks paid occurrences before refunding and reports actual outcomes", async () => {
+  const seriesId = db.prepare("SELECT id FROM booking_series LIMIT 1").get().id;
+  booking("refund-series", { payment: "paid", series: seriesId, start: "2026-09-28T12:00:00.000Z", end: "2026-09-28T13:00:00.000Z" });
+  db.prepare("UPDATE bookings SET stripe_payment_intent='pi_refund_series' WHERE id='refund-series'").run();
+  duringRefund = async () => assert.equal((await call("/admin/bookings/refund-series/reschedule", { user: "teacher", body: { startAt: "2026-09-24T11:00:00.000Z" } })).status, 409);
+  const response = await call(`/series/${seriesId}/stop`, { body: { cancelRemaining: true } });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).refunded, 1);
+  assert.equal(db.prepare("SELECT status FROM bookings WHERE id='refund-series'").get().status, "cancelled");
+  duringRefund = null;
 });
 
 if (process.env.INES_PRIVATE_RATES_FILE) {

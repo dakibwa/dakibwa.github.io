@@ -180,6 +180,16 @@ CREATE TABLE IF NOT EXISTS bookings (
   series_id         TEXT REFERENCES booking_series (id)
 );
 
+CREATE TABLE IF NOT EXISTS booking_refunds (
+  booking_id TEXT PRIMARY KEY REFERENCES bookings(id),
+  request TEXT NOT NULL,
+  requested_by TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  stripe_refund_id TEXT,
+  created_at TEXT NOT NULL,
+  attempted_at TEXT
+);
+
 -- Availability is computed by subtracting confirmed bookings from the rules,
 -- so this index carries every read on the hot path.
 CREATE INDEX IF NOT EXISTS idx_bookings_window ON bookings (status, starts_at);

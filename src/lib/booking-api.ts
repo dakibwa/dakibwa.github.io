@@ -215,7 +215,7 @@ export function recoverBookingPayment(token: string, purpose: "lesson" | "same-d
  * retained under the same-day policy, and refunded.
  */
 export function stopSeries(session: string, seriesId: string, cancelRemaining = false) {
-  return request<{ ok: true; stopped: true; cancelled: number; kept: number; refunded: number }>(
+  return request<{ ok: true; stopped: true; cancelled: number; kept: number; refunded: number; pendingRefunds?: number }>(
     `/series/${encodeURIComponent(seriesId)}/stop`,
     {
       method: "POST",

@@ -58,6 +58,7 @@ export function TeacherSchedule() {
   const [week, setWeek] = useState<WeekState>({});
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [paymentReview, setPaymentReview] = useState<{ id: string; reference: string }[]>([]);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -107,6 +108,7 @@ export function TeacherSchedule() {
         setWeek(next);
         setExceptions(schedule.exceptions);
         setBookings(bookingList.bookings.filter((booking) => booking.status === "confirmed"));
+        setPaymentReview(bookingList.manualPaymentReconciliation ?? []);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Could not load your schedule.");
         setToken("");
@@ -189,6 +191,12 @@ export function TeacherSchedule() {
 
   return (
     <div className="teacher-schedule">
+      {paymentReview.length ? (
+        <div className="booking-alert" role="status">
+          <AlertCircle aria-hidden="true" size={20} />
+          <p>{paymentReview.length} {paymentReview.length === 1 ? "payment or refund needs" : "payments or refunds need"} review: {paymentReview.map((item) => item.reference).join(", ")}. Review these payments in Stripe before retrying. Their lessons remain locked until the result is confirmed.</p>
+        </div>
+      ) : null}
       {error ? (
         <div className="booking-alert" role="alert">
           <AlertCircle size={18} aria-hidden="true" />

@@ -486,7 +486,7 @@ client secret with `initEmbeddedCheckout`.
 
 **Go-live checklist**:
 
-1. Apply migrations 0012–0014 to both databases while production payment remains
+1. Apply migrations 0012–0015 to both databases while production payment remains
    off. It adds lesson-end charge state, attendance, no-show and independent
    same-day-fee fields.
 2. ~~Open Inês's Stripe account and invite Dan as **Administrator**~~ — done,
@@ -580,6 +580,18 @@ retains the same account and lessons but clears the unverified password and
 invalidates all earlier sessions and pending account-change/reset requests.
 Subsequent logins match the stable Google id without repeating that transition.
 The sign-in page explains that an email password reset can restore a password.
+
+Paid cancellations first create a durable `booking_refunds` operation and lock
+the booking atomically. Only then is the frozen refund request sent to Stripe.
+A move winning first prevents the refund entirely; a refund claim winning first
+blocks student, series and teacher moves. Pending/ambiguous refunds keep the
+slot reserved and surface in the teacher diary. A scheduled reconciliation
+retrieves a known refund id, or retries the same request for at most 23 hours
+when the response/id was lost. Only a succeeded refund marks the booking
+cancelled/refunded; never manually retry money without first checking Stripe.
+Teacher creation uses the same atomic slot claim as student creation, and all
+move paths ignore expired setup holds. Whole-series duration changes require
+the displayed new price; unchanged-duration rows retain each agreed snapshot.
 
 Writes reject unapproved browser origins and non-JSON content; request bodies
 are bounded while streaming. Authentication has an edge-IP rate limit and
