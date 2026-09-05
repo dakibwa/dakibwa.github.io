@@ -1,0 +1,5 @@
+# Preserve existing bookmarks and payment links to the combined page.
+/booking-terms /terms/#booking 301
+/booking-terms/ /terms/#booking 301
+/privacy /terms/#privacy 301
+/privacy/ /terms/#privacy 301

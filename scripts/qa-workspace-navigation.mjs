@@ -141,8 +141,8 @@ try {
   aligned(before, await page.evaluate(() => scrollY), "Closing menu preserves page position");
   assert.ok(await page.evaluate(() => document.activeElement.classList.contains("site-footer__menu")));
   assert.equal(await page.locator("main").getAttribute("inert"), null);
-  await page.locator(".site-footer__legal").getByRole("link", { name: "Terms", exact: true }).click();
-  await page.getByRole("heading", { name: "Booking and payment terms", exact: true }).waitFor();
+  await page.locator(".site-footer__legal").getByRole("link", { name: "Terms & privacy", exact: true }).click();
+  await page.getByRole("heading", { name: "Terms & privacy", exact: true }).waitFor();
   await page.goBack();
   await page.getByRole("heading", { name: "Questions before booking?", exact: true }).waitFor();
   assert.equal(await page.locator("main").getAttribute("inert"), null);
@@ -168,8 +168,19 @@ try {
   await page.screenshot({ path: `${out}/menu-with-portfolio-mobile.png` });
   await menu.getByRole("link", { name: "Booking", exact: true }).click();
   await page.locator("#booking-title").waitFor();
-  await page.locator(".site-footer__legal").getByRole("link", { name: "Privacy", exact: true }).click();
-  await page.getByRole("heading", { name: "Privacy notice", exact: true }).waitFor();
+  await page.locator(".site-footer__legal").getByRole("link", { name: "Terms & privacy", exact: true }).click();
+  await page.getByRole("heading", { name: "Terms & privacy", exact: true }).waitFor();
+  assert.equal(await page.locator(".site-footer__legal a").count(), 1);
+  await page.getByRole("link", { name: "Your privacy", exact: true }).click();
+  assert.equal(new URL(page.url()).hash, "#privacy");
+  await page.locator("#privacy-title").waitFor();
+
+  // Existing bookmarks still reach the relevant section of the combined page.
+  for (const [oldPath, section] of [["booking-terms", "booking"], ["privacy", "privacy"]]) {
+    await page.goto(`${base}/${oldPath}/`);
+    await page.waitForURL(`**/terms/#${section}`);
+    await page.locator(`#${section}`).waitFor();
+  }
 
   const legacy = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await legacy.goto(`${base}/my-lessons/`);

@@ -408,6 +408,12 @@ lesson above.
 
 ### Payment
 
+The public explanation lives at `/terms/#booking`, alongside the separately
+labelled privacy notice at `/terms/#privacy`. The footer has one `Terms & privacy`
+link. Old policy URLs redirect to the matching section. Copy distinguishes
+direct payment from saved-card bookings using the payment method shown before
+confirmation; publishing that copy does not turn on automatic charging.
+
 Off by default. `payment_mode` is `off`, every booking confirms on creation, and
 none of the Stripe columns are read. With it set to `postpay` and Stripe
 configured:

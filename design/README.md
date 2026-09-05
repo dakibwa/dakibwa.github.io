@@ -134,10 +134,15 @@ the same identity or action:
   anchors the shared header and footer, while each page owns a task-specific
   heading and only the actions that meaningfully advance its reading path.
 
-- the booking and privacy policies use a quiet editorial cream column under a
-  compact blue hero. Terms and Privacy stay in a small, sentence-case footer
-  line on desktop and mobile, separate from the main destinations and outside
-  the mobile menu. When after-lesson charging is active, every booking presents its
+- Terms & privacy share one page at `/terms`, with a quiet cream reading column
+  under a compact blue hero. Plain language explains payment, changes and
+  cancellations first; a clearly named privacy section covers information use,
+  providers, retention, rights and contact. Two anchor links let readers reach
+  either section directly. One small, sentence-case footer link stays outside
+  the main destinations and mobile menu. Previous `/booking-terms` and `/privacy`
+  links redirect to their matching sections. Payment wording follows the method
+  shown at booking and never implies every booking saves or charges a card.
+  When after-lesson charging is active, every booking presents its
   saved-card agreement as a distinct required lavender consent block next to
   the final action; a payment configuration failure replaces action with a
   visible inline error instead of confirming without a usable payment method.

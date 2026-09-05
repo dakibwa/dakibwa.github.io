@@ -69,6 +69,7 @@ import {
   formatLessonDuration
 } from "@/lib/config";
 import { staticLessonTypes } from "@/lib/lesson-products";
+import { publicAssetPath } from "@/lib/paths";
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const weekdayNames = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
@@ -2614,7 +2615,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                         I agree that each lesson price is charged to my saved card automatically when that lesson ends.
                         Moving or cancelling on its Porto calendar day costs €5; if Inês records a no-show, only €5 is
                         charged instead of the lesson price. See the{" "}
-                        <a href="/booking-terms">booking and payment terms</a>.
+                        <a href={publicAssetPath("/terms/#booking")}>booking and payment terms</a>.
                       </span>
                     </label>
                   ) : null}
