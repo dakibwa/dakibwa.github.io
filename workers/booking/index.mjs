@@ -1728,8 +1728,8 @@ async function handleCreate(request, env, ctx) {
   const reference = bookingReference();
   const startsAt = new Date(body.startAt).toISOString();
   const timestamp = now.toISOString();
-  // A little longer than Stripe's own session expiry, so the hold outlives
-  // checkout rather than the other way round.
+  // The database hold is authoritative: even if Stripe still shows its setup
+  // form later, a late webhook cannot confirm this released slot.
   const holdExpiresAt = new Date(now.getTime() + 35 * 60000).toISOString();
 
   const endsAt = check.endAt.toISOString();

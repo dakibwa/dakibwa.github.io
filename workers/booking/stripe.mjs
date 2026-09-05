@@ -112,6 +112,7 @@ export async function chargeSavedCard(
     currency: "eur",
     customer,
     payment_method: paymentMethod,
+    payment_method_types: { 0: "card" },
     off_session: "true",
     confirm: "true",
     // This Worker has nobody present to complete 3DS. Ask Stripe to turn that
@@ -158,7 +159,7 @@ export function createCardSetupSession(
         }
       },
       ...uiModeFields(env, { successUrl, cancelUrl, forceHosted: false }),
-      // Keep retry parameters identical. The database's 30-minute hold is
+      // Keep retry parameters identical. The database's 35-minute hold is
       // authoritative even though Stripe's default session lasts longer.
       metadata: {
         purpose: "card_setup",

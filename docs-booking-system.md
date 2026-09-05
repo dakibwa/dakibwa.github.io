@@ -573,7 +573,7 @@ A completed, unknown or unreachable session never permits a replacement. Each
 replacement uses its expired predecessor as a stable idempotency generation and
 an atomic session-pointer update. Setup and payment requests use Stripe's default
 expiry rather than recomputing a timestamp under an existing idempotency key;
-the database still rejects setup confirmation after its 30-minute booking hold.
+the database still rejects setup confirmation after its 35-minute booking hold.
 
 On a first Google link to a password-created email, verified Google ownership
 retains the same account and lessons but clears the unverified password and

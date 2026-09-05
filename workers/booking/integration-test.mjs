@@ -47,6 +47,7 @@ globalThis.fetch = async (url, options) => {
   }
   assert.equal(String(url), "https://api.stripe.com/v1/payment_intents", "Only isolated charge mock may access network");
   const body = new URLSearchParams(options.body);
+  assert.equal(body.get("payment_method_types[0]"), "card", "error_on_requires_action requires explicit card methods in the real Stripe API");
   charges.push({ amount: Number(body.get("amount")), key: options.headers["Idempotency-Key"], body: options.body });
   if (chargeError) return Response.json({ error: { message: "Isolated ambiguous payment", type: chargeError.type } }, { status: chargeError.status });
   if (decline) return new Response(JSON.stringify({ error: { message: "Isolated decline test", type: "card_error" } }), { status: 402 });
