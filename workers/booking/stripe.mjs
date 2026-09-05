@@ -228,6 +228,9 @@ export function createCheckoutSession(
     integration_identifier: INTEGRATION_IDENTIFIER,
     mode: "payment",
     payment_method_types: { 0: "card" },
+    // Agreed lesson and policy amounts are in euros. Do not inherit the
+    // Dashboard's optional currency-conversion offer and extra FX fee.
+    adaptive_pricing: { enabled: false },
     client_reference_id: booking.id,
     ...(customer ? { customer } : { customer_email: customerEmail }),
     ...(saveCard ? { customer_creation: "always" } : {}),

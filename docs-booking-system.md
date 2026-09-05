@@ -484,6 +484,24 @@ The source-level `STRIPE_UI_MODE=embedded` setting maps to Stripe API
 2026-08-26.dahlia's `ui_mode=embedded_page`. Stripe.js still mounts the returned
 client secret with `initEmbeddedCheckout`.
 
+The 5 September 2026 sandbox acceptance used a labelled `example.invalid`
+student and published Stripe test cards only: declined setup remained
+unconfirmed; successful setup saved the card without payment; signed Checkout
+delivery confirmed the booking; a same-day move charged €5 separately, then
+the minute cron charged €25 after the moved lesson's end; hosted €25 recovery
+completed and a later cancellation completed an actual sandbox refund. Emails
+were dry-run. Synthetic dates were moved in the isolated D1 database to exercise
+the time boundaries; concurrency, DST, no-show and ambiguous provider outcomes
+are covered by the real-SQLite integration suite.
+
+This run corrected the sandbox webhook destination to the staging Worker (it
+had pointed at production), verified a recovered signed delivery answered 200,
+and found that off-session PaymentIntents must explicitly select `card` when
+using `error_on_requires_action`. Checkout also disables Adaptive Pricing per
+session, keeping the agreed EUR amount instead of inheriting an optional
+Dashboard currency conversion with an additional FX fee. These sandbox results
+do not establish live-key or real-money acceptance.
+
 **Go-live checklist**:
 
 1. Apply migrations 0012–0015 to both databases while production payment remains
