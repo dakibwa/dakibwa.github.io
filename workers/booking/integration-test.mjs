@@ -13,16 +13,27 @@ globalThis.Date = class extends NativeDate {
 };
 const nativeFetch = globalThis.fetch;
 const charges = [];
+const checkoutRequests = [];
+let checkoutStatus = "open";
+let chargeError = null;
+let googleJwk = null;
 let checkoutUnavailable = false;
 let decline = false;
 globalThis.fetch = async (url, options) => {
+  if (String(url) === "https://www.googleapis.com/oauth2/v3/certs") return Response.json({ keys: [googleJwk] });
+  if (String(url).startsWith("https://api.stripe.com/v1/checkout/sessions/")) {
+    if (checkoutUnavailable) throw new Error("Isolated lookup outage");
+    return Response.json({ id: String(url).split("/").at(-1), status: checkoutStatus, url: "https://checkout.stripe.com/c/pay/mock" });
+  }
   if (String(url) === "https://api.stripe.com/v1/checkout/sessions") {
+    checkoutRequests.push({ body: options.body, key: options.headers["Idempotency-Key"] });
     if (checkoutUnavailable) return new Response(JSON.stringify({ error: { message: "Isolated unavailable test" } }), { status: 503 });
-    return new Response(JSON.stringify({ id: "cs_recovery", url: "https://checkout.stripe.com/c/pay/mock" }));
+    return new Response(JSON.stringify({ id: options.headers["Idempotency-Key"].endsWith(":cs_old") ? "cs_new" : "cs_recovery", url: "https://checkout.stripe.com/c/pay/mock" }));
   }
   assert.equal(String(url), "https://api.stripe.com/v1/payment_intents", "Only isolated charge mock may access network");
   const body = new URLSearchParams(options.body);
-  charges.push({ amount: Number(body.get("amount")), key: options.headers["Idempotency-Key"] });
+  charges.push({ amount: Number(body.get("amount")), key: options.headers["Idempotency-Key"], body: options.body });
+  if (chargeError) return Response.json({ error: { message: "Isolated ambiguous payment", type: chargeError.type } }, { status: chargeError.status });
   if (decline) return new Response(JSON.stringify({ error: { message: "Isolated decline test", type: "card_error" } }), { status: 402 });
   return new Response(JSON.stringify({ id: `pi_mock_${charges.length}`, status: "succeeded" }));
 };
@@ -190,6 +201,11 @@ await test("opening, unchanged submission and failed move never charge a fee", a
   const unchanged = await call(`${path}/reschedule`, { body: { startAt: "2026-09-05T14:00:00.000Z" } });
   assert.equal(unchanged.status, 200);
   assert.equal((await unchanged.json()).sameDayFeeApplied, false);
+  for (const startAt of ["2026-09-05T14:00:00Z", "2026-09-05T14:00:00+00:00", "2026-09-05T15:00:00+01:00"]) {
+    const alias = await call(`${path}/reschedule`, { body: { startAt } });
+    assert.equal(alias.status, 200);
+    assert.equal((await alias.json()).sameDayFeeApplied, false);
+  }
   assert.equal((await call(`${path}/reschedule`, { body: { startAt: "invalid" } })).status, 409);
   assert.equal(db.prepare("SELECT same_day_fee_status FROM bookings WHERE id='no-action'").get().same_day_fee_status, "not_required");
   db.prepare("UPDATE bookings SET status='cancelled' WHERE id='no-action'").run();
@@ -270,6 +286,84 @@ await test("ambiguous processing older than 23 hours never creates another charg
   const count = charges.length;
   await chargeDueLessons(env);
   assert.equal(charges.length, count);
+});
+await test("fifty stale ambiguous payments cannot starve fresh lesson and action-fee charges", async () => {
+  for (let i = 0; i < 50; i++) {
+    booking(`stale-${i}`, { payment: "processing", start: "2026-01-01T09:00:00.000Z", end: "2026-01-01T10:00:00.000Z" });
+    db.prepare("UPDATE bookings SET charge_started_at='2026-01-01T10:00:00.000Z',same_day_fee_status='processing',same_day_fee_started_at='2026-01-01T10:00:00.000Z',updated_at='2026-01-01T10:00:00.000Z' WHERE id=?").run(`stale-${i}`);
+  }
+  booking("fresh-charge", { start: "2026-09-05T08:00:00.000Z", end: "2026-09-05T09:00:00.000Z" });
+  db.prepare("UPDATE bookings SET same_day_fee_status='scheduled',same_day_fee_cents=500 WHERE id='fresh-charge'").run();
+  const count = charges.length;
+  await chargeDueLessons(env); await chargeDueSameDayFees(env);
+  assert.equal(charges.length, count + 2);
+  assert.deepEqual(charges.slice(count).map((charge) => charge.amount), [1500, 500]);
+  const admin = await (await call("/admin/bookings", { method: "GET", user: "teacher" })).json();
+  assert.equal(admin.manualPaymentReconciliation.length, 51);
+});
+await test("ambiguous retry freezes card and money; idempotency errors never open a second payment path", async () => {
+  booking("ambiguous-snapshot", { start: "2026-09-05T08:00:00.000Z", end: "2026-09-05T09:00:00.000Z" });
+  db.prepare("UPDATE bookings SET same_day_fee_status='scheduled',same_day_fee_cents=500 WHERE id='ambiguous-snapshot'").run();
+  const before = charges.length;
+  const checkouts = checkoutRequests.length;
+  chargeError = { status: 503, type: "api_error" };
+  await chargeDueLessons(env); await chargeDueSameDayFees(env);
+  db.prepare("UPDATE students SET stripe_payment_method='pm_changed' WHERE id='alice'").run();
+  db.prepare("UPDATE bookings SET amount_cents=9900,same_day_fee_cents=9900,updated_at='2026-09-05T09:00:00.000Z' WHERE id='ambiguous-snapshot'").run();
+  chargeError = { status: 400, type: "idempotency_error" };
+  await chargeDueLessons(env);
+  db.prepare("UPDATE bookings SET updated_at='2026-09-05T09:00:00.000Z' WHERE id='ambiguous-snapshot'").run();
+  await chargeDueSameDayFees(env);
+  assert.equal(charges[before].body, charges[before + 2].body);
+  assert.equal(charges[before + 1].body, charges[before + 3].body);
+  assert.equal(checkoutRequests.length, checkouts);
+  assert.deepEqual({ ...db.prepare("SELECT payment_status,same_day_fee_status FROM bookings WHERE id='ambiguous-snapshot'").get() }, { payment_status: "processing", same_day_fee_status: "processing" });
+  chargeError = null;
+});
+await test("durable recovery only replaces a provider-expired session and remains single-path under concurrency", async () => {
+  booking("expired-recovery", { payment: "payment_due" });
+  db.prepare("UPDATE bookings SET stripe_session_id='cs_old' WHERE id='expired-recovery'").run();
+  const path = `/bookings/${await token("expired-recovery")}/payment`;
+  const start = checkoutRequests.length;
+  assert.equal((await call("/bookings/forged/payment", { body: { purpose: "lesson" } })).status, 404);
+  checkoutUnavailable = true;
+  assert.equal((await call(path, { body: { purpose: "lesson" } })).status, 503);
+  checkoutUnavailable = false; checkoutStatus = "complete";
+  assert.equal((await call(path, { body: { purpose: "lesson" } })).status, 503);
+  checkoutStatus = "open";
+  assert.equal((await call(path, { body: { purpose: "lesson" } })).status, 200);
+  assert.equal(checkoutRequests.length, start);
+  checkoutStatus = "expired";
+  const responses = await Promise.all([1, 2].map(() => call(path, { body: { purpose: "lesson" } })));
+  assert.deepEqual(responses.map((res) => res.status), [200, 200]);
+  assert.equal(db.prepare("SELECT stripe_session_id FROM bookings WHERE id='expired-recovery'").get().stripe_session_id, "cs_new");
+  assert.equal(new Set(checkoutRequests.slice(start).map((request) => request.key)).size, 1);
+  assert.equal(new Set(checkoutRequests.slice(start).map((request) => request.body)).size, 1);
+  assert.equal(new URLSearchParams(checkoutRequests.at(-1).body).has("expires_at"), false);
+  db.prepare("UPDATE bookings SET payment_status='paid' WHERE id='expired-recovery'").run();
+  assert.equal((await call(path, { body: { purpose: "lesson" } })).status, 409);
+  checkoutStatus = "open";
+});
+await test("verified Google first-link removes preregistration password and sessions while preserving account data", async () => {
+  const registered = await call("/auth/register", { user: null, body: { email: "victim@example.invalid", name: "Victim", password: "attacker-known-password" } });
+  assert.equal(registered.status, 201);
+  const attacker = await registered.json();
+  const keys = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+  googleJwk = { ...await crypto.subtle.exportKey("jwk", keys.publicKey), kid: "isolated-google" };
+  env.GOOGLE_CLIENT_ID = "isolated-client";
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const payload = `${encode({ alg: "RS256", kid: googleJwk.kid })}.${encode({ sub: "verified-victim", email: "victim@example.invalid", email_verified: true, iss: "https://accounts.google.com", aud: env.GOOGLE_CLIENT_ID, exp: Date.now() / 1000 + 3600 })}`;
+  const signature = Buffer.from(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", keys.privateKey, new TextEncoder().encode(payload))).toString("base64url");
+  const linked = await call("/auth/google", { user: null, body: { credential: `${payload}.${signature}` } });
+  assert.equal(linked.status, 200);
+  const victim = await linked.json();
+  assert.equal(victim.student.id, attacker.student.id);
+  assert.equal(sessionVersion(victim.session), 1);
+  assert.equal((await call("/me", { method: "GET", token: attacker.session })).status, 401);
+  assert.equal((await call("/auth/login", { user: null, body: { email: "victim@example.invalid", password: "attacker-known-password" } })).status, 401);
+  assert.equal((await call("/me", { method: "GET", token: victim.session })).status, 200);
+  const again = await (await call("/auth/google", { user: null, body: { credential: `${payload}.${signature}` } })).json();
+  assert.equal(sessionVersion(again.session), 1);
 });
 await test("logout revokes only the presented session and reset invalidates previous sessions", async () => {
   assert.equal((await call("/auth/logout", { user: "bob" })).status, 200);

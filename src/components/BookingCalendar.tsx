@@ -44,6 +44,7 @@ import {
   fetchBooking,
   fetchRecurringRates,
   redeemRecurringRate,
+  recoverBookingPayment,
   formatBookedLessonLabel,
   formatLongDate,
   formatMoneyCents,
@@ -1586,6 +1587,22 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
 
                   {!manageOutcome && manageMode === "view" ? (
                     <>
+                      {([ ["lesson", managed.paymentsDue?.lesson, "lesson payment"], ["same-day-fee", managed.paymentsDue?.sameDayFee, "same-day fee"] ] as const).map(([purpose, amount, label]) => amount != null ? (
+                        <div className="lesson-calendar__notice" key={purpose}>
+                          <p>Your {label} of {formatMoneyCents(amount)} is still to pay.</p>
+                          <button className="button button--coral" disabled={manageWorking} type="button" onClick={async () => {
+                            if (!managedToken) return;
+                            setManageWorking(true); setManageError("");
+                            try {
+                              const result = await recoverBookingPayment(managedToken, purpose);
+                              window.location.assign(result.url);
+                            } catch (error) {
+                              setManageError(error instanceof Error ? error.message : "Please try again shortly.");
+                              setManageWorking(false);
+                            }
+                          }}>{manageWorking ? "Opening secure payment…" : `Pay ${formatMoneyCents(amount)} securely`}</button>
+                        </div>
+                      ) : null)}
                       {managed.changeLocked && managed.booking.status !== "cancelled" ? (
                         <p className="lesson-calendar__notice">This lesson is today and can&rsquo;t be changed or cancelled.</p>
                       ) : managed.sameDayFeeApplies && managed.booking.status !== "cancelled" ? (

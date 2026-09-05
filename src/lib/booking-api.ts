@@ -39,6 +39,7 @@ export type Booking = {
 };
 
 export type ManagedBooking = {
+  paymentsDue?: { lesson: number | null; sameDayFee: number | null };
   recurring?: boolean;
   durationPrices?: Record<number, number>;
   booking: Booking;
@@ -199,6 +200,12 @@ export function redeemRecurringRate(session: string, code: string, durationMinut
     method: "POST",
     headers: { Authorization: `Bearer ${session}` },
     body: JSON.stringify({ code, durationMinutes })
+  });
+}
+
+export function recoverBookingPayment(token: string, purpose: "lesson" | "same-day-fee") {
+  return request<{ url: string }>(`/bookings/${encodeURIComponent(token)}/payment`, {
+    method: "POST", body: JSON.stringify({ purpose })
   });
 }
 

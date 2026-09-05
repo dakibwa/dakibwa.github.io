@@ -99,7 +99,10 @@ export function AuthPanel({
       </p>
 
       {mode !== "forgot" ? (
-        <GoogleSignInButton onError={setError} onSignedIn={onSignedIn} />
+        <>
+          <GoogleSignInButton onError={setError} onSignedIn={onSignedIn} />
+          <p className="booking-state-note">Your first Google sign-in replaces any previous password for this email. You can set a new password using the forgotten-password link.</p>
+        </>
       ) : null}
 
       {/* Creating an account leads, because at the end of a booking most people

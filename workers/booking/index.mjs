@@ -16,6 +16,7 @@ import {
   createCardSetupSession,
   createCheckoutSession,
   refundPayment,
+  retrieveCheckoutSession,
   retrieveSetupIntent,
   setupSessionProblem,
   stripeConfigured,
@@ -946,6 +947,9 @@ const worker = {
       const cancel = path.match(/^\/bookings\/([^/]+)\/cancel$/);
       if (cancel && request.method === "POST") return await handleCancel(request, env, ctx, cancel[1]);
 
+      const payment = path.match(/^\/bookings\/([^/]+)\/payment$/);
+      if (payment && request.method === "POST") return await handlePaymentRecovery(request, env, payment[1]);
+
       if (path.startsWith("/admin/")) return await handleAdmin(request, env, ctx, url, path);
 
       return fail("Not found.", 404, request, env);
@@ -999,13 +1003,16 @@ export async function chargeDueLessons(env, now = new Date()) {
 
   const nowIso = now.toISOString();
   const staleProcessing = new Date(now.getTime() - 10 * 60000).toISOString();
+  const retryCutoff = new Date(now.getTime() - 23 * 3600000).toISOString();
+  const unresolved = await env.DB.prepare("SELECT COUNT(*) AS count FROM bookings WHERE payment_status = 'processing' AND (charge_started_at IS NULL OR charge_started_at < ?)").bind(retryCutoff).first();
+  if (unresolved?.count) console.warn("payment-manual-reconciliation-required", "lesson", unresolved.count);
   const { results } = await env.DB.prepare(
     `SELECT * FROM bookings
      WHERE status = 'confirmed' AND ends_at <= ?
-       AND (payment_status = 'scheduled' OR (payment_status = 'processing' AND updated_at < ?))
+       AND (payment_status = 'scheduled' OR (payment_status = 'processing' AND updated_at < ? AND charge_started_at >= ?))
      ORDER BY ends_at LIMIT 50`
   )
-    .bind(nowIso, staleProcessing)
+    .bind(nowIso, staleProcessing, retryCutoff)
     .all();
 
   for (const row of results ?? []) {
@@ -1029,22 +1036,21 @@ export async function chargeDueLessons(env, now = new Date()) {
         .first();
       if (!due || !student || !lessonType) continue;
 
-      const { noShow, amountCents, purpose } = lessonChargePlan(due, lessonType, settings);
+      const { noShow, amountCents: plannedAmount, purpose } = lessonChargePlan(due, lessonType, settings);
+      const candidate = {
+        bookingId: due.id, purpose, customer: student.stripe_customer_id,
+        paymentMethod: student.stripe_payment_method, amountCents: plannedAmount,
+        description: `${noShow ? "No-show fee" : lessonType.name} · ${due.reference}`,
+        metadata: { booking_reference: due.reference, charge_reason: noShow ? "no_show" : "lesson" }
+      };
+      await env.DB.prepare("UPDATE bookings SET charge_request = COALESCE(charge_request, ?) WHERE id = ?").bind(JSON.stringify(candidate), due.id).run();
+      const storedRequest = await env.DB.prepare("SELECT charge_request FROM bookings WHERE id = ?").bind(due.id).first();
+      const chargeRequest = JSON.parse(storedRequest.charge_request);
+      const amountCents = chargeRequest.amountCents;
 
-      if (student.stripe_customer_id && student.stripe_payment_method) {
+      if (chargeRequest.customer && chargeRequest.paymentMethod) {
         try {
-          const intent = await chargeSavedCard(env, {
-            bookingId: due.id,
-            purpose,
-            customer: student.stripe_customer_id,
-            paymentMethod: student.stripe_payment_method,
-            amountCents,
-            description: `${noShow ? "No-show fee" : lessonType.name} · ${due.reference}`,
-            metadata: {
-              booking_reference: due.reference,
-              charge_reason: noShow ? "no_show" : "lesson"
-            }
-          });
+          const intent = await chargeSavedCard(env, chargeRequest);
 
           await env.DB.prepare(
             `UPDATE bookings SET payment_status = 'paid', stripe_payment_intent = ?, charged_cents = ?, updated_at = ?
@@ -1072,7 +1078,7 @@ export async function chargeDueLessons(env, now = new Date()) {
         .bind(amountCents, new Date().toISOString(), due.id)
         .run();
       await notifyPaymentDue(env, {
-        row: due,
+        row: { ...due, stripe_session_id: null },
         lessonType,
         amountCents,
         purpose: noShow ? "no-show" : "lesson"
@@ -1128,18 +1134,24 @@ async function chargeOneSameDayFee(env, bookingId, now = new Date()) {
     : null;
   if (!row || !student || !lessonType) return "missing";
 
-  const amountCents = row.same_day_fee_cents ?? settings.sameDayChangeFeeCents;
+  const candidate = {
+    bookingId: row.id, purpose: "same-day-fee", customer: student.stripe_customer_id,
+    paymentMethod: student.stripe_payment_method,
+    amountCents: row.same_day_fee_cents ?? settings.sameDayChangeFeeCents,
+    description: `Same-day lesson change · ${row.reference}`,
+    metadata: { booking_reference: row.reference, charge_reason: "same_day_change" }
+  };
+  await env.DB.prepare("UPDATE bookings SET same_day_fee_request = COALESCE(same_day_fee_request, ?) WHERE id = ?").bind(JSON.stringify(candidate), row.id).run();
+  const storedRequest = await env.DB.prepare("SELECT same_day_fee_request FROM bookings WHERE id = ?").bind(row.id).first();
+  const chargeRequest = JSON.parse(storedRequest.same_day_fee_request);
+  const amountCents = chargeRequest.amountCents;
   try {
-    if (!student.stripe_customer_id || !student.stripe_payment_method) throw new Error("No saved card");
-    const intent = await chargeSavedCard(env, {
-      bookingId: row.id,
-      purpose: "same-day-fee",
-      customer: student.stripe_customer_id,
-      paymentMethod: student.stripe_payment_method,
-      amountCents,
-      description: `Same-day lesson change · ${row.reference}`,
-      metadata: { booking_reference: row.reference, charge_reason: "same_day_change" }
-    });
+    if (!chargeRequest.customer || !chargeRequest.paymentMethod) {
+      const error = new Error("No saved card");
+      error.stripeStatus = 400; // This immutable request never reached Stripe.
+      throw error;
+    }
+    const intent = await chargeSavedCard(env, chargeRequest);
     await env.DB.prepare(
       `UPDATE bookings SET same_day_fee_status = 'paid', same_day_fee_payment_intent = ?, updated_at = ?
        WHERE id = ? AND same_day_fee_status = 'processing'`
@@ -1161,13 +1173,16 @@ async function chargeOneSameDayFee(env, bookingId, now = new Date()) {
 
 export async function chargeDueSameDayFees(env, now = new Date()) {
   const staleProcessing = new Date(now.getTime() - 10 * 60000).toISOString();
+  const retryCutoff = new Date(now.getTime() - 23 * 3600000).toISOString();
+  const unresolved = await env.DB.prepare("SELECT COUNT(*) AS count FROM bookings WHERE same_day_fee_status = 'processing' AND (same_day_fee_started_at IS NULL OR same_day_fee_started_at < ?)").bind(retryCutoff).first();
+  if (unresolved?.count) console.warn("payment-manual-reconciliation-required", "same-day-fee", unresolved.count);
   const { results } = await env.DB.prepare(
     `SELECT id FROM bookings
      WHERE same_day_fee_status = 'scheduled'
-        OR (same_day_fee_status = 'processing' AND updated_at < ?)
+        OR (same_day_fee_status = 'processing' AND updated_at < ? AND same_day_fee_started_at >= ?)
      ORDER BY updated_at LIMIT 50`
   )
-    .bind(staleProcessing)
+    .bind(staleProcessing, retryCutoff)
     .all();
   for (const row of results ?? []) await chargeOneSameDayFee(env, row.id, now);
 }
@@ -1254,6 +1269,56 @@ async function notifySameDayFeeCharged(env, { row, lessonType, amountCents }) {
   });
 }
 
+async function recoverySession(env, { row, lessonType, amountCents, purpose }) {
+  const fee = purpose === "same-day-fee";
+  const column = fee ? "same_day_fee_session_id" : "stripe_session_id";
+  const statusColumn = fee ? "same_day_fee_status" : "payment_status";
+  const previousId = row[column] ?? null;
+  if (previousId) {
+    const previous = await retrieveCheckoutSession(env, previousId);
+    if (previous.status === "open" && previous.url) return previous;
+    // Complete/pending/unknown is never permission to create a second charge.
+    if (previous.status !== "expired") throw new Error("This payment is being confirmed. Please refresh shortly.");
+  }
+  const student = await env.DB.prepare("SELECT stripe_customer_id FROM students WHERE id = ?").bind(row.student_id).first();
+  const session = await createCheckoutSession(env, {
+    booking: row, lessonType, customerEmail: row.student_email,
+    customer: student?.stripe_customer_id ?? null, forceHosted: true,
+    checkoutPurpose: `${purpose}-due`, amountCents,
+    recoveryGeneration: previousId ?? "",
+    productName: fee ? "Same-day lesson change fee" : purpose === "no-show" ? "Lesson no-show fee" : lessonType.name,
+    productDescription: `${row.reference} · Português com a Inês`,
+    successUrl: siteUrl(env, "/book/?view=lessons&paid=1"),
+    cancelUrl: studentManageUrl(env, await createManageToken(row.id, env.BOOKING_TOKEN_SECRET))
+  });
+  if (!session.id || !session.url) throw new Error("The secure payment link is not ready. Please try again shortly.");
+  await env.DB.prepare(`UPDATE bookings SET ${column} = ? WHERE id = ? AND ${statusColumn} = 'payment_due' AND ${column} IS ?`)
+    .bind(session.id, row.id, previousId).run();
+  const stored = await env.DB.prepare(`SELECT ${column} AS session, ${statusColumn} AS status FROM bookings WHERE id = ?`).bind(row.id).first();
+  if (stored?.session !== session.id || stored?.status !== "payment_due") throw new Error("This payment changed. Please refresh shortly.");
+  return session;
+}
+
+async function handlePaymentRecovery(request, env, token) {
+  const row = await getBookingByToken(env, token);
+  if (!row) return fail("That booking link is not valid.", 404, request, env);
+  if (!stripeReady(env) || (await loadSettings(env)).paymentMode !== "postpay") return fail("Card payments are not available yet.", 503, request, env);
+  if (!await takeRateLimit(env, `recovery:${row.id}`, 8)) return fail("Please wait 15 minutes before trying again.", 429, request, env);
+  const body = await readJson(request);
+  if (!["lesson", "same-day-fee"].includes(body.purpose)) return fail("Choose the payment to settle.", 400, request, env);
+  const fee = body.purpose === "same-day-fee";
+  if ((fee ? row.same_day_fee_status : row.payment_status) !== "payment_due") return fail("This payment is not outstanding. Please refresh.", 409, request, env);
+  const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(row.lesson_type_id).first();
+  try {
+    const session = await recoverySession(env, { row, lessonType,
+      amountCents: fee ? row.same_day_fee_cents : row.charged_cents ?? row.amount_cents,
+      purpose: fee ? "same-day-fee" : row.attendance_status === "no_show" ? "no-show" : "lesson" });
+    return json({ url: session.url }, 200, request, env);
+  } catch {
+    return fail("The secure payment link is not ready. Please refresh and try again shortly.", 503, request, env);
+  }
+}
+
 async function notifyPaymentDue(env, { row, lessonType, amountCents, purpose = "lesson" }) {
   const settings = await loadSettings(env);
   const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
@@ -1264,25 +1329,9 @@ async function notifyPaymentDue(env, { row, lessonType, amountCents, purpose = "
 
   let payUrl = "";
   try {
-    const student = await env.DB.prepare("SELECT stripe_customer_id FROM students WHERE id = ?").bind(row.student_id).first();
-    const session = await createCheckoutSession(env, {
-      booking: row,
-      lessonType,
-      customerEmail: row.student_email,
-      customer: student?.stripe_customer_id ?? null,
-      forceHosted: true,
-      checkoutPurpose: `${purpose}-due`,
-      amountCents,
-      productName: isSameDayFee ? "Same-day lesson change fee" : isNoShow ? "Lesson no-show fee" : lessonType.name,
-      productDescription: `${row.reference} · Português com a Inês`,
-      successUrl: siteUrl(env, "/book/?view=lessons&paid=1"),
-      cancelUrl: siteUrl(env, "/book/?view=lessons")
-    });
-    payUrl = session.url ?? "";
-    if (session.id) {
-      const column = isSameDayFee ? "same_day_fee_session_id" : "stripe_session_id";
-      await env.DB.prepare(`UPDATE bookings SET ${column} = ? WHERE id = ?`).bind(session.id, row.id).run();
-    }
+    await recoverySession(env, { row, lessonType, amountCents, purpose });
+    // The email opens a durable booking page, not an expiring Stripe URL.
+    payUrl = studentManageUrl(env, await createManageToken(row.id, env.BOOKING_TOKEN_SECRET));
   } catch (error) {
     console.error("payment-due-link", row.reference, String(error?.message ?? error));
   }
@@ -2417,7 +2466,11 @@ async function handleGetBooking(request, env, token) {
       changeLocked: policy.locked,
       refundOnCancel: policy.refundOnCancel,
       recurring: Boolean(row.series_id),
-      durationPrices: row.series_id && row.student_id ? await recurringRates(env, row.student_id) : {}
+      durationPrices: row.series_id && row.student_id ? await recurringRates(env, row.student_id) : {},
+      paymentsDue: {
+        lesson: row.payment_status === "payment_due" ? row.charged_cents ?? row.amount_cents : null,
+        sameDayFee: row.same_day_fee_status === "payment_due" ? row.same_day_fee_cents : null
+      }
     },
     200,
     request,
@@ -2451,7 +2504,7 @@ async function handleReschedule(request, env, ctx, token) {
   if (!lessonType) return fail("That lesson type is not available.", 400, request, env);
   const location = normaliseLocation(body.location, row.location);
 
-  if (body.startAt === row.starts_at && lessonType.id === row.lesson_type_id && location === row.location) {
+  if (Number.isFinite(Date.parse(body.startAt)) && Date.parse(body.startAt) === Date.parse(row.starts_at) && lessonType.id === row.lesson_type_id && location === row.location) {
     return json({ booking: publicBooking(row, lessonType, await loadSettings(env)), sameDayFeeApplied: false }, 200, request, env);
   }
 
@@ -3027,10 +3080,23 @@ async function handleGoogleSignIn(request, env) {
     // The address is deliberately not rewritten here. A student who changed it
     // on the site means that change to stand, and forcing it back to whatever
     // Google holds would both undo them and collide with the unique index.
-    await env.DB.prepare("UPDATE students SET google_sub = ?, last_login_at = ? WHERE id = ?")
-      .bind(profile.sub, now, student.id)
-      .run();
+    if (!student.google_sub) {
+      // Registration did not prove ownership of this email. The verified
+      // owner may keep the account's data, but must not inherit an attacker's
+      // password or sessions. This first-link transition is atomic under two
+      // concurrent Google callbacks; subsequent Google logins change neither.
+      await env.DB.batch([
+        env.DB.prepare(`UPDATE students SET google_sub = ?, password_hash = '', session_version = session_version + 1, last_login_at = ?
+          WHERE id = ? AND google_sub IS NULL`).bind(profile.sub, now, student.id),
+        env.DB.prepare("DELETE FROM password_resets WHERE student_id = ?").bind(student.id),
+        env.DB.prepare("DELETE FROM email_changes WHERE student_id = ?").bind(student.id)
+      ]);
+    } else {
+      await env.DB.prepare("UPDATE students SET last_login_at = ? WHERE id = ? AND google_sub = ?")
+        .bind(now, student.id, profile.sub).run();
+    }
     student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(student.id).first();
+    if (student.google_sub !== profile.sub) return fail("That address is linked to another Google account.", 409, request, env);
   } else {
     const id = crypto.randomUUID();
     await env.DB.prepare(
@@ -3432,7 +3498,12 @@ async function handleAdmin(request, env, ctx, url, path) {
     )
       .bind(from)
       .all();
-    return json({ bookings: results ?? [] }, 200, request, env);
+    const cutoff = new Date(Date.now() - 23 * 3600000).toISOString();
+    const { results: reconciliation } = await env.DB.prepare(`SELECT id, reference, payment_status, same_day_fee_status FROM bookings
+      WHERE (payment_status = 'processing' AND (charge_started_at IS NULL OR charge_started_at < ?))
+         OR (same_day_fee_status = 'processing' AND (same_day_fee_started_at IS NULL OR same_day_fee_started_at < ?))`)
+      .bind(cutoff, cutoff).all();
+    return json({ bookings: results ?? [], manualPaymentReconciliation: reconciliation ?? [] }, 200, request, env);
   }
 
   if (request.method === "GET" && path === "/admin/availability") {

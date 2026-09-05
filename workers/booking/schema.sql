@@ -121,6 +121,8 @@ CREATE INDEX IF NOT EXISTS idx_email_changes_student ON email_changes (student_i
 CREATE TABLE IF NOT EXISTS bookings (
   charge_started_at TEXT,
   same_day_fee_started_at TEXT,
+  charge_request TEXT,
+  same_day_fee_request TEXT,
   id                TEXT PRIMARY KEY,
   reference         TEXT NOT NULL UNIQUE,
   lesson_type_id    TEXT NOT NULL REFERENCES lesson_types (id),

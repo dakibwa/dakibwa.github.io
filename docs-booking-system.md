@@ -486,7 +486,7 @@ client secret with `initEmbeddedCheckout`.
 
 **Go-live checklist**:
 
-1. Apply migrations 0012 and 0013 to both databases while production payment remains
+1. Apply migrations 0012–0014 to both databases while production payment remains
    off. It adds lesson-end charge state, attendance, no-show and independent
    same-day-fee fields.
 2. ~~Open Inês's Stripe account and invite Dan as **Administrator**~~ — done,
@@ -556,8 +556,27 @@ processing payments reject concurrent changes. Student and teacher moves use
 conditional conflict/sequence checks. No-op moves do not schedule fees. Payment
 and fee retries stop automatically after 23 hours of ambiguity, before Stripe's
 minimum idempotency retention can lapse; an owner must reconcile that payment
-in Stripe before any further attempt. Failed recovery-link creation retries
-on the scheduled sweep and does not send an email without its promised link.
+in Stripe before any further attempt. Such rows are excluded from the 50-item
+sweeps so newer payments are not starved; the owner-only bookings response has
+`manualPaymentReconciliation`, and Worker warnings signal outstanding counts.
+The first claim freezes every Stripe charge parameter in the booking, including
+the saved card, amount and purpose. An idempotency-parameter error remains
+ambiguous and never opens a second hosted payment path.
+
+Failed recovery-link creation retries on the scheduled sweep. Recovery emails
+open the durable booking-management page; its separate lesson/fee buttons reuse
+an open Checkout session and only replace one after Stripe confirms it expired.
+A completed, unknown or unreachable session never permits a replacement. Each
+replacement uses its expired predecessor as a stable idempotency generation and
+an atomic session-pointer update. Setup and payment requests use Stripe's default
+expiry rather than recomputing a timestamp under an existing idempotency key;
+the database still rejects setup confirmation after its 30-minute booking hold.
+
+On a first Google link to a password-created email, verified Google ownership
+retains the same account and lessons but clears the unverified password and
+invalidates all earlier sessions and pending account-change/reset requests.
+Subsequent logins match the stable Google id without repeating that transition.
+The sign-in page explains that an email password reset can restore a password.
 
 Writes reject unapproved browser origins and non-JSON content; request bodies
 are bounded while streaming. Authentication has an edge-IP rate limit and
