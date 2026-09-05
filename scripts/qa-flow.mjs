@@ -492,10 +492,10 @@ if (bookingCalendar) {
   if (lockedOverflow.body !== "hidden" || lockedOverflow.html !== "hidden") {
     throw new Error(`The mobile menu should lock both scroll roots: ${JSON.stringify(lockedOverflow)}.`);
   }
-  if ((await page.locator("#site-nav-mobile a").count()) !== 4) {
+  if ((await page.locator("#site-nav-mobile .nav-mobile__link").count()) !== 4) {
     throw new Error("The mobile menu should contain the four primary destinations once each.");
   }
-  await toggle.click();
+  await page.getByRole("button", { name: "Close menu", exact: true }).click();
   await page.waitForTimeout(250);
   const restoredOverflow = await page.evaluate(() => ({
     body: getComputedStyle(document.body).overflow,
@@ -1114,7 +1114,7 @@ for (const hiddenUntilViewing of [/Stop repeating/, /Cancel all booked lessons/]
 const initialWorkflowLayout = await accountPage.evaluate(() => {
   const account = document.querySelector(".unified-account-controls")?.getBoundingClientRect();
   const upcoming = document.querySelector("#account-upcoming-lessons")?.getBoundingClientRect();
-  const calendar = document.querySelector("#lesson-calendar")?.getBoundingClientRect();
+  const calendar = document.querySelector("#lesson-calendar .calendar-panel")?.getBoundingClientRect();
   const accountName = document.querySelector(".my-lessons__account-name")?.getBoundingClientRect();
   return {
     accountLeft: account?.left ?? 0,
@@ -1133,6 +1133,9 @@ const initialWorkflowLayout = await accountPage.evaluate(() => {
   };
 });
 if (
+  Math.abs(initialWorkflowLayout.accountLeft - initialWorkflowLayout.upcomingLeft) > 2 ||
+  Math.abs(initialWorkflowLayout.accountRight - initialWorkflowLayout.calendarRight) > 2 ||
+  Math.abs(initialWorkflowLayout.upcomingBottom - initialWorkflowLayout.calendarBottom) > 2 ||
   initialWorkflowLayout.accountBottom > Math.min(initialWorkflowLayout.upcomingTop, initialWorkflowLayout.calendarTop) + 1 ||
   initialWorkflowLayout.upcomingRight >= initialWorkflowLayout.calendarLeft ||
   Math.abs(initialWorkflowLayout.upcomingTop - initialWorkflowLayout.calendarTop) > 2 ||
@@ -1195,11 +1198,13 @@ if (/\d/.test(await initialAccountMenu.getByRole("button", { name: /Past lessons
 }
 await initialAccountMenu.getByRole("button", { name: /Past lessons/ }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "visible" });
-if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4) {
-  throw new Error("The initial Past lessons shortcut should establish the four-week lesson workspace.");
+if (await accountPage.locator("#lesson-calendar").count()) {
+  throw new Error("Past lessons should show its own complete view without an unrelated future calendar.");
 }
-await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
-await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+await initialAccountMenu.getByRole("button", { name: /Past lessons/ }).click();
+await accountPanel.locator("#account-past-lessons").waitFor({ state: "visible" });
+await accountPanel.getByRole("button", { name: "Upcoming lessons", exact: true }).click();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await accountPanel.getByRole("button", { name: "Edit details", exact: true }).click();
 await accountPanel.locator(".my-lessons__details").waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
@@ -1236,7 +1241,7 @@ await accountPage.screenshot({ path: path.join(outDir, "booking-account-edit-des
 await accountPanel.getByRole("button", { name: "Done editing", exact: true }).click();
 await accountPanel.locator(".my-lessons__details").waitFor({ state: "detached" });
 
-await accountPage.getByRole("button", { name: /View your lessons/ }).click();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 4) {
@@ -1280,10 +1285,9 @@ if (pastLessonPlacement.historyTop <= pastLessonPlacement.accountBottom + 4) {
   throw new Error(`Past lessons should live in a separate panel below the account bar: ${JSON.stringify(pastLessonPlacement)}.`);
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-past-lessons-desktop.png"), fullPage: true });
-await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
+await accountPanel.getByRole("button", { name: "Upcoming lessons", exact: true }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "detached" });
-await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
-await accountPage.getByRole("button", { name: /View your lessons/ }).click();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 
 const laterLessonsToggle = accountPanel.getByRole("button", { name: /View lessons/ });
@@ -1492,9 +1496,8 @@ const managedAccountMenu = accountPanel.locator("#account-menu");
 await managedAccountMenu.getByRole("button", { name: /Past lessons/ }).waitFor();
 await managedAccountMenu.getByRole("button", { name: /Past lessons/ }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "visible" });
-await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
-await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
-await accountPage.getByRole("button", { name: /View your lessons/ }).click();
+await accountPanel.getByRole("button", { name: "Upcoming lessons", exact: true }).click();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 const laterDatesToggle = accountPanel.locator(".upcoming-lesson-group--series").getByRole("button", { name: "View next 6 lessons", exact: true });
@@ -1548,7 +1551,7 @@ const desktopAccountLayout = await accountPage.evaluate(() => {
     provider: bounds(".booking-provider"),
     panel: bounds(".unified-account-controls"),
     upcoming: bounds("#account-upcoming-lessons"),
-    calendar: bounds("#lesson-calendar")
+    calendar: bounds("#lesson-calendar .calendar-panel")
   };
 });
 if (
@@ -1558,6 +1561,9 @@ if (
   !desktopAccountLayout.panel ||
   !desktopAccountLayout.upcoming ||
   !desktopAccountLayout.calendar ||
+  Math.abs(desktopAccountLayout.panel.right - desktopAccountLayout.calendar.right) > 2 ||
+  Math.abs(desktopAccountLayout.panel.left - desktopAccountLayout.upcoming.left) > 2 ||
+  Math.abs(desktopAccountLayout.calendar.bottom - desktopAccountLayout.upcoming.bottom) > 2 ||
   desktopAccountLayout.alignItems !== "stretch" ||
   desktopAccountLayout.intro.bottom > desktopAccountLayout.provider.top + 1 ||
   desktopAccountLayout.panel.bottom > Math.min(desktopAccountLayout.upcoming.top, desktopAccountLayout.calendar.top) + 1 ||
@@ -1763,9 +1769,9 @@ if (mobilePastLessonsLayout.scrollWidth > mobilePastLessonsLayout.clientWidth + 
   throw new Error("The separate past-lessons panel overflows on a phone.");
 }
 await accountPanel.screenshot({ path: path.join(outDir, "booking-past-lessons-mobile.png") });
-await accountPanel.getByRole("button", { name: "Back to start", exact: true }).click();
+await accountPanel.getByRole("button", { name: "Upcoming lessons", exact: true }).click();
 await accountPanel.locator("#account-past-lessons").waitFor({ state: "detached" });
-await accountPage.getByRole("heading", { name: "What would you like to do?", exact: true }).waitFor();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: "Edit details", exact: true }).click();
 await accountPanel.locator(".my-lessons__details").waitFor({ state: "visible" });
@@ -1781,7 +1787,7 @@ await accountPanel.screenshot({ path: path.join(outDir, "booking-account-edit-mo
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: "Done editing", exact: true }).click();
 await accountPanel.locator(".my-lessons__details").waitFor({ state: "detached" });
-await accountPage.getByRole("button", { name: /View your lessons/ }).click();
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });
 await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 await waitForOrientation(accountPage);
@@ -1861,7 +1867,7 @@ if (mobileLaterLessonsLayout.scrollWidth > mobileLaterLessonsLayout.clientWidth 
 await accountPage.screenshot({ path: path.join(outDir, "booking-upcoming-lessons-mobile.png"), fullPage: true });
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: /View lessons/ }).click();
-await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "detached" });
+await accountPanel.locator("#account-upcoming-lessons").waitFor({ state: "visible" });
 const mobileAccountLayout = await accountPage.evaluate(() => {
   const calendar = document.querySelector("#lesson-calendar .unified-calendar__grid");
   const calendarBounds = calendar?.getBoundingClientRect();
@@ -2361,7 +2367,7 @@ await accountPage.locator("#lesson-calendar .unified-calendar__availability .slo
 await accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Change lesson", exact: true }).click();
 await accountPage.getByRole("heading", { name: "How would you like to book?", exact: true }).waitFor();
-await accountPage.getByRole("button", { name: "Back", exact: true }).click();
+await accountPage.getByRole("button", { name: "Your lessons", exact: true }).click();
 await bookQaLessonAndReturnToUpcoming({ recurring: false });
 await bookQaLessonAndReturnToUpcoming({ recurring: true });
 await accountPage.locator("#lesson-calendar").waitFor({ state: "visible" });

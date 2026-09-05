@@ -5,10 +5,8 @@ import { Menu } from "lucide-react";
 /**
  * One control, and only where it does something.
  *
- * Top went because Menu already returns you to the top on its way to opening,
- * so the two did the same thing side by side. Menu itself is hidden above the
- * breakpoint, where the footer already lists every page in a row and a button
- * to reveal them is a button to reveal what is already on screen.
+ * Opens the same menu at the current scroll position. It is hidden above the
+ * breakpoint, where the footer already lists every destination.
  *
  * It asks the header to open by event, since the two live in separate trees
  * with the whole page between them.

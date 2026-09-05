@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
+import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { SitePage } from "@/components/SiteHeader";
 
@@ -14,26 +16,37 @@ const navigation: NavItem[] = [
   { href: "/book", id: "book", label: "Booking" }
 ];
 
+const legalNavigation: NavItem[] = [
+  { href: "/booking-terms", id: "terms", label: "Terms" },
+  { href: "/privacy", id: "privacy", label: "Privacy" }
+];
+
 export function SiteNav({ currentPage }: { currentPage: SitePage }) {
   const [open, setOpen] = useState(false);
+  const [ready, setReady] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const pathname = usePathname();
+  const previousPathname = useRef(pathname);
+
+  useEffect(() => { setReady(true); }, []);
 
   // Navigating away must close the panel, or it stays open over the new page.
   useEffect(() => {
-    setOpen(false);
+    if (previousPathname.current !== pathname) {
+      setOpen(false);
+      previousPathname.current = pathname;
+    }
   }, [pathname]);
 
   // The footer's Menu button asks for this menu without either component
   // needing to know about the other.
   useEffect(() => {
     function onRequest() {
+      openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setOpen(true);
-      window.scrollTo({
-        top: 0,
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"
-      });
-      requestAnimationFrame(() => toggleRef.current?.focus());
     }
 
     window.addEventListener("ines:open-menu", onRequest);
@@ -48,13 +61,27 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
     const previousBodyOverflow = document.body.style.overflow;
     root.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    const background = [...document.querySelectorAll<HTMLElement>("main, .site-footer, .akibwa-project-banner, .site-header__brand")]
+      .filter((element) => !element.inert);
+    background.forEach((element) => { element.inert = true; });
+    const focusFrame = requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
+
+    const desktop = window.matchMedia("(min-width: 821px)");
+    const closeOnDesktop = () => { if (desktop.matches) setOpen(false); };
+    desktop.addEventListener("change", closeOnDesktop);
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      // Focus goes back to the control that opened it, not to the top of the
-      // document, or a keyboard user is dropped somewhere unrelated.
-      toggleRef.current?.focus();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+      } else if (event.key === "Tab") {
+        const controls = [...menuRef.current?.querySelectorAll<HTMLButtonElement | HTMLAnchorElement>("button, a[href]") ?? []];
+        const current = controls.indexOf(document.activeElement as HTMLButtonElement | HTMLAnchorElement);
+        const next = event.shiftKey ? (current <= 0 ? controls.length - 1 : current - 1) : (current + 1) % controls.length;
+        event.preventDefault();
+        controls[next]?.focus();
+      }
     }
 
     window.addEventListener("keydown", onKeyDown);
@@ -62,6 +89,9 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
       window.removeEventListener("keydown", onKeyDown);
       root.style.overflow = previousRootOverflow;
       document.body.style.overflow = previousBodyOverflow;
+      background.forEach((element) => { element.inert = false; });
+      cancelAnimationFrame(focusFrame);
+      desktop.removeEventListener("change", closeOnDesktop);
     };
   }, [open]);
 
@@ -85,7 +115,12 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
         aria-expanded={open}
         aria-label={open ? "Close menu" : "Open menu"}
         className={`nav-toggle${open ? " is-open" : ""}`}
-        onClick={() => setOpen((value) => !value)}
+        disabled={!ready}
+        onClick={() => {
+          if (!open) openerRef.current = toggleRef.current;
+          else requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+          setOpen((value) => !value);
+        }}
         ref={toggleRef}
         type="button"
       >
@@ -97,9 +132,31 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
       </button>
 
       {/* inert, not just hidden: a closed panel must be unreachable by tab and
-          invisible to a screen reader, and hiding it visually does neither. */}
-      <div className={`nav-mobile${open ? " is-open" : ""}`} id="site-nav-mobile" inert={!open || undefined}>
+          invisible to a screen reader, and hiding it visually does neither.
+          The portal also keeps the dialog above the optional portfolio banner. */}
+      {ready ? createPortal(<div
+        className={`nav-mobile${open ? " is-open" : ""}`}
+        id="site-nav-mobile"
+        ref={menuRef}
+        inert={!open || undefined}
+        role={open ? "dialog" : undefined}
+        aria-modal={open ? true : undefined}
+        aria-label="Site navigation"
+      >
         <div className="nav-mobile__inner">
+          <button
+            aria-label="Close menu"
+            className="nav-mobile__close"
+            ref={closeRef}
+            onClick={() => {
+              setOpen(false);
+              requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+            }}
+            type="button"
+          >
+            <X aria-hidden="true" size={26} strokeWidth={1.8} />
+          </button>
+          <p className="eyebrow nav-mobile__title">Português com a Inês</p>
           {navigation.map((item) => (
             <Link
               aria-current={currentPage === item.id ? "page" : undefined}
@@ -111,8 +168,20 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
               {item.label}
             </Link>
           ))}
+          <nav className="nav-mobile__legal" aria-label="Booking information">
+            {legalNavigation.map((item) => (
+              <Link
+                aria-current={currentPage === item.id ? "page" : undefined}
+                href={item.href}
+                key={item.id}
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
-      </div>
+      </div>, document.body) : null}
     </>
   );
 }

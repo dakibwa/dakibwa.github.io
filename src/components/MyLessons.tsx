@@ -84,7 +84,6 @@ function HistoryLessonCard({ booking }: { booking: MyBooking }) {
 export function MyLessons({
   calendarHorizonDays = BOOKING_HORIZON_DAYS_FALLBACK,
   embedded = false,
-  onBackToStart,
   onBook,
   onManage,
   onOpenAccountSection,
@@ -100,10 +99,9 @@ export function MyLessons({
 }: {
   calendarHorizonDays?: number;
   embedded?: boolean;
-  onBackToStart?: () => void;
   onBook?: () => void;
   onManage?: (token: string, seriesId: string | null, openSeries?: boolean) => void;
-  onOpenAccountSection?: (section: "history" | "upcoming") => void;
+  onOpenAccountSection?: (section: "history" | "upcoming" | "profile") => void;
   onSignedOut?: () => void;
   onTransition?: (update: () => void) => void;
   focusUpcomingBooking?: UpcomingBookingFocusRequest | null;
@@ -400,29 +398,30 @@ export function MyLessons({
     else window.location.assign(`/book/?manage=${encodeURIComponent(booking.manageToken)}`);
   }
 
-  function toggleAccountSection(section: "history" | "upcoming") {
-    const isOpening = accountSection !== section;
+  function openAccountSection(section: "history" | "upcoming") {
     applyTransition(() => {
       setMenuOpen(false);
       setEditing(false);
-      setExpandedUpcomingGroup("");
-      setAccountSection((current) => (current === section ? "" : section));
-      if (isOpening) onOpenAccountSection?.(section);
+      if (accountSection !== section) setExpandedUpcomingGroup("");
+      setAccountSection(section);
+      onOpenAccountSection?.(section);
     });
-    if (isOpening) {
-      window.requestAnimationFrame(() => document.getElementById(`account-${section === "history" ? "past" : "upcoming"}-lessons`)?.focus());
-    }
+    window.requestAnimationFrame(() => document.getElementById(`account-${section === "history" ? "past" : "upcoming"}-lessons`)?.focus({ preventScroll: true }));
   }
 
-  function backToStart() {
+  function editDetails() {
+    if (editing) {
+      openAccountSection("upcoming");
+      return;
+    }
     applyTransition(() => {
       setMenuOpen(false);
-      setEditing(false);
+      setEditing(true);
       setExpandedUpcomingGroup("");
       setAccountSection("");
-      onBackToStart?.();
+      onOpenAccountSection?.("profile");
     });
-    window.requestAnimationFrame(() => document.getElementById("booking-journey-start")?.focus());
+    window.requestAnimationFrame(() => document.querySelector<HTMLInputElement>(".my-lessons__details input")?.focus({ preventScroll: true }));
   }
 
   function bookLesson() {
@@ -583,7 +582,8 @@ export function MyLessons({
                   <button
                     aria-controls="account-upcoming-lessons"
                     aria-expanded={accountSection === "upcoming"}
-                    onClick={() => toggleAccountSection("upcoming")}
+                    aria-current={accountSection === "upcoming" ? "true" : undefined}
+                    onClick={() => openAccountSection("upcoming")}
                     type="button"
                   >
                     View lessons {upcomingGroups.length ? <span>{upcomingGroups.length}</span> : null}
@@ -593,21 +593,16 @@ export function MyLessons({
                   <button
                     aria-controls="account-past-lessons"
                     aria-expanded={accountSection === "history"}
-                    onClick={() => toggleAccountSection("history")}
+                    aria-current={accountSection === "history" ? "true" : undefined}
+                    onClick={() => openAccountSection("history")}
                     type="button"
                   >
                     Past lessons
                   </button>
                 ) : null}
                 <button
-                  onClick={() =>
-                    applyTransition(() => {
-                      setMenuOpen(false);
-                      setAccountSection("");
-                      setExpandedUpcomingGroup("");
-                      setEditing((open) => !open);
-                    })
-                  }
+                  aria-current={editing ? "true" : undefined}
+                  onClick={editDetails}
                   type="button"
                 >
                   {editing ? "Done editing" : "Edit details"}
@@ -860,9 +855,9 @@ export function MyLessons({
         <section className="my-lessons__account-section my-lessons__account-section--detached" id="account-past-lessons" aria-labelledby="past-lessons-heading" tabIndex={-1}>
           <div className="my-lessons__account-section-heading">
             <h3 className="eyebrow" id="past-lessons-heading">Past lessons</h3>
-            {onBackToStart ? (
-              <button className="booking-back booking-back--tertiary" onClick={backToStart} type="button">
-                <ArrowLeft size={16} aria-hidden="true" /> Back to start
+            {showUpcomingLessons ? (
+              <button className="booking-back booking-back--tertiary" onClick={() => openAccountSection("upcoming")} type="button">
+                <ArrowLeft size={16} aria-hidden="true" /> Upcoming lessons
               </button>
             ) : null}
           </div>
@@ -888,7 +883,7 @@ export function MyLessons({
               Book another lesson
             </button>
           ) : (
-            <a className="button button--coral" href="/book/">
+            <a className="button button--coral" href="/book/?view=book">
               Book another lesson
             </a>
           )}

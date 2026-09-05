@@ -303,9 +303,10 @@ function orientTo(id: string, focus = false, forceOnMobile = false) {
   orient();
 }
 
-export function BookingCalendar({ initialManageToken = "" }: { initialManageToken?: string } = {}) {
+export function BookingCalendar({ initialManageToken = "", initialLessonsView = false }: { initialManageToken?: string; initialLessonsView?: boolean } = {}) {
   const [step, setStep] = useState<Step>("pattern");
   const [intent, setIntent] = useState<BookingIntent>("choose");
+  const [accountView, setAccountView] = useState<"upcoming" | "history" | "profile">("upcoming");
   /*
    * Seeded from the published lesson copy so the three cards are in the static
    * HTML and on screen at first paint. Before this the first step was an empty
@@ -496,9 +497,18 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     const key = portoDateKey(new Date());
     setTodayKey(key);
     setStudentZone(browserTimeZone());
-    if (params.get("view") === "lessons") {
+    if (initialLessonsView || params.get("view") === "lessons") {
       setIntent("lessons");
+      setFocusUpcomingOnOpen(false);
+      setUpcomingRequestKey((current) => current + 1);
       if (!readSession()) setShowAccountSignIn(true);
+    } else if (params.get("view") === "book" || params.get("lesson") === "trial") {
+      setIntent("book");
+      if (params.get("lesson") === "trial") {
+        setBookingKind("trial");
+        setLessonTypeId("trial");
+        setStep("setup");
+      }
     }
 
     listLessonTypes()
@@ -526,7 +536,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         // and emailed-management URLs retain their own destination.
         if (
           data?.student &&
-          params.get("view") !== "lessons" &&
+          !["lessons", "book"].includes(params.get("view") ?? "") &&
+          params.get("lesson") !== "trial" &&
           !params.has("manage") &&
           !params.has("token") &&
           !params.has("emailToken")
@@ -540,7 +551,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
       })
       .catch(() => undefined)
       .finally(() => setCheckingSession(false));
-  }, [refreshStudent]);
+  }, [initialLessonsView, refreshStudent]);
 
   // Signing in mid-flow can reveal a history the lesson step didn't know
   // about. If the trial is the current choice, dissolve it and put the real
@@ -756,7 +767,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   const showWorkflowCalendar =
     !isConfirmingBooking &&
     !needsLessonsSignIn &&
-    (intent === "lessons" ||
+    ((intent === "lessons" && accountView === "upcoming") ||
       Boolean(intent === "book" && lessonType && !["pattern", "setup"].includes(step)) ||
       Boolean(managed));
   const isLessonsCalendarOverview = intent === "lessons" && !isManagedReschedule;
@@ -886,6 +897,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   function openLessonsJourney() {
     transitionBooking(() => {
       setIntent("lessons");
+      setAccountView("upcoming");
+      closeManagedLesson();
       setBookingKind("");
       setSetupFocus(null);
       setLessonTypeId("");
@@ -918,13 +931,18 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
   }
 
   function returnToJourneyStart() {
+    if (student) {
+      openLessonsJourney();
+      return;
+    }
     transitionBooking(resetJourneyToStart);
     orientTo("booking-journey-start", true);
   }
 
-  function openAccountShortcut() {
+  function openAccountShortcut(section: "upcoming" | "history" | "profile") {
     closeManagedLesson();
     setIntent("lessons");
+    setAccountView(section);
     setShowAccountSignIn(false);
     setBookingKind("");
     setSetupFocus(null);
@@ -1208,6 +1226,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
     transitionBooking(() => {
       setConfirmation(null);
       setIntent("lessons");
+      setAccountView("upcoming");
       setBookingKind("");
       setSetupFocus(null);
       setLessonTypeId("");
@@ -1466,7 +1485,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
         </div>
       ) : null}
 
-      <div className={`booking-stage${intent === "lessons" && student ? " booking-stage--lessons" : ""}`}>
+      <div className={`booking-stage${intent === "lessons" && student && accountView === "upcoming" ? " booking-stage--lessons" : ""}`}>
         {student ? (
           <section
             className="unified-account-area"
@@ -1476,7 +1495,6 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
             <AccountControls
               calendarHorizonDays={horizonDays}
               embedded
-              onBackToStart={resetJourneyToStart}
               onBook={startBookingJourney}
               onManage={(token, seriesId, openSeries) =>
                 transitionBooking(() => {
@@ -1818,6 +1836,8 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 transitionBooking(() => {
                   setStudent(signedIn);
                   setShowAccountSignIn(false);
+                  setAccountView("upcoming");
+                  setUpcomingRequestKey((current) => current + 1);
                 });
                 void refreshStudent();
               }}
@@ -1834,7 +1854,7 @@ export function BookingCalendar({ initialManageToken = "" }: { initialManageToke
                 <div className="booking-workflow-step-head">
                   <h2>How would you like to book?</h2>
                   <button className="booking-back booking-back--tertiary" onClick={returnToJourneyStart} type="button">
-                    <ArrowLeft size={16} aria-hidden="true" /> Back
+                    <ArrowLeft size={16} aria-hidden="true" /> {student ? "Your lessons" : "Back"}
                   </button>
                 </div>
                 {checkingSession ? (

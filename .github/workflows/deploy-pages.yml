@@ -90,6 +90,7 @@ jobs:
             sleep 1
           done
           QA_BASE_URL=http://localhost:3000 npm run test:flow
+          QA_BASE_URL=http://localhost:3000 node scripts/qa-workspace-navigation.mjs
           QA_BASE_URL=http://localhost:3000 node scripts/qa-payment-recovery.mjs
 
       # Two uploads of one build: the Pages-shaped tarball for the preview, and

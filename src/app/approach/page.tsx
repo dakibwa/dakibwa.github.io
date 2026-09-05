@@ -83,7 +83,7 @@ export default function ApproachPage() {
             If you’ve never said a word of Portuguese, we can start there. If you’ve been stuck at the same level for
             years, we can start there too.
           </p>
-          <Link className="button button--coral" href="/book">Book a trial lesson</Link>
+          <Link className="button button--coral" href="/book/?lesson=trial">Book a trial lesson</Link>
         </section>
       </main>
 
