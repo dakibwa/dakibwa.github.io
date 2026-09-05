@@ -16,11 +16,6 @@ const navigation: NavItem[] = [
   { href: "/book", id: "book", label: "Booking" }
 ];
 
-const legalNavigation: NavItem[] = [
-  { href: "/booking-terms", id: "terms", label: "Terms" },
-  { href: "/privacy", id: "privacy", label: "Privacy" }
-];
-
 export function SiteNav({ currentPage }: { currentPage: SitePage }) {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
@@ -168,18 +163,6 @@ export function SiteNav({ currentPage }: { currentPage: SitePage }) {
               {item.label}
             </Link>
           ))}
-          <nav className="nav-mobile__legal" aria-label="Booking information">
-            {legalNavigation.map((item) => (
-              <Link
-                aria-current={currentPage === item.id ? "page" : undefined}
-                href={item.href}
-                key={item.id}
-                onClick={() => setOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
         </div>
       </div>, document.body) : null}
     </>

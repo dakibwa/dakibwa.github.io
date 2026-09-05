@@ -70,7 +70,7 @@ Three visible colour choices are required for accessible contrast:
   and neither changes a fill colour;
 - booking reassurance labels use `#dcd8f5` to clear AA on the blue booking
   panel; policy-page hero eyebrows use that same light lilac on blue;
-- completed booking-choice eyebrows and change actions use body ink at no less
+- completed booking-choice values and change actions use body ink at no less
   than 14 px, so both remain readable on the lavender mobile surface.
 
 The `--blue`, `--blue-deep`, `--lavender`, `--paper`, and `--coral` fill
@@ -83,7 +83,8 @@ The intended production state reflects Inês's 31 August feedback:
 - the home hero does not contain the business-card artwork, and the “Slow is
   fine” and “Talk first” marks use their generated replacements;
 - the approved Home, Approach, Lessons, and FAQ copy is in place; the FAQ banner
-  contains only its heading; user-facing copy uses natural punctuation rather
+  pairs its heading with the existing FAQ splat, with a smaller mark beside the
+  heading on mobile; user-facing copy uses natural punctuation rather
   than em dashes; and the Approach callout says “Beginners welcome.” rather
   than “Nervous beginners welcome.”;
 - above 900px, the three home principles form a stacked soft-lavender rail in
@@ -134,8 +135,9 @@ the same identity or action:
   heading and only the actions that meaningfully advance its reading path.
 
 - the booking and privacy policies use a quiet editorial cream column under a
-  compact blue hero, linked from the footer rather than promoted as primary
-  navigation. When after-lesson charging is active, every booking presents its
+  compact blue hero. Terms and Privacy stay in a small, sentence-case footer
+  line on desktop and mobile, separate from the main destinations and outside
+  the mobile menu. When after-lesson charging is active, every booking presents its
   saved-card agreement as a distinct required lavender consent block next to
   the final action; a payment configuration failure replaces action with a
   visible inline error instead of confirming without a usable payment method.
@@ -295,7 +297,13 @@ Preserve these desktop and mobile states:
   for lesson, location, length, repeat, date, and time, with the same date splat
   beside the time picker. These marks sit directly on the row without an icon
   tile; their organic edges remain legible at desktop and mobile sizes. The
-  written labels carry each choice's meaning. Editing one decision opens only
+  selected values carry each choice's meaning: `In Porto`, `60 minutes`,
+  `Repeat for 4 weeks`, and the chosen date and time. Omit category labels such
+  as `Where` and `Date selected`, and repeated weekly-time explanations. Keep
+  the price with lesson length and name Porto time once with the selected time;
+  only add the visitor's local time when it differs. On narrow phones each
+  action reads `Change`, with the precise action retained as its accessible
+  name, so the selected value has enough space. Editing one decision opens only
   that choice; changing length returns to time because 60- and 90-minute
   availability differs. The notes and final confirmation action follow this
   unified stack, with no second
@@ -325,8 +333,8 @@ Preserve these desktop and mobile states:
 - preserve the current mobile reading order and full-width stacked lesson
   choices. The mobile calendar must keep all seven columns and its legend inside
   the card after resize or orientation changes. Opening either the header
-  hamburger or footer `Menu` opens the same complete menu over the current
-  viewport, including Terms and Privacy. It does not scroll the page to the
+  hamburger or footer `Menu` opens the same four main destinations over the
+  current viewport. It does not scroll the page to the
   header first. Focus stays inside the menu; closing it or pressing Escape
   returns focus to its opener and retains the page position. Navigation and
   resizing to desktop release the scroll lock. Short screens can scroll the
