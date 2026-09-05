@@ -127,6 +127,7 @@ try {
   await page.locator(".site-footer__menu").click();
   const menu = page.getByRole("dialog", { name: "Site navigation" });
   await menu.waitFor();
+  await menu.getByRole("img", { name: "Português com a Inês", exact: true }).waitFor();
   await settle();
   aligned(before, await page.evaluate(() => scrollY), "Footer menu preserves page position");
   assert.equal(await menu.getByRole("link").count(), 4);
