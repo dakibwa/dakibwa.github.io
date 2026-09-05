@@ -2179,29 +2179,20 @@ html.booking-transitioning .booking-confirmation-stage {
   gap: 0.75rem;
 }
 
-.booking-selection-summary__mark {
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--squiggle-tile);
-  background: rgba(47, 88, 178, 0.14);
-  color: var(--blue-deep);
+.booking-selection-summary {
+  grid-template-columns: 56px minmax(0, 1fr) auto;
 }
 
-.booking-selection-summary__lesson-mark,
-.booking-selection-summary__lesson-mark .asset-mark__picture,
-.booking-selection-summary__lesson-mark .asset-mark__image {
-  display: block;
-  width: 42px;
-  height: 42px;
+.booking-selection-summary__mark,
+.booking-date-summary__mark {
+  width: 56px;
+  height: 56px;
 }
 
 .booking-date-summary {
   display: grid;
   grid-area: calendar;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
   align-items: center;
   align-self: start;
   border: 1px solid var(--rule);
@@ -2209,17 +2200,6 @@ html.booking-transitioning .booking-confirmation-stage {
   padding: 0.7rem 0.9rem;
   background: rgba(170, 164, 230, 0.11);
   gap: 0.75rem;
-}
-
-.booking-date-summary__mark {
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--squiggle-tile);
-  background: rgba(47, 88, 178, 0.14);
-  color: var(--blue-deep);
 }
 
 .booking-choice-summary__mark {
@@ -3313,20 +3293,27 @@ html.booking-transitioning .booking-confirmation-stage {
     flex-wrap: nowrap;
   }
 
-  .booking-selection-summary,
   .booking-choice-summary {
     grid-template-columns: 42px minmax(0, 1fr) auto;
   }
 
+  .booking-selection-summary,
   .booking-date-summary {
-    grid-template-columns: 38px minmax(0, 1fr) auto;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+
+  .booking-date-summary {
     padding: 0.65rem;
     gap: 0.45rem;
   }
 
   .booking-selection-summary__mark,
-  .booking-choice-summary__mark,
   .booking-date-summary__mark {
+    width: 44px;
+    height: 44px;
+  }
+
+  .booking-choice-summary__mark {
     width: 38px;
     height: 38px;
   }
