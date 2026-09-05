@@ -408,11 +408,16 @@ lesson above.
 
 ### Payment
 
-The public explanation lives at `/terms/#booking`, alongside the separately
-labelled privacy notice at `/terms/#privacy`. The footer has one `Terms & privacy`
-link. Old policy URLs redirect to the matching section. Copy distinguishes
-direct payment from saved-card bookings using the payment method shown before
-confirmation; publishing that copy does not turn on automatic charging.
+The concise public explanation opens at `/book/#booking`; privacy opens at
+`/book/#privacy`, without requiring sign-in. Both are native disclosures beneath
+the workspace. Sign-up also shows a brief data-use/rights summary and the same
+privacy information in place. The footer retains only a quiet `Privacy` link;
+old policy URLs redirect into booking. Payment and change conditions appear
+before the confirmation button, with the saved-card agreement kept separate.
+Publishing this presentation does not activate payments or change cancellation
+behaviour. These notices describe the implementation; business contact details
+and the application of statutory withdrawal rights still require verification
+before the service is represented as legally compliant.
 
 Off by default. `payment_mode` is `off`, every booking confirms on creation, and
 none of the Stripe columns are read. With it set to `postpay` and Stripe

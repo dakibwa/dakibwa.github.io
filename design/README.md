@@ -69,7 +69,7 @@ Three visible colour choices are required for accessible contrast:
   clears AA on the lavender and cream panels. Both are imperceptible on cream
   and neither changes a fill colour;
 - booking reassurance labels use `#dcd8f5` to clear AA on the blue booking
-  panel; policy-page hero eyebrows use that same light lilac on blue;
+  panel;
 - completed booking-choice values and change actions use body ink at no less
   than 14 px, so both remain readable on the lavender mobile surface.
 
@@ -134,14 +134,19 @@ the same identity or action:
   anchors the shared header and footer, while each page owns a task-specific
   heading and only the actions that meaningfully advance its reading path.
 
-- Terms & privacy share one page at `/terms`, with a quiet cream reading column
-  under a compact blue hero. Plain language explains payment, changes and
-  cancellations first; a clearly named privacy section covers information use,
-  providers, retention, rights and contact. Two anchor links let readers reach
-  either section directly. One small, sentence-case footer link stays outside
-  the main destinations and mobile menu. Previous `/booking-terms` and `/privacy`
-  links redirect to their matching sections. Payment wording follows the method
-  shown at booking and never implies every booking saves or charges a card.
+- booking and privacy information belong to the booking context, with the
+  minimum useful text visible. Sign-up shows a short account/lesson data-use
+  and rights summary before either sign-in method; `Privacy details` opens the
+  concise notice in place, without an extra consent checkbox. The final booking
+  action follows the payment and change conditions for the selected method.
+  Compact `Booking terms` and `Your privacy` disclosures beneath the workspace
+  retain the fuller details for anyone who wants them. Use the existing
+  Montserrat text, cream surface and coral disclosure marks, with copyable text
+  and readable wrapping at 320px. A quiet `Privacy` footer link opens that
+  disclosure directly, without requiring sign-in. The old `/terms`,
+  `/booking-terms` and `/privacy` pages redirect into booking; there is no
+  separate legal-page hero, index or marketing treatment. Payment wording follows
+  the method shown at booking and never implies every booking saves or charges a card.
   When after-lesson charging is active, every booking presents its
   saved-card agreement as a distinct required lavender consent block next to
   the final action; a payment configuration failure replaces action with a

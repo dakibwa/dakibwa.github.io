@@ -142,8 +142,8 @@ try {
   aligned(before, await page.evaluate(() => scrollY), "Closing menu preserves page position");
   assert.ok(await page.evaluate(() => document.activeElement.classList.contains("site-footer__menu")));
   assert.equal(await page.locator("main").getAttribute("inert"), null);
-  await page.locator(".site-footer__legal").getByRole("link", { name: "Terms & privacy", exact: true }).click();
-  await page.getByRole("heading", { name: "Terms & privacy", exact: true }).waitFor();
+  await page.locator(".site-footer__legal").getByRole("link", { name: "Privacy", exact: true }).click();
+  await page.locator("#privacy[open]").waitFor();
   await page.goBack();
   await page.getByRole("heading", { name: "Questions before booking?", exact: true }).waitFor();
   assert.equal(await page.locator("main").getAttribute("inert"), null);
@@ -169,24 +169,35 @@ try {
   await page.screenshot({ path: `${out}/menu-with-portfolio-mobile.png` });
   await menu.getByRole("link", { name: "Booking", exact: true }).click();
   await page.locator("#booking-title").waitFor();
-  await page.locator(".site-footer__legal").getByRole("link", { name: "Terms & privacy", exact: true }).click();
-  await page.getByRole("heading", { name: "Terms & privacy", exact: true }).waitFor();
+  await page.locator(".site-footer__legal").getByRole("link", { name: "Privacy", exact: true }).click();
+  await page.locator("#privacy[open]").waitFor();
   assert.equal(await page.locator(".site-footer__legal a").count(), 1);
-  await page.getByRole("link", { name: "Your privacy", exact: true }).click();
   assert.equal(new URL(page.url()).hash, "#privacy");
-  await page.locator("#privacy-title").waitFor();
+  assert.equal(await page.locator('#privacy a[href^="mailto:"]').getAttribute("href"), "mailto:bookings@portuguesewithines.com");
+  assert.ok(await page.locator("#privacy .policy-information").isVisible());
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  await page.locator("#privacy > summary").click();
+  assert.equal(await page.locator("#privacy").getAttribute("open"), null);
+  await page.locator(".site-footer__legal").getByRole("link", { name: "Privacy", exact: true }).click();
+  await page.locator("#privacy[open]").waitFor();
 
-  // Existing bookmarks still reach the relevant section of the combined page.
-  for (const [oldPath, section] of [["booking-terms", "booking"], ["privacy", "privacy"]]) {
-    await page.goto(`${base}/${oldPath}/`);
-    await page.waitForURL(`**/terms/#${section}`);
-    await page.locator(`#${section}`).waitFor();
+  // Old policy links open the relevant disclosure inside booking.
+  for (const [oldPath, section] of [["booking-terms/", "booking"], ["privacy/", "privacy"], ["terms/#privacy", "privacy"]]) {
+    await page.goto(`${base}/${oldPath}`);
+    await page.waitForURL(`**/book/#${section}`);
+    await page.locator(`#${section}[open]`).waitFor();
   }
 
   const legacy = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await legacy.goto(`${base}/my-lessons/`);
   await legacy.getByRole("heading", { name: "Sign in to view your lessons", exact: true }).waitFor();
   assert.ok(legacy.url().includes("/book/?view=lessons"));
+  await legacy.locator(".privacy-notice").waitFor();
+  const notice = await legacy.locator(".privacy-notice").boundingBox();
+  const form = await legacy.locator(".auth-panel__form").boundingBox();
+  assert.ok(notice.y + notice.height <= form.y, "Privacy information appears before account data is collected");
+  await legacy.locator(".privacy-notice summary").click();
+  assert.ok(await legacy.locator(".privacy-notice details[open] .policy-information").isVisible());
   await legacy.close();
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ ok: true, layouts, screenshots: out }, null, 2));

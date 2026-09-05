@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import { AssetMark } from "@/components/BrandMarks";
 import { BookingCalendar } from "@/components/BookingCalendar";
+import { BookingInformation } from "@/components/BookingInformation";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { BOOKING_CONFIGURED, CONTACT_WHATSAPP_URL, SAME_DAY_RESCHEDULE_FEE_CENTS, formatMoney } from "@/lib/config";
+import { BOOKING_CONFIGURED, CONTACT_WHATSAPP_URL } from "@/lib/config";
 
 type BookingView = "book" | "lessons" | "manage";
-
-const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 
 /**
  * Booking, the learner's calendar and lesson management are one surface.
@@ -91,13 +90,7 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
           </section>
         </section>
 
-        <section className="booking-policy" id="change-booking">
-          <AssetMark asset="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg" />
-          <div>
-            <p className="eyebrow">Changes and cancellations</p>
-            <p>Changes are free until the day before. On the day, moving or cancelling costs <strong>{sameDayFee}</strong>.</p>
-          </div>
-        </section>
+        <BookingInformation />
       </main>
 
       <SiteFooter />

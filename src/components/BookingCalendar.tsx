@@ -69,7 +69,6 @@ import {
   formatLessonDuration
 } from "@/lib/config";
 import { staticLessonTypes } from "@/lib/lesson-products";
-import { publicAssetPath } from "@/lib/paths";
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const weekdayNames = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
@@ -2615,10 +2614,18 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                         I agree that each lesson price is charged to my saved card automatically when that lesson ends.
                         Moving or cancelling on its Porto calendar day costs €5; if Inês records a no-show, only €5 is
                         charged instead of the lesson price. See the{" "}
-                        <a href={publicAssetPath("/terms/#booking")}>booking and payment terms</a>.
+                        <a href="#booking">booking terms</a>.
                       </span>
                     </label>
                   ) : null}
+
+                  <p className="booking-form-note">
+                    {postpay
+                      ? "Nothing is charged now. Move or cancel free until the day before."
+                      : `Pay Inês on the lesson day. Move or cancel free until the day before; on the day it costs ${formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}.`}
+                    {form.repeat === null ? " Ongoing lessons repeat until you stop them in your calendar." : ""}
+                    {!postpay ? <> <a href="#booking">Booking terms</a>.</> : null}
+                  </p>
 
                   {/* Says what is actually about to happen. "Confirm this lesson"
                       above a preview reading "8 lessons" invites the reader to
@@ -2633,34 +2640,6 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                           : "Confirm these lessons"}
                   </button>
 
-                  {postpay ? (
-                    <p className="booking-form-note">
-                      Nothing is charged now. Your saved card is charged automatically when each lesson ends. Move or
-                      cancel free until the day before from your{" "}
-                      <button
-                        className="booking-form-note__calendar"
-                        onClick={() => transitionBooking(() => goTo("time"))}
-                        type="button"
-                      >
-                        lesson calendar
-                      </button>
-                      . On the lesson&rsquo;s Porto calendar day, moving or cancelling costs{" "}
-                      <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong>.
-                    </p>
-                  ) : (
-                    <p className="booking-form-note">
-                      You pay on the day, in person with Inês. Change your booking any time from your{" "}
-                      <button
-                        className="booking-form-note__calendar"
-                        onClick={() => transitionBooking(() => goTo("time"))}
-                        type="button"
-                      >
-                        lesson calendar
-                      </button>
-                      . It is free until the day before, with{" "}
-                      <strong>{formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}</strong> charged on the day itself.
-                    </p>
-                  )}
                 </form>
               )}
             </div>

@@ -1,5 +1,7 @@
-# Preserve existing bookmarks and payment links to the combined page.
-/booking-terms /terms/#booking 301
-/booking-terms/ /terms/#booking 301
-/privacy /terms/#privacy 301
-/privacy/ /terms/#privacy 301
+# Keep old links in the booking flow. A terms URL retains its incoming fragment.
+/terms /book/ 301
+/terms/ /book/ 301
+/booking-terms /book/#booking 301
+/booking-terms/ /book/#booking 301
+/privacy /book/#privacy 301
+/privacy/ /book/#privacy 301
