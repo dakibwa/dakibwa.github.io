@@ -53,6 +53,13 @@ Use these names in review so recurring problems are easy to recognise:
 
 ## Contrast and accessibility
 
+Recurring checkout shows the final per-lesson price before confirmation. An
+optional “Have a code from Inês?” disclosure keeps private pricing out of the
+main booking choices. The signed-in student applies one duration-specific rate,
+gets an accessible status message, and sees that saved price on return. Duration
+changes show their actual price before submission. No valid-code suggestions,
+catalogue, countdown or expiry pressure belong in this flow.
+
 Three visible colour choices are required for accessible contrast:
 
 - the second half of the Approach page heading (`way to learn.`) uses `--blue`

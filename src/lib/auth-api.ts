@@ -68,6 +68,12 @@ export function storeSession(token: string) {
 }
 
 export function clearSession() {
+  const token = readSession();
+  if (token) {
+    void post("/auth/logout", {}, token).catch(() => {
+      // Local sign-out still works offline. Server revocation needs a connection.
+    });
+  }
   try {
     window.localStorage.removeItem(SESSION_KEY);
     window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
@@ -137,8 +143,10 @@ export function requestEmailChange(token: string, email: string) {
 }
 
 /** Apply a change the new address has proved, using the token from its email. */
-export function confirmEmailChange(token: string, changeToken: string) {
-  return post<{ student: Student }>("/me/email/confirm", { token: changeToken }, token);
+export async function confirmEmailChange(token: string, changeToken: string) {
+  const result = await post<{ student: Student; session?: string }>("/me/email/confirm", { token: changeToken }, token);
+  if (result.session) storeSession(result.session);
+  return result;
 }
 
 export async function fetchMe(token: string) {

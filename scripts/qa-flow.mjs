@@ -715,6 +715,9 @@ await accountPage.route("**/bookings", async (route) => {
     })
   });
 });
+await accountPage.route("**/me/recurring-rates", (route) => route.fulfill({
+  status: 200, contentType: "application/json", body: JSON.stringify({ rates: {} })
+}));
 await accountPage.route("**/me", async (route) => {
   accountRequestMethods.push(route.request().method());
   if (route.request().method() === "OPTIONS") {

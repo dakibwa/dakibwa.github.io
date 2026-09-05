@@ -39,6 +39,8 @@ export type Booking = {
 };
 
 export type ManagedBooking = {
+  recurring?: boolean;
+  durationPrices?: Record<number, number>;
   booking: Booking;
   isPast: boolean;
   sameDayFeeApplies: boolean;
@@ -166,6 +168,7 @@ export function createBooking(
     repeat?: RepeatChoice;
     /** Required whenever the saved-card, after-lesson payment mode is active. */
     paymentConsent?: boolean;
+    expectedPriceCents?: number;
   }
 ) {
   return request<{
@@ -182,6 +185,20 @@ export function createBooking(
     method: "POST",
     headers: { Authorization: `Bearer ${session}` },
     body: JSON.stringify(payload)
+  });
+}
+
+export function fetchRecurringRates(session: string) {
+  return request<{ rates: Record<number, number> }>("/me/recurring-rates", {
+    headers: { Authorization: `Bearer ${session}` }
+  });
+}
+
+export function redeemRecurringRate(session: string, code: string, durationMinutes: number) {
+  return request<{ rates: Record<number, number> }>("/me/recurring-rates", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session}` },
+    body: JSON.stringify({ code, durationMinutes })
   });
 }
 
@@ -207,7 +224,8 @@ export function rescheduleSeries(
   seriesId: string,
   startAt: string,
   lessonType?: string,
-  location?: "online" | "porto"
+  location?: "online" | "porto",
+  expectedPriceCents?: number
 ) {
   return request<{ ok: true; moved: number; bookings: Booking[] }>(
     `/series/${encodeURIComponent(seriesId)}/reschedule`,
@@ -216,6 +234,7 @@ export function rescheduleSeries(
       headers: { Authorization: `Bearer ${session}` },
       body: JSON.stringify({
         startAt,
+        ...(expectedPriceCents === undefined ? {} : { expectedPriceCents }),
         ...(lessonType ? { lessonType } : {}),
         ...(location ? { location } : {})
       })
@@ -231,7 +250,8 @@ export function rescheduleBooking(
   token: string,
   startAt: string,
   lessonType?: string,
-  location?: "online" | "porto"
+  location?: "online" | "porto",
+  expectedPriceCents?: number
 ) {
   return request<{ booking: Booking; sameDayFeeApplied: boolean }>(
     `/bookings/${encodeURIComponent(token)}/reschedule`,
@@ -239,6 +259,7 @@ export function rescheduleBooking(
       method: "POST",
       body: JSON.stringify({
         startAt,
+        ...(expectedPriceCents === undefined ? {} : { expectedPriceCents }),
         ...(lessonType ? { lessonType } : {}),
         ...(location ? { location } : {})
       })
