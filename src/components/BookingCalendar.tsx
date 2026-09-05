@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, FormEvent, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import dynamic from "next/dynamic";
 import type { UpcomingBookingFocusRequest } from "@/components/MyLessons";
@@ -10,9 +10,6 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  Clock3,
-  Globe2,
-  MapPin,
   MessageSquareText,
   Repeat,
   X
@@ -178,15 +175,13 @@ function BookingSelectionSummary({
   ariaLabel: string;
   detail?: string;
   eyebrow: string;
-  mark: ReactNode;
+  mark: string;
   onAction?: () => void;
   title: string;
 }) {
   return (
     <div className="booking-selection-summary" aria-label={ariaLabel}>
-      <span className="booking-selection-summary__mark" aria-hidden="true">
-        {mark}
-      </span>
+      <AssetMark asset={mark} className="booking-selection-summary__mark" />
       <span className="booking-choice-summary__copy">
         <span className="eyebrow">{eyebrow}</span>
         <strong>{title}</strong>
@@ -1311,15 +1306,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           ariaLabel="Selected lesson"
           detail={bookingKind === "recurring" ? "Same weekly time" : undefined}
           eyebrow="Lesson"
-          mark={(
-            <LessonMark
-              className="booking-selection-summary__lesson-mark"
-              durationMinutes={lessonType.duration_minutes}
-              lessonTypeId={lessonType.id}
-              location={form.location}
-              recurring={bookingKind === "recurring"}
-            />
-          )}
+          mark="/visuals/v2-splats/lesson-format-splat-v2.svg"
           onAction={changeLessonChoice}
           title={lessonKindLabel}
         />
@@ -1327,7 +1314,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           actionLabel="Change location"
           ariaLabel="Selected location"
           eyebrow="Where"
-          mark={form.location === "porto" ? <MapPin size={25} /> : <Globe2 size={25} />}
+          mark="/visuals/v2-splats/in-porto-or-online-splat-v2.svg"
           onAction={() => editSetupChoice("location")}
           title={form.location === "porto" ? "In Porto" : "Online"}
         />
@@ -1336,7 +1323,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           ariaLabel="Selected lesson length"
           detail={formatMoneyCents(lessonType.price_cents)}
           eyebrow="Lesson length"
-          mark={<Clock3 size={25} />}
+          mark="/visuals/v2-splats/built-around-you-splat-v2.svg"
           onAction={bookingKind === "trial" ? undefined : () => editSetupChoice("duration")}
           title={formatLessonDuration(lessonType.duration_minutes)}
         />
@@ -1346,7 +1333,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             ariaLabel="Selected repeat"
             detail="Same day and time each week"
             eyebrow="Repeat for"
-            mark={<Repeat size={25} />}
+            mark="/visuals/v2-splats/flexible-rescheduling-splat-v2.svg"
             onAction={() => editSetupChoice("repeat")}
             title={form.repeat === null ? "Ongoing" : `${form.repeat} weeks`}
           />
@@ -1357,7 +1344,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             ariaLabel="Selected date"
             detail="Porto time"
             eyebrow="Date selected"
-            mark={<CalendarDays size={25} />}
+            mark="/visuals/v2-splats/booking-availability-splat-v2.svg"
             onAction={changeDateChoice}
             title={formatLongDate(`${selectedDate}T12:00:00Z`)}
           />
@@ -1368,7 +1355,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             ariaLabel="Selected time"
             detail={localTime ? `${localTime} your time` : "Porto time"}
             eyebrow="Time selected"
-            mark={<Clock3 size={25} />}
+            mark="/visuals/v2-splats/relaxed-practical-splat-v2.svg"
             onAction={changeTimeChoice}
             title={formatSlotTime(chosen.startAt)}
           />
@@ -2114,9 +2101,10 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           ) : null}
           {showSelectedDateSummary ? (
             <div className="booking-date-summary" aria-label="Selected date">
-              <span className="booking-date-summary__mark" aria-hidden="true">
-                <CalendarDays size={25} strokeWidth={1.9} />
-              </span>
+              <AssetMark
+                asset="/visuals/v2-splats/booking-availability-splat-v2.svg"
+                className="booking-date-summary__mark"
+              />
               <span className="booking-choice-summary__copy">
                 <span className="eyebrow">Date selected</span>
                 <strong>{formatLongDate(`${selectedDate}T12:00:00Z`)}</strong>

@@ -291,9 +291,14 @@ Preserve these desktop and mobile states:
   calendar key and range label share one visual centre. Completed booking
   decisions are the review: lesson kind, location, length, repeat when relevant,
   date, and time each keep the same compact selected-row anatomy with their own
-  precise change action. Editing one decision opens only that choice; changing
-  length returns to time because 60- and 90-minute availability differs. The
-  notes and final confirmation action follow this unified stack, with no second
+  precise change action. Their leading artwork uses distinct existing V2 splats
+  for lesson, location, length, repeat, date, and time, with the same date splat
+  beside the time picker. These marks sit directly on the row without an icon
+  tile; their organic edges remain legible at desktop and mobile sizes. The
+  written labels carry each choice's meaning. Editing one decision opens only
+  that choice; changing length returns to time because 60- and 90-minute
+  availability differs. The notes and final confirmation action follow this
+  unified stack, with no second
   recap page or combined `Change details` route. The optional notes textarea
   uses one clear blue focus boundary rather than stacking coral and blue rings. The inclusive 56-day API boundary must
   not create a ninth visible row;
