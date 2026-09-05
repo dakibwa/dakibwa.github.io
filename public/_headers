@@ -48,9 +48,12 @@
 /book/
   Cache-Control: public, max-age=600, must-revalidate
 
-/booking-terms/
+/terms/
   # Keep the real mailto link in the HTML. Cloudflare's email obfuscation
   # rewrites it to a JavaScript-only /cdn-cgi/ URL that 404s without scripts.
+  Cache-Control: public, max-age=600, must-revalidate, no-transform
+
+/booking-terms/
   Cache-Control: public, max-age=600, must-revalidate, no-transform
 
 /privacy/

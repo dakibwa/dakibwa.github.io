@@ -10,8 +10,7 @@ const routes = [
   { id: "lessons", path: "/lessons", heading: "Lessons, and" },
   { id: "faq", path: "/faq", heading: "Questions" },
   { id: "booking", path: "/book", heading: "Your Portuguese lessons" },
-  { id: "booking-terms", path: "/booking-terms", heading: "Booking and payment terms" },
-  { id: "privacy", path: "/privacy", heading: "Privacy notice" }
+  { id: "terms", path: "/terms", heading: "Terms & privacy" }
 ];
 
 await mkdir(outDir, { recursive: true });
@@ -247,13 +246,13 @@ for (const route of routes) {
       throw new Error(`${route.id} should retain the cream-on-blue footer wordmark once.`);
     }
 
-    if (route.id === "booking-terms" || route.id === "privacy") {
+    if (route.id === "terms") {
       const policyDetails = await page.evaluate(() => {
         const hero = document.querySelector(".policy-page__hero");
-        const eyebrow = hero?.querySelector(".eyebrow");
+        const title = hero?.querySelector("h1");
         return {
           background: hero ? getComputedStyle(hero).backgroundColor : "",
-          colour: eyebrow ? getComputedStyle(eyebrow).color : "",
+          colour: title ? getComputedStyle(title).color : "",
           emailHref: document.querySelector('.policy-page__body a[href^="mailto:"]')?.getAttribute("href"),
           updated: hero?.querySelector("p:last-child")?.textContent?.trim()
         };
@@ -262,7 +261,7 @@ for (const route of routes) {
       if (
         policyContrast < 4.5 ||
         policyDetails.emailHref !== "mailto:bookings@portuguesewithines.com" ||
-        policyDetails.updated !== "Last updated 1 September 2026"
+        policyDetails.updated !== "Last updated 5 September 2026"
       ) {
         throw new Error(`${route.id} policy hero or contact regressed: ${JSON.stringify({ ...policyDetails, contrast: policyContrast })}.`);
       }

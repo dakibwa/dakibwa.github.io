@@ -5951,33 +5951,35 @@ button.text-action {
   flex: 1;
 }
 
-/* Booking and privacy policies use the same editorial rhythm: one calm
-   reading column, not a wall of legal cards. */
+/* Terms and privacy share one reading column with clear section headings. */
 .policy-page {
   min-height: 70vh;
   background: var(--paper);
 }
 
 .policy-page__hero {
-  padding: clamp(4rem, 9vw, 7rem) var(--page-pad) clamp(2.5rem, 5vw, 4rem);
+  padding: clamp(2.5rem, 5vw, 4rem) var(--page-pad);
   background: var(--blue);
   color: var(--paper);
 }
 
-.policy-page__hero > .eyebrow {
-  color: var(--lavender-soft);
+.policy-page__hero h1 {
+  max-width: 760px;
+  margin: 0 auto 1.25rem;
+  font-family: var(--display);
+  font-size: clamp(2.15rem, 4.6vw, 3.8rem);
+  font-weight: 400;
+  line-height: 1.35;
 }
 
-.policy-page__hero h1 {
-  max-width: 12ch;
-  margin: 0.35rem 0 1rem;
-  font-family: var(--display);
-  font-size: clamp(3rem, 7vw, 6.2rem);
-  font-weight: 400;
-  line-height: 0.98;
+.policy-page__hero > p {
+  max-width: 760px;
+  margin-inline: auto;
+  line-height: 1.5;
 }
 
 .policy-page__hero > p:last-child {
+  margin-top: 0.8rem;
   font-size: 0.82rem;
   opacity: 0.72;
 }
@@ -5986,6 +5988,23 @@ button.text-action {
   width: min(760px, calc(100% - 2 * var(--page-pad)));
   margin: 0 auto;
   padding: clamp(2.8rem, 6vw, 5rem) 0 clamp(4rem, 8vw, 7rem);
+}
+
+.policy-page__index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.75rem;
+  margin-bottom: 2.5rem;
+}
+
+.policy-page__index a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.policy-page__body section {
+  scroll-margin-top: 2rem;
 }
 
 .policy-page__body section + section {
@@ -5998,8 +6017,15 @@ button.text-action {
   margin-bottom: 0.65rem;
   color: var(--blue);
   font-family: var(--ui);
-  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-size: clamp(1.35rem, 2.8vw, 1.75rem);
   letter-spacing: 0.02em;
+}
+
+.policy-page__body h3 {
+  margin: 1.75rem 0 0.5rem;
+  font-family: var(--ui);
+  font-size: 1.05rem;
+  line-height: 1.5;
 }
 
 .policy-page__body p {
@@ -6016,6 +6042,7 @@ button.text-action {
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;
+  overflow-wrap: anywhere;
 }
 
 /* Footer */

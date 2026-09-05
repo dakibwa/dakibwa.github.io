@@ -20,8 +20,7 @@ export function SiteFooter() {
         </div>
       </div>
       <nav className="site-footer__legal" aria-label="Booking and privacy information">
-        <Link href="/booking-terms">Terms</Link>
-        <Link href="/privacy">Privacy</Link>
+        <Link href="/terms">Terms &amp; privacy</Link>
       </nav>
     </footer>
   );
