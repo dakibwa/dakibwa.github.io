@@ -62,7 +62,7 @@ try {
   await page.goto(`${base}/book/`);
   await page.locator("#account-upcoming-lessons").waitFor();
   const layouts = [];
-  for (const width of [1920, 1440, 1100, 820, 390, 320]) {
+  for (const width of [1920, 1440, 1280, 1101, 1100, 900, 821, 820, 390, 320]) {
     await page.setViewportSize({ width, height: width < 500 ? 844 : 1100 });
     await settle();
     const layout = await page.evaluate(() => {
@@ -71,10 +71,22 @@ try {
         width: innerWidth, pageWidth: document.documentElement.scrollWidth,
         columns: getComputedStyle(document.querySelector(".booking-stage")).display === "grid",
         account: bounds(".unified-account-controls"), list: bounds("#account-upcoming-lessons"),
-        calendar: bounds("#lesson-calendar .calendar-panel")
+        calendar: bounds("#lesson-calendar .calendar-panel"),
+        introLabels: [...document.querySelectorAll(".booking-intro__points li")]
+          .filter(item => item.getClientRects().length)
+          .map(item => {
+            const label = item.lastElementChild;
+            const range = document.createRange();
+            range.selectNodeContents(label);
+            return { text: label.textContent, box: label.getBoundingClientRect().toJSON(), ink: range.getBoundingClientRect().toJSON() };
+          })
       };
     });
     assert.ok(layout.pageWidth <= width + 1, `Page overflow at ${width}`);
+    for (const label of layout.introLabels) {
+      assert.ok(label.ink.left >= label.box.left - 1 && label.ink.right <= label.box.right + 1,
+        `Booking label overflows its column at ${width}: ${label.text}`);
+    }
     aligned(layout.account.left, layout.list.left, "Account and lesson left edges");
     aligned(layout.account.right, layout.calendar.right, "Account and visible calendar right edges");
     if (layout.columns) {
