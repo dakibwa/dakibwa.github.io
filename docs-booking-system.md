@@ -513,7 +513,8 @@ and found that off-session PaymentIntents must explicitly select `card` when
 using `error_on_requires_action`. Checkout also disables Adaptive Pricing per
 session, keeping the agreed EUR amount instead of inheriting an optional
 Dashboard currency conversion with an additional FX fee. These sandbox results
-do not establish live-key or real-money acceptance.
+do not establish live-key configuration or evidence of a genuine customer
+payment in production.
 
 **Go-live checklist**:
 
@@ -544,10 +545,16 @@ do not establish live-key or real-money acceptance.
    same-day move/cancel €5; decline to `payment_due`; and dry-run notices.
 8. Deploy the customer terms, privacy notice and required saved-card
    checkbox while production still has `payment_mode=off`.
-9. With explicit action-time approval for the real charge, run one live
-   lesson-end charge and one €5 policy outcome; verify Stripe, the Worker,
-   email and the public return journey. Only then set `payment_mode=postpay` and
-   re-run the production health/release gate.
+9. After the sandbox journey passes and the authorised live credentials are
+   installed, verify the key mode and permissions, live webhook destination,
+   public publishable key and production health. Then activate
+   `payment_mode=postpay` and re-run the production health/release gate.
+   [Stripe's testing guidance](https://docs.stripe.com/testing), checked on
+   6 September 2026, prohibits testing in live mode with real payment details:
+   do not create an artificial €25 lesson or €5 fee just to prove the rails.
+   Verify the first genuine authorised customer booking and any applicable
+   charge against Stripe, the Worker, email and the public return journey;
+   describe production payment observation as outstanding until that happens.
 
 ### Same-day changes
 
@@ -683,11 +690,13 @@ students at WhatsApp, rather than rendering a calendar that cannot work.
 
 ## Not yet built
 
-- **Live payment activation.** The live merchant was rechecked on 5 September:
+- **Live payment activation.** The live merchant was rechecked on 6 September:
   its business URL matches this site, charges and payouts are enabled, and no
   requirements are currently due. `payment_mode` stays `off` until the live key
-  and webhook secret are installed securely and the explicitly approved
-  real-money acceptance checks pass.
+  and webhook secret are installed securely and the production configuration
+  checks above pass. The sandbox payment journey is complete. The account has
+  no live restricted key yet; the production Worker and site still carry test
+  key configuration, and Inês's notification copies remain paused.
 - **Fiscal documents.** She must issue a fatura-recibo per lesson, and CIVA art.
   36.º gives 5 working days from the lesson. See
   `Documents/Work/Português com a Inês/Billing and Booking - Operating Context
