@@ -67,7 +67,7 @@ export default function LessonsPage() {
           </section>
 
           <section className="lessons-note">
-            <p>The booking page shows exactly when payment is due. Secure online checkout is handled by Stripe.</p>
+            <p>You’ll see the price and how to pay before you confirm your lesson.</p>
             <Link className="text-action" href="/faq#faq-payment">Payment questions</Link>
           </section>
         </div>

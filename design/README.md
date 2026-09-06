@@ -133,6 +133,11 @@ the same identity or action:
 - Approach, Lessons, FAQ, and Booking follow the same hierarchy: the brand
   anchors the shared header and footer, while each page owns a task-specific
   heading and only the actions that meaningfully advance its reading path.
+- the closing Lessons and FAQ actions stay compact. In the FAQ, WhatsApp and
+  booking sit together on one row when space allows and wrap on phones; do not
+  turn each choice into a separate tall band. The Lessons payment note says
+  what a visitor will see before confirmation, without promising Stripe when
+  the production booking mode offers direct payment.
 
 - booking and privacy information belong to the booking context, with the
   minimum useful text visible. Sign-up shows a short account/lesson data-use
@@ -196,6 +201,10 @@ Preserve these desktop and mobile states:
   Their small organic marks are large enough to read at a glance, while the
   decorative availability splat is deliberately much larger and crops across
   the banner's top-right corner rather than floating as a small isolated icon;
+- between 821px and 1100px, the booking title and reassurance row stack. Give
+  each label room for whole words and hide the large corner splat at those
+  widths; never squeeze the three labels into narrow columns that collide with
+  neighbouring artwork. The phone layout keeps its existing compact title;
 - the workspace opens with one decision: `Book a new lesson` or `View your
   lessons`. Booking then asks whether this is one lesson or a recurring lesson.
   The selected route puts Online/In Porto and `60 minutes`/`90 minutes` together

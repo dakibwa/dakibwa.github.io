@@ -149,7 +149,7 @@ const faqSections = [
       {
         question: "Do I have to commit to a block of lessons?",
         answer:
-          "No. There’s no package to buy and no minimum. Book one, see how it goes, book another if you want to. If you’d rather hold the same time every week, message me and we’ll set that up."
+          "No. Book one lesson, or choose recurring lessons to keep the same time each week. There’s no package to pay for in advance."
       }
     ]
   },
@@ -160,7 +160,7 @@ const faqSections = [
       {
         question: "How do I pay?",
         answer:
-          "You save a card securely with Stripe when you book, but nothing is charged then. The lesson price is charged automatically when your lesson ends."
+          "Booking shows how to pay before you confirm: either pay Inês on the lesson day, or save a card securely with Stripe for automatic payment after the lesson. You aren’t charged when you save your card."
       },
       {
         question: "How much does a lesson cost?",
@@ -179,12 +179,12 @@ const faqSections = [
     questions: [
       {
         question: "Can I reschedule?",
-        answer: `${changeBookingInstructions} Move to any time that’s free. It’s free until the day before; moving on the lesson’s Porto calendar day costs ${sameDayFee}, charged automatically to your saved card.`
+        answer: `${changeBookingInstructions} Move to any time that’s free. It’s free until the day before; moving on the lesson’s Porto calendar day costs ${sameDayFee}. If you saved a card when booking, the fee is charged automatically.`
       },
       {
         question: `When does the ${sameDayFee} fee apply?`,
         answer:
-          "If you move or cancel on the lesson’s Porto calendar day. Inês can also record a no-show before the lesson ends; in that case only €5 is charged instead of the full lesson price."
+          `Moving or cancelling on the lesson’s Porto calendar day costs ${sameDayFee}, at most once per lesson. A recorded no-show replaces the lesson price with ${sameDayFee}; any change fee still applies.`
       },
       {
         question: "Can I cancel?",
@@ -192,14 +192,14 @@ const faqSections = [
       },
       {
         question: "What if I don’t turn up?",
-        answer: `Please cancel rather than simply not coming, even at the last minute, so I know you’re safe. If you don’t attend and Inês records a no-show before the lesson ends, only ${sameDayFee} is charged instead of the full lesson price. If something happened, message me and we’ll sort it out.`,
+        answer: `Please cancel rather than simply not coming, even at the last minute, so I know you’re safe. If Inês records a no-show before the lesson ends, ${sameDayFee} replaces the lesson price; any change fee still applies. If something happened, message me and we’ll sort it out.`,
         // Placed under cancelling rather than payment on purpose — the answer is
         // mostly "cancel instead", and that is the thing worth reading.
       },
       {
         question: "What if I need to stop for a while?",
         answer:
-          "Then you stop. There’s no subscription and nothing to cancel, so a gap costs you nothing. Book again whenever you’re ready."
+          "You can stop repeating lessons in your calendar and choose whether to keep or cancel future booked dates. Today’s lesson stays booked. Book again whenever you’re ready."
       }
     ]
   }
@@ -262,12 +262,14 @@ export default function FAQPage() {
         <section className="faq-contact">
           <p className="eyebrow">Not sure yet?</p>
           <h2>Ask me before you book.</h2>
-          <a className="button button--coral" href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">
-            Message on WhatsApp
-          </a>
-          <Link className="text-action faq-contact__book" href="/book/?view=book">
-            Go to booking
-          </Link>
+          <div className="faq-contact__actions">
+            <a className="button button--coral" href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">
+              Message on WhatsApp
+            </a>
+            <Link className="text-action faq-contact__book" href="/book/?view=book">
+              Go to booking
+            </Link>
+          </div>
         </section>
       </main>
 

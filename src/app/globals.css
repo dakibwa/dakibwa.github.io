@@ -1132,6 +1132,13 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
   border-bottom: 1px solid var(--rule-soft);
 }
 
+.lessons-closing .button,
+.faq-contact .button {
+  min-height: 52px;
+  padding: 0.8rem 1.65rem;
+  letter-spacing: 0.13em;
+}
+
 .lesson-location-band {
   display: flex;
   align-items: center;
@@ -1173,11 +1180,11 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  padding: 2rem var(--page-pad);
+  padding: 1.5rem var(--page-pad);
   border-left: 1px solid var(--rule-soft);
   background-color: var(--lavender-soft);
   background-image: var(--paper-texture);
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .lessons-note p {
@@ -1362,22 +1369,28 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 }
 
 .faq-contact {
-  padding: clamp(4rem, 7vw, 7rem) var(--page-pad);
+  padding: clamp(3rem, 5vw, 5rem) var(--page-pad);
   text-align: center;
 }
 
 .faq-contact h2 {
-  margin-bottom: 1.8rem;
+  margin-bottom: 1.25rem;
   font-family: var(--display);
   font-size: clamp(2.2rem, 3.8vw, 3.8rem);
   font-weight: 400;
   letter-spacing: -0.04em;
 }
 
-.faq-contact__book {
+.faq-contact__actions {
   display: flex;
-  width: fit-content;
-  margin: 1.6rem auto 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem 1.75rem;
+}
+
+.faq-contact__book {
+  margin: 0;
 }
 
 /* Booking */
@@ -6222,6 +6235,23 @@ button.text-action {
 }
 
 @media (min-width: 821px) and (max-width: 1100px) {
+  .booking-intro {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  .booking-intro__points {
+    grid-column: 1;
+  }
+
+  .booking-intro__points li:first-child {
+    padding-left: 0;
+  }
+
+  .booking-intro__time-window {
+    display: none;
+  }
+
   .lessons-closing {
     grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
   }
@@ -6246,10 +6276,6 @@ button.text-action {
 
   .lesson-location-band p {
     font-size: 1rem;
-  }
-
-  .lesson-location-band .button {
-    width: min(100%, 280px);
   }
 }
 
