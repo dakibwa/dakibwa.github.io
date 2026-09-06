@@ -660,9 +660,11 @@ Secrets, each via `npx wrangler secret put <NAME> --config workers/booking/wrang
 
 Non-secret vars in `wrangler.jsonc`: `GOOGLE_CLIENT_ID` enables Google Sign-In
 (it is public by design — the Worker verifies every token against it).
-`TEACHER_NOTIFICATIONS_ENABLED=0` pauses only Inês's notification copies while
-the booking experience is being refined; student confirmations, account mail,
-and calendar updates remain live, and `TEACHER_EMAIL` remains their reply-to.
+Production uses `TEACHER_NOTIFICATIONS_ENABLED=1` to send Inês's booking,
+change and failed-payment copies. Setting it to `0` pauses these copies;
+student mail and successful-payment fiscal reminders remain enabled, and
+`TEACHER_EMAIL` remains the student messages' reply-to. Staging keeps teacher
+booking copies paused and all email in dry-run mode.
 
 Then set `EMAIL_DRY_RUN=0` in `wrangler.jsonc` and redeploy. Until that happens
 the Worker records every message in `email_log` and sends nothing — and
