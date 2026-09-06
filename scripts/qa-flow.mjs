@@ -1684,6 +1684,10 @@ if (
 }
 await ninetyMinuteChoice.check();
 await desktopManagePanel.getByRole("radio", { name: "In Porto", exact: true }).check();
+// Rescheduling opens the booked week. On Sundays, tomorrow's fixture is in
+// the following week, so expand the calendar through the same control a
+// student uses instead of assuming both dates share the compact week.
+await desktopChangeDialog.getByRole("button", { name: "Show all", exact: true }).click();
 await accountPage.locator(`#lesson-calendar [data-date-key="${qaFreeDate}"]`).click();
 await desktopManagePanel.locator(".slot-grid button").first().click();
 await waitForOrientation(accountPage);
