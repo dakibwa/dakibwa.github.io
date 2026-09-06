@@ -696,9 +696,11 @@ students at WhatsApp, rather than rendering a calendar that cannot work.
   its business URL matches this site, charges and payouts are enabled, and no
   requirements are currently due. `payment_mode` stays `off` until the live key
   and webhook secret are installed securely and the production configuration
-  checks above pass. The sandbox payment journey is complete. The account has
-  no live restricted key yet; the production Worker and site still carry test
-  key configuration, and Inês's notification copies remain paused.
+  checks above pass. The sandbox payment journey is complete. The published
+  site now uses the live merchant's publishable key, and Inês's notification
+  copies are enabled. The account still has no live restricted key; the
+  production Worker retains test credentials until the live key and webhook
+  signing secret are installed together.
 - **Fiscal documents.** She must issue a fatura-recibo per lesson, and CIVA art.
   36.º gives 5 working days from the lesson. See
   `Documents/Work/Português com a Inês/Billing and Booking - Operating Context
