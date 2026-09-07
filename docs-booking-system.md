@@ -63,6 +63,32 @@ does not exist, with no password — they set one through "forgot password" when
 they first want to manage the lesson themselves. They receive the same
 confirmation, calendar invitation and manage link as if they had booked it.
 
+## Teacher calendar
+
+`/schedule` opens on the current Monday-to-Sunday week in Porto time. Booked
+lessons sit at their actual times and open a details dialog for moving,
+cancelling or recording attendance. Week navigation requests the corresponding
+booking range, including lessons that cross midnight. A failed range load is
+shown as an error, never as an empty calendar. Mobile shows one selected day
+under the same seven-day header.
+
+`Teaching hours` edits the usual weekly pattern with click/drag, touch or
+keyboard input. `Save teaching hours` writes the existing first-start and
+last-start rule format; it does not reinterpret the last start as a finishing
+time. Precise existing windows remain available through `Set exact hours` and
+are not rounded by the grid. Drafts survive week/view changes and booking
+actions, and validation prevents the API from silently dropping invalid rows.
+
+The days-off month calendar supports selecting several dates and saving them
+together. Blocking a date prevents new bookings without cancelling existing
+ones. Removing a whole day off deletes only its whole-day blocked rows, leaving
+partial blocks and extra hours intact. A partly failed save reloads the actual
+exceptions before retrying the remaining draft.
+
+Manual lesson entry is a collapsed backup at the bottom, with online/in-Porto
+location. All teacher actions still use the authenticated admin endpoints and
+their existing booking, payment and email safeguards.
+
 ## Accounts
 
 Booking requires an account, so a student's lessons persist together rather than

@@ -92,6 +92,7 @@ jobs:
           QA_BASE_URL=http://localhost:3000 npm run test:flow
           QA_BASE_URL=http://localhost:3000 node scripts/qa-workspace-navigation.mjs
           QA_BASE_URL=http://localhost:3000 node scripts/qa-payment-recovery.mjs
+          QA_BASE_URL=http://localhost:3000 node scripts/qa-teacher-calendar.mjs
 
       # Two uploads of one build: the Pages-shaped tarball for the preview, and
       # the plain directory the Cloudflare deploy needs. Hidden files are kept

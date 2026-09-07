@@ -182,6 +182,33 @@ the current site:
 Do not keep contact sheets, rejected generations, alternate raster exports,
 mockups, or unused candidates under `public/`.
 
+## Teacher schedule — 7 September 2026
+
+Inês needs to see her week, make time for students, and protect her days off.
+The timetable is the primary surface, in the existing cream, blue and lilac
+palette. Keep expressive type in the page/section headings and clear Montserrat
+type in dates, times and lesson details. Use colour to distinguish booked lessons,
+usual lesson starts and days off; avoid a wall of administration forms.
+
+- Open on the current Porto week with booked lessons placed at their actual
+  times. A second `Teaching hours` view edits the repeating weekly pattern.
+  Clicking or dragging marks lesson start times; keyboard and touch input must
+  work without dragging. Preserve exact existing first/last-start values and
+  provide an exact-time editor. The last start is not a finishing time.
+- Availability edits remain a draft until `Save teaching hours`. Days off use a
+  month calendar with explicit save/discard actions. Booking activity must never
+  silently discard either draft. A blocked date prevents new bookings; existing
+  lessons remain visible and need their own deliberate move/cancel action.
+- Show the full week on desktop. On small screens, keep a seven-day selector
+  above a spacious single-day timetable, with no horizontal page overflow.
+  Dates and timed lessons always use Porto time, including at DST boundaries.
+- Selecting a booked lesson opens its details and the existing move, cancel,
+  attendance and payment-status controls. Keep cancellation confirmation,
+  permission checks and server error handling intact.
+- Put manual lesson entry last, collapsed under `Add a lesson for a student`.
+  It is a backup for a lesson arranged elsewhere; the ordinary student booking
+  service remains the primary route. Include online/in-Porto location.
+
 ## Motion direction
 
 Use a short opacity-only transition on completed route changes, with faster

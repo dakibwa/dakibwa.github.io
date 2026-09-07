@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "check:fast": "npm run typecheck && npm run lint && npm run test:booking && npm run test:www-redirect",
+    "check:fast": "npm run typecheck && npm run lint && npm run test:booking && npm run test:www-redirect && npm run test:teacher-calendar",
     "check:release": "npm run check:booking && npm run build",
     "check:booking": "node scripts/check-booking-link.mjs",
     "test:portfolio-banner": "node scripts/check-portfolio-banner.mjs",
@@ -25,6 +25,7 @@
     "worker:www:dry-run": "wrangler deploy --config workers/www-redirect/wrangler.jsonc --dry-run",
     "worker:www:deploy": "wrangler deploy --config workers/www-redirect/wrangler.jsonc",
     "test:www-redirect": "node workers/www-redirect/test.mjs",
+    "test:teacher-calendar": "node --experimental-strip-types --test scripts/test-teacher-calendar.mjs",
     "build:email-banner": "node scripts/build-email-banner.mjs",
     "build:og-image": "node scripts/build-og-image.mjs"
   },
