@@ -1,9 +1,28 @@
 import { BOOKING_API_BASE_URL } from "@/lib/config";
 
-export type AdminStudent = { id: string; name: string; email: string; phone: string };
+export type AdminStudent = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+};
 
-export type AvailabilityRule = { id: number; weekday: number; start_minute: number; last_start_minute: number };
-export type AvailabilityException = { id: number; date: string; kind: "blocked" | "extra"; note: string };
+export type AvailabilityRule = {
+  id: number;
+  weekday: number;
+  start_minute: number;
+  last_start_minute: number;
+  active?: number;
+};
+export type AvailabilityException = {
+  id: number;
+  date: string;
+  kind: "blocked" | "extra";
+  note: string;
+  start_minute?: number | null;
+  end_minute?: number | null;
+  weekday?: number | null;
+};
 export type AdminBooking = {
   id: string;
   reference: string;
@@ -17,53 +36,89 @@ export type AdminBooking = {
   location: "online" | "porto";
   notes: string;
   same_day_change: number;
-  same_day_fee_status: "not_required" | "scheduled" | "processing" | "paid" | "payment_due";
+  same_day_fee_status:
+    | "not_required"
+    | "scheduled"
+    | "processing"
+    | "paid"
+    | "payment_due";
   reschedule_count: number;
-  payment_status: "not_required" | "pending" | "scheduled" | "processing" | "paid" | "payment_due" | "refunded";
+  payment_status:
+    | "not_required"
+    | "pending"
+    | "scheduled"
+    | "processing"
+    | "paid"
+    | "payment_due"
+    | "refunded";
   attendance_status: "expected" | "no_show";
 };
 
-async function adminRequest<T>(token: string, path: string, init?: RequestInit): Promise<T> {
+async function adminRequest<T>(
+  token: string,
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const response = await fetch(`${BOOKING_API_BASE_URL}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${token}`,
-      ...(init?.body ? { "Content-Type": "application/json" } : {})
-    }
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+    },
   });
 
-  const data = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+  const data = (await response.json().catch(() => ({}))) as T & {
+    error?: string;
+  };
+  if (!response.ok)
+    throw new Error(data.error || `Request failed (${response.status})`);
   return data;
 }
 
 export function fetchSchedule(token: string) {
-  return adminRequest<{ rules: AvailabilityRule[]; exceptions: AvailabilityException[] }>(token, "/admin/availability");
+  return adminRequest<{
+    rules: AvailabilityRule[];
+    exceptions: AvailabilityException[];
+    settings?: { slotIntervalMinutes: number };
+  }>(token, "/admin/availability");
 }
 
-export function fetchBookings(token: string) {
-  return adminRequest<{ bookings: AdminBooking[]; manualPaymentReconciliation?: { id: string; reference: string }[] }>(token, "/admin/bookings");
+export function fetchBookings(token: string, from?: string) {
+  return adminRequest<{
+    bookings: AdminBooking[];
+    manualPaymentReconciliation?: { id: string; reference: string }[];
+  }>(
+    token,
+    `/admin/bookings${from ? `?from=${encodeURIComponent(from)}` : ""}`,
+  );
 }
 
-export function saveRules(token: string, rules: { weekday: number; startMinute: number; lastStartMinute: number }[]) {
-  return adminRequest<{ ok: true; count: number }>(token, "/admin/availability", {
-    method: "POST",
-    body: JSON.stringify({ rules })
-  });
+export function saveRules(
+  token: string,
+  rules: { weekday: number; startMinute: number; lastStartMinute: number }[],
+) {
+  return adminRequest<{ ok: true; count: number }>(
+    token,
+    "/admin/availability",
+    {
+      method: "POST",
+      body: JSON.stringify({ rules }),
+    },
+  );
 }
 
 export function addException(token: string, date: string, note: string) {
   return adminRequest<{ ok: true }>(token, "/admin/exceptions", {
     method: "POST",
-    body: JSON.stringify({ date, kind: "blocked", note })
+    body: JSON.stringify({ date, kind: "blocked", note }),
   });
 }
 
 export function removeException(token: string, id: number) {
   return adminRequest<{ ok: true }>(token, "/admin/exceptions", {
     method: "POST",
-    body: JSON.stringify({ remove: id })
+    body: JSON.stringify({ remove: id }),
   });
 }
 
@@ -81,33 +136,53 @@ export function createBookingFor(
     startAt: string;
     location: "online" | "porto";
     notes: string;
-  }
+  },
 ) {
-  return adminRequest<{ booking: { reference: string } }>(token, "/admin/bookings", {
-    method: "POST",
-    body: JSON.stringify(input)
-  });
+  return adminRequest<{ booking: { reference: string } }>(
+    token,
+    "/admin/bookings",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
 }
 
-export function rescheduleBookingAs(token: string, bookingId: string, startAt: string) {
-  return adminRequest<{ booking: { reference: string } }>(token, `/admin/bookings/${bookingId}/reschedule`, {
-    method: "POST",
-    body: JSON.stringify({ startAt })
-  });
+export function rescheduleBookingAs(
+  token: string,
+  bookingId: string,
+  startAt: string,
+) {
+  return adminRequest<{ booking: { reference: string } }>(
+    token,
+    `/admin/bookings/${bookingId}/reschedule`,
+    {
+      method: "POST",
+      body: JSON.stringify({ startAt }),
+    },
+  );
 }
 
 export function cancelBookingAs(token: string, bookingId: string) {
-  return adminRequest<{ booking: { reference: string } }>(token, `/admin/bookings/${bookingId}/cancel`, {
-    method: "POST",
-    body: "{}"
-  });
+  return adminRequest<{ booking: { reference: string } }>(
+    token,
+    `/admin/bookings/${bookingId}/cancel`,
+    {
+      method: "POST",
+      body: "{}",
+    },
+  );
 }
 
 export function setNoShow(token: string, bookingId: string, noShow: boolean) {
-  return adminRequest<{ booking: AdminBooking }>(token, `/admin/bookings/${bookingId}/no-show`, {
-    method: "POST",
-    body: JSON.stringify({ noShow })
-  });
+  return adminRequest<{ booking: AdminBooking }>(
+    token,
+    `/admin/bookings/${bookingId}/no-show`,
+    {
+      method: "POST",
+      body: JSON.stringify({ noShow }),
+    },
+  );
 }
 
 export function minutesToTime(minutes: number) {

@@ -40,10 +40,10 @@ for (const width of [390, 1440]) {
     student: { id: "teacher", name: "Inês", email: "teacher@example.invalid", phone: "", timezone: "Europe/Lisbon", role: "teacher" }, bookings: [], series: [], sameDayFeeCents: 500
   } }));
   await diary.route("**/admin/availability", (route) => route.fulfill({ json: { rules: [], exceptions: [] } }));
-  await diary.route("**/admin/bookings", (route) => route.fulfill({ json: { bookings: [], manualPaymentReconciliation: [{ id: "isolated", reference: "REVIEW-123" }] } }));
+  await diary.route("**/admin/bookings*", (route) => route.fulfill({ json: { bookings: [], manualPaymentReconciliation: [{ id: "isolated", reference: "REVIEW-123" }] } }));
   await diary.goto(`${base}/schedule/`, { waitUntil: "domcontentloaded" });
   await diary.getByRole("status").filter({ hasText: "REVIEW-123" }).waitFor();
-  await diary.getByText(/Review these payments in Stripe before retrying/).waitFor();
+  await diary.getByText(/Review these in Stripe before retrying/).waitFor();
   assert.equal(await diary.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await diary.screenshot({ path: `tmp/qa/payment-review-diary-${width}.png`, fullPage: true });
   await diary.close();
