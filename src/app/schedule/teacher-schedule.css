@@ -377,7 +377,7 @@
   font-variant-numeric: tabular-nums;
 }
 .teacher-lesson-location {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 0.25rem;
   color: var(--lavender-soft);
