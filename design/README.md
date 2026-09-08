@@ -34,6 +34,11 @@ retain the first result, and check that the correction helps both desktop and
 mobile without weakening another important state. A one-off preference stays
 with its change until there is evidence that it should govern later work.
 
+FAQ answers should be calm, friendly and easy to scan. Answer the question
+directly in a few plain sentences. Keep practical details that help a student
+prepare, book or understand a fee; leave out internal payment and attendance
+processes. Avoid blunt reassurance, sales language and unnecessary jargon.
+
 ## Named failure patterns
 
 Use these names in review so recurring problems are easy to recognise:

@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 const sameDayFee = formatMoney(SAME_DAY_RESCHEDULE_FEE_CENTS);
 
 const changeBookingInstructions =
-  "Use the link in your confirmation email. It opens your booking on this site, where you can move it or cancel it yourself.";
+  "Use the link in your confirmation email to change or cancel your booking.";
 
 const faqSections = [
   {
@@ -25,22 +25,22 @@ const faqSections = [
       {
         question: "I’m nervous about speaking. Is that normal?",
         answer:
-          "It’s the single most common thing people tell me in a first lesson. Speaking out loud in a new language feels exposing, however much grammar you know. We go at whatever speed makes it easier."
+          "Yes, it’s very common to feel nervous when speaking a new language. We’ll take our time and go at a pace that feels comfortable for you."
       },
       {
         question: "What if I freeze and can’t say anything?",
         answer:
-          "Then I help you out and we carry on. Nobody is timing you, and there’s no class watching. Long pauses are part of learning to speak, not a sign it’s going badly."
+          "That’s okay. I’ll help you find the words, and we’ll take it one step at a time. There’s no rush."
       },
       {
         question: "What if I make a lot of mistakes?",
         answer:
-          "You will, and that’s useful. Your mistakes tell me exactly what to work on next. I correct you as we go, though not every single slip, because that stops a conversation dead."
+          "Mistakes are a normal part of learning. I’ll help you with corrections while giving you space to speak and build confidence."
       },
       {
         question: "I’ve tried before and gave up. Will this be different?",
         answer:
-          "I can’t promise that. What I can say is that most people who stall were learning alone, with an app or a book and nobody to answer back. An hour of talking to a real person is a different thing."
+          "We can talk about what was difficult before and find a way of learning that suits you. You’ll have someone to practise with, ask questions and guide you along the way."
       }
     ]
   },
@@ -51,27 +51,27 @@ const faqSections = [
       {
         question: "What happens in a lesson?",
         answer:
-          "We talk, mostly. You bring something you want to be able to say, or I bring something, and we work through it out loud. I correct you as we go, and explain the grammar when it’s the thing tripping you up."
+          "We practise speaking Portuguese through conversation. You can bring a topic or question, or I’ll have something ready. I’ll help with vocabulary, pronunciation and grammar as we go."
       },
       {
         question: "What if we run out of things to talk about?",
         answer:
-          "That’s my job to solve, not yours. I’ll always have something ready. Turning up with nothing in mind is completely fine."
+          "I’ll have topics and activities ready, so you don’t need to worry about keeping the conversation going."
       },
       {
         question: "Will you speak only Portuguese? I won’t understand.",
         answer:
-          "Not at the start, no. We use as much English as you need, and less of it as you go. You will never be left sitting there with no idea what’s happening."
+          "We can use English whenever you need it and gradually use more Portuguese as you feel ready."
       },
       {
         question: "Do I need to prepare anything?",
         answer:
-          "No. Turn up with a question, a situation you’re dreading, or nothing at all."
+          "No preparation is needed. You’re welcome to bring a question or something you’d like to practise."
       },
       {
         question: "Is there homework?",
         answer:
-          "Only if you want it. Ask and I’ll give you something to practise between lessons. If your week gets away from you, come anyway and we’ll use the hour."
+          "Only if you’d like it. I can suggest something to practise between lessons, but it’s fine if you don’t have time."
       }
     ]
   },
@@ -82,32 +82,32 @@ const faqSections = [
       {
         question: "What level do I need to be?",
         answer:
-          "Any. From never having said a word, to reading Portuguese fine but freezing when somebody answers back."
+          "All levels are welcome, including complete beginners. We’ll start with what you know and what you’d like to learn."
       },
       {
         question: "Am I too old to start?",
         answer:
-          "No. Adults are usually better than children at understanding how a language works. What you need is more practice saying things out loud, which is exactly what an hour of talking gives you."
+          "No, you’re welcome to start at any age. We’ll work at your pace and focus on what you’d like to use Portuguese for."
       },
       {
         question: "How long until I can hold a conversation?",
         answer:
-          "That depends on where you start and how much you practise, so anyone who gives you a number is guessing. What I can tell you is that you’ll say something real in Portuguese in the first lesson."
+          "It depends on your starting point and how much you practise. We’ll begin with simple conversations and build from there."
       },
       {
         question: "Is this European or Brazilian Portuguese?",
         answer:
-          "European. The Portuguese you’ll hear on the street in Porto, including all the vowels we swallow."
+          "European Portuguese, as spoken here in Portugal."
       },
       {
         question: "I learned Brazilian Portuguese. Is that a problem?",
         answer:
-          "Not at all, and you’ll be understood here. We’d work on the differences in sound and vocabulary, and you keep whatever you like from it."
+          "Not at all. What you’ve learned is a useful starting point. I can help you get familiar with the pronunciation and vocabulary used in Portugal."
       },
       {
         question: "Can explanations be in English?",
         answer:
-          "Yes. English, Portuguese, or a mix. We find a balance that works and shift it as you improve."
+          "Yes. I can explain things in English, Portuguese or a mix of both, whichever helps you most."
       }
     ]
   },
@@ -118,17 +118,17 @@ const faqSections = [
       {
         question: "Where do lessons take place?",
         answer:
-          "Online, or in person in Porto. You choose the format when you book, and it’s confirmed before you pay."
+          "Online or in person in Porto. You choose when you book."
       },
       {
         question: "What do I need for an online lesson?",
         answer:
-          "Not much. Lessons run on Google Meet: I’ll send you the link, it opens straight in your browser, and there’s nothing to install beforehand. Headphones help more than anything else."
+          "You’ll need an internet connection and a phone, tablet or computer with a camera and microphone. I’ll send you a Google Meet link to join. Headphones can help you hear more clearly."
       },
       {
         question: "Do online lessons work as well as in person?",
         answer:
-          "For one-to-one talking, yes. You get the same hour and the same attention either way, wherever in the world you are."
+          "Online lessons offer the same personal attention and speaking practice. Choose whichever feels more comfortable and convenient for you."
       }
     ]
   },
@@ -139,17 +139,17 @@ const faqSections = [
       {
         question: "How do I book a lesson?",
         answer:
-          "Go to the booking page, choose the lesson you want, pick a time that suits you, and add your details. You’ll see the full details before you confirm."
+          "Go to the booking page, choose a lesson and a time, then add your details. You can review everything before confirming."
       },
       {
         question: "What happens after I book?",
         answer:
-          "An email arrives straight away with the lesson details, a calendar invitation, and a link you can use to move or cancel it yourself at any time."
+          "You’ll receive an email with your lesson details, an invitation to add it to your calendar, and a link to change or cancel your booking."
       },
       {
         question: "Do I have to commit to a block of lessons?",
         answer:
-          "No. Book one lesson, or choose recurring lessons to keep the same time each week. There’s no package to pay for in advance."
+          "No. You can book one lesson or keep the same time each week. There’s no block of lessons to pay for in advance."
       }
     ]
   },
@@ -160,16 +160,16 @@ const faqSections = [
       {
         question: "How do I pay?",
         answer:
-          "Booking shows how to pay before you confirm: either pay Inês on the lesson day, or save a card securely with Stripe for automatic payment after the lesson. You aren’t charged when you save your card."
+          "You’ll see the payment arrangements when you book. You may be asked to pay me on the day or securely save a card for payment after your lesson. Saving your card doesn’t charge it."
       },
       {
         question: "How much does a lesson cost?",
         answer:
-          "The prices are all on the lessons page, and the price of the lesson you’ve chosen is shown before you confirm."
+          "You can find prices on the lessons page. You’ll also see the price when you book, before you confirm."
       },
       {
         question: "What if the trial lesson isn’t for me?",
-        answer: `Then you’ve spent ${trialLesson.price} on an hour of Portuguese and we leave it there. No follow-up and no pressure. A trial lesson is you deciding, not me selling.`
+        answer: `That’s completely fine. The trial costs ${trialLesson.price}, and there’s no obligation to book another lesson.`
       }
     ]
   },
@@ -178,28 +178,26 @@ const faqSections = [
     title: "Changing a lesson",
     questions: [
       {
-        question: "Can I reschedule?",
-        answer: `${changeBookingInstructions} Move to any time that’s free. It’s free until the day before; moving on the lesson’s Porto calendar day costs ${sameDayFee}. If you saved a card when booking, the fee is charged automatically.`
+        question: "Can I change my lesson time?",
+        answer: `Yes. ${changeBookingInstructions} Choose another available time. Changes are free until the day before your lesson. On the day, there’s a ${sameDayFee} fee, using Porto time.`
       },
       {
         question: `When does the ${sameDayFee} fee apply?`,
         answer:
-          `Moving or cancelling on the lesson’s Porto calendar day costs ${sameDayFee}, at most once per lesson. A recorded no-show replaces the lesson price with ${sameDayFee}; any change fee still applies.`
+          `There’s a ${sameDayFee} fee if you change or cancel on the day of your lesson, using Porto time. You only pay this change fee once per lesson. If you later miss the lesson without cancelling, the ${sameDayFee} missed-lesson fee is separate. Fees are charged automatically if you have a saved card.`
       },
       {
         question: "Can I cancel?",
-        answer: `${changeBookingInstructions} Cancelling is free until the day before; on the lesson day the ${sameDayFee} fee applies.`
+        answer: `Yes. ${changeBookingInstructions} It’s free until the day before your lesson. On the day, there’s a ${sameDayFee} fee, using Porto time.`
       },
       {
         question: "What if I don’t turn up?",
-        answer: `Please cancel rather than simply not coming, even at the last minute, so I know you’re safe. If Inês records a no-show before the lesson ends, ${sameDayFee} replaces the lesson price; any change fee still applies. If something happened, message me and we’ll sort it out.`,
-        // Placed under cancelling rather than payment on purpose — the answer is
-        // mostly "cancel instead", and that is the thing worth reading.
+        answer: `If you miss your lesson without cancelling, there’s a ${sameDayFee} fee.`,
       },
       {
         question: "What if I need to stop for a while?",
         answer:
-          "You can stop repeating lessons in your calendar and choose whether to keep or cancel future booked dates. Today’s lesson stays booked. Book again whenever you’re ready."
+          "You can stop your regular lessons from your calendar and choose which future bookings to keep or cancel. If you have a lesson today, it stays booked unless you cancel it separately. You’re welcome to book again whenever you’re ready."
       }
     ]
   }
