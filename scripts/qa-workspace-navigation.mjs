@@ -212,7 +212,7 @@ try {
   await page.locator("#privacy[open]").waitFor();
   assert.equal(await page.locator(".site-footer__legal a").count(), 1);
   assert.equal(new URL(page.url()).hash, "#privacy");
-  assert.equal(await page.locator('#privacy a[href^="mailto:"]').getAttribute("href"), "mailto:bookings@portuguesewithines.com");
+  assert.equal(await page.locator('#privacy a[href^="https://wa.me/"]').getAttribute("href"), "https://wa.me/351963161134");
   assert.ok(await page.locator("#privacy .policy-information").isVisible());
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   await page.locator("#privacy > summary").click();

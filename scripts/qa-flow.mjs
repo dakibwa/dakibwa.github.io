@@ -247,9 +247,9 @@ for (const route of routes) {
     }
 
     if (route.id === "booking") {
-      const emailHref = await page.locator('#privacy a[href^="mailto:"]').getAttribute("href");
-      if (emailHref !== "mailto:bookings@portuguesewithines.com") {
-        throw new Error(`Booking privacy contact regressed: ${emailHref}.`);
+      const contactHref = await page.locator('#privacy a[href^="https://wa.me/"]').getAttribute("href");
+      if (contactHref !== "https://wa.me/351963161134") {
+        throw new Error(`Booking privacy contact regressed: ${contactHref}.`);
       }
     }
 

@@ -569,9 +569,9 @@ payment in production.
    publishable key. The Pages build's `NEXT_PUBLIC_STRIPE_EXPECTED_MODE=live`
    refuses to mount Stripe.js with a test key.
 6. The live `/stripe/webhook` destination was created and verified Active on
-   5 September for `checkout.session.completed` only. Its signing secret remains
-   masked and not installed. After secure installation, verify a signed delivery
-   in Stripe's event log.
+   5 September for `checkout.session.completed` only. Its signing secret was
+   installed in the production Worker's encrypted secret store on 11 September.
+   A first signed live delivery remains to be observed in Stripe's event log.
 7. Run the redesigned full test-mode journey: setup mode takes no money;
    signed webhook confirmation; full lesson-end charge; no-show €5 replacement;
    same-day move/cancel €5; decline to `payment_due`; and dry-run notices.
@@ -742,11 +742,11 @@ and quieter bottom-right footer privacy link for publication in the same release
   and webhook secret are installed securely and the production configuration
   checks above pass. The sandbox payment journey is complete. The published
   site now uses the live merchant's publishable key, and Inês's notification
-  copies are enabled. The account still has no live restricted key; the
-  production Worker retains test credentials until the live key and webhook
-  signing secret are installed together. Dan approved activation on 11 September.
-  Cloudflare access is available; Stripe requires Dan's email-link verification
-  before creating the prepared `ines-booking-production` restricted key.
+  copies are enabled. The live webhook secret is installed; the production
+  Worker still has a test API key and charging remains off. Dan approved
+  activation on 11 September. Cloudflare access is available; Stripe requires
+  Dan's email-link verification before creating the prepared
+  `ines-booking-production` restricted key.
 - **Fiscal documents.** She must issue a fatura-recibo per lesson, and CIVA art.
   36.º gives 5 working days from the lesson. See
   `Documents/Work/Português com a Inês/Billing and Booking - Operating Context
