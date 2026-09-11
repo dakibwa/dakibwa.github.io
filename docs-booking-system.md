@@ -735,6 +735,8 @@ has no pending or failed emails. No new live booking or email was created, and n
 fresh sign-in as Inês or real payment was performed. Payments remain off. The
 secondary www redirect is deployed. Dan approved the policy contact-link repairs
 and quieter bottom-right footer privacy link for publication in the same release.
+Release `ee812d2` passed all CI gates and published to Cloudflare Pages on
+11 September; the public footer, contact links and HTTPS redirects were verified.
 
 - **Live payment activation.** The live merchant was rechecked on 11 September:
   its business URL matches this site, charges and payouts are enabled, and no
