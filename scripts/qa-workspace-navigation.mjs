@@ -231,12 +231,6 @@ try {
   await legacy.goto(`${base}/my-lessons/`);
   await legacy.getByRole("heading", { name: "Sign in to view your lessons", exact: true }).waitFor();
   assert.ok(legacy.url().includes("/book/?view=lessons"));
-  await legacy.locator(".privacy-notice").waitFor();
-  const notice = await legacy.locator(".privacy-notice").boundingBox();
-  const form = await legacy.locator(".auth-panel__form").boundingBox();
-  assert.ok(notice.y + notice.height <= form.y, "Privacy information appears before account data is collected");
-  await legacy.locator(".privacy-notice summary").click();
-  assert.ok(await legacy.locator(".privacy-notice details[open] .policy-information").isVisible());
   await legacy.close();
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ ok: true, layouts, screenshots: out }, null, 2));

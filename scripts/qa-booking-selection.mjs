@@ -101,7 +101,12 @@ try {
     await choose("2026-09-22");
     await page.getByRole("button", { name: /Add another lesson/ }).click();
     await choose("2026-09-30");
-    await page.getByRole("button", { name: "Remove lesson 2", exact: true }).click();
+    // Remove lives inside Change; backing out of a change keeps the lesson.
+    await page.getByRole("button", { name: "Change lesson 2", exact: true }).click();
+    await page.getByRole("button", { name: "Back to your selection", exact: true }).click();
+    assert.equal(await page.locator('.booking-chosen-lessons li').count(), 3, "Going back from Change keeps the lesson");
+    await page.getByRole("button", { name: "Change lesson 2", exact: true }).click();
+    await page.getByRole("button", { name: "Remove this lesson", exact: true }).click();
     assert.equal(await page.locator('.booking-chosen-lessons li').count(), 2);
     await page.getByRole("button", { name: /Add another lesson/ }).click();
     await choose("2026-09-16");

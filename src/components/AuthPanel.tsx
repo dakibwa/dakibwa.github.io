@@ -4,7 +4,6 @@ import { FormEvent, useState } from "react";
 import { AlertCircle, Lock, Mail, UserRound } from "lucide-react";
 import { AssetMark } from "@/components/BrandMarks";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-import { PrivacyNotice } from "@/components/PolicyInformation";
 import { browserTimeZone } from "@/lib/booking-api";
 import { login, register, requestPasswordReset, storeSession, type Student } from "@/lib/auth-api";
 
@@ -44,6 +43,12 @@ export function AuthPanel({
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const Heading = headingLevel === 2 ? "h2" : "h3";
+  const introText =
+    mode === "forgot"
+      ? "Give us the email you booked with and we'll send you a link to choose a new password. It works for one hour."
+      : mode === "register" && !keepCopy
+        ? "Keeps all your lessons in one place, so you can change them yourself."
+        : intro;
 
   function update(patch: Partial<typeof form>) {
     setForm((current) => ({ ...current, ...patch }));
@@ -91,21 +96,11 @@ export function AuthPanel({
       <Heading>
         {mode === "forgot" ? "Forgotten password" : mode === "register" && !keepCopy ? "Create an account" : heading}
       </Heading>
-      <p className="auth-panel__intro">
-        {mode === "forgot"
-          ? "Give us the email you booked with and we'll send you a link to choose a new password. It works for one hour."
-          : mode === "register" && !keepCopy
-            ? "Keeps all your lessons in one place, so you can change them yourself."
-            : intro}
-      </p>
+      {introText ? <p className="auth-panel__intro">{introText}</p> : null}
 
-      {mode !== "forgot" ? (
-        <>
-          <PrivacyNotice />
-          <GoogleSignInButton onError={setError} onSignedIn={onSignedIn} />
-          <p className="booking-state-note">Your first Google sign-in replaces any previous password for this email. You can set a new password using the forgotten-password link.</p>
-        </>
-      ) : null}
+      {/* Booking terms and privacy live in their own disclosures on the page,
+          so signing up carries no explanatory copy of its own. */}
+      {mode !== "forgot" ? <GoogleSignInButton onError={setError} onSignedIn={onSignedIn} /> : null}
 
       {/* Creating an account leads, because at the end of a booking most people
           have never been here before. Signing in follows it rather than

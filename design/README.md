@@ -145,12 +145,13 @@ the same identity or action:
   the production booking mode offers direct payment.
 
 - booking and privacy information belong to the booking context, with the
-  minimum useful text visible. Sign-up shows a short account/lesson data-use
-  and rights summary before either sign-in method; `Privacy details` opens the
-  concise notice in place, without an extra consent checkbox. The final booking
+  minimum useful text visible. Sign-up itself carries none of it: the booking's
+  sign-in card shows `Almost there` as the step's only visible heading, then
+  Google sign-in and the account form, with no data-use summary, privacy
+  details, Google password note or consent checkbox. The final booking
   action follows the payment and change conditions for the selected method.
   Compact `Booking terms` and `Your privacy` disclosures beneath the workspace
-  retain the fuller details for anyone who wants them. Use the existing
+  hold the details for anyone who wants them. Use the existing
   Montserrat text, cream surface and coral disclosure marks, with copyable text
   and readable wrapping at 320px. A quiet, sentence-case `Privacy` footer link
   sits at the bottom right on desktop and mobile, with a comfortable touch
@@ -229,10 +230,13 @@ immediately without animation or smooth scrolling.
 
 Students can collect several single-lesson dates and confirm them together.
 `Single lessons` starts with the shared length and location, then date/time.
-The review keeps an `Add another lesson` action beside the chosen dates; each
-date can be changed or removed. No slot is held until the final confirmation.
-Keep the list compact in one surface, with readable date/time rows and 44px
-actions on phones. A trial remains one first lesson. All selected lessons use
+Each chosen lesson is its own row, the same shape as the choices above it: its
+own splat, the date, the Porto time and one `Change`, with no running total
+because the length row already shows the price. `Change` reopens the calendar
+for that lesson, where `Remove this lesson` drops it and `Back to your
+selection` keeps it as it was. `Add another lesson` sits beneath the rows. No
+slot is held until the final confirmation. Keep 44px actions on phones. A trial
+remains one first lesson. All selected lessons use
 the chosen duration and location; changing duration requires choosing times
 again because availability depends on length.
 

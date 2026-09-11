@@ -164,17 +164,36 @@ function RepeatAvailability({
   );
 }
 
+// Each selected lesson has its own mark, none shared with the choices above it.
+// The last is the repeat row's mark: only single lessons reach eight, and they
+// have no repeat row.
+const LESSON_MARKS = [
+  "/visuals/v2-splats/booking-availability-splat-v2.svg",
+  "/visuals/v2-splats/relaxed-practical-splat-v2.svg",
+  "/visuals/v2-splats/at-your-pace-splat-v2.svg",
+  "/visuals/v2-splats/one-to-one-splat-v2.svg",
+  "/visuals/v2-splats/real-life-splat-v2.svg",
+  "/visuals/v2-splats/european-portuguese-splat-v2.svg",
+  "/visuals/v2-splats/faq-answers-splat-v2.svg",
+  "/visuals/v2-splats/flexible-rescheduling-splat-v2.svg"
+];
+
 function BookingSelectionSummary({
   actionLabel,
+  actionText,
   ariaLabel,
   detail,
+  disabled = false,
   mark,
   onAction,
   title
 }: {
   actionLabel?: string;
+  /** Visible text when the accessible label, like "Change lesson 2", would crowd the row. */
+  actionText?: string;
   ariaLabel: string;
   detail?: string;
+  disabled?: boolean;
   mark: string;
   onAction?: () => void;
   title: string;
@@ -190,11 +209,16 @@ function BookingSelectionSummary({
         <button
           aria-label={actionLabel}
           className="text-action booking-choice-summary__change"
+          disabled={disabled}
           onClick={onAction}
           type="button"
         >
-          <span className="booking-choice-summary__change-label">{actionLabel}</span>
-          <span className="booking-choice-summary__change-short" aria-hidden="true">Change</span>
+          {actionText ?? (
+            <>
+              <span className="booking-choice-summary__change-label">{actionLabel}</span>
+              <span className="booking-choice-summary__change-short" aria-hidden="true">Change</span>
+            </>
+          )}
         </button>
       ) : null}
     </div>
@@ -362,6 +386,9 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
   const [calendarWeekCount, setCalendarWeekCount] = useState<CalendarWeekCount>(4);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [savedChoices, setSavedChoices] = useState<Slot[]>([]);
+  // The lesson whose Change is open: kept aside so going back restores it and
+  // Remove drops it, while the calendar offers a replacement.
+  const [changingChoice, setChangingChoice] = useState<Slot | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [submitError, setSubmitError] = useState("");
@@ -774,6 +801,8 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     : null, [step, selectedSlot, lessonType, managed]);
   const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? reviewedSlot;
   const bookingChoices = useMemo(() => [...savedChoices, ...(chosen ? [chosen] : [])].sort((a, b) => a.startAt.localeCompare(b.startAt)), [savedChoices, chosen]);
+  // Choosing a replacement time, or any reset of the selection, ends a change.
+  const activeChange = changingChoice && !selectedSlot && savedChoices.length ? changingChoice : null;
   const choiceStarts = useMemo(() => bookingChoices.map((choice) => choice.startAt), [bookingChoices]);
   const choiceKey = choiceStarts.join(",");
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
@@ -1324,6 +1353,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
 
   function addAnotherLesson() {
     transitionBooking(() => {
+      setChangingChoice(null);
       setSavedChoices(bookingChoices);
       setSelectedDate("");
       setSelectedSlot("");
@@ -1334,10 +1364,12 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
   }
 
   function reviewSavedLessons() {
-    const last = savedChoices[savedChoices.length - 1];
+    // Backing out of a change puts that lesson back exactly as it was.
+    const last = activeChange ?? savedChoices[savedChoices.length - 1];
     if (!last) return;
     transitionBooking(() => {
-      setSavedChoices(savedChoices.slice(0, -1));
+      if (activeChange) setChangingChoice(null);
+      else setSavedChoices(savedChoices.slice(0, -1));
       setSelectedDate(portoDateKey(new Date(last.startAt)));
       setSelectedSlot(last.startAt);
       goTo("details");
@@ -1348,6 +1380,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     const choice = bookingChoices[index];
     if (!choice) return;
     transitionBooking(() => {
+      setChangingChoice(choice);
       setSavedChoices(bookingChoices.filter((_, entry) => entry !== index));
       setSelectedDate("");
       setSelectedSlot("");
@@ -1357,11 +1390,11 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     });
   }
 
-  function removeSelectedLesson(index: number) {
-    const remaining = bookingChoices.filter((_, entry) => entry !== index);
-    const last = remaining[remaining.length - 1];
+  function removeChangingLesson() {
+    const last = savedChoices[savedChoices.length - 1];
     transitionBooking(() => {
-      setSavedChoices(remaining.slice(0, -1));
+      setChangingChoice(null);
+      setSavedChoices(savedChoices.slice(0, -1));
       setSelectedDate(last ? portoDateKey(new Date(last.startAt)) : "");
       setSelectedSlot(last?.startAt ?? "");
       setSubmitError("");
@@ -1371,33 +1404,25 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
 
   function selectedLessonsList(choices: Slot[], editable: boolean) {
     return (
-      <div className="booking-chosen-lessons" aria-label="Selected lessons">
-        <p className="booking-chosen-lessons__label">{bookingKind === "recurring" ? "Starting times" : "Your dates"}</p>
-        <ol>
-          {choices.map((choice, index) => (
+      <ol className="booking-chosen-lessons" aria-label={bookingKind === "recurring" ? "Starting times" : "Selected lessons"}>
+        {choices.map((choice, index) => {
+          const local = differingLocalTime(choice.startAt, studentZone);
+          return (
             <li key={choice.startAt}>
-              <span className="booking-chosen-lessons__number" aria-hidden="true">{index + 1}</span>
-              <span className="booking-chosen-lessons__time">
-                <strong>{formatLongDate(choice.startAt)}</strong>
-                <span>{formatSlotTime(choice.startAt)} Porto time</span>
-                {differingLocalTime(choice.startAt, studentZone) ? <small>{differingLocalTime(choice.startAt, studentZone)} your time</small> : null}
-              </span>
-              {editable && !payment ? (
-                <span className="booking-chosen-lessons__actions">
-                  <button type="button" className="text-action" aria-label={`Change lesson ${index + 1}`} onClick={() => changeSelectedLesson(index)} disabled={submitting}>Change</button>
-                  <button type="button" className="text-action" aria-label={`Remove lesson ${index + 1}`} onClick={() => removeSelectedLesson(index)} disabled={submitting}>Remove</button>
-                </span>
-              ) : null}
+              <BookingSelectionSummary
+                actionLabel={editable && !payment ? `Change lesson ${index + 1}` : undefined}
+                actionText="Change"
+                ariaLabel={`Lesson ${index + 1}`}
+                detail={`${formatSlotTime(choice.startAt)} Porto time${local ? ` · ${local} your time` : ""}`}
+                disabled={submitting}
+                mark={LESSON_MARKS[index % LESSON_MARKS.length]}
+                onAction={() => changeSelectedLesson(index)}
+                title={formatLongDate(choice.startAt)}
+              />
             </li>
-          ))}
-        </ol>
-        {lessonType && editable ? <p>
-          {bookingKind === "recurring"
-            ? `${formatMoneyCents(lessonType.price_cents)} per lesson · ${choices.length} lessons a week.`
-            : `${formatMoneyCents(lessonType.price_cents * choices.length)} across ${choices.length} lessons · ${formatMoneyCents(lessonType.price_cents)} each.`}
-        </p> : null}
-        {bookingKind === "recurring" ? <p>These starting times repeat each week.</p> : null}
-      </div>
+          );
+        })}
+      </ol>
     );
   }
 
@@ -1466,8 +1491,17 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
         {!includeSchedule && savedChoices.length ? (
           <div className="booking-selection-progress">
             {selectedLessonsList(savedChoices, false)}
-            <p>{bookingKind === "recurring" ? "Choose the second starting time in this same week." : "Choose another date and time."}</p>
-            <button className="text-action" type="button" onClick={reviewSavedLessons}>Back to your selection</button>
+            <p>
+              {activeChange
+                ? `Changing ${formatLongDate(activeChange.startAt)} at ${formatSlotTime(activeChange.startAt)}.`
+                : bookingKind === "recurring" ? "Choose the second starting time in this same week." : "Choose another date and time."}
+            </p>
+            <div className="booking-selection-progress__actions">
+              <button className="text-action" type="button" onClick={reviewSavedLessons}>Back to your selection</button>
+              {activeChange ? (
+                <button className="text-action" type="button" onClick={removeChangingLesson}>Remove this lesson</button>
+              ) : null}
+            </div>
           </div>
         ) : null}
         {includeSchedule && !payment && bookingKind !== "trial" && bookingChoices.length < (bookingKind === "recurring" ? 2 : 8) ? (
@@ -1475,7 +1509,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             <button type="button" className="text-action" onClick={addAnotherLesson} disabled={submitting}>
               + {bookingKind === "recurring" ? "Add a second weekly time" : "Add another lesson"}
             </button>
-            <p>{bookingKind === "recurring" ? "Both starting times must be in the same Monday–Sunday week." : "Choose a few dates and confirm them together."}</p>
+            {bookingKind === "recurring" ? <p>Both starting times must be in the same Monday–Sunday week.</p> : null}
           </div>
         ) : null}
       </div>
@@ -2619,6 +2653,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                               key={slot.startAt}
                               onClick={() =>
                                 transitionBooking(() => {
+                                  setChangingChoice(null);
                                   setSelectedSlot(slot.startAt);
                                   goTo("details");
                                 })
@@ -2651,7 +2686,9 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           <div className="booking-confirmation-stage" id="booking-confirmation-stage">
             {bookingSelectionSummaries(true)}
 
-            <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
+            {/* Signed out, the sign-in card's "Almost there" is the visible heading.
+                This one stays for screen readers and as the step's focus target. */}
+            <h2 className={student ? "booking-step-heading" : "booking-step-heading visually-hidden"} id="booking-step-heading" tabIndex={-1}>
               {student
                 ? form.repeat === "once"
                   ? bookingChoices.length > 1 ? "Confirm your lessons" : "Confirm your lesson"
@@ -2685,7 +2722,6 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                   heading="Almost there"
                   initialMode="register"
                   keepCopy
-                  intro="An account keeps all your lessons in one place, so you can move or cancel any of them whenever you like."
                   onSignedIn={(signedIn) => {
                     setStudent(signedIn);
                     void refreshStudent();

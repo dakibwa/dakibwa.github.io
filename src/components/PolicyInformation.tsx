@@ -32,20 +32,6 @@ export function PrivacyInformation() {
   );
 }
 
-export function PrivacyNotice() {
-  return (
-    <div className="privacy-notice">
-      <p>
-        Inês Dias Baía uses your details for your account and lessons. You can ask to see, correct or delete them.
-      </p>
-      <details className="policy-disclosure">
-        <summary>Privacy details</summary>
-        <PrivacyInformation />
-      </details>
-    </div>
-  );
-}
-
 export function BookingTermsInformation() {
   return (
     <div className="policy-information">

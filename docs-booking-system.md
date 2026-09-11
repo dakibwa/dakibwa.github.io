@@ -227,8 +227,8 @@ depending on them having kept the right confirmation email.
 
 ### Repeating bookings
 
-**Selecting several lessons together** (11 September 2026; local implementation,
-awaiting preview approval and release): one request can select up to eight
+**Selecting several lessons together** (released 11 September 2026; Worker
+version `09d37a19`): one request can select up to eight
 single-lesson dates, or two weekly starting times within the same Porto
 Monday–Sunday week. Duration, location and repeat period are shared. Trials
 remain single. `POST /bookings` accepts `startAts`; the existing `startAt` route
@@ -461,8 +461,7 @@ lesson above.
 
 The concise public explanation opens at `/book/#booking`; privacy opens at
 `/book/#privacy`, without requiring sign-in. Both are native disclosures beneath
-the workspace. Sign-up also shows a brief data-use/rights summary and the same
-privacy information in place. The footer retains only a quiet `Privacy` link;
+the workspace. Sign-up does not repeat them. The footer retains only a quiet `Privacy` link;
 old policy URLs redirect into booking. Payment and change conditions appear
 before the confirmation button, with the saved-card agreement kept separate.
 Publishing this presentation does not activate payments or change cancellation
