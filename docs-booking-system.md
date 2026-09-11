@@ -733,10 +733,10 @@ errors. Inês has the teacher role; the live teacher page rejects a student acco
 Resend verified delivery of earlier student and teacher messages; the booking log
 has no pending or failed emails. No new live booking or email was created, and no
 fresh sign-in as Inês or real payment was performed. Payments remain off. The
-secondary www redirect and policy contact-link repairs are locally verified and
-await release approval; see README's publication checkpoint.
+secondary www redirect is deployed. Dan approved the policy contact-link repairs
+and quieter bottom-right footer privacy link for publication in the same release.
 
-- **Live payment activation.** The live merchant was rechecked on 6 September:
+- **Live payment activation.** The live merchant was rechecked on 11 September:
   its business URL matches this site, charges and payouts are enabled, and no
   requirements are currently due. `payment_mode` stays `off` until the live key
   and webhook secret are installed securely and the production configuration
@@ -744,7 +744,9 @@ await release approval; see README's publication checkpoint.
   site now uses the live merchant's publishable key, and Inês's notification
   copies are enabled. The account still has no live restricted key; the
   production Worker retains test credentials until the live key and webhook
-  signing secret are installed together.
+  signing secret are installed together. Dan approved activation on 11 September.
+  Cloudflare access is available; Stripe requires Dan's email-link verification
+  before creating the prepared `ines-booking-production` restricted key.
 - **Fiscal documents.** She must issue a fatura-recibo per lesson, and CIVA art.
   36.º gives 5 working days from the lesson. See
   `Documents/Work/Português com a Inês/Billing and Booking - Operating Context

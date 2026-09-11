@@ -152,8 +152,10 @@ the same identity or action:
   Compact `Booking terms` and `Your privacy` disclosures beneath the workspace
   retain the fuller details for anyone who wants them. Use the existing
   Montserrat text, cream surface and coral disclosure marks, with copyable text
-  and readable wrapping at 320px. A quiet `Privacy` footer link opens that
-  disclosure directly, without requiring sign-in. The old `/terms`,
+  and readable wrapping at 320px. A quiet, sentence-case `Privacy` footer link
+  sits at the bottom right on desktop and mobile, with a comfortable touch
+  target and no button treatment. It opens that disclosure directly, without
+  requiring sign-in. The old `/terms`,
   `/booking-terms` and `/privacy` pages redirect into booking; there is no
   separate legal-page hero, index or marketing treatment. Payment wording follows
   the method shown at booking and never implies every booking saves or charges a card.

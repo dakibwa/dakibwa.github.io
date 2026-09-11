@@ -87,8 +87,9 @@ request only competes with the fonts for no gain.
 - Square was removed in August 2026. Square does not onboard sellers in
   Portugal, so the account this site pointed at — Dan's UK account, set up as a
   test — could never have been hers.
-- Live payment remains deliberately off while the saved-card, after-lesson
-  flow is proved in isolation. A booking saves a card without charging it;
+- The saved-card, after-lesson flow has passed sandbox acceptance. Live payment
+  remains off until the live restricted key and webhook secret are installed.
+  With after-lesson charging enabled, a booking saves a card without charging it;
   the lesson price is charged when the scheduled lesson ends. Production
   expects live keys and fails closed if test or incomplete credentials are
   present. `docs-booking-system.md` records the activation boundary.
@@ -209,12 +210,10 @@ Cloudflare owns the generated DNS record and certificate. The
 Portuguese-spelling domain `https://portuguescomaines.com/` redirects to the
 canonical domain while preserving the requested path and query string.
 
-Pending release from the 11 September 2026 readiness review: the redirect Worker
-configuration also includes `www.portuguescomaines.com`. That secondary hostname
-currently returns NXDOMAIN; the existing canonical, canonical-www and
-Portuguese-spelling apex addresses work. Deploy the redirect Worker after
-approval, then verify both HTTPS www addresses and path/query preservation.
-This does not require rebuilding or publishing the main website.
+The redirect Worker also owns `www.portuguescomaines.com`, added on
+11 September 2026. Both www addresses preserve the path and query when sending
+visitors to the canonical domain. DNS and certificates are managed by the
+Worker's Custom Domains configuration, separately from the main website build.
 
 **Merging to `main` publishes the site.** `.github/workflows/deploy-pages.yml`
 builds once and deploys that build to Cloudflare Pages, which is what the live
