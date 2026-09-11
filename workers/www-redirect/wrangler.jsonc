@@ -9,6 +9,10 @@
     {
       "pattern": "www.portuguesewithines.com",
       "custom_domain": true
+    },
+    {
+      "pattern": "www.portuguescomaines.com",
+      "custom_domain": true
     }
   ],
   "observability": {

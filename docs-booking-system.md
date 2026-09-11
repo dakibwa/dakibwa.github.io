@@ -445,6 +445,12 @@ behaviour. These notices describe the implementation; business contact details
 and the application of statutory withdrawal rights still require verification
 before the service is represented as legally compliant.
 
+The policy contact links use Inês's existing published WhatsApp destination from
+`CONTACT_WHATSAPP_URL`. The 11 September 2026 review found that
+`bookings@portuguesewithines.com` is a verified sending address, but the domain
+has no incoming-mail MX records and Resend receiving is disabled. Do not offer
+that address as an inbox until incoming delivery has been configured and verified.
+
 Off by default. `payment_mode` is `off`, every booking confirms on creation, and
 none of the Stripe columns are read. With it set to `postpay` and Stripe
 configured:
@@ -717,6 +723,18 @@ With no API URL the booking page degrades to its setup placeholder and points
 students at WhatsApp, rather than rendering a calendar that cannot work.
 
 ## Not yet built
+
+Readiness check, 11 September 2026: production `47b86a7` passed CI's build,
+student journeys, payment-recovery fixtures and teacher-calendar browser checks.
+Fresh local checks passed 89 booking tests, 33 SQLite integration tests and five
+teacher-calendar tests. Live mobile and desktop checks reached trial, single and
+recurring confirmation, with private-rate controls, correct prices and no browser
+errors. Inês has the teacher role; the live teacher page rejects a student account.
+Resend verified delivery of earlier student and teacher messages; the booking log
+has no pending or failed emails. No new live booking or email was created, and no
+fresh sign-in as Inês or real payment was performed. Payments remain off. The
+secondary www redirect and policy contact-link repairs are locally verified and
+await release approval; see README's publication checkpoint.
 
 - **Live payment activation.** The live merchant was rechecked on 6 September:
   its business URL matches this site, charges and payouts are enabled, and no

@@ -1,9 +1,11 @@
+import { CONTACT_WHATSAPP_URL } from "@/lib/config";
+
 export function PrivacyInformation() {
   return (
     <div className="policy-information">
       <p>
         Inês Dias Baía (Português com a Inês) is responsible for your information.
-        {" "}<a href="mailto:bookings@portuguesewithines.com">Email Inês</a> with any privacy request.
+        {" "}<a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">Message Inês on WhatsApp</a> with any privacy request.
       </p>
       <p>
         <strong>What we use.</strong> Your name, email, sign-in details, time zone and booking history are
@@ -67,7 +69,7 @@ export function BookingTermsInformation() {
         in your calendar; stopping keeps any lesson booked for today.
       </p>
       <p>
-        <a href="mailto:bookings@portuguesewithines.com">Email Inês</a> about payments, refunds or other
+        <a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">Message Inês on WhatsApp</a> about payments, refunds or other
         questions. Your legal rights are unaffected.
       </p>
     </div>

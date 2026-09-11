@@ -209,6 +209,13 @@ Cloudflare owns the generated DNS record and certificate. The
 Portuguese-spelling domain `https://portuguescomaines.com/` redirects to the
 canonical domain while preserving the requested path and query string.
 
+Pending release from the 11 September 2026 readiness review: the redirect Worker
+configuration also includes `www.portuguescomaines.com`. That secondary hostname
+currently returns NXDOMAIN; the existing canonical, canonical-www and
+Portuguese-spelling apex addresses work. Deploy the redirect Worker after
+approval, then verify both HTTPS www addresses and path/query preservation.
+This does not require rebuilding or publishing the main website.
+
 **Merging to `main` publishes the site.** `.github/workflows/deploy-pages.yml`
 builds once and deploys that build to Cloudflare Pages, which is what the live
 domains serve. The same build also goes to GitHub Pages at `dakibwa.github.io`
