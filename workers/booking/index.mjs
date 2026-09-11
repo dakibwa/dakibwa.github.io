@@ -56,6 +56,7 @@ import {
 } from "./time.mjs";
 import { bookingReference, createManageToken, readManageToken, safeEqual } from "./tokens.mjs";
 import { findRecurringCode, recurringRates, recurringLessonType, priceForMove, takeRateLimit } from "./rates.mjs";
+import { bookingSelection, claimSelection } from "./selection.mjs";
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" };
 const PAYMENT_CONSENT_VERSION = "2026-09-01-after-lesson-v1";
@@ -544,18 +545,20 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
     .join("\n");
 
   const cadence = series.occurrences ? `${rows.length} lessons` : "Every week, until you stop it";
+  const multipleWeeklyTimes = (series.weeklyTimes ?? 1) > 1;
+  const weeklyTimeCopy = multipleWeeklyTimes ? "both times are" : "the same time is";
   const skippedNote = skipped.length
     ? `${
         skipped.length === 1
-          ? "One week was not free, so there is no lesson that week:"
-          : `${skipped.length} weeks were not free, so there is no lesson on these dates:`
+          ? "One lesson time was not free and was left out:"
+          : `${skipped.length} lesson times were not free and were left out:`
       } ${skipped.map((entry) => formatShort(new Date(entry.startAt), PORTO)).join(", ")}.`
     : "";
 
   const rowsForBoth = [
     { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
     { label: "Where", value: locationLabel(first) },
-    { label: "Repeats", value: cadence },
+    { label: series.oneOff ? "Booking" : "Repeats", value: cadence },
     { label: "Dates", value: dateLines }
   ];
 
@@ -595,7 +598,7 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
         to: first.student_email,
         subject: moved
           ? `Your weekly Portuguese lessons have moved — from ${formatShort(new Date(first.starts_at), PORTO)}`
-          : `Your weekly Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
+          : `Your ${series.oneOff ? "" : "weekly "}Portuguese lessons are booked — from ${formatShort(new Date(first.starts_at), PORTO)}`,
         kind: moved ? "student_series_moved" : "student_series_booked",
         bookingId: first.id,
         dedupeKey: moved
@@ -604,12 +607,14 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
         replyTo,
         calendar: { body: invite({ name: first.student_name, email: first.student_email }), method: "REQUEST" },
         content: {
-          heading: moved ? "Your weekly lessons have moved" : "Your weekly slot is booked",
+          heading: moved ? "Your weekly lessons have moved" : series.oneOff ? "Your lessons are booked" : multipleWeeklyTimes ? "Your weekly times are booked" : "Your weekly slot is booked",
           intro: moved
             ? `Olá ${first.student_name.split(" ")[0]}, your upcoming weekly lessons now use this new time. The updated dates are in the calendar attachment, and you can still manage any one lesson from your lesson calendar.`
-            : series.occurrences
-              ? `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on your lesson calendar.`
-              : `Olá ${first.student_name.split(" ")[0]}, the same time is now held for you each week. Your current lessons are in the calendar attachment, and new weeks will appear automatically on your lesson calendar without extra confirmation emails.`,
+            : series.oneOff
+              ? `Olá ${first.student_name.split(" ")[0]}, your selected lessons are booked. Every date is in the calendar attachment, and you can move or cancel each lesson from your lesson calendar.`
+              : series.occurrences
+                ? `Olá ${first.student_name.split(" ")[0]}, ${weeklyTimeCopy} now held for you each week. Every lesson is in the calendar attachment, and you can move or cancel any one of them on your lesson calendar.`
+                : `Olá ${first.student_name.split(" ")[0]}, ${weeklyTimeCopy} now held for you each week. Your current lessons are in the calendar attachment, and new weeks will appear automatically on your lesson calendar without extra confirmation emails.`,
           callout: skippedNote,
           hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
           heroNote: differingZonedTime(new Date(first.starts_at), studentZone) ? `${differingZonedTime(new Date(first.starts_at), studentZone)} — your time` : "",
@@ -631,7 +636,7 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
             ? `Weekly slot extended — ${first.student_name}, to ${formatShort(new Date(rows[rows.length - 1].starts_at), PORTO)}`
             : moved
               ? `Weekly slot moved — ${first.student_name}, from ${formatShort(new Date(first.starts_at), PORTO)}`
-            : `Weekly booking — ${first.student_name}, from ${formatShort(new Date(first.starts_at), PORTO)}`,
+            : `${series.oneOff ? "Lesson bookings" : "Weekly booking"} — ${first.student_name}, from ${formatShort(new Date(first.starts_at), PORTO)}`,
         kind: reason === "extended" ? "teacher_series_extended" : moved ? "teacher_series_moved" : "teacher_series_booked",
         bookingId: first.id,
         dedupeKey: moved
@@ -640,13 +645,13 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
         replyTo: first.student_email,
         calendar: { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "REQUEST" },
         content: {
-          heading: reason === "extended" ? "A weekly slot was extended" : moved ? "A weekly slot was moved" : "A weekly slot was booked",
+          heading: reason === "extended" ? "A weekly slot was extended" : moved ? "A weekly slot was moved" : series.oneOff ? "Lessons were booked" : multipleWeeklyTimes ? "Two weekly times were booked" : "A weekly slot was booked",
           intro:
             reason === "extended"
               ? `${first.student_name}'s open-ended weekly slot has been carried forward. The new lessons are in the calendar attachment.`
               : moved
                 ? `${first.student_name}'s upcoming weekly lessons have moved. The updated events are in the calendar attachment.`
-              : `${first.student_name} booked the same slot each week. Every lesson is in the calendar attachment.`,
+              : `${first.student_name} booked ${series.oneOff ? "these individual lessons" : multipleWeeklyTimes ? "two times each week" : "the same slot each week"}. Every lesson is in the calendar attachment.`,
           callout:
             skippedNote,
           hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
@@ -1670,6 +1675,9 @@ async function handleCreate(request, env, ctx) {
     return fail(`Choose ${SERIES_LENGTHS.join(", ")} weeks, or every week.`, 400, request, env);
   }
   if (wantsRepeat && lessonType.id === "trial") return fail("A trial is one first lesson and cannot repeat.", 400, request, env);
+  const selection = bookingSelection(body, { recurring: wantsRepeat, durationMinutes: lessonType.duration_minutes, trial: lessonType.id === "trial" });
+  if (selection.error) return fail(selection.error, 400, request, env);
+  body.startAt = selection.starts[0];
   if (wantsRepeat) lessonType = await recurringLessonType(env, student.id, lessonType);
   if (body.expectedPriceCents !== undefined && body.expectedPriceCents !== lessonType.price_cents) {
     return fail("Your lesson price has changed. Please review it before confirming.", 409, request, env);
@@ -1723,6 +1731,13 @@ async function handleCreate(request, env, ctx) {
   const postpay = paymentRequired;
   const hasSavedCard = Boolean(student.stripe_customer_id && student.stripe_payment_method);
   const needsCardSetup = postpay && !hasSavedCard;
+
+  if (selection.starts.length > 1) {
+    return handleCreateSelection(request, env, ctx, {
+      starts: selection.starts, student, lessonType, now, notes, location, timezone,
+      wantsRepeat, repeatWeeks, settings, postpay, needsCardSetup, recentLessons: recent?.lessons ?? 0
+    });
+  }
 
   const id = crypto.randomUUID();
   const reference = bookingReference();
@@ -1946,6 +1961,101 @@ async function handleCreate(request, env, ctx) {
     request,
     env
   );
+}
+
+/** Reserve a selection through one card setup and one combined confirmation. */
+async function handleCreateSelection(request, env, ctx, {
+  starts, student, lessonType, now, notes, location, timezone,
+  wantsRepeat, repeatWeeks, settings, postpay, needsCardSetup, recentLessons
+}) {
+  const timestamp = now.toISOString();
+  const holdExpiresAt = needsCardSetup ? new Date(now.getTime() + 35 * 60000).toISOString() : null;
+  const series = [];
+  const plannedRows = [];
+  const skipped = [];
+  for (const startAt of starts) {
+    const check = await isSlotBookable(env, { startAt, lessonType, now });
+    if (!check.ok) return fail(`${formatInZone(new Date(startAt), PORTO)}: ${check.reason} Nothing has been booked.`, 409, request, env);
+    const slot = slotOf(startAt);
+    const count = wantsRepeat ? repeatWeeks ?? OPEN_ENDED_HORIZON_WEEKS : 1;
+    const plan = wantsRepeat
+      ? await planOccurrences(env, { fromKey: slot.dateKey, minuteOfDay: slot.minuteOfDay, count, lessonType, now })
+      : { bookable: [{ startAt: new Date(startAt), endAt: check.endAt }], skipped: [] };
+    // Both starting lessons must still be available; only later occurrences
+    // may be skipped after the preview has shown their dates.
+    if (!plan.bookable.some((entry) => entry.startAt.toISOString() === startAt)) {
+      return fail("A starting time has just been taken. Nothing has been booked; please choose again.", 409, request, env);
+    }
+    const seriesId = wantsRepeat ? crypto.randomUUID() : null;
+    if (seriesId) series.push({
+      id: seriesId, student_id: student.id, lesson_type_id: lessonType.id, location, notes,
+      weekday: slot.weekday, minute_of_day: slot.minuteOfDay, occurrences: repeatWeeks,
+      status: "active", filled_to: addDaysToKey(slot.dateKey, (count - 1) * 7),
+      automatic_payment: postpay ? 1 : 0, payment_consent_at: postpay ? timestamp : null,
+      payment_consent_version: postpay ? PAYMENT_CONSENT_VERSION : null, created_at: timestamp, updated_at: timestamp
+    });
+    skipped.push(...plan.skipped);
+    for (const occurrence of plan.bookable) plannedRows.push({
+      id: crypto.randomUUID(), reference: bookingReference(), lesson_type_id: lessonType.id, student_id: student.id,
+      student_name: student.name, student_email: student.email, student_phone: student.phone,
+      student_timezone: timezone, location, notes, starts_at: occurrence.startAt.toISOString(),
+      ends_at: occurrence.endAt.toISOString(), status: needsCardSetup ? "pending_payment" : "confirmed", sequence: 0,
+      created_at: timestamp, updated_at: timestamp, payment_status: needsCardSetup ? "pending" : postpay ? "scheduled" : "not_required",
+      amount_cents: lessonType.price_cents, hold_expires_at: holdExpiresAt, series_id: seriesId,
+      payment_consent_at: postpay ? timestamp : null, payment_consent_version: postpay ? PAYMENT_CONSENT_VERSION : null
+    });
+  }
+  plannedRows.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  if (plannedRows.some((row, index) => index && row.starts_at < plannedRows[index - 1].ends_at)) {
+    return fail("Those weekly times overlap on a later date. Please choose different times.", 409, request, env);
+  }
+  if (recentLessons + plannedRows.length > 26) {
+    return fail("That's several bookings in a short time. Please wait an hour before adding more.", 429, request, env);
+  }
+  if (!await claimSelection(env, { rows: plannedRows, series, now })) {
+    return fail("A selected time has just been taken. Nothing has been booked; please review your dates.", 409, request, env);
+  }
+  const ids = JSON.stringify(plannedRows.map((row) => row.id));
+  const { results: rows } = await env.DB.prepare("SELECT * FROM bookings WHERE id IN (SELECT value FROM json_each(?)) ORDER BY starts_at").bind(ids).all();
+  const first = rows[0];
+  const token = await createManageToken(first.id, env.BOOKING_TOKEN_SECRET);
+  const selection = {
+    booked: rows.map((row) => row.starts_at), skipped: skipped.map((entry) => entry.startAt),
+    recurring: wantsRepeat, weeks: wantsRepeat ? repeatWeeks : null, weeklyTimes: series.length
+  };
+  const payload = { booking: publicBooking(first, lessonType, settings), selection, manageUrl: studentManageUrl(env, token), manageToken: token };
+  if (needsCardSetup) {
+    try {
+      const session = await createCardSetupSession(env, {
+        booking: first, customer: student.stripe_customer_id ?? null, customerEmail: student.email,
+        selectionCount: rows.length,
+        successUrl: siteUrl(env, "/book/?view=lessons&card=saved"), cancelUrl: siteUrl(env, "/book/?cancelled=1"),
+        skippedStartAts: selection.skipped
+      });
+      await env.DB.prepare("UPDATE bookings SET stripe_session_id = ? WHERE id IN (SELECT value FROM json_each(?)) AND status = 'pending_payment'")
+        .bind(session.id, ids).run();
+      return json({ ...payload, ...(session.url ? { checkoutUrl: session.url } : { checkoutClientSecret: session.client_secret }) }, 201, request, env);
+    } catch (error) {
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM bookings WHERE id IN (SELECT value FROM json_each(?)) AND status = 'pending_payment'").bind(ids),
+        ...series.map((entry) => env.DB.prepare("DELETE FROM booking_series WHERE id = ? AND NOT EXISTS (SELECT 1 FROM bookings WHERE series_id = ?)").bind(entry.id, entry.id))
+      ]);
+      console.error("stripe-selection-setup", String(error?.message ?? error));
+      return fail("We couldn't save the card just now. Nothing has been booked; please try again in a moment.", 502, request, env);
+    }
+  }
+  ctx.waitUntil(notifySelection(env, { rows, lessonType, settings, series, skipped }));
+  return json(payload, 201, request, env);
+}
+
+async function notifySelection(env, { rows, lessonType, settings, series, skipped }) {
+  const manageUrls = {};
+  for (const row of rows) manageUrls[row.id] = studentManageUrl(env, await createManageToken(row.id, env.BOOKING_TOKEN_SECRET));
+  return notifySeries(env, {
+    rows, lessonType, settings, manageUrls, skipped,
+    series: { id: rows[0].id, oneOff: !series.length, weeklyTimes: series.length,
+      occurrences: series.some((entry) => entry.occurrences === null) ? null : rows.length }
+  });
 }
 
 /**
@@ -2882,6 +2992,7 @@ async function handleStripeWebhook(request, env, ctx) {
 
 /** Confirm held lessons after Stripe has authenticated and saved a card. */
 async function confirmCardSetup(env, ctx, session, row) {
+  if (session.metadata?.selection_count) return confirmSelectionCardSetup(env, ctx, session, row);
   if (row.status === "confirmed" && row.payment_status !== "pending") return new Response("Already confirmed.", { status: 200 });
   if (row.status !== "pending_payment" || !row.hold_expires_at || new Date(row.hold_expires_at) <= new Date()) {
     return new Response("That booking hold has expired. Please choose a new time.", { status: 409 });
@@ -2974,6 +3085,66 @@ async function confirmCardSetup(env, ctx, session, row) {
       manageUrl: studentManageUrl(env, token)
     })
   );
+  return new Response("ok", { status: 200 });
+}
+
+/** A shared setup must confirm every held lesson together, exactly once. */
+async function confirmSelectionCardSetup(env, ctx, session, anchor) {
+  const expected = Number(session.metadata.selection_count);
+  if (!Number.isInteger(expected) || expected < 2 || expected > 24) return new Response("Invalid selection.", { status: 400 });
+  const loadRows = async () => (await env.DB.prepare(
+    "SELECT * FROM bookings WHERE stripe_session_id = ? AND student_id = ? ORDER BY starts_at"
+  ).bind(session.id, anchor.student_id).all()).results;
+  const rows = await loadRows();
+  if (rows.length !== expected || !rows.some((row) => row.id === anchor.id)) return new Response("Selection does not match checkout.", { status: 409 });
+  if (rows.every((row) => row.status === "confirmed" && row.payment_status !== "pending")) return new Response("Already confirmed.", { status: 200 });
+  const now = new Date().toISOString();
+  if (rows.some((row) => row.status !== "pending_payment" || row.payment_status !== "pending" || !row.hold_expires_at || row.hold_expires_at <= now)) {
+    return new Response("That booking hold has expired. Please choose your times again.", { status: 409 });
+  }
+  let intent;
+  try { intent = await retrieveSetupIntent(env, session.setup_intent); }
+  catch (error) {
+    console.error("retrieve-selection-setup", anchor.reference, String(error?.message ?? error));
+    return new Response("Card setup could not be verified.", { status: 502 });
+  }
+  const paymentMethod = typeof intent?.payment_method === "string" ? intent.payment_method : intent?.payment_method?.id;
+  const customer = typeof intent?.customer === "string" ? intent.customer : intent?.customer?.id;
+  if (intent?.status !== "succeeded" || !paymentMethod || customer !== session.customer) {
+    return new Response("Card setup is not complete.", { status: 409 });
+  }
+  const confirmedAt = new Date().toISOString();
+  const [claimed] = await env.DB.batch([
+    env.DB.prepare(
+      `WITH eligible AS MATERIALIZED (
+         SELECT (SELECT COUNT(*) FROM bookings pending WHERE pending.stripe_session_id = ?2 AND pending.student_id = ?3) = ?4
+           AND NOT EXISTS (SELECT 1 FROM bookings invalid WHERE invalid.stripe_session_id = ?2 AND invalid.student_id = ?3
+             AND (invalid.status != 'pending_payment' OR invalid.payment_status != 'pending' OR invalid.hold_expires_at IS NULL OR invalid.hold_expires_at <= ?1)) AS ready
+       )
+       UPDATE bookings SET status = 'confirmed', payment_status = 'scheduled', hold_expires_at = NULL, updated_at = ?1
+       WHERE stripe_session_id = ?2 AND student_id = ?3 AND (SELECT ready FROM eligible)`
+    ).bind(confirmedAt, session.id, anchor.student_id, expected),
+    env.DB.prepare(
+      `UPDATE students SET stripe_customer_id = ?, stripe_payment_method = ? WHERE id = ?
+       AND (SELECT COUNT(*) FROM bookings WHERE stripe_session_id = ? AND student_id = students.id AND status = 'confirmed' AND payment_status = 'scheduled') = ?`
+    ).bind(customer, paymentMethod, anchor.student_id, session.id, expected)
+  ]);
+  // A concurrent webhook can win the transition. Only its request sends mail.
+  if (claimed.meta.changes !== expected) {
+    const current = await loadRows();
+    return current.length === expected && current.every((row) => row.status === "confirmed" && row.payment_status !== "pending")
+      ? new Response("Already confirmed.", { status: 200 })
+      : new Response("The selected lessons could not be confirmed.", { status: 409 });
+  }
+  const confirmed = await loadRows();
+  const { results: series } = await env.DB.prepare(
+    "SELECT * FROM booking_series WHERE id IN (SELECT DISTINCT series_id FROM bookings WHERE stripe_session_id = ? AND student_id = ?)"
+  ).bind(session.id, anchor.student_id).all();
+  const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(anchor.lesson_type_id).first();
+  const settings = await loadSettings(env);
+  let skipped = [];
+  try { skipped = JSON.parse(session.metadata.skipped ?? "[]").map((startAt) => ({ startAt })); } catch { /* Optional display detail. */ }
+  ctx.waitUntil(notifySelection(env, { rows: confirmed, lessonType, settings, series, skipped }));
   return new Response("ok", { status: 200 });
 }
 

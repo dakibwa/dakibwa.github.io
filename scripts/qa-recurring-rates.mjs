@@ -35,7 +35,7 @@ for (const [duration, width] of [[60, 390], [90, 1440]]) {
   await page.setViewportSize({ width, height: 1000 });
   await page.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: /^Book a (new )?lesson$/ }).first().click();
-  await page.getByRole("button", { name: "Recurring lessons · keep the same weekly time", exact: true }).click();
+  await page.getByRole("button", { name: "Recurring lessons · choose your weekly times", exact: true }).click();
   await page.getByRole("radio", { name: `${duration} minutes lesson · €${duration === 60 ? 25 : 35}`, exact: true }).check();
   await page.getByRole("button", { name: "Choose a date", exact: true }).click();
   await page.getByRole("button", { name: /times free/ }).first().click();

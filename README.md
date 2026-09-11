@@ -102,6 +102,12 @@ request only competes with the fonts for no gain.
   future recurring lessons without changing existing bookings or the €5 fees.
   The Worker's `lesson_types` table decides what is actually bookable; the
   lessons page is the copy a visitor reads. Keep the two in step.
+- The booking flow can confirm up to eight selected single-lesson dates at
+  once, or two weekly times starting within the same Porto Monday–Sunday week.
+  The selection shares duration, location and (when recurring) repeat period.
+  One card setup and one combined calendar email cover the whole selection;
+  each lesson retains its individual payment and management rules. This change
+  is implemented locally and awaits preview approval and Worker/site release.
 - The rescheduling rule is free before the lesson day, with a €5 fee charged
   automatically for a move or cancellation on the lesson day in Porto time.
   During the lesson window Inês can mark a no-show; that replaces the full

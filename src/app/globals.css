@@ -2121,6 +2121,50 @@ html.booking-transitioning .booking-confirmation-stage {
   gap: 0.7rem;
 }
 
+.booking-chosen-lessons {
+  border: 1px solid var(--rule);
+  border-radius: var(--squiggle-field);
+  padding: 1rem 1.1rem;
+  background: rgba(170, 164, 230, 0.11);
+}
+
+.booking-chosen-lessons__label {
+  margin: 0 0 0.5rem;
+  font-weight: 650;
+}
+
+.booking-chosen-lessons ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.booking-chosen-lessons li {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 0;
+}
+
+.booking-chosen-lessons li + li { border-top: 1px solid var(--rule); }
+.booking-chosen-lessons__number { font-weight: 650; color: var(--blue); }
+.booking-chosen-lessons__time { display: grid; gap: 0.25rem; font-size: 0.875rem; }
+.booking-chosen-lessons__time strong { line-height: 1.5; }
+.booking-chosen-lessons__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.booking-chosen-lessons__actions button { min-height: 44px; }
+.booking-chosen-lessons > p:last-child:not(:first-child),
+.booking-add-lesson p,
+.booking-selection-progress > p { margin: 0.5rem 0 0; font-size: 0.875rem; line-height: 1.6; }
+.booking-add-lesson { padding: 0.35rem 0.25rem 0.65rem; }
+.booking-add-lesson button, .booking-selection-progress > button { min-height: 44px; }
+
+@media (max-width: 600px) {
+  .booking-chosen-lessons { padding: 0.8rem; }
+  .booking-chosen-lessons li { grid-template-columns: 1.1rem minmax(0, 1fr); }
+  .booking-chosen-lessons__actions { grid-column: 2; gap: 1.25rem; }
+}
+
 .booking-selection-summary,
 .booking-choice-summary {
   display: grid;

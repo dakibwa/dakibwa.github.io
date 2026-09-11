@@ -136,6 +136,14 @@ export type SeriesOutcome = {
   skipped: string[];
 };
 
+export type SelectionOutcome = {
+  booked: string[];
+  skipped: string[];
+  recurring: boolean;
+  weeks: number | null;
+  weeklyTimes: number;
+};
+
 /**
  * What a repeat would book, before anything is booked. The student is shown the
  * weeks that are unavailable while they can still change their mind.
@@ -163,6 +171,8 @@ export function createBooking(
     notes: string;
     lessonType: string;
     startAt: string;
+    /** Individual dates, or up to two weekly anchors in the same Porto week. */
+    startAts?: string[];
     location: "online" | "porto";
     timezone: string;
     /** Omitted entirely for a one-off lesson. */
@@ -182,6 +192,7 @@ export function createBooking(
     manageToken?: string;
     /** Present only when the lesson was booked as a repeating one. */
     series?: SeriesOutcome;
+    selection?: SelectionOutcome;
   }>("/bookings", {
     method: "POST",
     headers: { Authorization: `Bearer ${session}` },
@@ -320,6 +331,12 @@ export function addDaysToKey(key: string, days: number) {
   return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(
     shifted.getUTCDate()
   ).padStart(2, "0")}`;
+}
+
+export function portoWeekKey(startAt: string) {
+  const key = portoDateKey(new Date(startAt));
+  const weekday = new Date(`${key}T12:00:00Z`).getUTCDay();
+  return addDaysToKey(key, -((weekday + 6) % 7));
 }
 
 export function formatSlotTime(startAt: string, timeZone = BOOKING_TIME_ZONE) {

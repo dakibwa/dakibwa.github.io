@@ -227,6 +227,31 @@ depending on them having kept the right confirmation email.
 
 ### Repeating bookings
 
+**Selecting several lessons together** (11 September 2026; local implementation,
+awaiting preview approval and release): one request can select up to eight
+single-lesson dates, or two weekly starting times within the same Porto
+Monday–Sunday week. Duration, location and repeat period are shared. Trials
+remain single. `POST /bookings` accepts `startAts`; the existing `startAt` route
+still books one lesson. The server normalises instants, rejects overlap and
+enforces the same-week rule independently of the browser.
+
+The two recurring times use separate existing `booking_series` recipes. One
+D1 transaction inserts all planned lesson rows after an atomic overlap check,
+or leaves no selection or empty recipes behind if another booking wins the
+race. Later unavailable occurrences are previewed and skipped individually;
+both initial times must still be free. No database migration is needed.
+Availability excludes occupied single-lesson times as well as recurring ones;
+rescheduling ignores only the specific lesson or series being moved.
+
+New payers save a card once for the whole selection. All its rows share the
+created Checkout Session, and its signed metadata records the expected row
+count. Confirmation verifies the saved card and atomically transitions every
+held row, refusing a partial or expired selection. Replay/concurrent delivery
+cannot send duplicate confirmations. One email each way carries the combined
+calendar events. Returning payers schedule each lesson's own end charge;
+single lessons and each weekly recipe keep their existing manage controls.
+An abandoned setup releases every held lesson and empty series.
+
 A student can hold the same slot every week for 4, 6, or 8 weeks, or choose
 `Ongoing` so it continues until they stop it. An open-ended schedule is kept
 twelve weeks ahead by the nightly top-up rather than creating an unlimited

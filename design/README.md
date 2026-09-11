@@ -227,6 +227,26 @@ immediately without animation or smooth scrolling.
 
 ## Booking workspace
 
+Students can collect several single-lesson dates and confirm them together.
+`Single lessons` starts with the shared length and location, then date/time.
+The review keeps an `Add another lesson` action beside the chosen dates; each
+date can be changed or removed. No slot is held until the final confirmation.
+Keep the list compact in one surface, with readable date/time rows and 44px
+actions on phones. A trial remains one first lesson. All selected lessons use
+the chosen duration and location; changing duration requires choosing times
+again because availability depends on length.
+
+Recurring bookings start with one date and time and may add a second weekly
+time. Both starting dates must fall in the same Monday–Sunday week in Porto;
+after the first choice, the second calendar shows that week only. The chosen
+times repeat for the common 4/6/8-week or ongoing period. Show both starting
+dates and times together, check later occurrences for both, and name any
+unavailable lesson times precisely rather than suggesting the entire week is
+lost. One confirmation and one card setup cover the selection. Every lesson
+keeps its own charge and change rules; the two weekly times remain independently
+manageable in Upcoming lessons. A conflict during confirmation retains the
+student's whole selection for correction and never silently books only part.
+
 Preserve these desktop and mobile states:
 
 - on desktop the blue introduction is a compact horizontal banner above the
@@ -240,12 +260,12 @@ Preserve these desktop and mobile states:
   widths; never squeeze the three labels into narrow columns that collide with
   neighbouring artwork. The phone layout keeps its existing compact title;
 - the workspace opens with one decision: `Book a new lesson` or `View your
-  lessons`. Booking then asks whether this is one lesson or a recurring lesson.
+  lessons`. Booking then asks for single lessons or recurring lessons.
   The selected route puts Online/In Porto and `60 minutes`/`90 minutes` together
   as compact sliding selectors on one setup screen; a recurring booking adds 4,
   6, 8 weeks, or `Ongoing` there as a third selector. The recurring route name
   is not repeated above `Choose your lesson`. Once a starting time is chosen,
-  the journey goes straight to confirmation while later weeks are checked. The
+  the journey goes to the selection review while later weeks are checked. The
   expected all-clear stays silent; only clashing weeks appear before the student
   can book. Availability is never offered before lesson length because a
   90-minute lesson has fewer valid start times than a 60-minute one. An eligible

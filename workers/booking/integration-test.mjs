@@ -5,6 +5,8 @@ import worker, { chargeDueLessons, chargeDueSameDayFees, retryPaymentRecovery, r
 import { createSession, createResetToken, sessionVersion } from "./auth.mjs";
 import { createManageToken } from "./tokens.mjs";
 import { findRecurringCode, recurringLessonType, priceForMove } from "./rates.mjs";
+import { bookingSelection, portoWeekOf } from "./selection.mjs";
+import { computeAvailability } from "./availability.mjs";
 
 const NativeDate = Date;
 globalThis.Date = class extends NativeDate {
@@ -24,7 +26,13 @@ let chargeError = null;
 let googleJwk = null;
 let checkoutUnavailable = false;
 let decline = false;
+const setupIntents = new Map();
+let duringSetupRead = null;
 globalThis.fetch = async (url, options) => {
+  if (String(url).startsWith("https://api.stripe.com/v1/setup_intents/")) {
+    await duringSetupRead?.();
+    return Response.json(setupIntents.get(String(url).split("/").at(-1)) ?? { status: "requires_payment_method" });
+  }
   if (String(url).startsWith("https://api.stripe.com/v1/refunds/")) {
     refundLookups++;
     return Response.json({ id: String(url).split("/").at(-1), status: refundStatus });
@@ -43,7 +51,7 @@ globalThis.fetch = async (url, options) => {
   if (String(url) === "https://api.stripe.com/v1/checkout/sessions") {
     checkoutRequests.push({ body: options.body, key: options.headers["Idempotency-Key"] });
     if (checkoutUnavailable) return new Response(JSON.stringify({ error: { message: "Isolated unavailable test" } }), { status: 503 });
-    return new Response(JSON.stringify({ id: options.headers["Idempotency-Key"].endsWith(":cs_old") ? "cs_new" : "cs_recovery", url: "https://checkout.stripe.com/c/pay/mock" }));
+    return new Response(JSON.stringify({ id: new URLSearchParams(options.body).get("mode") === "setup" ? `cs_setup_${checkoutRequests.length}` : options.headers["Idempotency-Key"].endsWith(":cs_old") ? "cs_new" : "cs_recovery", url: "https://checkout.stripe.com/c/pay/mock" }));
   }
   assert.equal(String(url), "https://api.stripe.com/v1/payment_intents", "Only isolated charge mock may access network");
   const body = new URLSearchParams(options.body);
@@ -507,6 +515,152 @@ await test("series cancellation locks paid occurrences before refunding and repo
   assert.equal((await response.json()).refunded, 1);
   assert.equal(db.prepare("SELECT status FROM bookings WHERE id='refund-series'").get().status, "cancelled");
   duringRefund = null;
+});
+
+// Multi-date booking uses the same real SQLite adapter and isolated providers.
+let selectionStudent = 0;
+async function selectionFixture({ savedCard = true } = {}) {
+  await drain();
+  db.exec("DELETE FROM booking_refunds; DELETE FROM bookings; DELETE FROM booking_series; DELETE FROM stripe_events; DELETE FROM email_log;");
+  db.prepare("INSERT OR REPLACE INTO settings VALUES ('payment_mode','postpay')").run();
+  const id = `selection-${++selectionStudent}`;
+  student(id); sessions[id] = await createSession(id, env.BOOKING_TOKEN_SECRET);
+  if (!savedCard) db.prepare("UPDATE students SET stripe_customer_id=NULL,stripe_payment_method=NULL WHERE id=?").run(id);
+  duringSetupRead = null; checkoutUnavailable = false; beforeRun = null;
+  return id;
+}
+const selectedStarts = ["2026-09-14T09:00:00.000Z", "2026-09-15T09:00:00.000Z"];
+function selectionBody(extra = {}) {
+  return { lessonType: "single", startAts: selectedStarts, paymentConsent: true, expectedPriceCents: 2500, ...extra };
+}
+function selectionEvent(user, { count, id = "evt_selection", customer = `cus_${user}` } = {}) {
+  const row = db.prepare("SELECT * FROM bookings WHERE student_id=? ORDER BY starts_at").get(user);
+  setupIntents.set(`seti_${user}`, { status: "succeeded", customer, payment_method: `pm_${user}` });
+  return { id, type: "checkout.session.completed", livemode: false, data: { object: {
+    id: row.stripe_session_id, client_reference_id: row.id, mode: "setup", status: "complete", customer,
+    setup_intent: `seti_${user}`, metadata: { purpose: "card_setup", selection_count: String(count) }
+  } } };
+}
+await test("selection validates count, overlapping aliases and Porto calendar week boundaries", () => {
+  assert.ok(bookingSelection({ startAts: [] }).error);
+  assert.ok(bookingSelection({ startAts: Array(9).fill(selectedStarts[0]) }).error);
+  assert.ok(bookingSelection({ startAts: [selectedStarts[0], "2026-09-14T10:00:00+01:00"] }).error);
+  assert.ok(bookingSelection({ startAts: [selectedStarts[0], "2026-09-14T09:30:00Z"] }).error);
+  assert.ok(bookingSelection({ startAts: selectedStarts }, { trial: true }).error);
+  assert.ok(bookingSelection({ startAts: [selectedStarts[0], "2026-09-21T09:00:00Z"] }, { recurring: true }).error);
+  assert.deepEqual(bookingSelection({ startAts: [selectedStarts[0], "2026-09-21T09:00:00Z"] }).starts.length, 2);
+  assert.equal(portoWeekOf("2026-09-13T23:30:00Z"), "2026-09-14", "Porto is already Monday while UTC is Sunday");
+  assert.equal(portoWeekOf("2026-12-31T10:00:00Z"), portoWeekOf("2027-01-01T10:00:00Z"));
+});
+await test("several single dates confirm together, retain individual prices and send one calendar message", async () => {
+  const user = await selectionFixture();
+  const chargedBefore = charges.length;
+  const response = await call("/bookings", { user, body: selectionBody({ startAts: [...selectedStarts, "2026-09-22T09:00:00Z"] }) });
+  assert.equal(response.status, 201, await response.clone().text());
+  const result = await response.json();
+  assert.equal(result.selection.booked.length, 3);
+  assert.equal(result.selection.recurring, false);
+  const rows = db.prepare("SELECT * FROM bookings WHERE student_id=?").all(user);
+  assert.ok(rows.every((row) => row.payment_status === "scheduled" && row.amount_cents === 2500 && !row.series_id));
+  assert.equal(charges.length, chargedBefore, "No payment is taken on booking");
+  const availabilityInput = { fromKey: "2026-09-14", toKey: "2026-09-22", lessonType: { duration_minutes: 60 }, now: new Date() };
+  const available = await computeAvailability(env, availabilityInput);
+  const offeredStarts = Object.values(available.slotsByDate).flat().map((slot) => slot.startAt);
+  assert.ok(rows.every((row) => !offeredStarts.includes(row.starts_at)), "Booked single lessons must not be advertised as free when their series ID is null");
+  const moving = await computeAvailability(env, { ...availabilityInput, ignoreBookingId: rows[0].id });
+  const movingStarts = Object.values(moving.slotsByDate).flat().map((slot) => slot.startAt);
+  assert.ok(movingStarts.includes(rows[0].starts_at), "Moving one single lesson may reuse its own time");
+  assert.ok(rows.slice(1).every((row) => !movingStarts.includes(row.starts_at)), "Moving a single lesson must retain all other busy times");
+  await drain();
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_log WHERE kind='student_series_booked'").get().n, 1);
+});
+await test("two weekly starts must share a week, snapshot private rates and keep both Porto times through DST", async () => {
+  const user = await selectionFixture();
+  await call("/me/recurring-rates", { user, body: { code: "TEST15", durationMinutes: 60 } });
+  assert.equal((await call("/bookings", { user, body: selectionBody({ repeat: 4, expectedPriceCents: 1500, startAts: [selectedStarts[0], "2026-09-21T09:00:00Z"] }) })).status, 400);
+  const response = await call("/bookings", { user, body: selectionBody({ repeat: 4, expectedPriceCents: 1500, startAts: ["2026-10-19T09:00:00Z", "2026-10-20T09:00:00Z"] }) });
+  assert.equal(response.status, 201, await response.clone().text());
+  assert.equal((await response.json()).selection.booked.length, 8);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM booking_series WHERE student_id=?").get(user).n, 2);
+  const rows = db.prepare("SELECT * FROM bookings WHERE student_id=? ORDER BY starts_at").all(user);
+  assert.ok(rows.every((row) => row.amount_cents === 1500));
+  assert.equal(rows[2].starts_at, "2026-10-26T10:00:00.000Z", "10:00 Porto survives the winter offset change");
+  assert.equal(rows[3].starts_at, "2026-10-27T10:00:00.000Z");
+});
+await test("a slot taken between preview and the atomic claim leaves no partial selection or orphan series", async () => {
+  const user = await selectionFixture();
+  beforeRun = (sql) => {
+    if (!sql.startsWith("WITH candidates")) return;
+    beforeRun = null;
+    booking("competitor", { owner: "bob", start: selectedStarts[1], end: "2026-09-15T10:00:00.000Z" });
+  };
+  const response = await call("/bookings", { user, body: selectionBody({ repeat: 4 }) });
+  assert.equal(response.status, 409, await response.clone().text());
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE student_id=?").get(user).n, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM booking_series WHERE student_id=?").get(user).n, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_log").get().n, 0);
+});
+await test("a shared card setup holds both runs, saves once and confirms all occurrences on a signed webhook", async () => {
+  const user = await selectionFixture({ savedCard: false });
+  const requestsBefore = checkoutRequests.length;
+  const response = await call("/bookings", { user, body: selectionBody({ repeat: 4 }) });
+  assert.equal(response.status, 201, await response.clone().text());
+  assert.equal(checkoutRequests.length, requestsBefore + 1);
+  const sent = new URLSearchParams(checkoutRequests.at(-1).body);
+  assert.equal(sent.get("mode"), "setup");
+  assert.equal(sent.get("metadata[selection_count]"), "8");
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE status='pending_payment'").get().n, 8);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_log").get().n, 0);
+  const event = selectionEvent(user, { count: 8 });
+  const result = await webhook(event);
+  assert.equal(result.status, 200, await result.clone().text());
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE payment_status='scheduled' AND status='confirmed'").get().n, 8);
+  assert.equal(db.prepare("SELECT stripe_payment_method FROM students WHERE id=?").get(user).stripe_payment_method, `pm_${user}`);
+  await drain();
+  const emails = db.prepare("SELECT COUNT(*) AS n FROM email_log").get().n;
+  assert.equal(emails, 1);
+  assert.equal((await webhook(event)).status, 200);
+  assert.equal((await webhook({ ...event, id: "evt_selection_duplicate" })).status, 200);
+  await drain();
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_log").get().n, emails);
+});
+await test("one-off selection card setup confirms every date and rejects wrong session or partial expiry", async () => {
+  const user = await selectionFixture({ savedCard: false });
+  assert.equal((await call("/bookings", { user, body: selectionBody() })).status, 201);
+  const event = selectionEvent(user, { count: 2 });
+  const wrong = structuredClone(event); wrong.data.object.id = "cs_other";
+  assert.equal((await webhook(wrong)).status, 400);
+  const wrongCount = structuredClone(event); wrongCount.data.object.metadata.selection_count = "3";
+  assert.equal((await webhook(wrongCount)).status, 409);
+  duringSetupRead = () => db.prepare("UPDATE bookings SET hold_expires_at='2026-09-05T09:59:00.000Z' WHERE student_id=? AND starts_at=?").run(user, selectedStarts[1]);
+  assert.equal((await webhook(event)).status, 409);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE status='confirmed'").get().n, 0);
+  assert.equal(db.prepare("SELECT stripe_payment_method FROM students WHERE id=?").get(user).stripe_payment_method, null);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_log").get().n, 0);
+  duringSetupRead = null;
+  db.prepare("UPDATE bookings SET hold_expires_at='2026-09-05T10:35:00.000Z' WHERE student_id=?").run(user);
+  assert.equal((await webhook(event)).status, 200);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE status='confirmed'").get().n, 2);
+});
+await test("failed checkout cleans the entire held selection and both weekly recipes", async () => {
+  const user = await selectionFixture({ savedCard: false });
+  checkoutUnavailable = true;
+  const response = await call("/bookings", { user, body: selectionBody({ repeat: 4 }) });
+  assert.equal(response.status, 502, await response.clone().text());
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE student_id=?").get(user).n, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM booking_series WHERE student_id=?").get(user).n, 0);
+  checkoutUnavailable = false;
+});
+await test("two ongoing times create 24 lessons and an abandoned checkout releases both sequences", async () => {
+  const user = await selectionFixture({ savedCard: false });
+  const response = await call("/bookings", { user, body: selectionBody({ repeat: null }) });
+  assert.equal(response.status, 201, await response.clone().text());
+  assert.equal((await response.json()).selection.booked.length, 24);
+  db.prepare("UPDATE bookings SET hold_expires_at='2026-09-05T09:00:00.000Z' WHERE student_id=?").run(user);
+  await call("/availability?lessonType=single&from=2026-09-14&to=2026-09-15", { method: "GET", user: null });
+  await drain();
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE student_id=?").get(user).n, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM booking_series WHERE student_id=?").get(user).n, 0);
 });
 
 if (process.env.INES_PRIVATE_RATES_FILE) {

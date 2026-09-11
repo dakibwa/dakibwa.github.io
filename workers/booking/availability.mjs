@@ -172,7 +172,7 @@ export async function computeAvailability(
   }
 
   const busy = (booked.results ?? [])
-    .filter((row) => row.id !== ignoreBookingId && row.series_id !== ignoreSeriesId)
+    .filter((row) => (!ignoreBookingId || row.id !== ignoreBookingId) && (!ignoreSeriesId || row.series_id !== ignoreSeriesId))
     .map((row) => ({ start: new Date(row.starts_at).getTime(), end: new Date(row.ends_at).getTime() }));
 
   const slotsByDate = {};

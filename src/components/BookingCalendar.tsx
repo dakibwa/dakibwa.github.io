@@ -48,6 +48,7 @@ import {
   formatSlotTime,
   listLessonTypes,
   portoDateKey,
+  portoWeekKey,
   previewSeries,
   rescheduleBooking,
   rescheduleSeries,
@@ -57,6 +58,7 @@ import {
   type LessonType,
   type RepeatChoice,
   type SeriesOutcome,
+  type SelectionOutcome,
   type Slot
 } from "@/lib/booking-api";
 import {
@@ -145,14 +147,14 @@ function RepeatAvailability({
             <p>
               <strong>
                 {preview.skipped.length === 1
-                  ? "One week clashes"
-                  : `${preview.skipped.length} weeks clash`}
+                  ? "One lesson time clashes"
+                  : `${preview.skipped.length} lesson times clash`}
               </strong>
               . {preview.skipped.length === 1 ? "It won't be booked." : "They won't be booked."}
             </p>
             <ul>
               {preview.skipped.map((startAt) => (
-                <li key={startAt}>{formatLongDate(startAt)}</li>
+                <li key={startAt}>{formatLongDate(startAt)} at {formatSlotTime(startAt)}</li>
               ))}
             </ul>
           </div>
@@ -206,6 +208,7 @@ type Confirmation = {
   manageToken: string;
   email: string;
   series?: SeriesOutcome;
+  selection?: SelectionOutcome;
 };
 
 /**
@@ -358,6 +361,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
   const [selectedDate, setSelectedDate] = useState("");
   const [calendarWeekCount, setCalendarWeekCount] = useState<CalendarWeekCount>(4);
   const [selectedSlot, setSelectedSlot] = useState("");
+  const [savedChoices, setSavedChoices] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [submitError, setSubmitError] = useState("");
@@ -500,6 +504,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
       setIntent("book");
       if (params.get("lesson") === "trial") {
         setBookingKind("trial");
+        setSavedChoices([]);
         setLessonTypeId("trial");
         setStep("setup");
       }
@@ -733,11 +738,21 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
   const visibleCalendarWeekCount = calendarWeekCount === 1 && !selectedCalendarWeek
     ? standardCalendarWeekCount
     : calendarWeekCount;
-  const displayedCalendarWeeks = visibleCalendarWeekCount === 1 && selectedCalendarWeek
-    ? [{ ...selectedCalendarWeek, showMonth: true }]
-    : overviewCalendarWeeks;
+  const restrictedWeek = !managed && bookingKind === "recurring" && savedChoices.length
+    ? portoWeekKey(savedChoices[0].startAt) : "";
+  const displayedCalendarWeeks = restrictedWeek
+    ? overviewCalendarWeeks.filter((week) => week.key === restrictedWeek).map((week) => ({ ...week, showMonth: true }))
+    : visibleCalendarWeekCount === 1 && selectedCalendarWeek
+      ? [{ ...selectedCalendarWeek, showMonth: true }]
+      : overviewCalendarWeeks;
   const returnCalendarWeekCount = visibleCalendarWeekCount === 1 ? standardCalendarWeekCount : null;
-  const rawDaySlots = selectedDate ? slotsByDate[selectedDate] ?? [] : [];
+  const selectionWeek = !managed && bookingKind === "recurring" && savedChoices.length
+    ? portoWeekKey(savedChoices[0].startAt) : "";
+  const selectableSlots = (date: string) => (slotsByDate[date] ?? []).filter((slot) => managed || intent !== "book" || (
+    (!selectionWeek || portoWeekKey(slot.startAt) === selectionWeek) &&
+    !savedChoices.some((choice) => choice.startAt < slot.endAt && choice.endAt > slot.startAt)
+  ));
+  const rawDaySlots = selectedDate ? selectableSlots(selectedDate) : [];
   const managedDate = managed ? portoDateKey(new Date(managed.booking.startAt)) : "";
   const shouldShowCurrentManagedSlot = Boolean(
     managed &&
@@ -752,7 +767,15 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
         { startAt: managed.booking.startAt, endAt: managed.booking.endAt }
       ].sort((a, b) => a.startAt.localeCompare(b.startAt))
     : rawDaySlots;
-  const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? null;
+  // A refreshed availability response must not erase a date from the review
+  // after a failed submission. Keep it visible so the student can change it.
+  const reviewedSlot = useMemo(() => step === "details" && selectedSlot && lessonType && !managed
+    ? { startAt: selectedSlot, endAt: new Date(Date.parse(selectedSlot) + lessonType.duration_minutes * 60000).toISOString() }
+    : null, [step, selectedSlot, lessonType, managed]);
+  const chosen = daySlots.find((slot) => slot.startAt === selectedSlot) ?? reviewedSlot;
+  const bookingChoices = useMemo(() => [...savedChoices, ...(chosen ? [chosen] : [])].sort((a, b) => a.startAt.localeCompare(b.startAt)), [savedChoices, chosen]);
+  const choiceStarts = useMemo(() => bookingChoices.map((choice) => choice.startAt), [bookingChoices]);
+  const choiceKey = choiceStarts.join(",");
   const selectedDayBookings = selectedDate ? bookingsByDate[selectedDate] ?? [] : [];
   const isConfirmingBooking = step === "details" && Boolean(lessonType && chosen) && !managed;
   const needsLessonsSignIn = intent === "lessons" && showAccountSignIn && !student;
@@ -799,10 +822,10 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     setSeriesPreviewError("");
     setPreviewing(true);
 
-    previewSeries(readSession(), { lessonType: lessonType.id, startAt: chosen.startAt, weeks: repeat })
-      .then((result) => {
+    Promise.all(choiceStarts.map((startAt) => previewSeries(readSession(), { lessonType: lessonType.id, startAt, weeks: repeat })))
+      .then((results) => {
         if (cancelled) return;
-        setSeriesPreview({ bookable: result.bookable, skipped: result.skipped });
+        setSeriesPreview({ bookable: results.flatMap((result) => result.bookable).sort(), skipped: results.flatMap((result) => result.skipped).sort() });
       })
       .catch(() => {
         // The confirm step re-checks every week anyway, so a failed preview
@@ -819,7 +842,9 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     return () => {
       cancelled = true;
     };
-  }, [form.repeat, chosen, lessonType]);
+  }, [form.repeat, chosen, lessonType, choiceStarts]);
+
+  useEffect(() => { setPaymentConsent(false); }, [choiceKey, lessonType?.id, lessonType?.price_cents, form.location, form.repeat]);
 
   const needsPaymentConsent = postpay;
   const canSubmit =
@@ -881,6 +906,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
       setLessonTypeId("");
       setSelectedDate("");
       setSelectedSlot("");
+      setSavedChoices([]);
       setCalendarWeekCount(8);
       setStep("pattern");
       setForm(emptyForm);
@@ -897,6 +923,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
       setSetupFocus(null);
       setLessonTypeId("");
       setSelectedSlot("");
+      setSavedChoices([]);
       setCalendarWeekCount(4);
       setFocusUpcomingOnOpen(true);
       setUpcomingRequestKey((current) => current + 1);
@@ -917,6 +944,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     setLessonTypeId("");
     setSelectedDate("");
     setSelectedSlot("");
+    setSavedChoices([]);
     setCalendarWeekCount(4);
     setStep("pattern");
     setPayment(null);
@@ -942,6 +970,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     setSetupFocus(null);
     setLessonTypeId("");
     setSelectedSlot("");
+    setSavedChoices([]);
     setCalendarWeekCount(4);
     setStep("day");
     setPayment(null);
@@ -962,6 +991,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
         notes: form.notes.trim(),
         lessonType: lessonType.id,
         startAt: chosen.startAt,
+        ...(choiceStarts.length > 1 ? { startAts: choiceStarts } : {}),
         location: form.location,
         timezone: studentZone,
         paymentConsent,
@@ -993,7 +1023,8 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           manageUrl: result.manageUrl ?? "/book/?view=lessons",
           manageToken: result.manageToken ?? "",
           email: result.booking.studentEmail,
-          series: result.series
+          series: result.series,
+          selection: result.selection
         })
       );
       void refreshStudent();
@@ -1002,7 +1033,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
       setSubmitError(message);
       if (/taken|available/i.test(message)) {
         loadAvailability();
-        goTo("time");
+        if (bookingChoices.length === 1) goTo("time");
       }
     } finally {
       setSubmitting(false);
@@ -1225,6 +1256,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
       setSetupFocus(null);
       setLessonTypeId("");
       setSelectedSlot("");
+      setSavedChoices([]);
       setCalendarWeekCount(4);
       setSelectedDate("");
       setStep("day");
@@ -1244,6 +1276,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
       setLessonTypeId("");
       setSelectedDate("");
       setSelectedSlot("");
+      setSavedChoices([]);
       setSlotsByDate({});
       setCalendarWeekCount(8);
       goTo("pattern");
@@ -1289,13 +1322,92 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     });
   }
 
+  function addAnotherLesson() {
+    transitionBooking(() => {
+      setSavedChoices(bookingChoices);
+      setSelectedDate("");
+      setSelectedSlot("");
+      setCalendarWeekCount(8);
+      setSubmitError("");
+      goTo("day");
+    });
+  }
+
+  function reviewSavedLessons() {
+    const last = savedChoices[savedChoices.length - 1];
+    if (!last) return;
+    transitionBooking(() => {
+      setSavedChoices(savedChoices.slice(0, -1));
+      setSelectedDate(portoDateKey(new Date(last.startAt)));
+      setSelectedSlot(last.startAt);
+      goTo("details");
+    });
+  }
+
+  function changeSelectedLesson(index: number) {
+    const choice = bookingChoices[index];
+    if (!choice) return;
+    transitionBooking(() => {
+      setSavedChoices(bookingChoices.filter((_, entry) => entry !== index));
+      setSelectedDate("");
+      setSelectedSlot("");
+      setCalendarWeekCount(8);
+      setSubmitError("");
+      goTo("day");
+    });
+  }
+
+  function removeSelectedLesson(index: number) {
+    const remaining = bookingChoices.filter((_, entry) => entry !== index);
+    const last = remaining[remaining.length - 1];
+    transitionBooking(() => {
+      setSavedChoices(remaining.slice(0, -1));
+      setSelectedDate(last ? portoDateKey(new Date(last.startAt)) : "");
+      setSelectedSlot(last?.startAt ?? "");
+      setSubmitError("");
+      goTo(last ? "details" : "day");
+    });
+  }
+
+  function selectedLessonsList(choices: Slot[], editable: boolean) {
+    return (
+      <div className="booking-chosen-lessons" aria-label="Selected lessons">
+        <p className="booking-chosen-lessons__label">{bookingKind === "recurring" ? "Starting times" : "Your dates"}</p>
+        <ol>
+          {choices.map((choice, index) => (
+            <li key={choice.startAt}>
+              <span className="booking-chosen-lessons__number" aria-hidden="true">{index + 1}</span>
+              <span className="booking-chosen-lessons__time">
+                <strong>{formatLongDate(choice.startAt)}</strong>
+                <span>{formatSlotTime(choice.startAt)} Porto time</span>
+                {differingLocalTime(choice.startAt, studentZone) ? <small>{differingLocalTime(choice.startAt, studentZone)} your time</small> : null}
+              </span>
+              {editable && !payment ? (
+                <span className="booking-chosen-lessons__actions">
+                  <button type="button" className="text-action" aria-label={`Change lesson ${index + 1}`} onClick={() => changeSelectedLesson(index)} disabled={submitting}>Change</button>
+                  <button type="button" className="text-action" aria-label={`Remove lesson ${index + 1}`} onClick={() => removeSelectedLesson(index)} disabled={submitting}>Remove</button>
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+        {lessonType && editable ? <p>
+          {bookingKind === "recurring"
+            ? `${formatMoneyCents(lessonType.price_cents)} per lesson · ${choices.length} lessons a week.`
+            : `${formatMoneyCents(lessonType.price_cents * choices.length)} across ${choices.length} lessons · ${formatMoneyCents(lessonType.price_cents)} each.`}
+        </p> : null}
+        {bookingKind === "recurring" ? <p>These starting times repeat each week.</p> : null}
+      </div>
+    );
+  }
+
   function bookingSelectionSummaries(includeSchedule = false) {
     if (!lessonType || !bookingKind) return null;
     const lessonKindLabel = bookingKind === "recurring"
       ? "Recurring lessons"
       : bookingKind === "trial"
         ? "Trial lesson"
-        : "One lesson";
+        : "Single lessons";
     const localTime = chosen ? differingLocalTime(chosen.startAt, studentZone) : "";
 
     return (
@@ -1331,7 +1443,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             title={form.repeat === null ? "Ongoing" : `Repeat for ${form.repeat} weeks`}
           />
         ) : null}
-        {includeSchedule && selectedDate ? (
+        {includeSchedule && bookingChoices.length <= 1 && selectedDate ? (
           <BookingSelectionSummary
             actionLabel="Change date"
             ariaLabel="Selected date"
@@ -1340,7 +1452,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             title={formatLongDate(`${selectedDate}T12:00:00Z`)}
           />
         ) : null}
-        {includeSchedule && chosen ? (
+        {includeSchedule && bookingChoices.length <= 1 && chosen ? (
           <BookingSelectionSummary
             actionLabel="Change time"
             ariaLabel="Selected time"
@@ -1349,6 +1461,22 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             onAction={changeTimeChoice}
             title={`${formatSlotTime(chosen.startAt)} Porto time`}
           />
+        ) : null}
+        {includeSchedule && bookingChoices.length > 1 ? selectedLessonsList(bookingChoices, true) : null}
+        {!includeSchedule && savedChoices.length ? (
+          <div className="booking-selection-progress">
+            {selectedLessonsList(savedChoices, false)}
+            <p>{bookingKind === "recurring" ? "Choose the second starting time in this same week." : "Choose another date and time."}</p>
+            <button className="text-action" type="button" onClick={reviewSavedLessons}>Back to your selection</button>
+          </div>
+        ) : null}
+        {includeSchedule && !payment && bookingKind !== "trial" && bookingChoices.length < (bookingKind === "recurring" ? 2 : 8) ? (
+          <div className="booking-add-lesson">
+            <button type="button" className="text-action" onClick={addAnotherLesson} disabled={submitting}>
+              + {bookingKind === "recurring" ? "Add a second weekly time" : "Add another lesson"}
+            </button>
+            <p>{bookingKind === "recurring" ? "Both starting times must be in the same Monday–Sunday week." : "Choose a few dates and confirm them together."}</p>
+          </div>
         ) : null}
       </div>
     );
@@ -1378,7 +1506,16 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           A confirmation and calendar invitation are on their way to <strong>{confirmation.email}</strong>.
         </p>
 
-        {confirmation.series ? (
+        {confirmation.selection ? (
+          <div className="booking-success__series">
+            <p><strong>{confirmation.selection.booked.length} lessons booked.</strong>{" "}
+              {confirmation.selection.recurring
+                ? confirmation.selection.weeks === null ? "Both weekly times continue until you stop them." : "Both times repeat each week."
+                : "Each lesson is in your calendar and can be managed individually."}
+            </p>
+            {confirmation.selection.skipped.length ? <p>{confirmation.selection.skipped.length} unavailable lesson times were left out.</p> : null}
+          </div>
+        ) : confirmation.series ? (
           <div className="booking-success__series">
             <p>
               <strong>
@@ -1845,6 +1982,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                       onClick={() =>
                         transitionBooking(() => {
                           setBookingKind("trial");
+                          setSavedChoices([]);
                           setSetupFocus(null);
                           setForm((current) => ({ ...current, repeat: "once" }));
                           setLoadingSlots(true);
@@ -1868,33 +2006,35 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                     </button>
                   ) : null}
                   <button
-                    aria-label="One lesson · choose 60 or 90 minutes"
+                    aria-label="Single lessons · choose one or more dates"
                     className="lesson-card"
                     onClick={() =>
                       transitionBooking(() => {
-                          setBookingKind("once");
-                          setSetupFocus(null);
-                          setForm((current) => ({ ...current, repeat: "once" }));
-                          setLessonTypeId(regularLessonTypes[0]?.id ?? "");
-                          setSelectedSlot("");
-                          goTo("setup");
+                        setBookingKind("once");
+                        setSavedChoices([]);
+                        setSetupFocus(null);
+                        setForm((current) => ({ ...current, repeat: "once" }));
+                        setLessonTypeId(regularLessonTypes[0]?.id ?? "");
+                        setSelectedSlot("");
+                        goTo("setup");
                       })
                     }
                     type="button"
                   >
                     <LessonMark className="lesson-card__mark" lessonTypeId="single-60" />
                     <span className="lesson-card__text">
-                      <strong>One lesson</strong>
-                      <span className="lesson-card__meta">Choose 60 or 90 minutes</span>
+                      <strong>Single lessons</strong>
+                      <span className="lesson-card__meta">Choose one or more dates</span>
                     </span>
                     <ChevronRight aria-hidden="true" size={20} />
                   </button>
                   <button
-                    aria-label="Recurring lessons · keep the same weekly time"
+                    aria-label="Recurring lessons · choose your weekly times"
                     className="lesson-card"
                     onClick={() =>
                       transitionBooking(() => {
                         setBookingKind("recurring");
+                        setSavedChoices([]);
                         setSetupFocus(null);
                         setForm((current) => ({ ...current, repeat: 4 }));
                         setLessonTypeId(regularLessonTypes[0]?.id ?? "");
@@ -1907,7 +2047,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                     <span className="lesson-card__mark lesson-card__mark--repeat" aria-hidden="true"><Repeat size={25} /></span>
                     <span className="lesson-card__text">
                       <strong>Recurring lessons</strong>
-                      <span className="lesson-card__meta">Keep the same weekly time</span>
+                      <span className="lesson-card__meta">Choose your weekly times</span>
                     </span>
                     <ChevronRight aria-hidden="true" size={20} />
                   </button>
@@ -1989,6 +2129,8 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                               setSlotsByDate({});
                               setLessonTypeId(type.id);
                               setSelectedSlot("");
+                              setSavedChoices([]);
+                              if (savedChoices.length) setSelectedDate("");
                             }}
                             type="radio"
                             value={type.id}
@@ -2126,10 +2268,10 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                 ) : null}
               </div>
               <div className="unified-calendar__range-actions">
-                {visibleCalendarWeekCount !== 1 ? (
+                {restrictedWeek ? <span className="unified-calendar__range">Same starting week</span> : visibleCalendarWeekCount !== 1 ? (
                   <span className="unified-calendar__range">Next {visibleCalendarWeekCount} weeks</span>
                 ) : null}
-                {returnCalendarWeekCount ? (
+                {returnCalendarWeekCount && !restrictedWeek ? (
                   <button
                     aria-controls="booking-calendar-weeks"
                     className="text-action unified-calendar__expand"
@@ -2160,7 +2302,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                   {week.showMonth ? <p className="calendar-month">{week.month}</p> : null}
                   <div className="calendar-week">
                     {week.cells.map((cell) => {
-                      const slots = slotsByDate[cell.key] ?? [];
+                      const slots = selectableSlots(cell.key);
                       const lessons = bookingsByDate[cell.key] ?? [];
                       const lessonLabel = lessons.length === 1 ? "1 lesson" : `${lessons.length} lessons`;
                       return (
@@ -2512,7 +2654,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             <h2 className="booking-step-heading" id="booking-step-heading" tabIndex={-1}>
               {student
                 ? form.repeat === "once"
-                  ? "Confirm your lesson"
+                  ? bookingChoices.length > 1 ? "Confirm your lessons" : "Confirm your lesson"
                   : "Confirm your recurring lessons"
                 : "Sign in to confirm"}
             </h2>
@@ -2523,7 +2665,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                   <p className="booking-payment__summary">
                     {lessonType ? `${formatLessonDuration(lessonType.duration_minutes)} lesson` : "Your lesson"}
                     {lessonType ? ` · ${formatMoneyCents(lessonType.price_cents)}` : ""}
-                    {form.repeat !== "once" ? " each" : ""}. Your time is held while you save a card. Nothing is charged now.
+                    {form.repeat !== "once" || bookingChoices.length > 1 ? " each" : ""}. {bookingChoices.length > 1 ? "Your selected times are" : "Your time is"} held while you save a card. Nothing is charged now.
                   </p>
                   {paymentError ? (
                     <div className="booking-alert" role="alert">
@@ -2634,7 +2776,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                     {submitting
                       ? "Booking…"
                       : form.repeat === "once"
-                        ? "Confirm this lesson"
+                        ? bookingChoices.length > 1 ? `Confirm these ${bookingChoices.length} lessons` : "Confirm this lesson"
                         : seriesPreview
                           ? `Confirm ${seriesPreview.bookable.length === 1 ? "this lesson" : `these ${seriesPreview.bookable.length} lessons`}`
                           : "Confirm these lessons"}

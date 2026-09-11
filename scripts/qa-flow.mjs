@@ -57,7 +57,7 @@ await localMotionPage
   .getByRole("button", { name: "Book a new lesson", exact: true })
   .waitFor({ state: "visible", timeout: 10_000 });
 await localMotionPage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
-await localMotionPage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
+await localMotionPage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
 await localMotionPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
 const localMotionSingleLesson = localMotionPage.getByRole("radio", {
   name: "60 minutes lesson · €25",
@@ -178,7 +178,7 @@ await calendarZonePage.route("**/availability?*", async (route) => {
 });
 await calendarZonePage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
 await calendarZonePage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
-await calendarZonePage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
+await calendarZonePage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
 await calendarZonePage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
 await calendarZonePage.getByRole("button", { name: "Choose a date", exact: true }).click();
 await calendarZonePage.locator("#booking-calendar-weeks").waitFor({ state: "visible", timeout: 10_000 });
@@ -448,7 +448,7 @@ if (bookingCalendar) {
 
   const bookingText = (await page.locator(".booking-composition").innerText()).toLowerCase();
   assertIncludes(bookingText, "how would you like to book?", "booking pattern heading");
-  assertIncludes(bookingText, "one lesson", "one-off booking choice");
+  assertIncludes(bookingText, "single lessons", "one-off booking choice");
   assertIncludes(bookingText, "recurring lessons", "recurring booking choice");
   assertIncludes(bookingText, "porto time", "booking timezone note");
   if (bookingText.includes("booked lessons and free times share the same calendar")) {
@@ -1005,8 +1005,8 @@ async function bookQaLessonAndReturnToUpcoming({ recurring }) {
   await accountPage
     .getByRole("button", {
       name: recurring
-        ? "Recurring lessons · keep the same weekly time"
-        : "One lesson · choose 60 or 90 minutes",
+        ? "Recurring lessons · choose your weekly times"
+        : "Single lessons · choose one or more dates",
       exact: true
     })
     .click();
@@ -2058,7 +2058,7 @@ if (await accountPage.getByText(/The trial is for a first lesson/i).count()) {
 }
 const lessonCardCount = await accountPage.locator(".unified-booking__lesson-picker .lesson-card").count();
 if (lessonCardCount !== 2) throw new Error(`Expected one-off and recurring choices; found ${lessonCardCount}.`);
-await accountPage.getByRole("button", { name: "Recurring lessons · keep the same weekly time", exact: true }).click();
+await accountPage.getByRole("button", { name: "Recurring lessons · choose your weekly times", exact: true }).click();
 await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
 if ((await accountPage.locator(".booking-setup .segmented").count()) !== 3) {
   throw new Error("Initial recurring choices should use the same compact sliders as lesson management.");
@@ -2081,7 +2081,7 @@ await accountPage.getByRole("button", { name: "Choose a date", exact: true }).cl
 await accountPage.getByRole("button", { name: /times free/ }).first().click();
 await accountPage.locator("#lesson-calendar .unified-calendar__availability .slot-grid button").first().click();
 await accountPage.getByRole("heading", { name: "Confirm your recurring lessons", exact: true }).waitFor();
-await accountPage.getByText("One week clashes", { exact: false }).waitFor();
+await accountPage.getByText("One lesson time clashes", { exact: false }).waitFor();
 if ((await accountPage.locator(".booking-confirmation-stage .booking-skipped li").count()) !== 1) {
   throw new Error("Recurring confirmation should list the exact clashing week before booking.");
 }
@@ -2100,7 +2100,7 @@ await accountPage.getByRole("button", { name: "Save repeat", exact: true }).clic
 await accountPage.getByRole("heading", { name: "Confirm your recurring lessons", exact: true }).waitFor();
 await accountPage.getByRole("button", { name: "Change lesson", exact: true }).click();
 await accountPage.getByRole("heading", { name: "How would you like to book?", exact: true }).waitFor();
-await accountPage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
+await accountPage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
 await accountPage.getByRole("heading", { name: "Choose your lesson", exact: true }).waitFor();
 await accountPage.getByRole("radio", { name: "Online", exact: true }).check();
 if ((await accountPage.locator(".booking-setup .segmented input[name='booking-duration']").count()) !== 2) {
@@ -2136,7 +2136,7 @@ if (
   throw new Error(`Each selected choice should keep its change action aligned on the right: ${JSON.stringify(lessonSummaryLayout)}.`);
 }
 await changeLesson.click();
-await accountPage.getByRole("button", { name: "One lesson · choose 60 or 90 minutes", exact: true }).click();
+await accountPage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
 await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).waitFor();
 await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
 await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
