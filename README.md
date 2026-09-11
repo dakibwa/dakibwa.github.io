@@ -87,10 +87,12 @@ request only competes with the fonts for no gain.
 - Square was removed in August 2026. Square does not onboard sellers in
   Portugal, so the account this site pointed at — Dan's UK account, set up as a
   test — could never have been hers.
-- The saved-card, after-lesson flow has passed sandbox acceptance. Live payment
-  remains off until the live restricted key and webhook secret are installed.
-  With after-lesson charging enabled, a booking saves a card without charging it;
-  the lesson price is charged when the scheduled lesson ends. Production
+- The saved-card, after-lesson flow passed sandbox acceptance and was activated
+  in production on 11 September 2026 with a live restricted key and webhook
+  secret. A new booking saves a card without charging it; the lesson price is
+  charged when the scheduled lesson ends. Existing direct-payment bookings
+  keep their original terms. The first genuine live card setup and payment
+  remain to be observed. Production
   expects live keys and fails closed if test or incomplete credentials are
   present. `docs-booking-system.md` records the activation boundary.
 - The approved product display is trial lesson €20 / 60 minutes, single lessons

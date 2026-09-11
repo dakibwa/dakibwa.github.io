@@ -451,9 +451,9 @@ The policy contact links use Inês's existing published WhatsApp destination fro
 has no incoming-mail MX records and Resend receiving is disabled. Do not offer
 that address as an inbox until incoming delivery has been configured and verified.
 
-Off by default. `payment_mode` is `off`, every booking confirms on creation, and
-none of the Stripe columns are read. With it set to `postpay` and Stripe
-configured:
+Production uses `payment_mode=postpay` as of 11 September 2026. A new database
+defaults to `off`, where every booking confirms on creation without a card.
+With `postpay` and Stripe configured:
 
 - booking fails closed with a temporary payment error if the Worker does not
   have a complete key/webhook pair in its declared `test` or `live` mode;
@@ -732,7 +732,8 @@ recurring confirmation, with private-rate controls, correct prices and no browse
 errors. Inês has the teacher role; the live teacher page rejects a student account.
 Resend verified delivery of earlier student and teacher messages; the booking log
 has no pending or failed emails. No new live booking or email was created, and no
-fresh sign-in as Inês or real payment was performed. Payments remain off. The
+fresh sign-in as Inês or real payment was performed. At that point payments
+remained off; activation followed below. The
 secondary www redirect is deployed. Dan approved the policy contact-link repairs
 and quieter bottom-right footer privacy link for publication in the same release.
 Release `ee812d2` passed all CI gates and published to Cloudflare Pages on
@@ -740,15 +741,21 @@ Release `ee812d2` passed all CI gates and published to Cloudflare Pages on
 
 - **Live payment activation.** The live merchant was rechecked on 11 September:
   its business URL matches this site, charges and payouts are enabled, and no
-  requirements are currently due. `payment_mode` stays `off` until the live key
-  and webhook secret are installed securely and the production configuration
-  checks above pass. The sandbox payment journey is complete. The published
-  site now uses the live merchant's publishable key, and Inês's notification
-  copies are enabled. The live webhook secret is installed; the production
-  Worker still has a test API key and charging remains off. Dan approved
-  activation on 11 September. Cloudflare access is available; Stripe requires
-  Dan's email-link verification before creating the prepared
-  `ines-booking-production` restricted key.
+  requirements are currently due. Dan approved activation and completed
+  Stripe's email verification on 11 September. The live webhook signing secret
+  and `ines-booking-production` restricted key are installed in Cloudflare's
+  encrypted production secret store. The saved key grants write access only
+  to Charges and Refunds, Customers, Payment Intents, Payment Methods, Products,
+  Setup Intents, Prices and Checkout Sessions. The public publishable key
+  belongs to the same live merchant. Production now has `payment_mode=postpay`;
+  `npm run check:booking` passes with live keys, `stripeReady:true`, live email
+  and no missing configuration. The every-minute cron is configured. The live
+  confirmation screen shows the after-lesson and €5 terms, blocks submission
+  until consent, and enables it when checked, without console errors. No
+  booking was submitted during this check. All 24 pre-existing bookings retain
+  `not_required` payment and same-day-fee status. The sandbox journey is
+  complete; the first genuine customer card setup, signed live webhook and
+  resulting charge remain to be observed. No artificial live payment was made.
 - **Fiscal documents.** She must issue a fatura-recibo per lesson, and CIVA art.
   36.º gives 5 working days from the lesson. See
   `Documents/Work/Português com a Inês/Billing and Booking - Operating Context
