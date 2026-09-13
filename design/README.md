@@ -197,6 +197,9 @@ the current site:
 - the relaxed/practical booking mark is an abstract cluster of rounded blobs,
   with navy, two lilacs and a small coral accent. Inês rejected the previous
   hand-like silhouette on 13 September 2026;
+- the at-your-pace mark uses an asymmetric cluster of rounded navy and lilac
+  blobs with a small coral accent. It replaces the stacked-stone silhouette
+  Inês also rejected on 13 September 2026, in lesson rows and the calendar corner;
 - the wordmark and paper texture support the shared site shell.
 
 Do not keep contact sheets, rejected generations, alternate raster exports,
