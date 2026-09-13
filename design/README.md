@@ -254,6 +254,13 @@ centred text and its terms link retaining a separate action. Keep prices visible
 with the chosen lessons. The short payment summary explains payment after each
 lesson and €5 rules, with the full terms available by link.
 
+Use different treatments for neighbouring booking controls instead of two coral
+fills. Selected agreement uses blue beside the coral booking action. Recurring
+lesson management pairs blue `Move recurrence`, an outline `Stop repeating`, and
+coral `Cancel all booked lessons`; profile editing pairs coral `Save name` with
+blue `Send confirmation link`. Keep the existing labels and state indicators so
+colour is never the only way to tell the controls apart.
+
 ## Motion direction
 
 Use a short opacity-only transition on completed route changes, with faster

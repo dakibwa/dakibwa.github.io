@@ -29,7 +29,7 @@
    * "Thumbprint" — one hand, scaled to each thing it lands on rather than ten
    * unrelated shapes. Every corner differs from its neighbours the way her
    * splats and lettering do, and opposite corners are mirrored on the second
-   * button token so two coral buttons in one card are never the same drawing
+   * button token so two buttons in one card are never the same drawing
    * twice. Chosen from the specimen sheet; the smaller the element, the gentler
    * the hand, because a radius that reads as character on a button reads as
    * damage on a 40px chip.
@@ -592,6 +592,15 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 
 .button--coral:hover {
   background: #95301f;
+}
+
+.button--blue {
+  background: var(--blue-deep);
+  color: var(--paper-light);
+}
+
+.button--blue:hover {
+  background: var(--ink);
 }
 
 .text-action {
@@ -5424,8 +5433,8 @@ button.text-action {
 }
 
 .booking-agreement__control.is-agreed {
-  border-color: var(--coral-action);
-  background: var(--coral-action);
+  border-color: var(--blue);
+  background: var(--blue);
   color: var(--paper);
 }
 

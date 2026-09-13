@@ -695,7 +695,7 @@ export function MyLessons({
             {/* Changing the address you sign in with is deliberately the slower
                 of the two: nothing moves until the new address answers. */}
             <button
-              className="button button--coral"
+              className="button button--blue"
               disabled={!details.email.trim() || details.email.trim() === student.email}
               onClick={changeEmail}
               type="button"
