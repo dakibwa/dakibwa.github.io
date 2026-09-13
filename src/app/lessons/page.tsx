@@ -7,7 +7,7 @@ import { lessonProducts } from "@/lib/lesson-products";
 
 export const metadata: Metadata = {
   title: "Lessons | Português com a Inês",
-  description: "Prices for one-to-one European Portuguese lessons, online or in Porto."
+  description: "Prices for one-to-one Portuguese lessons, online or in person."
 };
 
 export default function LessonsPage() {
@@ -39,7 +39,7 @@ export default function LessonsPage() {
 
         <section className="lesson-programme" aria-labelledby="programme-title">
           <p className="lesson-programme__intro" id="programme-title">
-            One to one, in Porto or online. An hour, or an hour and a half if you want longer.
+            One to one, online or in person. An hour, or an hour and a half if you want longer.
           </p>
           <div className="lesson-programme__grid">
             {lessonProducts.map((product) => (

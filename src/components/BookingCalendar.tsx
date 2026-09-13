@@ -2755,72 +2755,78 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                     />
                   ) : null}
 
-                  <label>
-                    <span>
-                      <MessageSquareText size={16} aria-hidden="true" />
-                      Anything Inês should know <em>(optional)</em>
-                    </span>
-                    <textarea
-                      onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-                      rows={3}
-                      value={form.notes}
-                    />
-                  </label>
+                  <div className="booking-confirmation-columns">
+                    <label className="booking-confirmation-notes">
+                      <span>
+                        <MessageSquareText size={16} aria-hidden="true" />
+                        Add a note <em>(optional)</em>
+                      </span>
+                      <textarea
+                        onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                        rows={3}
+                        value={form.notes}
+                      />
+                    </label>
 
-                  {submitError ? (
-                    <div className="booking-alert" role="alert">
-                      <AlertCircle size={18} aria-hidden="true" />
-                      <p>{submitError}</p>
-                    </div>
-                  ) : null}
+                    <div className="booking-confirmation-payment">
+                      {submitError ? (
+                        <div className="booking-alert" role="alert">
+                          <AlertCircle size={18} aria-hidden="true" />
+                          <p>{submitError}</p>
+                        </div>
+                      ) : null}
 
-                  {paymentConfigurationError ? (
-                    <div className="booking-alert" role="alert">
-                      <AlertCircle size={18} aria-hidden="true" />
-                      <p>{paymentConfigurationError}</p>
-                    </div>
-                  ) : null}
+                      {paymentConfigurationError ? (
+                        <div className="booking-alert" role="alert">
+                          <AlertCircle size={18} aria-hidden="true" />
+                          <p>{paymentConfigurationError}</p>
+                        </div>
+                      ) : null}
 
-                  <p className="booking-form-note" id="booking-payment-summary">
-                    {postpay
-                      ? "Nothing is charged now. Your saved card is charged automatically after each lesson. Move or cancel free until the day before; on the day, it costs €5. A recorded no-show costs €5 instead of the lesson price, plus any earlier change fee. Porto time applies."
-                      : `Pay Inês on the lesson day. Move or cancel free until the day before; on the day it costs ${formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}.`}
-                    {form.repeat === null ? " Ongoing lessons repeat until you stop them in your calendar." : ""}
-                  </p>
+                      <p className="booking-form-note" id="booking-payment-summary">
+                        {postpay
+                          ? "Nothing to pay now. Your card is charged after each lesson. Same-day changes cost €5. A no-show costs €5 instead of the lesson price."
+                          : `Pay Inês on the lesson day. Same-day changes cost ${formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}.`}
+                      </p>
+                      <p className="booking-form-note booking-confirmation-payment__detail" id="booking-payment-detail">
+                        Changes are free until the day before (Porto time).{postpay ? " Any earlier €5 change fee still applies." : ""}
+                        {form.repeat === null ? " Ongoing lessons repeat until you stop them." : ""}
+                      </p>
 
-                  <div className="booking-agreement">
-                    {needsPaymentConsent ? (
-                      <button
-                        className="booking-agreement__button"
-                        type="button"
-                        aria-pressed={paymentConsent}
-                        aria-describedby="booking-payment-summary booking-agreement-note"
-                        onClick={() => setPaymentConsent((current) => !current)}
-                      >
-                        {paymentConsent ? <CheckCircle2 size={20} aria-hidden="true" /> : <Circle size={20} aria-hidden="true" />}
-                        Agree to terms &amp; privacy
+                      <div className="booking-agreement">
+                        {needsPaymentConsent ? (
+                          <button
+                            className="booking-agreement__button"
+                            type="button"
+                            aria-pressed={paymentConsent}
+                            aria-describedby="booking-payment-summary booking-payment-detail booking-agreement-note"
+                            onClick={() => setPaymentConsent((current) => !current)}
+                          >
+                            {paymentConsent ? <CheckCircle2 size={20} aria-hidden="true" /> : <Circle size={20} aria-hidden="true" />}
+                            Agree to terms &amp; privacy
+                          </button>
+                        ) : null}
+                        <a href="#terms-privacy">Read terms &amp; privacy</a>
+                      </div>
+                      {needsPaymentConsent ? (
+                        <p className="booking-form-note booking-agreement__note" id="booking-agreement-note">
+                          I authorise these charges and acknowledge the privacy notice.
+                        </p>
+                      ) : null}
+
+                      {/* The final action names both the selection and the obligation
+                          to pay, even though payment happens after the lesson. */}
+                      <button className="button button--coral booking-confirm-button" disabled={!canSubmit} type="submit">
+                        {submitting
+                          ? "Booking…"
+                          : form.repeat === "once"
+                            ? bookingChoices.length > 1 ? `Book ${bookingChoices.length} lessons & agree to pay` : "Book lesson & agree to pay"
+                            : seriesPreview
+                              ? `Book ${seriesPreview.bookable.length === 1 ? "lesson" : `${seriesPreview.bookable.length} lessons`} & agree to pay`
+                              : "Book lessons & agree to pay"}
                       </button>
-                    ) : null}
-                    <a href="#terms-privacy">Read terms &amp; privacy</a>
+                    </div>
                   </div>
-                  {needsPaymentConsent ? (
-                    <p className="booking-form-note booking-agreement__note" id="booking-agreement-note">
-                      Agreeing authorises these card charges and acknowledges the privacy notice.
-                    </p>
-                  ) : null}
-
-                  {/* The final action names both the selection and the obligation
-                      to pay, even though payment happens after the lesson. */}
-                  <button className="button button--coral booking-confirm-button" disabled={!canSubmit} type="submit">
-                    {submitting
-                      ? "Booking…"
-                      : form.repeat === "once"
-                        ? bookingChoices.length > 1 ? `Book ${bookingChoices.length} lessons & agree to pay` : "Book lesson & agree to pay"
-                        : seriesPreview
-                          ? `Book ${seriesPreview.bookable.length === 1 ? "lesson" : `${seriesPreview.bookable.length} lessons`} & agree to pay`
-                          : "Book lessons & agree to pay"}
-                  </button>
-
                 </form>
               )}
             </div>

@@ -131,8 +131,8 @@ the same identity or action:
   intentional sign-off, rather than introducing another headline;
 - each page has one dominant action in its content. A later section must not
   repeat the same call to action simply to fill a closing band;
-- on Home, the display heading is `European Portuguese lessons.` and the
-  supporting line locates them in Porto and online. `Book a lesson` appears
+- on Home, the display heading is `Portuguese Lessons` and the
+  supporting line describes one-to-one lessons, online or in person. `Book a lesson` appears
   once. The quieter `How I teach` and `Lessons and prices` routes sit with that
   introduction rather than occupying a second strip beneath the hero;
 - Approach, Lessons, FAQ, and Booking follow the same hierarchy: the brand
@@ -234,6 +234,19 @@ usual lesson starts and days off; avoid a wall of administration forms.
 - Put manual lesson entry last, collapsed under `Add a lesson for a student`.
   It is a backup for a lesson arranged elsewhere; the ordinary student booking
   service remains the primary route. Include online/in-Porto location.
+
+## Wording and confirmation — 13 September 2026
+
+Use `Portuguese Lessons` on the home page and `Your Lessons` in booking.
+Marketing copy describes Portuguese lessons without repeated European/Portugal
+positioning. Retain actual location choices, addresses, qualifications and Porto
+time where they help someone attend a lesson or understand a deadline.
+
+On a wide booking workspace, place the optional notes box on the left and the
+payment summary, agreement and final action on the right. Stack them in that
+order on narrow screens. Keep prices visible with the chosen lessons. The short
+payment summary explains payment after each lesson and €5 rules, with the full
+terms available by link.
 
 ## Motion direction
 

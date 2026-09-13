@@ -1,6 +1,6 @@
 # Português com a Inês
 
-The production website for Inês Dias Baía’s one-to-one European Portuguese
+The production website for Inês Dias Baía’s one-to-one Portuguese
 lessons, online or in Porto.
 
 The approved dark-blue, lilac, cream, and splatty direction is implemented as
