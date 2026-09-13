@@ -248,9 +248,11 @@ time where they help someone attend a lesson or understand a deadline.
 
 On a wide booking workspace, place the optional notes box on the left and the
 payment summary, agreement and final action on the right. Stack them in that
-order on narrow screens. Keep prices visible with the chosen lessons. The short
-payment summary explains payment after each lesson and €5 rules, with the full
-terms available by link.
+order on narrow screens. Keep the notes box compact and let visitors resize it
+for longer notes. The agreement fills the same width as the final action, with
+centred text and its terms link retaining a separate action. Keep prices visible
+with the chosen lessons. The short payment summary explains payment after each
+lesson and €5 rules, with the full terms available by link.
 
 ## Motion direction
 
