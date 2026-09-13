@@ -19,6 +19,8 @@ five responsive routes:
 - `/reset-password` — reached from a reset email (noindex)
 - `/schedule` — Inês's own view: teaching hours, days off, and what is booked
   (noindex, teacher account or emergency access key required)
+- `/confirm-lesson` — private emailed approval and saved-card setup for a
+  lesson Inês adds; no charge until the confirmed lesson ends (noindex)
 
 Every route carries a booking action within reach of its closing content, not
 only in the header: the home page closes on one, and the FAQ ends with a route

@@ -139,7 +139,7 @@ export async function chargeSavedCard(
  */
 export function createCardSetupSession(
   env,
-  { booking, customer = null, customerEmail = "", successUrl, cancelUrl, seriesId = null, selectionCount = null, skippedStartAts = [] }
+  { booking, customer = null, customerEmail = "", successUrl, cancelUrl, seriesId = null, selectionCount = null, skippedStartAts = [], forceHosted = false }
 ) {
   const skipped = JSON.stringify(skippedStartAts);
   return stripeRequest(
@@ -158,7 +158,7 @@ export function createCardSetupSession(
           ...(seriesId ? { series_id: seriesId } : {})
         }
       },
-      ...uiModeFields(env, { successUrl, cancelUrl, forceHosted: false }),
+      ...uiModeFields(env, { successUrl, cancelUrl, forceHosted }),
       // Keep retry parameters identical. The database's 35-minute hold is
       // authoritative even though Stripe's default session lasts longer.
       metadata: {

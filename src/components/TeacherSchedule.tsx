@@ -173,7 +173,10 @@ export function TeacherSchedule() {
       );
       if (request !== bookingRequest.current) return;
       setBookings(
-        result.bookings.filter((booking) => booking.status === "confirmed"),
+        result.bookings.filter(
+          (booking) =>
+            booking.status === "confirmed" || booking.awaiting_confirmation,
+        ),
       );
       setPaymentReview(result.manualPaymentReconciliation ?? []);
     } catch (caught) {
@@ -283,15 +286,24 @@ export function TeacherSchedule() {
     }
   }
 
+  const visibleBookings = bookings.filter(
+    (booking) =>
+      !booking.awaiting_confirmation ||
+      !booking.hold_expires_at ||
+      Date.parse(booking.hold_expires_at) > now.getTime(),
+  );
+  const visibleSelectedBooking = selectedBooking
+    ? visibleBookings.find((booking) => booking.id === selectedBooking.id)
+    : null;
   const bookedCounts = new Map<string, number>();
-  for (const booking of bookings) {
+  for (const booking of visibleBookings) {
     const first = dateKey(new Date(booking.starts_at));
     const last = dateKey(new Date(Date.parse(booking.ends_at) - 1));
     for (let day = first; day <= last; day = shiftDate(day, 1))
       bookedCounts.set(day, (bookedCounts.get(day) ?? 0) + 1);
   }
   const weekEnd = shiftDate(weekStart, 6);
-  const weekCount = bookings.filter(
+  const weekCount = visibleBookings.filter(
     (booking) =>
       dateKey(new Date(booking.starts_at)) <= weekEnd &&
       dateKey(new Date(Date.parse(booking.ends_at) - 1)) >= weekStart,
@@ -495,7 +507,7 @@ export function TeacherSchedule() {
           <WeeklyTimetable
             weekStart={weekStart}
             hours={editing ? draftHours : savedHours}
-            bookings={bookings}
+            bookings={visibleBookings}
             blockedDays={savedDaysOff}
             editing={editing}
             interval={interval}
@@ -597,10 +609,10 @@ export function TeacherSchedule() {
       />
 
       <ManualLessonForm token={token} onCreated={() => void reloadBookings()} />
-      {selectedBooking ? (
+      {visibleSelectedBooking ? (
         <LessonDetails
-          key={selectedBooking.id}
-          booking={selectedBooking}
+          key={visibleSelectedBooking.id}
+          booking={visibleSelectedBooking}
           token={token}
           now={now}
           onClose={() => setSelectedBooking(null)}

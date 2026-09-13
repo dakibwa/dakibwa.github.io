@@ -4860,6 +4860,32 @@ button.text-action {
   opacity: 1;
 }
 
+.my-lessons__teacher-payments {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.6rem;
+  align-items: start;
+  margin-top: 0.65rem;
+}
+
+.my-lessons__teacher-payments h3 {
+  font: 600 0.9rem/1.5 var(--ui);
+}
+
+.my-lessons__teacher-payments p {
+  max-width: 65ch;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.my-lessons__teacher-payments p:empty {
+  display: none;
+}
+
+.my-lessons__teacher-payments button {
+  justify-self: start;
+}
+
 .my-lessons__group {
   margin-bottom: 2.5rem;
 }

@@ -34,7 +34,9 @@ export function LessonDetails({
   const [time, setTime] = useState(formatSlotTime(booking.starts_at));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const awaitingConfirmation = Boolean(booking.awaiting_confirmation);
   const canMarkAttendance =
+    !awaitingConfirmation &&
     booking.payment_status === "scheduled" &&
     now >= new Date(booking.starts_at) &&
     now < new Date(booking.ends_at);
@@ -65,6 +67,7 @@ export function LessonDetails({
     setError("");
     try {
       if (action === "move") {
+        if (awaitingConfirmation) return;
         await rescheduleBookingAs(
           token,
           booking.id,
@@ -73,8 +76,13 @@ export function LessonDetails({
         onChanged("Lesson moved. The student has been emailed the new time.");
       } else if (action === "cancel") {
         await cancelBookingAs(token, booking.id);
-        onChanged("Lesson cancelled. The student has been emailed.");
+        onChanged(
+          awaitingConfirmation
+            ? "Invitation withdrawn. The slot is available again and no fee was charged."
+            : "Lesson cancelled. The student has been emailed.",
+        );
       } else if (action === "no-show") {
+        if (awaitingConfirmation) return;
         await setNoShow(token, booking.id, !noShow);
         onChanged(
           noShow
@@ -158,6 +166,27 @@ export function LessonDetails({
       {booking.notes ? (
         <p className="teacher-lesson-note">{booking.notes}</p>
       ) : null}
+      {awaitingConfirmation ? (
+        <div className="teacher-inline-notice teacher-pending-notice">
+          <strong>Awaiting confirmation</strong>
+          <p>
+            The student needs to confirm the lesson and its payment terms using
+            their email link.
+            {booking.hold_expires_at ? (
+              <>
+                {" "}This time is held until{" "}
+                <time dateTime={booking.hold_expires_at}>
+                  {dateLabel(dateKey(new Date(booking.hold_expires_at)), {
+                    day: "numeric",
+                    month: "long",
+                  })}{" "}
+                  at {formatSlotTime(booking.hold_expires_at)} Porto time
+                </time>.
+              </>
+            ) : null}
+          </p>
+        </div>
+      ) : null}
       {noShow ? (
         <p className="teacher-inline-notice">No-show · €5 after this lesson</p>
       ) : null}
@@ -178,21 +207,23 @@ export function LessonDetails({
       ) : null}
       {action === "view" ? (
         <div className="teacher-dialog-actions">
-          <button
-            className="button button--coral"
-            type="button"
-            disabled={locked}
-            onClick={() => setAction("move")}
-          >
-            Move lesson
-          </button>
+          {!awaitingConfirmation ? (
+            <button
+              className="button button--coral"
+              type="button"
+              disabled={locked}
+              onClick={() => setAction("move")}
+            >
+              Move lesson
+            </button>
+          ) : null}
           <button
             className="teacher-text-button teacher-destructive"
             type="button"
             disabled={locked}
             onClick={() => setAction("cancel")}
           >
-            Cancel lesson
+            {awaitingConfirmation ? "Withdraw invitation" : "Cancel lesson"}
           </button>
           {canMarkAttendance ? (
             <button
@@ -259,14 +290,18 @@ export function LessonDetails({
             <>
               <h3>
                 {action === "cancel"
-                  ? "Cancel this lesson?"
+                  ? awaitingConfirmation
+                    ? "Withdraw this invitation?"
+                    : "Cancel this lesson?"
                   : noShow
                     ? "Remove the no-show?"
                     : "Mark as a no-show?"}
               </h3>
               <p>
                 {action === "cancel"
-                  ? "The lesson will be removed from the calendar and the student will be emailed."
+                  ? awaitingConfirmation
+                    ? "The confirmation link will stop working and the time will become available again. No fee will be charged."
+                    : "The lesson will be removed from the calendar and the student will be emailed."
                   : noShow
                     ? "The normal lesson price will be charged when the lesson ends."
                     : "Only €5 will be charged when this lesson ends, instead of the full lesson price."}
@@ -280,7 +315,9 @@ export function LessonDetails({
                 {busy
                   ? "Saving…"
                   : action === "cancel"
-                    ? "Yes, cancel lesson"
+                    ? awaitingConfirmation
+                      ? "Yes, withdraw invitation"
+                      : "Yes, cancel lesson"
                     : noShow
                       ? "Undo no-show"
                       : "Confirm no-show"}

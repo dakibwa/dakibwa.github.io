@@ -20,6 +20,12 @@ export function TermsPrivacyInformation() {
         stopping keeps any lesson booked for today.
       </p>
       <p>
+        <strong>Lessons Inês adds.</strong> You’ll receive an email to confirm the lesson and its price.
+        You can use your saved card or add one securely. If you choose to allow future lessons, Inês can
+        add them with payment after each lesson. Turn this off in your calendar at any time; lessons
+        already confirmed keep their agreed payment.
+      </p>
+      <p>
         <strong>Your cancellation rights.</strong> You have 14 days after booking online to exercise your
         statutory right to withdraw, or longer where the law requires. Email Inês with your name and booking
         reference; she handles these requests personally. Where statutory withdrawal rights apply, the usual

@@ -28,6 +28,7 @@ import {
   stopSeries
 } from "@/lib/booking-api";
 import { BOOKING_HORIZON_DAYS_FALLBACK, BOOKING_TIME_ZONE } from "@/lib/config";
+import { fetchTeacherPayments, revokeTeacherPayments } from "@/lib/manual-payments-api";
 
 /** Index matches the Worker's weekday, which is 0 = Sunday. */
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -128,6 +129,12 @@ export function MyLessons({
   const [savingName, setSavingName] = useState(false);
   const [emailPending, setEmailPending] = useState("");
   const [detailsNote, setDetailsNote] = useState("");
+  const [teacherPaymentsEnabled, setTeacherPaymentsEnabled] = useState<boolean | null>(null);
+  const [teacherPaymentsLoading, setTeacherPaymentsLoading] = useState(false);
+  const [teacherPaymentsError, setTeacherPaymentsError] = useState("");
+  const [teacherPaymentsAttempt, setTeacherPaymentsAttempt] = useState(0);
+  const [revokingTeacherPayments, setRevokingTeacherPayments] = useState(false);
+  const [teacherPaymentsNote, setTeacherPaymentsNote] = useState("");
   const [feeCents, setFeeCents] = useState(500);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -135,6 +142,7 @@ export function MyLessons({
   const [todayKey, setTodayKey] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
+  const studentId = student?.id;
 
   useEffect(() => {
     if (!bookingActive) return;
@@ -239,6 +247,32 @@ export function MyLessons({
   }, [embedded, load, openUpcomingRequest]);
 
   useEffect(() => {
+    if (!editing || !studentId) return;
+    const session = readSession();
+    if (!session) return;
+    let active = true;
+    setTeacherPaymentsEnabled(null);
+    setTeacherPaymentsLoading(true);
+    setTeacherPaymentsError("");
+    setTeacherPaymentsNote("");
+    fetchTeacherPayments(session)
+      .then((result) => {
+        if (active) setTeacherPaymentsEnabled(result.enabled);
+      })
+      .catch((caught) => {
+        if (active) setTeacherPaymentsError(
+          caught instanceof Error ? caught.message : "Your payment permission could not be loaded.",
+        );
+      })
+      .finally(() => {
+        if (active) setTeacherPaymentsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [editing, studentId, teacherPaymentsAttempt]);
+
+  useEffect(() => {
     if (!menuOpen) return;
     const closeOnPointerDown = (event: PointerEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
@@ -331,6 +365,27 @@ export function MyLessons({
     }
   }
 
+  async function turnOffTeacherPayments() {
+    if (revokingTeacherPayments || !teacherPaymentsEnabled) return;
+    const session = readSession();
+    if (!session) return;
+    setRevokingTeacherPayments(true);
+    setTeacherPaymentsError("");
+    setTeacherPaymentsNote("");
+    try {
+      const result = await revokeTeacherPayments(session);
+      if (readSession() !== session) return;
+      setTeacherPaymentsEnabled(result.enabled);
+      setTeacherPaymentsNote("Permission turned off. New lessons Inês adds will need your confirmation.");
+    } catch (caught) {
+      if (readSession() === session) setTeacherPaymentsError(
+        caught instanceof Error ? caught.message : "Your permission could not be changed. Please try again.",
+      );
+    } finally {
+      setRevokingTeacherPayments(false);
+    }
+  }
+
   async function stopRepeating(seriesId: string) {
     setStopping(seriesId);
     setError("");
@@ -379,7 +434,7 @@ export function MyLessons({
       .values()
   );
   const past = bookings
-    .filter((booking) => booking.isPast || booking.status === "cancelled")
+    .filter((booking) => booking.status === "cancelled" || (booking.status === "confirmed" && booking.isPast))
     .sort((a, b) => b.startAt.localeCompare(a.startAt));
 
   const bookingsByDate = upcoming.reduce<Record<string, MyBooking[]>>((dates, booking) => {
@@ -718,6 +773,53 @@ export function MyLessons({
           {detailsNote ? (
             <p className="my-lessons__details-note my-lessons__details-note--ok">{detailsNote}</p>
           ) : null}
+
+          <section className="my-lessons__teacher-payments" aria-labelledby="teacher-payments-heading">
+            <h3 id="teacher-payments-heading">Lessons Inês arranges for you</h3>
+            {teacherPaymentsLoading ? (
+              <p role="status">Checking your payment permission…</p>
+            ) : teacherPaymentsEnabled !== null ? (
+              <>
+                <p>
+                  {teacherPaymentsEnabled
+                    ? "You allow Inês to add lessons and charge your saved card when each lesson ends."
+                    : "Automatic charges for new lessons Inês adds are off. You can give permission when confirming a lesson from her email link."}
+                </p>
+                {teacherPaymentsEnabled ? (
+                  <>
+                    <p id="teacher-payments-effect">
+                      Turning this off means you’ll confirm each new lesson by email.
+                      Lessons already confirmed keep their agreed payment terms.
+                    </p>
+                    <button
+                      className="button button--quiet"
+                      type="button"
+                      aria-describedby="teacher-payments-effect"
+                      disabled={revokingTeacherPayments}
+                      onClick={() => void turnOffTeacherPayments()}
+                    >
+                      {revokingTeacherPayments ? "Turning off…" : "Turn off permission for new lessons"}
+                    </button>
+                  </>
+                ) : null}
+              </>
+            ) : null}
+            {teacherPaymentsError ? (
+              <>
+                <p role="alert">{teacherPaymentsError}</p>
+                {teacherPaymentsEnabled === null ? (
+                  <button
+                    className="text-action"
+                    type="button"
+                    onClick={() => setTeacherPaymentsAttempt((attempt) => attempt + 1)}
+                  >
+                    Try again
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+            <p role="status">{teacherPaymentsNote}</p>
+          </section>
         </section>
       ) : null}
 

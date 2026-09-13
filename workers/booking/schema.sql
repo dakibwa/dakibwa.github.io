@@ -79,6 +79,10 @@ CREATE TABLE IF NOT EXISTS students (
   -- 0009). The card itself lives at Stripe; these are references, not secrets.
   stripe_customer_id    TEXT,
   stripe_payment_method TEXT,
+  teacher_payment_consent_at TEXT,
+  teacher_payment_consent_version TEXT,
+  teacher_payment_revoked_at TEXT,
+  teacher_payment_revision INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL,
   last_login_at TEXT
 );
@@ -264,3 +268,17 @@ CREATE TABLE IF NOT EXISTS student_recurring_rates (
 );
 CREATE TABLE IF NOT EXISTS request_limits (key TEXT PRIMARY KEY, window INTEGER NOT NULL, attempts INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS revoked_sessions (token_hash TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);
+
+-- Emailed, purpose-bound payment approval for teacher-arranged lessons.
+-- The credential is derived with a separate signing purpose, never stored here.
+CREATE TABLE IF NOT EXISTS manual_booking_payments (
+  booking_id TEXT PRIMARY KEY REFERENCES bookings(id) ON DELETE CASCADE,
+  expires_at TEXT,
+  accepted_at TEXT,
+  allow_future INTEGER NOT NULL DEFAULT 0,
+  use_saved_card INTEGER NOT NULL DEFAULT 0,
+  setup_customer_id TEXT,
+  setup_customer_email TEXT,
+  setup_started_at TEXT,
+  consent_revision INTEGER NOT NULL DEFAULT 0
+);

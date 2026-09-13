@@ -362,6 +362,25 @@
   background: var(--blue);
   box-shadow: 0 3px 0 rgba(32, 62, 130, 0.15);
 }
+.teacher-calendar-lesson--pending {
+  gap: 1px;
+  padding: 3px 5px;
+  border: 1px dashed var(--blue-deep);
+  background: var(--lavender-soft);
+  color: var(--blue-deep);
+}
+.teacher-calendar-lesson--pending:hover {
+  background: var(--lavender);
+}
+.teacher-calendar-lesson--pending.teacher-calendar-lesson--porto {
+  border-left: 3px solid var(--coral);
+}
+.teacher-lesson-status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 0.53rem/1.2 var(--ui);
+}
 .teacher-calendar-lesson strong {
   display: block;
   flex: none;
@@ -370,6 +389,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   width: 100%;
+}
+.teacher-calendar-lesson--pending strong {
+  font-size: 0.67rem;
+  line-height: 1.1;
 }
 .teacher-lesson-time {
   flex: none;
@@ -422,6 +445,10 @@
 }
 .teacher-key-booked {
   background: var(--blue-deep);
+}
+.teacher-key-pending {
+  border: 1px dashed var(--blue-deep) !important;
+  background: var(--lavender-soft);
 }
 .teacher-key-off {
   border-color: var(--rule) !important;
@@ -775,6 +802,13 @@
   flex: 1;
   min-width: 200px;
 }
+.teacher-pending-notice {
+  display: grid;
+  gap: 0.35rem;
+}
+.teacher-pending-notice > p {
+  min-width: 0;
+}
 .teacher-days-off .teacher-inline-notice {
   margin: 1rem 0 0;
 }
@@ -1043,6 +1077,9 @@
   .teacher-lesson-location {
     font-size: 0.68rem;
     margin-top: 3px;
+  }
+  .teacher-lesson-status {
+    font-size: 0.68rem;
   }
   .teacher-grid-footnote {
     align-items: flex-start;
