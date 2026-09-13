@@ -16,6 +16,7 @@ import {
   X
 } from "lucide-react";
 import { AssetMark } from "@/components/BrandMarks";
+import { CalendarBookingPrompt } from "@/components/CalendarBookingPrompt";
 /*
  * Loaded when it is needed, not before. The sign-in panel — with the Google
  * button, the segmented tabs and the whole account form behind it — is only
@@ -384,6 +385,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
   const [horizonDays, setHorizonDays] = useState(BOOKING_HORIZON_DAYS_FALLBACK);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
   const [selectedDate, setSelectedDate] = useState("");
+  const [bookingPromptDate, setBookingPromptDate] = useState("");
   const [calendarWeekCount, setCalendarWeekCount] = useState<CalendarWeekCount>(4);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [savedChoices, setSavedChoices] = useState<Slot[]>([]);
@@ -923,7 +925,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     }
   }
 
-  function startBookingJourney() {
+  function startBookingJourney(date = "") {
     transitionBooking(() => {
       setIntent("book");
       setShowAccountSignIn(false);
@@ -934,14 +936,25 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
       setBookingKind("");
       setSetupFocus(null);
       setLessonTypeId("");
-      setSelectedDate("");
+      setSelectedDate(date);
       setSelectedSlot("");
       setSavedChoices([]);
-      setCalendarWeekCount(8);
+      setCalendarWeekCount(date ? 1 : 8);
       setStep("pattern");
       setForm(emptyForm);
     });
     orientTo("booking-lesson-choice", true);
+  }
+
+  function focusCalendarBooking(booking: MyBooking) {
+    const seriesId = booking.seriesId && activeLessonSeriesIds.has(booking.seriesId) ? booking.seriesId : null;
+    transitionBooking(() => {
+      setUpcomingBookingFocus((current) => ({
+        bookingReference: booking.reference,
+        requestKey: (current?.requestKey ?? 0) + 1,
+        seriesId
+      }));
+    });
   }
 
   function openLessonsJourney() {
@@ -1344,6 +1357,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
       if (chosen) {
         goTo("details");
       } else if (selectedDate) {
+        setCalendarWeekCount(1);
         goTo("time");
       } else {
         setCalendarWeekCount(8);
@@ -1621,6 +1635,20 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
 
   return (
     <section className="booking-steps" aria-label="Book a Portuguese lesson">
+      {bookingPromptDate ? (
+        <CalendarBookingPrompt
+          date={bookingPromptDate}
+          onClose={() => setBookingPromptDate("")}
+          onBook={() => {
+            setBookingPromptDate("");
+            startBookingJourney(bookingPromptDate);
+          }}
+          onViewLessons={bookingsByDate[bookingPromptDate]?.length ? () => {
+            setBookingPromptDate("");
+            focusCalendarBooking(bookingsByDate[bookingPromptDate][0]);
+          } : undefined}
+        />
+      ) : null}
       {loadError ? (
         <div className="booking-alert" role="status">
           <AlertCircle size={18} aria-hidden="true" />
@@ -1644,6 +1672,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             <AccountControls
               calendarHorizonDays={horizonDays}
               embedded
+              bookingActive={intent === "book"}
               onBook={startBookingJourney}
               onManage={(token, seriesId, openSeries) =>
                 transitionBooking(() => {
@@ -1945,7 +1974,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
               <h2>What would you like to do?</h2>
             </div>
             <div className="booking-journey-start__choices">
-              <button className="booking-intent-card booking-intent-card--book" onClick={startBookingJourney} type="button">
+              <button className="booking-intent-card booking-intent-card--book" onClick={() => startBookingJourney()} type="button">
                 <span className="booking-intent-card__icon" aria-hidden="true">
                   <CalendarDays size={24} />
                 </span>
@@ -2006,6 +2035,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                     <ArrowLeft size={16} aria-hidden="true" /> {student ? "Your lessons" : "Back"}
                   </button>
                 </div>
+                {selectedDate ? <p className="booking-state-note">For {formatLongDate(`${selectedDate}T12:00:00Z`)}</p> : null}
                 {checkingSession ? (
                   <p className="booking-state-note">Checking which lessons are available to you…</p>
                 ) : (
@@ -2124,6 +2154,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                   </button>
                 </div>
                 <div className="booking-setup">
+                  {selectedDate && !setupFocus ? <p className="booking-state-note">For {formatLongDate(`${selectedDate}T12:00:00Z`)}</p> : null}
                   {!setupFocus || setupFocus === "location" ? (
                   <fieldset className="booking-setup__group">
                     <legend>Where</legend>
@@ -2229,7 +2260,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                             : "Choose a time"
                           : chosen
                             ? "Continue"
-                            : "Choose a date"}
+                            : selectedDate ? "Choose a time" : "Choose a date"}
                   </button>
                 </div>
               </>
@@ -2340,37 +2371,34 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                       const slots = selectableSlots(cell.key);
                       const lessons = bookingsByDate[cell.key] ?? [];
                       const lessonLabel = lessons.length === 1 ? "1 lesson" : `${lessons.length} lessons`;
+                      const dateLabel = formatLongDate(`${cell.key}T12:00:00Z`);
+                      const canStartBooking = isLessonsCalendarOverview && cell.key >= todayKey;
                       return (
                         <button
-                          aria-label={`${formatLongDate(`${cell.key}T12:00:00Z`)}${
+                          aria-label={`${dateLabel}${
                             lessons.length ? `, ${lessonLabel}` : ""
                           }${
                             slots.length
                               ? `, ${slots.length} times free`
                               : lessons.length
                                 ? ""
-                                : ", unavailable"
+                                : canStartBooking ? ", choose a lesson" : ", unavailable"
                           }`}
+                          aria-haspopup={canStartBooking ? "dialog" : undefined}
                           aria-pressed={!isLessonsCalendarOverview && selectedDate === cell.key}
-                          className={`${slots.length ? "has-availability" : ""}${
+                          className={`${slots.length ? "has-availability" : ""}${canStartBooking ? " can-start-booking" : ""}${
                             lessons.length ? " has-booking" : ""
                           }${!isLessonsCalendarOverview && selectedDate === cell.key ? " is-selected" : ""}${cell.isToday ? " is-today" : ""}`}
                           data-date-key={cell.key}
-                          disabled={!slots.length && !lessons.length}
+                          disabled={!canStartBooking && !slots.length && !lessons.length}
                           key={cell.key}
                           onClick={() => {
+                            if (canStartBooking) {
+                              setBookingPromptDate(cell.key);
+                              return;
+                            }
                             if (isLessonsCalendarOverview && lessons.length) {
-                              const booking = lessons[0];
-                              const seriesId = booking.seriesId && activeLessonSeriesIds.has(booking.seriesId)
-                                ? booking.seriesId
-                                : null;
-                              transitionBooking(() => {
-                                setUpcomingBookingFocus((current) => ({
-                                  bookingReference: booking.reference,
-                                  requestKey: (current?.requestKey ?? 0) + 1,
-                                  seriesId
-                                }));
-                              });
+                              focusCalendarBooking(lessons[0]);
                               return;
                             }
                             transitionBooking(() => {
@@ -2787,32 +2815,29 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                         {postpay
                           ? "Nothing to pay now. Your card is charged after each lesson. Same-day changes cost €5. A no-show costs €5 instead of the lesson price."
                           : `Pay Inês on the lesson day. Same-day changes cost ${formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}.`}
-                      </p>
-                      <p className="booking-form-note booking-confirmation-payment__detail" id="booking-payment-detail">
-                        Changes are free until the day before (Porto time).{postpay ? " Any earlier €5 change fee still applies." : ""}
                         {form.repeat === null ? " Ongoing lessons repeat until you stop them." : ""}
                       </p>
 
                       <div className="booking-agreement">
                         {needsPaymentConsent ? (
-                          <button
-                            className="booking-agreement__button"
-                            type="button"
-                            aria-pressed={paymentConsent}
-                            aria-describedby="booking-payment-summary booking-payment-detail booking-agreement-note"
-                            onClick={() => setPaymentConsent((current) => !current)}
-                          >
-                            {paymentConsent ? <CheckCircle2 size={20} aria-hidden="true" /> : <Circle size={20} aria-hidden="true" />}
-                            Agree to terms &amp; privacy
-                          </button>
-                        ) : null}
-                        <a href="#terms-privacy">Read terms &amp; privacy</a>
+                          <div className={`booking-agreement__control${paymentConsent ? " is-agreed" : ""}`}>
+                            <button
+                              className="booking-agreement__button"
+                              type="button"
+                              aria-label="Agree to terms & privacy"
+                              aria-pressed={paymentConsent}
+                              aria-describedby="booking-payment-summary"
+                              onClick={() => setPaymentConsent((current) => !current)}
+                            >
+                              {paymentConsent ? <CheckCircle2 size={20} aria-hidden="true" /> : <Circle size={20} aria-hidden="true" />}
+                              Agree to
+                            </button>
+                            <a aria-haspopup="dialog" data-terms-privacy href="#terms-privacy">terms &amp; privacy</a>
+                          </div>
+                        ) : (
+                          <a aria-haspopup="dialog" data-terms-privacy href="#terms-privacy">Terms &amp; privacy</a>
+                        )}
                       </div>
-                      {needsPaymentConsent ? (
-                        <p className="booking-form-note booking-agreement__note" id="booking-agreement-note">
-                          I authorise these charges and acknowledge the privacy notice.
-                        </p>
-                      ) : null}
 
                       {/* The final action names both the selection and the obligation
                           to pay, even though payment happens after the lesson. */}

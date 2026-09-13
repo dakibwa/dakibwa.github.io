@@ -462,21 +462,28 @@ Selecting a free day while booking collapses the date picker into a compact
 selected-date summary, so the available times are directly below it on a phone.
 `Change date` returns to the full eight-week availability window. The lesson-view
 calendar stays at four weeks and sends booked-date selections to the matching
-lesson above.
+lesson above. Future dates highlight on hover/focus; clicking or tapping opens
+`Do you want to book?`, with no separate Book labels on the tiles. Continuing
+carries the date through lesson selection, then checks availability for the
+chosen length. Booked dates also offer `View booked lessons` in the question.
 
 ### Payment
 
 The combined notice opens at `/book/#terms-privacy` without requiring sign-in.
-It is one native disclosure beneath the workspace, beginning with `How booking
+It is a native modal dialog over the current screen, beginning with `How booking
 works`; consumer rights, sole-trader contact details and privacy follow. Sign-up does not
 repeat it. The footer links to `Terms & privacy`; old policy URLs and the
-`#booking`, `#privacy` and `#change-booking` fragments open the same disclosure.
+`#booking`, `#privacy` and `#change-booking` fragments open the same dialog.
 The visible payment and €5 summary precedes a required `Agree to terms & privacy`
 toggle in postpay mode. It explicitly authorises the existing card charges and
 acknowledges the privacy notice. The final button states both the lesson count
 and the obligation to pay. The toggle still sends the existing `paymentConsent`
 boolean; payment amounts, timing, enforcement and the monetary agreement version
 are unchanged. Reading the combined notice preserves the selection and agreement.
+The underlined terms text inside the agreement opens the dialog independently
+of the toggle. The page shows one payment summary, without a separate reading
+link or repeated authorisation sentence. Escape, the close button or clicking
+outside dismisses the dialog and returns focus to its opener.
 
 Dan confirmed the public contact email `aprenderportugues.ines@gmail.com`,
 Época as the contact address, Inês's own NIF and her status as a sole trader

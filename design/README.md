@@ -150,26 +150,30 @@ the same identity or action:
   Google sign-in and the account form, with no data-use summary, privacy
   details, Google password note or consent checkbox. The final booking
   action follows the payment and change conditions for the selected method.
-  One compact `Terms & privacy` disclosure beneath the workspace holds the
-  details. It opens with `How booking works`: booking and charge timing, free
+  A `Terms & privacy` overlay holds the details, without adding a disclosure
+  beneath the workspace. It opens with `How booking works`: booking and charge timing, free
   changes until the previous Porto calendar day, the €5 same-day fee and the
   €5 recorded no-show replacement charge. The opening line explains the 14-hour
   booking notice. Consumer rights, Inês's sole-trader contact
   details and the privacy notice follow in the same reading column. Use the existing
-  Montserrat text, cream surface and coral disclosure marks, with copyable text
+  Montserrat text and cream surface, with copyable text
   and readable wrapping at 320px. A quiet, sentence-case `Terms & privacy` footer link
   sits at the bottom right on desktop and mobile, with a comfortable touch
-  target and no button treatment. It opens that disclosure directly, without
-  requiring sign-in. The old `/terms`,
+  target and no button treatment. It opens the same overlay on the current page,
+  without requiring sign-in. The overlay scrolls within the viewport, keeps its
+  close button visible, traps keyboard focus, and closes with Escape or a click
+  outside. Closing returns focus to the link and preserves the page position,
+  booking choices, notes and agreement state. The old `/terms`,
   `/booking-terms` and `/privacy` pages redirect into booking; there is no
   separate legal-page hero, index or marketing treatment. Payment wording follows
   the method shown at booking and never implies every booking saves or charges a card.
   When after-lesson charging is active, every booking presents a short
-  `Agree to terms & privacy` toggle beside `Read terms & privacy`, following
-  the visible payment and €5 summary. It starts unselected, has a distinct
-  selected state and supports keyboard toggling. The accompanying note
-  expressly authorises the described card charges and acknowledges the
-  privacy notice; it is not marketing consent. The final action names the
+  `Agree to terms & privacy` control following one visible payment and €5
+  summary. The underlined `terms & privacy` text inside it opens the overlay;
+  reading it never selects the agreement. The toggle starts unselected, has a
+  distinct selected state and supports keyboard toggling. It authorises the
+  described charges and acknowledges the privacy notice; there is no repeated
+  authorisation sentence or second terms link. The final action names the
   number of lessons and says `agree to pay`, even though no money is taken
   at booking. A payment configuration failure replaces action with a
   visible inline error instead of confirming without a usable payment method.
@@ -340,6 +344,13 @@ Preserve these desktop and mobile states:
   Below the wide-desktop account-bar layout,
   the more useful top-right action in Upcoming lessons remains `Book a lesson`,
   uses the same coral emphasis, and opens the booking choices directly.
+  Future calendar dates keep their plain date tiles, with a hover/focus highlight
+  and no separate `Book` label. Clicking or tapping opens `Do you want to book?`
+  with the chosen date, `Choose a lesson` and `Not now`. Booked dates also offer
+  `View booked lessons`. Continuing carries the date into lesson selection and
+  then checks times for that length; an unchecked date does not imply availability.
+  A date with no free times offers the normal change-date route without losing
+  the chosen lesson. Dismissing the question restores focus to the date.
   A repeating schedule appears once in Upcoming lessons,
   led by its nearest date and distinguished from coral one-off bookings with a
   lilac recurring treatment and a subtle lilac hover/focus wash.
