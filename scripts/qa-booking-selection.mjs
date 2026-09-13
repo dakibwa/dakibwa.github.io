@@ -40,7 +40,7 @@ try {
           endAt: new Date(Date.UTC(2026, 8, 14 + index, hour, type.duration_minutes)).toISOString()
         }));
       }
-      return json(route, { slotsByDate, timeZone: "Europe/Lisbon", minimumNoticeHours: 12, horizonDays: 56, lessonType: type });
+      return json(route, { slotsByDate, timeZone: "Europe/Lisbon", minimumNoticeHours: 14, horizonDays: 56, lessonType: type });
     });
     await context.route("**/bookings/series/preview", route => {
       const body = route.request().postDataJSON();

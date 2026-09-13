@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import { candidateStartMinutes, computeAvailability, DEFAULT_BOOKING_HORIZON_DAYS } from "./availability.mjs";
+import { candidateStartMinutes, computeAvailability, DEFAULT_BOOKING_HORIZON_DAYS, isSlotBookable } from "./availability.mjs";
 import {
   chargeSavedCard,
   checkoutSessionProblem,
@@ -184,6 +184,41 @@ await test("moving a recurrence ignores only that sequence's existing lessons", 
 
   assert.equal(blocked.slotsByDate["2026-09-07"], undefined);
   assert.equal(moving.slotsByDate["2026-09-07"]?.[0]?.startAt, "2026-09-07T09:00:00.000Z");
+});
+
+await test("14-hour notice hides early slots, allows the boundary and rejects a stale selection across DST", async () => {
+  for (const { day, now, boundary } of [
+    { day: "2026-09-07", now: "2026-09-06T19:00:00Z", boundary: "2026-09-07T09:00:00.000Z" },
+    { day: "2026-10-25", now: "2026-10-24T20:00:00Z", boundary: "2026-10-25T10:00:00.000Z" }
+  ]) {
+    const env = {
+      DB: {
+        prepare(sql) {
+          return {
+            bind() { return this; },
+            async all() {
+              // No settings row: this also exercises a freshly provisioned/missing setting.
+              return { results: sql.includes("FROM availability_rules")
+                ? [{ weekday: weekdayOf(day), start_minute: 570, last_start_minute: 630 }]
+                : [] };
+            }
+          };
+        }
+      }
+    };
+    const input = { lessonType: { duration_minutes: 60 }, now: new Date(now) };
+    const { slotsByDate, settings } = await computeAvailability(env, { ...input, fromKey: day, toKey: day });
+    assert.equal(settings.minimumNoticeHours, 14);
+    assert.deepEqual(slotsByDate[day].map((slot) => slot.startAt), [
+      boundary, new Date(Date.parse(boundary) + 1800000).toISOString()
+    ]);
+    assert.equal((await isSlotBookable(env, { ...input, startAt: boundary })).ok, true);
+    const stale = await isSlotBookable(env, {
+      ...input, startAt: boundary, now: new Date(input.now.getTime() + 1)
+    });
+    assert.equal(stale.ok, false);
+    assert.match(stale.reason, /at least 14 hours' notice/);
+  }
 });
 
 await test("eachDateKey is inclusive and refuses to run away", () => {
