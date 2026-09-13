@@ -3624,7 +3624,7 @@ html.booking-transitioning .booking-confirmation-stage {
 }
 
 .booking-confirmation-notes textarea {
-  min-height: 8rem;
+  min-height: 6rem;
 }
 
 .booking-confirmation-payment {
@@ -3645,7 +3645,7 @@ html.booking-transitioning .booking-confirmation-stage {
   }
 
   .booking-confirmation-notes textarea {
-    min-height: 13rem;
+    min-height: 8rem;
   }
 }
 
@@ -5358,8 +5358,11 @@ button.text-action {
 }
 
 .booking-agreement__control {
+  position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 100%;
   min-height: 44px;
   max-width: 100%;
   border: 1px solid var(--rule);
@@ -5393,6 +5396,8 @@ button.text-action {
 }
 
 .booking-agreement__control > a {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -5403,6 +5408,14 @@ button.text-action {
 
 .booking-agreement__control > a:hover {
   text-decoration-thickness: 2px;
+}
+
+/* The whole capsule toggles agreement; the link keeps its separate action. */
+.booking-agreement__button::before {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--squiggle-field);
+  content: "";
 }
 
 .booking-agreement__button svg {
@@ -5430,10 +5443,16 @@ button.text-action {
   text-underline-offset: 2px;
 }
 
-.booking-agreement__button:focus-visible,
+.booking-agreement__button:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.booking-agreement__button:focus-visible::before,
 .booking-agreement__control > a:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
+  box-shadow: none;
 }
 
 .booking-alert--warn {

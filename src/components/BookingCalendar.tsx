@@ -2791,7 +2791,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                       </span>
                       <textarea
                         onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-                        rows={3}
+                        rows={2}
                         value={form.notes}
                       />
                     </label>
