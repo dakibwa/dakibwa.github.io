@@ -177,7 +177,11 @@ await calendarZonePage.route("**/availability?*", async (route) => {
   });
 });
 await calendarZonePage.goto(`${base}/book/`, { waitUntil: "domcontentloaded" });
-await calendarZonePage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
+try {
+  await calendarZonePage.getByRole("button", { name: "Book a new lesson", exact: true }).click();
+} catch (error) {
+  throw new Error(`The calendar fixture did not open: ${await calendarZonePage.locator("body").innerText()}`, { cause: error });
+}
 await calendarZonePage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
 await calendarZonePage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
 await calendarZonePage.getByRole("button", { name: "Choose a date", exact: true }).click();
@@ -208,6 +212,7 @@ if (
 }
 
 await calendarZonePage.locator('[data-date-key="2026-09-03"]').click();
+await waitForOrientation(calendarZonePage);
 const calendarDualTime = (await calendarZonePage.locator(".slot-grid button").first().innerText())
   .replace(/\s+/g, " ")
   .trim();
@@ -251,6 +256,10 @@ for (const route of routes) {
       if (contactHref !== "https://wa.me/351963161134") {
         throw new Error(`Booking privacy contact regressed: ${contactHref}.`);
       }
+    }
+
+    if (route.id === "home" || route.id === "booking") {
+      await checkTermsDialog(page, page.locator(".site-footer__legal a"));
     }
 
     if (viewport.id === "desktop") {
@@ -559,6 +568,7 @@ accountPage.on("console", (message) => {
 await accountPage.addInitScript(() => {
   window.localStorage.setItem("ines-student-session", "qa-session");
 });
+let qaPostpay = false;
 await accountPage.route("**/lesson-types", async (route) => {
   await route.fulfill({
     contentType: "application/json",
@@ -590,8 +600,8 @@ await accountPage.route("**/lesson-types", async (route) => {
           price_cents: 3500
         }
       ],
-      paymentMode: "off",
-      postpay: false,
+      paymentMode: qaPostpay ? "postpay" : "off",
+      postpay: qaPostpay,
       paymentReady: true
     })
   });
@@ -1585,6 +1595,8 @@ if ((await desktopBookingTimes.count()) !== 2) {
 const desktopBookedDay = accountPage.getByRole("button", { name: /2 lessons/ }).first();
 await desktopBookedDay.scrollIntoViewIfNeeded();
 await desktopBookedDay.click();
+await accountPage.getByRole("dialog", { name: "Do you want to book?", exact: true })
+  .getByRole("button", { name: "View booked lessons", exact: true }).click();
 const desktopCalendarTarget = accountPanel.locator("#upcoming-booking-INES-QA01");
 await desktopCalendarTarget.waitFor({ state: "visible" });
 await accountPage.waitForFunction(() => document.activeElement?.id === "upcoming-booking-INES-QA01");
@@ -1924,6 +1936,8 @@ if ((await bookingTimes.count()) !== 2) {
 }
 const bookedDay = accountPage.getByRole("button", { name: /2 lessons/ }).first();
 await bookedDay.click();
+await accountPage.getByRole("dialog", { name: "Do you want to book?", exact: true })
+  .getByRole("button", { name: "View booked lessons", exact: true }).click();
 const mobileCalendarTarget = accountPanel.locator("#upcoming-booking-INES-QA01");
 await mobileCalendarTarget.waitFor({ state: "visible" });
 await accountPage.waitForFunction(() => document.activeElement?.id === "upcoming-booking-INES-QA01");
@@ -2466,6 +2480,84 @@ if (stopRepeatPayloads.length !== 1 || stopRepeatPayloads[0].cancelRemaining !==
 await sequenceDialog.getByText("4 lessons were cancelled.", { exact: false }).waitFor();
 await sequenceDialog.getByRole("button", { name: "Done", exact: true }).click();
 
+// Reading the terms must never accept them or discard an unfinished booking.
+qaPostpay = true;
+await accountPage.goto(`${base}/book/?view=book`, { waitUntil: "domcontentloaded" });
+await accountPage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
+await accountPage.getByRole("radio", { name: "60 minutes lesson · €25", exact: true }).check();
+await accountPage.getByRole("button", { name: "Choose a date", exact: true }).click();
+await accountPage.getByRole("button", { name: /times free/ }).first().click();
+await accountPage.locator("#lesson-calendar .slot-grid button").first().click();
+const agreement = accountPage.getByRole("button", { name: "Agree to terms & privacy", exact: true });
+const agreementTerms = accountPage.locator(".booking-agreement__control a");
+const submitBooking = accountPage.getByRole("button", { name: "Book lesson & agree to pay", exact: true });
+await agreement.waitFor();
+await accountPage.locator(".student-details-form textarea").fill("Keep this note while I read the terms.");
+const choicesBeforeTerms = JSON.stringify(await accountPage.locator(".booking-selection-stack strong").allTextContents());
+for (const width of [390, 1440, 320]) {
+  await accountPage.setViewportSize({ width, height: 844 });
+  if (await agreement.getAttribute("aria-pressed") !== "false" || await submitBooking.isEnabled()) {
+    throw new Error("A new booking must require an explicit agreement before it can be submitted.");
+  }
+  await checkTermsDialog(accountPage, agreementTerms);
+  if (
+    await agreement.getAttribute("aria-pressed") !== "false" ||
+    await submitBooking.isEnabled() ||
+    await accountPage.locator(".student-details-form textarea").inputValue() !== "Keep this note while I read the terms." ||
+    JSON.stringify(await accountPage.locator(".booking-selection-stack strong").allTextContents()) !== choicesBeforeTerms
+  ) throw new Error("Reading the terms changed agreement, notes or booking choices.");
+  await agreement.press("Space");
+  if (await agreement.getAttribute("aria-pressed") !== "true" || !await submitBooking.isEnabled()) {
+    throw new Error("The agreement must support keyboard selection.");
+  }
+  await checkTermsDialog(accountPage, agreementTerms);
+  if (await agreement.getAttribute("aria-pressed") !== "true") throw new Error("Reading the terms cleared an existing agreement.");
+  await agreement.press("Space");
+}
+await accountPage.setViewportSize({ width: 390, height: 844 });
+
+for (const width of [1440, 390]) {
+  await accountPage.setViewportSize({ width, height: 844 });
+  await accountPage.goto(`${base}/book/?view=lessons`, { waitUntil: "domcontentloaded" });
+  const freeDateCell = accountPage.locator(`#lesson-calendar [data-date-key="${qaFreeDate}"]`);
+  await freeDateCell.waitFor();
+  if (await accountPage.locator(".calendar-week").getByText("Book", { exact: true }).count()) {
+    throw new Error("The overview must keep plain dates without separate Book labels.");
+  }
+  await freeDateCell.focus();
+  await freeDateCell.press("Enter");
+  const bookingQuestion = accountPage.getByRole("dialog", { name: "Do you want to book?", exact: true });
+  await bookingQuestion.waitFor();
+  await bookingQuestion.getByRole("button", { name: "Not now", exact: true }).click();
+  if (!await freeDateCell.evaluate((element) => document.activeElement === element)) {
+    throw new Error("Dismissing the booking question must return focus to the date.");
+  }
+  await freeDateCell.click();
+  await bookingQuestion.getByRole("button", { name: "Choose a lesson", exact: true }).click();
+  await accountPage.locator("#account-upcoming-lessons").waitFor({ state: "detached" });
+  await accountPage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
+  await accountPage.getByRole("button", { name: "Choose a time", exact: true }).click();
+  await accountPage.locator("#lesson-calendar .slot-grid button").first().waitFor();
+  if (!await accountPage.locator(".booking-date-summary").innerText().then((text) => text.includes(String(qaFreeStart.getUTCDate())))) {
+    throw new Error("Booking from the overview lost the chosen date.");
+  }
+  await accountPage.locator("#lesson-calendar .slot-grid button").first().click();
+  await accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true }).waitFor();
+
+  await accountPage.goto(`${base}/book/?view=lessons`, { waitUntil: "domcontentloaded" });
+  const emptyDateButton = accountPage.locator("#lesson-calendar .can-start-booking:not(.has-booking)").first();
+  const emptyDateKey = await emptyDateButton.getAttribute("data-date-key");
+  await emptyDateButton.click();
+  await bookingQuestion.getByRole("button", { name: "Choose a lesson", exact: true }).click();
+  await accountPage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
+  await accountPage.getByRole("button", { name: "Choose a time", exact: true }).click();
+  await accountPage.getByText("No free times on this day.", { exact: true }).waitFor();
+  await accountPage.getByRole("button", { name: "Change date", exact: true }).click();
+  const unavailableDate = accountPage.locator(`#lesson-calendar [data-date-key="${emptyDateKey}"]`);
+  if (await unavailableDate.isEnabled()) throw new Error("The actual availability check must keep a full day unavailable.");
+}
+await accountPage.setViewportSize({ width: 390, height: 844 });
+
 await accountMenuButton.click();
 await accountPanel.getByRole("button", { name: "Sign out", exact: true }).click();
 await accountPage.getByRole("button", { name: "Book a new lesson", exact: true }).waitFor();
@@ -2481,6 +2573,12 @@ await legacyPage.waitForSelector("#booking-journey-start", { timeout: 10_000 });
 await legacyPage.waitForFunction(() => window.location.pathname === "/book/", null, { timeout: 10_000 });
 if (new URL(legacyPage.url()).pathname !== "/book/") {
   throw new Error(`The legacy management route did not normalise to /book/: ${legacyPage.url()}`);
+}
+for (const fragment of ["terms-privacy", "privacy", "booking", "change-booking"]) {
+  await legacyPage.goto(`${base}/book/#${fragment}`, { waitUntil: "domcontentloaded" });
+  await legacyPage.getByRole("dialog", { name: "Terms & privacy", exact: true }).waitFor();
+  await legacyPage.getByRole("button", { name: "Close terms & privacy", exact: true }).click();
+  await legacyPage.waitForFunction(() => !window.location.hash);
 }
 await legacyPage.close();
 await legacyBrowser.close();
@@ -2532,6 +2630,45 @@ function assertIncludes(value, expected, label) {
   if (!value.includes(expected)) {
     throw new Error(`Missing ${label}: ${expected}`);
   }
+}
+
+async function checkTermsDialog(targetPage, opener) {
+  await targetPage.locator('#terms-privacy[data-ready="true"]').waitFor({ state: "attached" });
+  await opener.scrollIntoViewIfNeeded();
+  await opener.focus();
+  await waitForOrientation(targetPage);
+  const before = await targetPage.evaluate(() => ({ url: location.href, scrollY, overflow: document.body.style.overflow }));
+  await opener.press("Enter");
+  const dialog = targetPage.getByRole("dialog", { name: "Terms & privacy", exact: true });
+  await dialog.waitFor();
+  const layout = await dialog.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return {
+      fits: bounds.left >= 0 && bounds.right <= innerWidth && bounds.top >= 0 && bounds.bottom <= innerHeight,
+      noOverflow: element.scrollWidth <= element.clientWidth,
+      modal: element.matches(":modal"),
+      focused: element.contains(document.activeElement)
+    };
+  });
+  if (!layout.fits || !layout.noOverflow || !layout.modal || !layout.focused) {
+    throw new Error(`Terms must open as a focused modal within the viewport: ${JSON.stringify(layout)}.`);
+  }
+  await dialog.getByRole("link", { name: "CNPD", exact: true }).focus();
+  await targetPage.keyboard.press("Tab");
+  if (!await dialog.evaluate((element) => element.contains(document.activeElement))) {
+    throw new Error("Keyboard focus escaped the terms overlay.");
+  }
+  await targetPage.keyboard.press("Escape");
+  await dialog.waitFor({ state: "hidden" });
+  const after = await targetPage.evaluate(() => ({ url: location.href, scrollY, overflow: document.body.style.overflow }));
+  if (before.url !== after.url || Math.abs(before.scrollY - after.scrollY) > 1 || before.overflow !== after.overflow ||
+      !await opener.evaluate((element) => document.activeElement === element)) {
+    throw new Error(`Closing terms must restore the current page and focus: ${JSON.stringify({ before, after })}.`);
+  }
+  await opener.click();
+  await dialog.waitFor();
+  await targetPage.mouse.click(2, 2);
+  await dialog.waitFor({ state: "hidden" });
 }
 
 async function waitForOrientation(targetPage) {

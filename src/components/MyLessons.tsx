@@ -85,6 +85,7 @@ function HistoryLessonCard({ booking }: { booking: MyBooking }) {
 export function MyLessons({
   calendarHorizonDays = BOOKING_HORIZON_DAYS_FALLBACK,
   embedded = false,
+  bookingActive = false,
   onBook,
   onManage,
   onOpenAccountSection,
@@ -100,6 +101,7 @@ export function MyLessons({
 }: {
   calendarHorizonDays?: number;
   embedded?: boolean;
+  bookingActive?: boolean;
   onBook?: () => void;
   onManage?: (token: string, seriesId: string | null, openSeries?: boolean) => void;
   onOpenAccountSection?: (section: "history" | "upcoming" | "profile") => void;
@@ -141,6 +143,14 @@ export function MyLessons({
   const [selectedDate, setSelectedDate] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const studentId = student?.id;
+
+  useEffect(() => {
+    if (!bookingActive) return;
+    setMenuOpen(false);
+    setEditing(false);
+    setExpandedUpcomingGroup("");
+    setAccountSection("");
+  }, [bookingActive]);
 
   useEffect(() => {
     if (!embedded || !openUpcomingRequest) return;

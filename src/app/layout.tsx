@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Beth_Ellen, Montserrat } from "next/font/google";
 import { preload } from "react-dom";
+import { BookingInformation } from "@/components/BookingInformation";
 import {
   AKIBWA_PROJECT_VIEW_BOOTSTRAP,
   AkibwaProjectBanner
@@ -101,6 +102,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       >
         <AkibwaProjectBanner />
         {children}
+        <BookingInformation />
       </body>
     </html>
   );
