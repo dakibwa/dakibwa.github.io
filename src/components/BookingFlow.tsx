@@ -46,9 +46,7 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
             <h1 id="booking-title">
               Your{" "}
               <br />
-              Portuguese{" "}
-              <br />
-              lessons
+              Lessons
             </h1>
             <div className="editorial-rule" aria-hidden="true" />
             <ul className="booking-intro__points">

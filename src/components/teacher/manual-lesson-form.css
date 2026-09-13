@@ -1,0 +1,14 @@
+.teacher-manual-payment {
+  grid-column: 1 / -1;
+  max-width: 70ch;
+}
+
+.teacher-manual-payment select {
+  max-width: 26rem;
+}
+
+.teacher-manual-payment p {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.65;
+}

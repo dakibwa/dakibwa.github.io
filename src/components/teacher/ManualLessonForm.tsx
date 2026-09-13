@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { createBookingFor } from "@/lib/admin-api";
-import { portoTimeToUtc } from "@/lib/booking-api";
+import { formatLongDate, formatSlotTime, portoTimeToUtc } from "@/lib/booking-api";
 import { SITE_BASE_PATH } from "@/lib/paths";
+import "./manual-lesson-form.css";
 
 const empty = {
   email: "",
@@ -13,6 +14,7 @@ const empty = {
   date: "",
   time: "17:00",
   location: "online" as "online" | "porto",
+  paymentMode: "card" as "card" | "offline",
 };
 
 export function ManualLessonForm({
@@ -54,18 +56,26 @@ export function ManualLessonForm({
             setError("");
             setStatus("");
             try {
-              await createBookingFor(token, {
+              const result = await createBookingFor(token, {
                 email: lesson.email.trim(),
                 name: lesson.name.trim(),
                 lessonType: lesson.lessonType,
                 startAt: portoTimeToUtc(lesson.date, lesson.time),
                 location: lesson.location,
                 notes: "",
+                paymentMode: lesson.paymentMode,
               });
               setLesson(empty);
-              setStatus(
-                "Lesson added. The student has been emailed the details.",
-              );
+              if (result.paymentAction === "confirmation_required") {
+                const deadline = result.confirmationExpiresAt
+                  ? ` The time is held until ${formatLongDate(result.confirmationExpiresAt)} at ${formatSlotTime(result.confirmationExpiresAt)} (Porto time).`
+                  : "";
+                setStatus(`Lesson reserved. The student has been emailed a link to confirm the lesson and card payment.${deadline}`);
+              } else if (result.paymentAction === "scheduled") {
+                setStatus("Lesson added. The student has been emailed the details. Their authorised saved card will be charged when the lesson ends.");
+              } else {
+                setStatus("Lesson added. The student has been emailed the details. Payment is arranged separately.");
+              }
               onCreated();
             } catch (caught) {
               setError(
@@ -147,6 +157,28 @@ export function ManualLessonForm({
               onChange={(e) => setLesson({ ...lesson, time: e.target.value })}
             />
           </label>
+          <div className="teacher-manual-payment">
+            <label>
+              <span>Payment</span>
+              <select
+                aria-describedby="manual-payment-help"
+                disabled={busy}
+                value={lesson.paymentMode}
+                onChange={(event) => setLesson({
+                  ...lesson,
+                  paymentMode: event.target.value as "card" | "offline",
+                })}
+              >
+                <option value="card">Card after the lesson</option>
+                <option value="offline">Payment arranged separately</option>
+              </select>
+            </label>
+            <p id="manual-payment-help">
+              {lesson.paymentMode === "card"
+                ? "If this student has a saved card and has authorised payments for lessons you arrange, it will be charged when the lesson ends. Otherwise, they’ll receive an email link to confirm the lesson and save a card if needed."
+                : "The student will receive the lesson details. Arrange payment with them directly; this booking will not charge a card."}
+            </p>
+          </div>
           <div className="teacher-manual-submit">
             <button
               className="button button--coral"

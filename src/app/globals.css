@@ -3598,6 +3598,50 @@ html.booking-transitioning .booking-confirmation-stage {
   margin-top: 0;
 }
 
+.booking-confirmation-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.3rem;
+  align-items: start;
+}
+
+.booking-confirmation-columns > .booking-confirmation-notes {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+}
+
+.booking-confirmation-notes textarea {
+  min-height: 8rem;
+}
+
+.booking-confirmation-payment {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.booking-confirmation-payment > .booking-form-note,
+.booking-confirmation-payment > .booking-agreement {
+  margin-top: 0;
+}
+
+.booking-confirmation-payment > .booking-confirmation-payment__detail {
+  font-size: 0.74rem;
+}
+
+@container booking (min-width: 720px) {
+  .booking-confirmation-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(1.5rem, 3vw, 3rem);
+  }
+
+  .booking-confirmation-notes textarea {
+    min-height: 13rem;
+  }
+}
+
 @container booking (max-width: 430px) {
   .lesson-choice {
     grid-template-columns: 1fr;
@@ -4807,6 +4851,32 @@ button.text-action {
 .my-lessons__details-note--ok {
   color: var(--coral-action);
   opacity: 1;
+}
+
+.my-lessons__teacher-payments {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.6rem;
+  align-items: start;
+  margin-top: 0.65rem;
+}
+
+.my-lessons__teacher-payments h3 {
+  font: 600 0.9rem/1.5 var(--ui);
+}
+
+.my-lessons__teacher-payments p {
+  max-width: 65ch;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.my-lessons__teacher-payments p:empty {
+  display: none;
+}
+
+.my-lessons__teacher-payments button {
+  justify-self: start;
 }
 
 .my-lessons__group {

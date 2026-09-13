@@ -60,8 +60,48 @@ do. A double booking is never intended, so that is still refused.
 
 Adding a lesson for someone who booked another way creates their account if it
 does not exist, with no password — they set one through "forgot password" when
-they first want to manage the lesson themselves. They receive the same
-confirmation, calendar invitation and manage link as if they had booked it.
+they first want to manage the lesson themselves.
+
+### Payment for lessons Inês adds
+
+The manual form offers `Card after lesson` or `Payment arranged separately`.
+The latter retains the original confirmation/calendar flow without a card
+charge. Older clients omitting `paymentMode` retain that original behaviour;
+new clients explicitly send `card` or `offline`.
+
+Card payment requires working postpay configuration and a future start time.
+The lesson's current public price is frozen when Inês adds it. An existing
+account or a saved card alone never authorises a teacher-arranged charge.
+If the student has separately opted into payments for future lessons arranged
+with Inês, a usable saved card confirms the new lesson and schedules its charge
+at the lesson end. The ordinary confirmation, calendar and manage link are sent.
+
+Otherwise, the time is held for up to 24 hours, capped at its start, and only
+the student receives a `Confirm lesson` email. `/confirm-lesson/` reads an
+email-only, purpose-bound credential from the URL fragment; this is separate
+from the existing manage token, which is also available in teacher emails.
+Opening the page never accepts terms or charges a card. The student explicitly
+accepts the displayed amount, after-lesson charge and €5 conditions. Their
+existing saved card is reused; if absent, hosted Stripe setup saves one without
+taking payment. The exact signed setup callback confirms the unexpired hold.
+Declining or withdrawing an unconfirmed invitation releases it without fees.
+
+An unchecked optional checkbox can authorise payments for future lessons the
+student arranges with Inês. This is stored only after successful confirmation,
+with its own version, never backfilled from existing cards or old bookings.
+The student can turn it off in their profile. Revocation affects future additions;
+already confirmed lessons keep their accepted payment terms. A revision guard
+prevents an in-flight setup or old acceptance replay from restoring revoked
+permission. The first acceptance freezes its scope and setup parameters.
+
+Pending invitations appear as `Awaiting confirmation` in Inês's timetable and
+can be withdrawn. Failed invitation mail retries as an invitation, never as a
+false booking confirmation. Existing charging, declined-payment recovery,
+refunds and fees continue through their existing idempotent paths.
+
+Migration `0016-manual-booking-payments.sql` adds the separate permission
+fields and invitation acceptance table. Apply it before deploying the Worker;
+deploy the Worker before the new site. No existing booking is converted.
 
 ## Teacher calendar
 

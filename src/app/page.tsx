@@ -30,11 +30,11 @@ export default function Home() {
         <section className="home-hero" aria-labelledby="home-title">
           <div className="home-hero__copy">
             <h1 id="home-title">
-              <span>European Portuguese</span>
-              <span className="home-title__script">lessons.</span>
+              <span>Portuguese</span>
+              <span className="home-title__script">Lessons</span>
             </h1>
             <div className="editorial-rule" aria-hidden="true" />
-            <p>One to one in Porto.<br />Or online, wherever you are.</p>
+            <p>One to one, at your pace.<br />Online or in person.</p>
             <div className="home-hero__actions">
               <Link className="button button--coral" href="/book/?view=book">
                 Book a lesson

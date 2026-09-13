@@ -257,7 +257,7 @@ export function WeeklyTimetable({
                 segments.some((segment) => segment.date === date) ? (
                   <i
                     className="teacher-heading-booked-dot"
-                    aria-label="Lessons booked"
+                    aria-label="Lessons on this day"
                   />
                 ) : null}
               </button>
@@ -267,7 +267,7 @@ export function WeeklyTimetable({
         <div
           className="teacher-timetable-scroll"
           aria-label={
-            editing ? "Weekly teaching hours" : "Booked lessons this week"
+            editing ? "Weekly teaching hours" : "Lessons this week"
           }
         >
           <div
@@ -368,12 +368,12 @@ export function WeeklyTimetable({
                           <button
                             key={`${booking.id}-${position}`}
                             type="button"
-                            className={`teacher-calendar-lesson ${booking.location === "porto" ? "teacher-calendar-lesson--porto" : ""}`}
+                            className={`teacher-calendar-lesson ${booking.location === "porto" ? "teacher-calendar-lesson--porto" : ""} ${booking.awaiting_confirmation ? "teacher-calendar-lesson--pending" : ""}`}
                             style={{
                               top: `calc(${(bookingStart - start) / step} * var(--teacher-slot-height) + 2px)`,
                               height: `max(38px, calc(${(bookingEnd - bookingStart) / step} * var(--teacher-slot-height) - 4px))`,
                             }}
-                            aria-label={`${booking.student_name}, ${dateLabel(date)}, ${formatSlotTime(booking.starts_at)} to ${formatSlotTime(booking.ends_at)}, ${booking.location === "porto" ? "in Porto" : "online"}. View lesson`}
+                            aria-label={`${booking.student_name}, ${dateLabel(date)}, ${formatSlotTime(booking.starts_at)} to ${formatSlotTime(booking.ends_at)}, ${booking.location === "porto" ? "in Porto" : "online"}${booking.awaiting_confirmation ? ", awaiting confirmation" : ""}. View lesson`}
                             onClick={() => onSelectBooking(booking)}
                           >
                             <span className="teacher-lesson-time">
@@ -381,16 +381,22 @@ export function WeeklyTimetable({
                               {formatSlotTime(booking.ends_at)}
                             </span>
                             <strong>{booking.student_name}</strong>
-                            <span className="teacher-lesson-location">
-                              {booking.location === "porto" ? (
-                                <MapPin size={12} aria-hidden="true" />
-                              ) : (
-                                <Video size={12} aria-hidden="true" />
-                              )}
-                              {booking.location === "porto"
-                                ? "In Porto"
-                                : "Online"}
-                            </span>
+                            {booking.awaiting_confirmation ? (
+                              <span className="teacher-lesson-status">
+                                Awaiting confirmation
+                              </span>
+                            ) : (
+                              <span className="teacher-lesson-location">
+                                {booking.location === "porto" ? (
+                                  <MapPin size={12} aria-hidden="true" />
+                                ) : (
+                                  <Video size={12} aria-hidden="true" />
+                                )}
+                                {booking.location === "porto"
+                                  ? "In Porto"
+                                  : "Online"}
+                              </span>
+                            )}
                           </button>
                         ),
                       )
@@ -413,6 +419,10 @@ export function WeeklyTimetable({
               <span>
                 <i className="teacher-key-booked" />
                 Booked
+              </span>
+              <span>
+                <i className="teacher-key-pending" />
+                Awaiting confirmation
               </span>
               <span>
                 <i className="teacher-key-off" />

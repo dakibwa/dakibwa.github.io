@@ -60,6 +60,7 @@ import { bookingSelection, claimSelection } from "./selection.mjs";
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" };
 const PAYMENT_CONSENT_VERSION = "2026-09-01-after-lesson-v1";
+const TEACHER_PAYMENT_CONSENT_VERSION = "2026-09-13-teacher-arranged-v1";
 
 function corsHeaders(request, env) {
   const origin = request.headers.get("Origin") ?? "";
@@ -686,13 +687,13 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
  * so a 90-minute lesson at 17:00 and a 60-minute one at 17:30 collide while
  * starting at different times. A unique index on the start time would miss it.
  */
-async function claimSlot(env, { columns, values, startAt, endAt, studentId = null }) {
+async function claimSlot(env, { columns, values, startAt, endAt, studentId = null, afterClaim = [] }) {
   const placeholders = columns.map(() => "?").join(", ");
   const seriesId = values[columns.indexOf("series_id")] ?? null;
   // A pending setup reserves its slot for everyone, including its owner.
   // Ignoring one's own hold allowed two setup webhooks to confirm overlapping
   // lessons. Expired holds do not block a fresh atomic claim.
-  const result = await env.DB.prepare(
+  const claim = env.DB.prepare(
     `INSERT INTO bookings (${columns.join(", ")})
      SELECT ${placeholders}
      WHERE NOT EXISTS (
@@ -704,8 +705,8 @@ async function claimSlot(env, { columns, values, startAt, endAt, studentId = nul
        SELECT 1 FROM bookings prior WHERE prior.student_id = ? AND prior.status != 'cancelled'
      )) AND (? IS NULL OR EXISTS (SELECT 1 FROM booking_series WHERE id = ? AND status = 'active'))`
   )
-    .bind(...values, new Date().toISOString(), endAt, startAt, values[columns.indexOf("lesson_type_id")], studentId, studentId, seriesId, seriesId)
-    .run();
+    .bind(...values, new Date().toISOString(), endAt, startAt, values[columns.indexOf("lesson_type_id")], studentId, studentId, seriesId, seriesId);
+  const result = afterClaim.length ? (await env.DB.batch([claim, ...afterClaim]))[0] : await claim.run();
 
   return (result?.meta?.changes ?? 0) > 0;
 }
@@ -921,6 +922,13 @@ const worker = {
         return json({ ok: true }, 200, request, env);
       }
       if (request.method === "GET" && path === "/me") return await handleMe(request, env);
+      if (path === "/me/teacher-payments" && ["GET", "POST"].includes(request.method)) {
+        return await handleTeacherPaymentPermission(request, env);
+      }
+      const invitation = path.match(/^\/booking-invitations\/([^/]+)(\/decline)?$/);
+      if (invitation && ["GET", "POST"].includes(request.method)) {
+        return await handleManualInvitation(request, env, ctx, decodeURIComponent(invitation[1]), Boolean(invitation[2]));
+      }
       if (path === "/me/recurring-rates" && ["GET", "POST"].includes(request.method)) {
         return await handleRecurringRates(request, env);
       }
@@ -1444,6 +1452,15 @@ async function resendFailedEmails(env) {
     try {
       const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(entry.booking_id).first();
       if (!row) continue;
+      if (entry.kind === "student_manual_confirmation") {
+        if (row.status === "pending_payment" && row.hold_expires_at > new Date().toISOString()) await notifyManualInvitation(env, row);
+        else await env.DB.prepare("UPDATE email_log SET status = 'superseded' WHERE id = ?").bind(entry.id).run();
+        continue;
+      }
+      if (entry.kind === "student_manual_withdrawn") {
+        if (row.status === "cancelled") await notifyManualWithdrawal(env, row);
+        continue;
+      }
 
       const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?")
         .bind(row.lesson_type_id)
@@ -2997,6 +3014,10 @@ async function confirmCardSetup(env, ctx, session, row) {
   if (row.status !== "pending_payment" || !row.hold_expires_at || new Date(row.hold_expires_at) <= new Date()) {
     return new Response("That booking hold has expired. Please choose a new time.", { status: 409 });
   }
+  const manual = await env.DB.prepare("SELECT * FROM manual_booking_payments WHERE booking_id = ?").bind(row.id).first();
+  if (manual && (!manual.accepted_at || !manual.setup_started_at || manual.use_saved_card || row.starts_at <= new Date().toISOString())) {
+    return new Response("This lesson has not been authorised for card setup.", { status: 409 });
+  }
   let intent;
   try {
     intent = await retrieveSetupIntent(env, session.setup_intent);
@@ -3010,6 +3031,11 @@ async function confirmCardSetup(env, ctx, session, row) {
   const customer = typeof intent?.customer === "string" ? intent.customer : intent?.customer?.id;
   if (intent?.status !== "succeeded" || !paymentMethod || customer !== session.customer) {
     return new Response("Card setup is not complete.", { status: 409 });
+  }
+  if (manual) {
+    if (manual.setup_customer_id && manual.setup_customer_id !== customer) return new Response("Customer does not match this invitation.", { status: 400 });
+    const confirmed = await confirmManualPayment(env, ctx, row, manual, { customer, paymentMethod, sessionId: session.id });
+    return new Response(confirmed ? "ok" : "This invitation has changed or expired.", { status: confirmed ? 200 : 409 });
   }
 
   await env.DB.prepare(
@@ -3702,6 +3728,262 @@ async function isAdmin(request, env) {
   return null;
 }
 
+function teacherPaymentPermission(student) {
+  return Boolean(student?.teacher_payment_consent_at && student.teacher_payment_consent_version === TEACHER_PAYMENT_CONSENT_VERSION);
+}
+
+async function createPaidManualBooking(request, env, ctx, { body, student, lessonType, start, endsAt }) {
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const expiresAt = new Date(Math.min(Date.now() + 24 * 3600000, start.getTime())).toISOString();
+  const row = {
+    id, reference: bookingReference(), lesson_type_id: lessonType.id, student_id: student.id,
+    student_name: student.name, student_email: student.email, student_phone: student.phone,
+    student_timezone: student.timezone, location: body.location === "porto" ? "porto" : "online",
+    notes: cleanText(body.notes, 1000), starts_at: start.toISOString(), ends_at: endsAt.toISOString(),
+    status: "pending_payment", sequence: 0, created_at: now, updated_at: now,
+    payment_status: "pending", amount_cents: lessonType.price_cents, hold_expires_at: expiresAt
+  };
+  const claimed = await claimSlot(env, {
+    columns: Object.keys(row), values: Object.values(row), startAt: row.starts_at, endAt: row.ends_at,
+    studentId: student.id,
+    afterClaim: [env.DB.prepare(`INSERT INTO manual_booking_payments (booking_id, expires_at)
+      SELECT id, hold_expires_at FROM bookings WHERE id = ?`).bind(id)]
+  });
+  if (!claimed) return fail("That time is unavailable, or this student has already had a trial. Please check the lesson and time.", 409, request, env);
+
+  // Recheck the student's permission inside the write. A concurrent revocation
+  // wins before this claim, otherwise it only affects lessons added afterwards.
+  const confirmedAt = new Date().toISOString();
+  const result = await env.DB.prepare(`UPDATE bookings SET status = 'confirmed', payment_status = 'scheduled',
+    hold_expires_at = NULL, payment_consent_at = (SELECT teacher_payment_consent_at FROM students WHERE id = bookings.student_id),
+    payment_consent_version = ? WHERE id = ? AND status = 'pending_payment' AND hold_expires_at > ? AND starts_at > ?
+    AND EXISTS (SELECT 1 FROM students s WHERE s.id = bookings.student_id
+      AND s.teacher_payment_consent_at IS NOT NULL AND s.teacher_payment_consent_version = ?
+      AND s.stripe_customer_id IS NOT NULL AND s.stripe_payment_method IS NOT NULL)
+    AND NOT EXISTS (SELECT 1 FROM bookings other WHERE other.id != bookings.id
+      AND (other.status = 'confirmed' OR (other.status = 'pending_payment' AND other.hold_expires_at > ?))
+      AND other.starts_at < bookings.ends_at AND other.ends_at > bookings.starts_at)`)
+    .bind(TEACHER_PAYMENT_CONSENT_VERSION, id, confirmedAt, confirmedAt, TEACHER_PAYMENT_CONSENT_VERSION, confirmedAt).run();
+  const created = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
+  if (created.status === "pending_payment" && created.hold_expires_at <= new Date().toISOString()) {
+    return fail("This lesson time has already started. Please choose a future time.", 409, request, env);
+  }
+  if (result.meta?.changes > 0) await notifyConfirmedManual(env, ctx, created);
+  else ctx.waitUntil(notifyManualInvitation(env, created));
+  return json({ booking: publicBooking(created, lessonType, await loadSettings(env)),
+    paymentAction: created.status === "confirmed" ? "scheduled" : "confirmation_required",
+    ...(created.status === "pending_payment" ? { confirmationExpiresAt: expiresAt } : {}) }, 201, request, env);
+}
+
+async function handleTeacherPaymentPermission(request, env) {
+  const student = await currentStudent(request, env);
+  if (!student) return fail("Please sign in first.", 401, request, env);
+  if (request.method === "POST") {
+    const body = await readJson(request);
+    if (body.enabled !== false) return fail("Permission can only be given when confirming an emailed lesson.", 400, request, env);
+    await env.DB.prepare(`UPDATE students SET teacher_payment_consent_at = NULL,
+      teacher_payment_consent_version = NULL, teacher_payment_revoked_at = ?,
+      teacher_payment_revision = teacher_payment_revision + 1 WHERE id = ?`)
+      .bind(new Date().toISOString(), student.id).run();
+    return json({ enabled: false }, 200, request, env);
+  }
+  return json({ enabled: teacherPaymentPermission(student) }, 200, request, env);
+}
+
+async function manualInvitationUrl(env, id) {
+  // Manage links also appear in teacher emails. Payment permission needs a
+  // separate capability sent only to the student; the old manage scheme stays unchanged.
+  const token = await createManageToken(`manual-payment:${id}`, env.BOOKING_TOKEN_SECRET);
+  return siteUrl(env, `/confirm-lesson/#token=${encodeURIComponent(token)}`);
+}
+
+async function notifyManualInvitation(env, row) {
+  if (row.status !== "pending_payment" || row.hold_expires_at <= new Date().toISOString()) return;
+  const settings = await loadSettings(env);
+  const lessonType = await loadLessonType(env, row.lesson_type_id);
+  if (!lessonType) return;
+  await deliver(env, {
+    to: row.student_email, kind: "student_manual_confirmation", bookingId: row.id,
+    dedupeKey: `student:manual-confirmation:${row.id}`, replyTo: settings.replyToEmail || env.TEACHER_EMAIL,
+    subject: `Confirm your Portuguese lesson — ${formatShort(new Date(row.starts_at), PORTO)}`,
+    content: {
+      heading: "Inês has arranged a lesson for you",
+      intro: `Olá ${row.student_name.split(" ")[0]}, check the details and confirm below. Nothing is charged now. You can use your saved card or securely save one with Stripe.`,
+      hero: `${formatInZone(new Date(row.starts_at), PORTO)}, Porto time`,
+      rows: [
+        { label: "Lesson", value: `${lessonType.duration_minutes} minutes · ${locationLabel(row)}` },
+        { label: "Price", value: `€${((row.amount_cents ?? lessonType.price_cents) / 100).toFixed(2)} · charged when the lesson ends` },
+        { label: "Confirm by", value: `${formatInZone(new Date(row.hold_expires_at), PORTO)}, Porto time` },
+        { label: "Reference", value: row.reference }
+      ],
+      action: { label: "Confirm lesson", url: await manualInvitationUrl(env, row.id) },
+      footer: `This time is reserved until the deadline above. Confirm the lesson and any card setup before then; otherwise it will be released. Moving or cancelling on the lesson day costs €${settings.sameDayChangeFeeCents / 100}; a recorded no-show costs €${settings.sameDayChangeFeeCents / 100} instead of the lesson price. You can decline without charge before confirming.`
+    }
+  });
+}
+
+async function notifyManualWithdrawal(env, row) {
+  const settings = await loadSettings(env);
+  await deliver(env, {
+    to: row.student_email, kind: "student_manual_withdrawn", bookingId: row.id,
+    dedupeKey: `student:manual-withdrawn:${row.id}`, replyTo: settings.replyToEmail || env.TEACHER_EMAIL,
+    subject: `Lesson invitation cancelled — ${formatShort(new Date(row.starts_at), PORTO)}`,
+    content: { heading: "This lesson invitation is cancelled", intro: "The unconfirmed lesson is no longer reserved. Nothing has been charged.",
+      hero: `${formatInZone(new Date(row.starts_at), PORTO)}, Porto time`,
+      rows: [{ label: "Reference", value: row.reference }], footer: "Reply to Inês if you would like to arrange another time." }
+  });
+}
+
+async function manualInvitationPayload(env, row) {
+  const student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(row.student_id).first();
+  const details = await env.DB.prepare("SELECT * FROM manual_booking_payments WHERE booking_id = ?").bind(row.id).first();
+  const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(row.lesson_type_id).first();
+  const settings = await loadSettings(env);
+  const booking = publicBooking(row, lessonType, settings);
+  // Do not return a student's profile/contact data through the invitation.
+  return {
+    booking: { reference: booking.reference, status: booking.status, lessonType: booking.lessonType,
+      startAt: booking.startAt, endAt: booking.endAt, location: booking.location },
+    expiresAt: details?.expires_at ?? row.hold_expires_at,
+    acceptedTeacherPayments: details?.accepted_at ? Boolean(details.allow_future) : null,
+    hasSavedCard: Boolean(student?.stripe_customer_id && student.stripe_payment_method),
+    teacherPaymentsAuthorised: teacherPaymentPermission(student),
+    paymentState: row.status === "confirmed" ? "confirmed" : row.status === "cancelled" ? "cancelled" : details?.accepted_at ? "setting_up_card" : "awaiting_confirmation",
+    ...(row.status === "confirmed" ? { manageUrl: studentManageUrl(env, await createManageToken(row.id, env.BOOKING_TOKEN_SECRET)) } : {})
+  };
+}
+
+async function cancelManualInvitation(env, ctx, row, byTeacher) {
+  const now = new Date().toISOString();
+  const result = await env.DB.prepare(`UPDATE bookings SET status = 'cancelled', cancelled_at = ?,
+    cancelled_by = ?, hold_expires_at = NULL, sequence = sequence + 1, updated_at = ?
+    WHERE id = ? AND status = 'pending_payment' AND payment_status = 'pending'
+    AND EXISTS (SELECT 1 FROM manual_booking_payments WHERE booking_id = bookings.id)`)
+    .bind(now, byTeacher ? "teacher" : "student", now, row.id).run();
+  if (!(result.meta?.changes > 0)) return null;
+  const updated = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
+  ctx.waitUntil(notifyManualWithdrawal(env, updated));
+  return updated;
+}
+
+async function notifyConfirmedManual(env, ctx, row) {
+  const settings = await loadSettings(env);
+  const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(row.lesson_type_id).first();
+  ctx.waitUntil(notify(env, { event: "booked", row, lessonType, settings,
+    manageUrl: studentManageUrl(env, await createManageToken(row.id, env.BOOKING_TOKEN_SECRET)) }));
+}
+
+async function confirmManualPayment(env, ctx, row, details, { customer, paymentMethod, sessionId = null }) {
+  const now = new Date().toISOString();
+  // Both statements run in one D1 transaction. A cancellation, expiry, card
+  // change or revocation cannot interleave between permission and confirmation.
+  const guard = `EXISTS (SELECT 1 FROM bookings b JOIN manual_booking_payments m ON m.booking_id = b.id
+    WHERE b.id = ? AND b.status = 'pending_payment' AND b.payment_status = 'pending'
+      AND b.hold_expires_at > ? AND b.starts_at > ? AND m.accepted_at IS NOT NULL
+      AND COALESCE(b.stripe_session_id, '') = ?
+      AND NOT EXISTS (SELECT 1 FROM bookings other WHERE other.id != b.id
+        AND (other.status = 'confirmed' OR (other.status = 'pending_payment' AND other.hold_expires_at > ?))
+        AND other.starts_at < b.ends_at AND other.ends_at > b.starts_at))`;
+  const results = await env.DB.batch([
+    env.DB.prepare(`UPDATE students SET ${sessionId ? "stripe_customer_id = ?, stripe_payment_method = ?," : ""}
+      teacher_payment_consent_at = CASE WHEN ? = 1 AND teacher_payment_revision = ? THEN ? ELSE teacher_payment_consent_at END,
+      teacher_payment_consent_version = CASE WHEN ? = 1 AND teacher_payment_revision = ? THEN ? ELSE teacher_payment_consent_version END
+      WHERE id = ? AND ${sessionId ? "(stripe_customer_id IS NULL OR stripe_customer_id = ?)" : "stripe_customer_id = ? AND stripe_payment_method = ?"} AND ${guard}`)
+      .bind(...(sessionId ? [customer, paymentMethod] : []), details.allow_future, details.consent_revision, details.accepted_at,
+        details.allow_future, details.consent_revision, TEACHER_PAYMENT_CONSENT_VERSION,
+        row.student_id, customer, ...(sessionId ? [] : [paymentMethod]), row.id, now, now, sessionId ?? "", now),
+    env.DB.prepare(`UPDATE bookings SET status = 'confirmed', payment_status = 'scheduled', hold_expires_at = NULL,
+      payment_consent_at = ?, payment_consent_version = ?, updated_at = ?
+      WHERE id = ? AND status = 'pending_payment' AND payment_status = 'pending' AND hold_expires_at > ? AND starts_at > ?
+        AND COALESCE(stripe_session_id, '') = ?
+        AND EXISTS (SELECT 1 FROM students s WHERE s.id = bookings.student_id AND s.stripe_customer_id = ? AND s.stripe_payment_method = ?)
+        AND NOT EXISTS (SELECT 1 FROM bookings other WHERE other.id != bookings.id
+          AND (other.status = 'confirmed' OR (other.status = 'pending_payment' AND other.hold_expires_at > ?))
+          AND other.starts_at < bookings.ends_at AND other.ends_at > bookings.starts_at)`)
+      .bind(details.accepted_at, PAYMENT_CONSENT_VERSION, now, row.id, now, now, sessionId ?? "", customer, paymentMethod, now)
+  ]);
+  const confirmed = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(row.id).first();
+  if (results[1].meta?.changes > 0) await notifyConfirmedManual(env, ctx, confirmed);
+  return confirmed?.status === "confirmed" ? confirmed : null;
+}
+
+async function handleManualInvitation(request, env, ctx, token, decline) {
+  const scopedId = token.length < 240 ? await readManageToken(token, env.BOOKING_TOKEN_SECRET) : null;
+  if (!scopedId?.startsWith("manual-payment:")) return fail("That confirmation link is not valid.", 404, request, env);
+  const id = scopedId.slice("manual-payment:".length);
+  let row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
+  let details = await env.DB.prepare("SELECT * FROM manual_booking_payments WHERE booking_id = ?").bind(id).first();
+  if (!row || !details) return fail("That invitation has expired or is no longer available. Please contact Inês.", 410, request, env);
+  const now = new Date().toISOString();
+  if (row.status === "pending_payment" && (!row.hold_expires_at || row.hold_expires_at <= now || row.starts_at <= now)) {
+    return fail("That invitation has expired. Please contact Inês to arrange another time.", 410, request, env);
+  }
+  if (request.method === "GET") {
+    if (decline) return fail("Use the confirmation page to decline this lesson.", 405, request, env);
+    return json(await manualInvitationPayload(env, row), 200, request, env);
+  }
+  if (decline) {
+    if (row.status !== "pending_payment") return fail("This invitation is no longer awaiting confirmation.", 409, request, env);
+    const cancelled = await cancelManualInvitation(env, ctx, row, false);
+    return cancelled ? json(await manualInvitationPayload(env, cancelled), 200, request, env) : fail("This lesson has just changed. Please reload.", 409, request, env);
+  }
+  if (row.status === "confirmed") return json(await manualInvitationPayload(env, row), 200, request, env);
+  if (row.status !== "pending_payment") return fail("This invitation was cancelled.", 409, request, env);
+  const body = await readJson(request);
+  const problem = bookingPaymentProblem({ paymentRequired: true, stripeIsReady: stripeReady(env), paymentConsent: body.paymentConsent });
+  if (problem) return fail(problem.message, problem.status, request, env);
+  const settings = await loadSettings(env);
+  if (settings.paymentMode !== "postpay") return fail("Automatic payment is currently unavailable. Please contact Inês.", 503, request, env);
+  let student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(row.student_id).first();
+  const hasCard = Boolean(student?.stripe_customer_id && student.stripe_payment_method);
+  // First acceptance freezes the scope and Checkout parameters. A double tap
+  // or retry cannot change permission or create a different Stripe session.
+  await env.DB.prepare(`UPDATE manual_booking_payments SET accepted_at = ?, allow_future = ?, use_saved_card = ?,
+    setup_customer_id = ?, setup_customer_email = ?, setup_started_at = ?, consent_revision = ?
+    WHERE booking_id = ? AND accepted_at IS NULL AND EXISTS (SELECT 1 FROM bookings b WHERE b.id = booking_id
+      AND b.status = 'pending_payment' AND b.hold_expires_at > ? AND b.starts_at > ?)`)
+    .bind(now, body.allowTeacherPayments === true ? 1 : 0, hasCard ? 1 : 0,
+      student.stripe_customer_id ?? null, student.email, hasCard ? null : now, student.teacher_payment_revision ?? 0,
+      id, now, now).run();
+  details = await env.DB.prepare("SELECT * FROM manual_booking_payments WHERE booking_id = ?").bind(id).first();
+  row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
+  if (row?.status === "confirmed") return json(await manualInvitationPayload(env, row), 200, request, env);
+  if (!details?.accepted_at || row?.status !== "pending_payment") return fail("This lesson has just changed. Please reload.", 409, request, env);
+  if (details.use_saved_card) {
+    student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(row.student_id).first();
+    if (!student?.stripe_customer_id || !student.stripe_payment_method) return fail("Your saved card is no longer available. Please contact Inês for a new invitation.", 409, request, env);
+    const confirmed = await confirmManualPayment(env, ctx, row, details, { customer: student.stripe_customer_id, paymentMethod: student.stripe_payment_method });
+    return confirmed ? json(await manualInvitationPayload(env, confirmed), 200, request, env) : fail("This invitation has changed or expired. Please reload.", 409, request, env);
+  }
+  try {
+    let session;
+    if (row.stripe_session_id) {
+      session = await retrieveCheckoutSession(env, row.stripe_session_id);
+      if (session.status === "complete") return json(await manualInvitationPayload(env, row), 200, request, env);
+      if (session.status !== "open") return fail("This card setup has expired. Please contact Inês for another invitation.", 409, request, env);
+    } else {
+      if (Date.now() - Date.parse(details.setup_started_at) >= 23 * 3600000) return fail("This card setup needs review. Please contact Inês.", 409, request, env);
+      const returnUrl = await manualInvitationUrl(env, row.id);
+      session = await createCardSetupSession(env, { booking: row, customer: details.setup_customer_id,
+        customerEmail: details.setup_customer_email, successUrl: returnUrl, cancelUrl: returnUrl, forceHosted: true });
+      await env.DB.prepare(`UPDATE bookings SET stripe_session_id = ? WHERE id = ? AND status = 'pending_payment'
+        AND hold_expires_at > ? AND (stripe_session_id IS NULL OR stripe_session_id = ?)`)
+        .bind(session.id, row.id, new Date().toISOString(), session.id).run();
+    }
+    row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first();
+    if (row?.status === "confirmed") return json(await manualInvitationPayload(env, row), 200, request, env);
+    if (row?.status !== "pending_payment" || row.hold_expires_at <= new Date().toISOString() || row.stripe_session_id !== session.id) {
+      return fail("This invitation has changed or expired. Please reload.", 409, request, env);
+    }
+    return json({ ...await manualInvitationPayload(env, row), checkoutUrl: session.url }, 200, request, env);
+  } catch {
+    // The hold and frozen request survive provider uncertainty; retry only the
+    // same idempotent setup, never create another booking as recovery.
+    return fail("Card setup could not be opened. Please try again using this same invitation.", 502, request, env);
+  }
+}
+
 async function handleAdmin(request, env, ctx, url, path) {
   const admin = await isAdmin(request, env);
   if (!admin) return fail("Not authorised.", 401, request, env);
@@ -3709,9 +3991,12 @@ async function handleAdmin(request, env, ctx, url, path) {
   if (request.method === "GET" && path === "/admin/bookings") {
     const from = url.searchParams.get("from") ?? new Date(Date.now() - 7 * 86400000).toISOString();
     const { results } = await env.DB.prepare(
-      "SELECT b.*, l.name AS lesson_name FROM bookings b JOIN lesson_types l ON l.id = b.lesson_type_id WHERE b.starts_at > ? ORDER BY b.starts_at"
+      `SELECT b.*, l.name AS lesson_name,
+        (b.status = 'pending_payment' AND b.hold_expires_at > ? AND EXISTS
+          (SELECT 1 FROM manual_booking_payments m WHERE m.booking_id = b.id)) AS awaiting_confirmation
+        FROM bookings b JOIN lesson_types l ON l.id = b.lesson_type_id WHERE b.starts_at > ? ORDER BY b.starts_at`
     )
-      .bind(from)
+      .bind(new Date().toISOString(), from)
       .all();
     const cutoff = new Date(Date.now() - 23 * 3600000).toISOString();
     const { results: reconciliation } = await env.DB.prepare(`SELECT id, reference, payment_status, same_day_fee_status FROM bookings
@@ -3719,7 +4004,7 @@ async function handleAdmin(request, env, ctx, url, path) {
          OR (same_day_fee_status = 'processing' AND (same_day_fee_started_at IS NULL OR same_day_fee_started_at < ?))
          OR EXISTS (SELECT 1 FROM booking_refunds WHERE booking_id = bookings.id AND status = 'pending')`)
       .bind(cutoff, cutoff).all();
-    return json({ bookings: results ?? [], manualPaymentReconciliation: reconciliation ?? [] }, 200, request, env);
+    return json({ bookings: (results ?? []).map((row) => ({ ...row, awaiting_confirmation: Boolean(row.awaiting_confirmation) })), manualPaymentReconciliation: reconciliation ?? [] }, 200, request, env);
   }
 
   if (request.method === "GET" && path === "/admin/availability") {
@@ -3790,6 +4075,11 @@ async function handleAdmin(request, env, ctx, url, path) {
 
   if (request.method === "POST" && path === "/admin/bookings") {
     const body = await readJson(request);
+    if (body.paymentMode && !["card", "offline"].includes(body.paymentMode)) return fail("Choose how this lesson will be paid.", 400, request, env);
+    if (body.paymentMode === "card") {
+      const settings = await loadSettings(env);
+      if (settings.paymentMode !== "postpay" || !stripeReady(env)) return fail("Automatic card payment is unavailable. Please try later or arrange payment separately.", 503, request, env);
+    }
     const email = normaliseEmail(body.email);
     const name = cleanText(body.name, 120);
     if (!isEmail(email)) return fail("Please give the student's email address.", 400, request, env);
@@ -3799,6 +4089,7 @@ async function handleAdmin(request, env, ctx, url, path) {
 
     const start = new Date(body.startAt);
     if (Number.isNaN(start.getTime())) return fail("That time could not be understood.", 400, request, env);
+    if (body.paymentMode === "card" && start <= new Date()) return fail("Choose a future lesson for automatic card payment.", 400, request, env);
     const endsAt = new Date(start.getTime() + lessonType.duration_minutes * 60000);
 
     /*
@@ -3831,6 +4122,8 @@ async function handleAdmin(request, env, ctx, url, path) {
         .run();
       student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(id).first();
     }
+
+    if (body.paymentMode === "card") return await createPaidManualBooking(request, env, ctx, { body, student, lessonType, start, endsAt });
 
     const id = crypto.randomUUID();
     const reference = bookingReference();
@@ -3872,7 +4165,7 @@ async function handleAdmin(request, env, ctx, url, path) {
       })
     );
 
-    return json({ booking: publicBooking(row, lessonType, settings) }, 201, request, env);
+    return json({ booking: publicBooking(row, lessonType, settings), paymentAction: "offline" }, 201, request, env);
   }
 
   const adminReschedule = path.match(/^\/admin\/bookings\/([^/]+)\/reschedule$/);
@@ -3936,6 +4229,12 @@ async function handleAdmin(request, env, ctx, url, path) {
     const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(adminCancel[1]).first();
     if (!row) return fail("That booking could not be found.", 404, request, env);
     if (row.status === "cancelled") return fail("That lesson is already cancelled.", 409, request, env);
+    if (row.status === "pending_payment") {
+      const updated = await cancelManualInvitation(env, ctx, row, true);
+      if (!updated) return fail("This invitation has just changed. Please reload.", 409, request, env);
+      const lessonType = await env.DB.prepare("SELECT * FROM lesson_types WHERE id = ?").bind(row.lesson_type_id).first();
+      return json({ booking: publicBooking(updated, lessonType, await loadSettings(env)) }, 200, request, env);
+    }
 
     // Her cancellation always refunds a paid lesson — same-day included. A
     // student loses the change window on the lesson day; she never does, and

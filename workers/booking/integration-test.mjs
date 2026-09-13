@@ -9,13 +9,17 @@ import { bookingSelection, portoWeekOf } from "./selection.mjs";
 import { computeAvailability } from "./availability.mjs";
 
 const NativeDate = Date;
+const DEFAULT_TEST_NOW = "2026-09-05T10:00:00.000Z";
+let testNow = DEFAULT_TEST_NOW;
 globalThis.Date = class extends NativeDate {
-  constructor(...args) { super(...(args.length ? args : ["2026-09-05T10:00:00.000Z"])); }
-  static now() { return new NativeDate("2026-09-05T10:00:00.000Z").getTime(); }
+  constructor(...args) { super(...(args.length ? args : [testNow])); }
+  static now() { return new NativeDate(testNow).getTime(); }
 };
 const nativeFetch = globalThis.fetch;
 const charges = [];
 const checkoutRequests = [];
+const emailRequests = [];
+let emailUnavailable = false;
 const refunds = [];
 let duringRefund = null;
 let refundUnavailable = false;
@@ -29,6 +33,12 @@ let decline = false;
 const setupIntents = new Map();
 let duringSetupRead = null;
 globalThis.fetch = async (url, options) => {
+  if (String(url) === "https://api.resend.com/emails") {
+    emailRequests.push(JSON.parse(options.body));
+    return emailUnavailable
+      ? Response.json({ message: "Isolated email outage" }, { status: 503 })
+      : Response.json({ id: `email_mock_${emailRequests.length}` });
+  }
   if (String(url).startsWith("https://api.stripe.com/v1/setup_intents/")) {
     await duringSetupRead?.();
     return Response.json(setupIntents.get(String(url).split("/").at(-1)) ?? { status: "requires_payment_method" });
@@ -69,6 +79,7 @@ const db = new DatabaseSync(":memory:");
 db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
 db.exec(readFileSync(new URL("./seed.sql", import.meta.url), "utf8"));
 let beforeRun = null;
+let beforeBatch = null;
 const DB = {
   prepare(sql) {
     let values = [];
@@ -85,6 +96,7 @@ const DB = {
     return statement;
   },
   async batch(statements) {
+    beforeBatch?.(statements);
     db.exec("BEGIN");
     try { const results = statements.map((statement) => statement.run()); db.exec("COMMIT"); return results; }
     catch (error) { db.exec("ROLLBACK"); throw error; }
@@ -106,7 +118,9 @@ const ctx = { waitUntil(promise) { tasks.push(promise); } };
 async function drain() { await Promise.all(tasks.splice(0)); }
 let passed = 0;
 async function test(name, fn) {
+  testNow = DEFAULT_TEST_NOW;
   beforeRun = null;
+  beforeBatch = null;
   try { await fn(); await drain(); passed++; }
   catch (error) { console.error(`FAIL: ${name}`); throw error; }
 }
@@ -662,6 +676,458 @@ await test("two ongoing times create 24 lessons and an abandoned checkout releas
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE student_id=?").get(user).n, 0);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM booking_series WHERE student_id=?").get(user).n, 0);
 });
+
+
+// Teacher-added card lessons keep providers isolated while exercising the real
+// approval credential, SQLite state transitions, and signed setup webhook.
+const TEACHER_PAYMENT_CONSENT_VERSION = "2026-09-13-teacher-arranged-v1";
+let manualStudent = 0;
+async function manualFixture({ savedCard = true, mandate = false } = {}) {
+  await drain();
+  db.exec("DELETE FROM manual_booking_payments; DELETE FROM booking_refunds; DELETE FROM bookings; DELETE FROM booking_series; DELETE FROM stripe_events; DELETE FROM email_log;");
+  db.prepare("INSERT OR REPLACE INTO settings VALUES ('payment_mode','postpay')").run();
+  const id = `manual-${++manualStudent}`;
+  student(id); sessions[id] = await createSession(id, env.BOOKING_TOKEN_SECRET);
+  if (!savedCard) db.prepare("UPDATE students SET stripe_customer_id=NULL,stripe_payment_method=NULL WHERE id=?").run(id);
+  if (mandate) db.prepare("UPDATE students SET teacher_payment_consent_at=?,teacher_payment_consent_version=? WHERE id=?")
+    .run(new Date().toISOString(), TEACHER_PAYMENT_CONSENT_VERSION, id);
+  Object.assign(env, { EMAIL_DRY_RUN: "0", RESEND_API_KEY: "isolated-email-mock", TEACHER_NOTIFICATIONS_ENABLED: "1", TEACHER_EMAIL: "teacher@example.invalid", STRIPE_UI_MODE: "embedded" });
+  testNow = DEFAULT_TEST_NOW;
+  duringSetupRead = null; beforeRun = null; beforeBatch = null; checkoutUnavailable = false; checkoutStatus = "open";
+  emailUnavailable = false; decline = false; chargeError = null;
+  emailRequests.length = 0; checkoutRequests.length = 0; charges.length = 0;
+  return id;
+}
+function manualBody(user, extra = {}) {
+  return { email: `${user}@example.invalid`, name: "Test Student", lessonType: "single", startAt: "2026-09-14T09:00:00.000Z", location: "online", paymentMode: "card", ...extra };
+}
+async function createManual(user, extra = {}) {
+  const response = await call("/admin/bookings", { user: "teacher", body: manualBody(user, extra) });
+  assert.equal(response.status, 201, await response.clone().text());
+  const result = await response.json();
+  await drain();
+  const row = db.prepare("SELECT * FROM bookings WHERE reference=?").get(result.booking.reference);
+  assert.ok(row);
+  return { row, result };
+}
+function invitationToken(user) {
+  const message = emailRequests.find((entry) => entry.to.includes(`${user}@example.invalid`) && entry.text.includes("/confirm-lesson/"));
+  assert.ok(message, "The student must receive a private lesson-approval link");
+  const match = message.text.match(/\/confirm-lesson\/#token=([^\s<>"']+)/);
+  assert.ok(match, "The approval credential stays in the URL fragment");
+  return decodeURIComponent(match[1]);
+}
+function invitationPath(value) { return `/booking-invitations/${encodeURIComponent(value)}`; }
+function teacherPermission(user) {
+  return db.prepare("SELECT teacher_payment_consent_at,teacher_payment_consent_version FROM students WHERE id=?").get(user);
+}
+function manualSetupEvent(row, user, id = "evt_manual_setup") {
+  const request = checkoutRequests.find((entry) => new URLSearchParams(entry.body).get("client_reference_id") === row.id);
+  assert.ok(request);
+  const metadata = {};
+  for (const [key, value] of new URLSearchParams(request.body)) {
+    const match = key.match(/^metadata\[([^\]]+)\]$/);
+    if (match) metadata[match[1]] = value;
+  }
+  setupIntents.set(`seti_${user}`, { status: "succeeded", customer: `cus_${user}`, payment_method: `pm_${user}` });
+  const current = db.prepare("SELECT stripe_session_id FROM bookings WHERE id=?").get(row.id);
+  return { id, type: "checkout.session.completed", livemode: false, data: { object: {
+    id: current.stripe_session_id, client_reference_id: row.id, mode: "setup", status: "complete", customer: `cus_${user}`,
+    setup_intent: `seti_${user}`, metadata
+  } } };
+}
+function isClientRejection(response) { assert.ok(response.status >= 400 && response.status < 500, `Expected a client rejection, received ${response.status}`); }
+
+await test("teacher card creation requires teacher authority; omitted or offline payment keeps established arrangements", async () => {
+  const user = await manualFixture({ mandate: true });
+  for (const actor of [null, user]) {
+    assert.equal((await call("/admin/bookings", { user: actor, body: manualBody(user) })).status, 401);
+  }
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings").get().n, 0);
+  for (const paymentMode of [undefined, "offline"]) {
+    const { row, result } = await createManual(user, { paymentMode, startAt: paymentMode ? "2026-09-15T09:00:00.000Z" : "2026-09-14T09:00:00.000Z" });
+    assert.equal(result.paymentAction, "offline");
+    assert.equal(row.status, "confirmed");
+    assert.equal(row.payment_status, "not_required");
+  }
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM manual_booking_payments").get().n, 0);
+  assert.equal(checkoutRequests.length, 0);
+  assert.equal(charges.length, 0);
+});
+await test("teacher card creation refuses unavailable Stripe and already-started lessons without side effects", async () => {
+  const user = await manualFixture();
+  env.STRIPE_EXPECTED_MODE = "live";
+  const unavailable = await call("/admin/bookings", { user: "teacher", body: manualBody(user) });
+  env.STRIPE_EXPECTED_MODE = "test";
+  assert.equal(unavailable.status, 503);
+  isClientRejection(await call("/admin/bookings", { user: "teacher", body: manualBody(user, { startAt: "2026-09-05T09:00:00.000Z" }) }));
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings").get().n, 0);
+  assert.equal(emailRequests.length, 0);
+  assert.equal(checkoutRequests.length, 0);
+  assert.equal(charges.length, 0);
+});
+await test("a manually entered new email gets a held lesson and private invitation without charging or requiring an account login", async () => {
+  await manualFixture();
+  const user = `new-manual-${++manualStudent}`;
+  assert.equal(db.prepare("SELECT id FROM students WHERE email=?").get(`${user}@example.invalid`), undefined);
+  const { row, result } = await createManual(user);
+  const created = db.prepare("SELECT * FROM students WHERE id=?").get(row.student_id);
+  assert.equal(created.email, `${user}@example.invalid`);
+  assert.equal(created.password_hash, "");
+  assert.equal(created.stripe_payment_method, null);
+  assert.equal(result.paymentAction, "confirmation_required");
+  const response = await call(invitationPath(invitationToken(user)), { user: null, method: "GET" });
+  assert.equal(response.status, 200);
+  assert.equal(checkoutRequests.length, 0);
+  assert.equal(charges.length, 0);
+});
+await test("legacy saved-card consent cannot authorise a teacher lesson, and only the student invitation can approve it", async () => {
+  const user = await manualFixture();
+  booking("older-self-booking", { owner: user, start: "2026-09-20T09:00:00.000Z", end: "2026-09-20T10:00:00.000Z" });
+  db.prepare("UPDATE bookings SET payment_consent_at=?,payment_consent_version='2026-09-01-after-lesson-v1' WHERE id='older-self-booking'").run(new Date().toISOString());
+  const { row, result } = await createManual(user, { paymentConsent: true, allowTeacherPayments: true });
+  assert.equal(result.paymentAction, "confirmation_required");
+  assert.equal(row.status, "pending_payment");
+  assert.equal(row.payment_status, "pending");
+  assert.equal(row.hold_expires_at, "2026-09-06T10:00:00.000Z");
+  assert.equal(row.payment_consent_at, null, "A teacher's request cannot stand in for student consent");
+  const secret = invitationToken(user);
+  const before = JSON.stringify(db.prepare("SELECT * FROM bookings WHERE id=?").get(row.id));
+  const invitation = await call(invitationPath(secret), { user: null, method: "GET" });
+  assert.equal(invitation.status, 200);
+  assert.equal(JSON.stringify(db.prepare("SELECT * FROM bookings WHERE id=?").get(row.id)), before, "Email preview and GET must not accept a lesson");
+  const exposed = [JSON.stringify(result), await (await call("/admin/bookings", { user: "teacher", method: "GET" })).text(), await (await call("/me", { user, method: "GET" })).text()];
+  assert.ok(exposed.every((value) => !value.includes(secret) && !value.includes(encodeURIComponent(secret))), "Teacher and ordinary account responses must not disclose the approval credential");
+  assert.ok(emailRequests.filter((entry) => !entry.to.includes(`${user}@example.invalid`)).every((entry) => !JSON.stringify(entry).includes(secret) && !JSON.stringify(entry).includes(encodeURIComponent(secret))), "Teacher notifications cannot contain the student's payment credential");
+  isClientRejection(await call(invitationPath(await token(row.id)), { user: null, body: { paymentConsent: true } }));
+  isClientRejection(await call(invitationPath(secret), { user: null, body: { paymentConsent: false, allowTeacherPayments: true } }));
+  assert.equal(db.prepare("SELECT payment_consent_at FROM bookings WHERE id=?").get(row.id).payment_consent_at, null);
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+  assert.equal(checkoutRequests.length, 0);
+  assert.equal(charges.length, 0);
+});
+await test("current explicit teacher permission reuses a saved card and schedules only an after-lesson charge", async () => {
+  const user = await manualFixture({ mandate: true });
+  const { row, result } = await createManual(user);
+  assert.equal(result.paymentAction, "scheduled");
+  assert.equal(row.status, "confirmed");
+  assert.equal(row.payment_status, "scheduled");
+  assert.equal(row.amount_cents, 2500);
+  assert.ok(row.payment_consent_at);
+  assert.equal(checkoutRequests.length, 0);
+  assert.equal(charges.length, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_log WHERE kind='student_manual_confirmation'").get().n, 0);
+  await chargeDueLessons(env, new Date(row.starts_at));
+  assert.equal(charges.length, 0, "The lesson cannot charge before its scheduled end");
+});
+await test("revocation immediately before the teacher's scheduling claim wins over an earlier permission read", async () => {
+  const user = await manualFixture({ mandate: true });
+  beforeRun = (sql) => {
+    if (!sql.startsWith("UPDATE bookings SET status = 'confirmed', payment_status = 'scheduled'")) return;
+    beforeRun = null;
+    db.prepare("UPDATE students SET teacher_payment_consent_at=NULL,teacher_payment_consent_version=NULL,teacher_payment_revision=teacher_payment_revision+1 WHERE id=?").run(user);
+  };
+  const { row, result } = await createManual(user);
+  assert.equal(result.paymentAction, "confirmation_required");
+  assert.equal(row.status, "pending_payment");
+  assert.equal(row.payment_consent_at, null);
+  assert.ok(invitationToken(user));
+  assert.equal(charges.length, 0);
+});
+await test("a teacher's hold expiring during its database claim cannot automatically confirm after the lesson starts", async () => {
+  const user = await manualFixture({ mandate: true });
+  beforeRun = (sql) => {
+    if (!sql.startsWith("INSERT INTO manual_booking_payments")) return;
+    beforeRun = null;
+    testNow = "2026-09-05T10:02:00.000Z";
+  };
+  // Teacher additions intentionally bypass the student's minimum notice rule.
+  const response = await call("/admin/bookings", { user: "teacher", body: manualBody(user, { startAt: "2026-09-05T10:01:00.000Z" }) });
+  isClientRejection(response);
+  await drain();
+  const row = db.prepare("SELECT * FROM bookings WHERE student_id=?").get(user);
+  assert.equal(row.status, "pending_payment");
+  assert.equal(row.payment_consent_at, null);
+  assert.equal(emailRequests.length, 0);
+  assert.equal(charges.length, 0);
+});
+await test("an expired teacher hold cannot auto-confirm over a competing active booking", async () => {
+  for (const competitorStatus of ["confirmed", "pending_payment"]) {
+    const user = await manualFixture({ mandate: true });
+    beforeRun = (sql) => {
+      if (!sql.startsWith("UPDATE bookings SET status = 'confirmed', payment_status = 'scheduled'")) return;
+      beforeRun = null;
+      testNow = "2026-09-06T10:01:00.000Z";
+      booking("competing-manual-slot", { owner: "bob", start: "2026-09-14T09:00:00.000Z", end: "2026-09-14T10:00:00.000Z" });
+      if (competitorStatus === "pending_payment") db.prepare("UPDATE bookings SET status='pending_payment',payment_status='pending',hold_expires_at='2026-09-07T10:00:00.000Z' WHERE id='competing-manual-slot'").run();
+    };
+    const response = await call("/admin/bookings", { user: "teacher", body: manualBody(user) });
+    isClientRejection(response);
+    await drain();
+    assert.equal(db.prepare("SELECT status FROM bookings WHERE student_id=?").get(user).status, "pending_payment");
+    assert.equal(db.prepare("SELECT status FROM bookings WHERE id='competing-manual-slot'").get().status, competitorStatus);
+    assert.equal(emailRequests.length, 0);
+    assert.equal(charges.length, 0);
+  }
+});
+await test("stale or incomplete teacher permission and permission without a saved card still require confirmation", async () => {
+  for (const state of ["old-version", "missing-timestamp", "no-card"]) {
+    const user = await manualFixture({ savedCard: state !== "no-card", mandate: true });
+    if (state === "old-version") db.prepare("UPDATE students SET teacher_payment_consent_version='retired-version' WHERE id=?").run(user);
+    if (state === "missing-timestamp") db.prepare("UPDATE students SET teacher_payment_consent_at=NULL WHERE id=?").run(user);
+    const { row, result } = await createManual(user);
+    assert.equal(result.paymentAction, "confirmation_required", state);
+    assert.equal(row.status, "pending_payment", state);
+    assert.equal(checkoutRequests.length, 0);
+    assert.equal(charges.length, 0);
+  }
+});
+await test("an existing saved card confirms one teacher lesson idempotently without granting future permission", async () => {
+  const user = await manualFixture();
+  const { row } = await createManual(user);
+  const path = invitationPath(invitationToken(user));
+  const accepted = await call(path, { user: null, body: { paymentConsent: true, allowTeacherPayments: false } });
+  assert.equal(accepted.status, 200, await accepted.clone().text());
+  const updated = db.prepare("SELECT * FROM bookings WHERE id=?").get(row.id);
+  assert.equal(updated.status, "confirmed");
+  assert.equal(updated.payment_status, "scheduled");
+  assert.ok(updated.payment_consent_at);
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+  assert.equal(checkoutRequests.length, 0);
+  assert.equal(charges.length, 0);
+  await drain();
+  const delivered = emailRequests.length;
+  assert.equal((await call(path, { user: null, body: { paymentConsent: true, allowTeacherPayments: true } })).status, 200);
+  await drain();
+  assert.equal(emailRequests.length, delivered, "Replaying acceptance cannot duplicate confirmation mail");
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null, "A replay cannot broaden an already accepted lesson's consent");
+});
+await test("a saved card changed between approval read and transaction is preserved and cannot confirm or grant permission", async () => {
+  for (const change of ["replacement", "removed", "different-customer"]) {
+    const user = await manualFixture();
+    const { row } = await createManual(user);
+    const updatedCustomer = change === "different-customer" ? "cus_replaced" : `cus_${user}`;
+    const updatedMethod = change === "removed" ? null : "pm_replaced";
+    beforeBatch = () => {
+      beforeBatch = null;
+      db.prepare("UPDATE students SET stripe_customer_id=?,stripe_payment_method=? WHERE id=?").run(updatedCustomer, updatedMethod, user);
+    };
+    const response = await call(invitationPath(invitationToken(user)), { user: null, body: { paymentConsent: true, allowTeacherPayments: true } });
+    isClientRejection(response);
+    await drain();
+    const student = db.prepare("SELECT * FROM students WHERE id=?").get(user);
+    assert.equal(student.stripe_customer_id, updatedCustomer, change);
+    assert.equal(student.stripe_payment_method, updatedMethod, change);
+    assert.equal(student.teacher_payment_consent_at, null, change);
+    const pending = db.prepare("SELECT * FROM bookings WHERE id=?").get(row.id);
+    assert.equal(pending.status, "pending_payment", change);
+    assert.equal(pending.payment_consent_at, null, change);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_log WHERE booking_id=? AND kind='student_booked'").get(row.id).n, 0);
+    assert.equal(checkoutRequests.length, 0);
+    assert.equal(charges.length, 0);
+  }
+});
+await test("approval cannot confirm an expired hold over another active booking while entering its transaction", async () => {
+  for (const competitorStatus of ["confirmed", "pending_payment"]) {
+    const user = await manualFixture();
+    const { row } = await createManual(user);
+    beforeBatch = () => {
+      beforeBatch = null;
+      testNow = "2026-09-06T10:01:00.000Z";
+      booking("competing-approval-slot", { owner: "bob", start: row.starts_at, end: row.ends_at });
+      if (competitorStatus === "pending_payment") db.prepare("UPDATE bookings SET status='pending_payment',payment_status='pending',hold_expires_at='2026-09-07T10:00:00.000Z' WHERE id='competing-approval-slot'").run();
+    };
+    const response = await call(invitationPath(invitationToken(user)), { user: null, body: { paymentConsent: true, allowTeacherPayments: true } });
+    isClientRejection(response);
+    await drain();
+    assert.equal(db.prepare("SELECT status FROM bookings WHERE id=?").get(row.id).status, "pending_payment");
+    assert.equal(db.prepare("SELECT status FROM bookings WHERE id='competing-approval-slot'").get().status, competitorStatus);
+    assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_log WHERE booking_id=? AND kind='student_booked'").get(row.id).n, 0);
+    assert.equal(charges.length, 0);
+  }
+});
+await test("optional future permission is explicit and authenticated revocation affects only its owner", async () => {
+  const user = await manualFixture();
+  const { row } = await createManual(user);
+  assert.deepEqual(await (await call("/me/teacher-payments", { user, method: "GET" })).json(), { enabled: false });
+  assert.equal((await call(invitationPath(invitationToken(user)), { user: null, body: { paymentConsent: true, allowTeacherPayments: true } })).status, 200);
+  await drain();
+  assert.equal(teacherPermission(user).teacher_payment_consent_version, TEACHER_PAYMENT_CONSENT_VERSION);
+  assert.deepEqual(await (await call("/me/teacher-payments", { user, method: "GET" })).json(), { enabled: true });
+  const next = await createManual(user, { startAt: "2026-09-15T09:00:00.000Z" });
+  assert.equal(next.result.paymentAction, "scheduled");
+  assert.equal((await call("/me/teacher-payments", { user: null, body: { enabled: false } })).status, 401);
+  isClientRejection(await call("/me/teacher-payments", { user, body: { enabled: true } }));
+  assert.equal((await call("/me/teacher-payments", { user: "outsider", body: { enabled: false, studentId: user } })).status, 200);
+  assert.ok(teacherPermission(user).teacher_payment_consent_at, "Another account cannot revoke this student's permission");
+  assert.equal((await call("/me/teacher-payments", { user, body: { enabled: false } })).status, 200);
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+  assert.equal(teacherPermission(user).teacher_payment_consent_version, null);
+  assert.equal((await call(invitationPath(invitationToken(user)), { user: null, body: { paymentConsent: true, allowTeacherPayments: true } })).status, 200);
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null, "Replaying an old approved invitation cannot restore revoked future permission");
+  assert.equal(db.prepare("SELECT payment_status FROM bookings WHERE id=?").get(row.id).payment_status, "scheduled", "Revocation preserves the already agreed lesson");
+  assert.equal((await createManual(user, { startAt: "2026-09-16T09:00:00.000Z" })).result.paymentAction, "confirmation_required");
+  assert.equal(charges.length, 0);
+});
+await test("new payer receives one hosted card setup, and its verified callback alone activates optional future permission", async () => {
+  const user = await manualFixture({ savedCard: false });
+  const { row } = await createManual(user);
+  const path = invitationPath(invitationToken(user));
+  const accepted = await call(path, { user: null, body: { paymentConsent: true, allowTeacherPayments: true } });
+  assert.equal(accepted.status, 200, await accepted.clone().text());
+  assert.ok((await accepted.json()).checkoutUrl);
+  assert.equal(checkoutRequests.length, 1);
+  const setup = new URLSearchParams(checkoutRequests[0].body);
+  assert.equal(setup.get("mode"), "setup");
+  assert.equal(setup.get("payment_method_types[0]"), "card");
+  assert.ok(setup.get("success_url"), "Email-started setup is hosted even when ordinary booking uses embedded Stripe");
+  assert.equal(setup.get("ui_mode"), null);
+  assert.equal(charges.length, 0);
+  assert.equal(db.prepare("SELECT status FROM bookings WHERE id=?").get(row.id).status, "pending_payment");
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null, "An abandoned checkout is not reusable payment permission");
+  assert.equal((await call(path, { user: null, body: { paymentConsent: true, allowTeacherPayments: true } })).status, 200);
+  assert.equal(checkoutRequests.length, 1, "Repeat submission reuses the same checkout");
+  const event = manualSetupEvent(row, user);
+  const wrongSession = structuredClone(event); wrongSession.data.object.id = "cs_other";
+  assert.equal((await webhook(wrongSession)).status, 400);
+  const wrongCustomer = structuredClone(event); wrongCustomer.data.object.customer = "cus_other";
+  isClientRejection(await webhook(wrongCustomer));
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+  const confirmed = await webhook(event);
+  assert.equal(confirmed.status, 200, await confirmed.clone().text());
+  assert.equal(db.prepare("SELECT status,payment_status FROM bookings WHERE id=?").get(row.id).status, "confirmed");
+  assert.equal(db.prepare("SELECT payment_status FROM bookings WHERE id=?").get(row.id).payment_status, "scheduled");
+  assert.equal(db.prepare("SELECT stripe_payment_method FROM students WHERE id=?").get(user).stripe_payment_method, `pm_${user}`);
+  assert.equal(teacherPermission(user).teacher_payment_consent_version, TEACHER_PAYMENT_CONSENT_VERSION);
+  await drain();
+  const delivered = emailRequests.length;
+  assert.equal((await webhook(event)).status, 200);
+  assert.equal((await webhook({ ...event, id: "evt_manual_setup_duplicate" })).status, 200);
+  await drain();
+  assert.equal(emailRequests.length, delivered);
+  assert.equal(charges.length, 0);
+});
+await test("failed manual setup preserves the held lesson and retries the same Stripe parameters", async () => {
+  const user = await manualFixture({ savedCard: false });
+  const { row } = await createManual(user);
+  const path = invitationPath(invitationToken(user));
+  checkoutUnavailable = true;
+  const failed = await call(path, { user: null, body: { paymentConsent: true, allowTeacherPayments: true } });
+  checkoutUnavailable = false;
+  assert.equal(failed.status, 502);
+  assert.equal(db.prepare("SELECT status FROM bookings WHERE id=?").get(row.id).status, "pending_payment");
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+  const retry = await call(path, { user: null, body: { paymentConsent: true, allowTeacherPayments: true } });
+  assert.equal(retry.status, 200, await retry.clone().text());
+  assert.equal(checkoutRequests.length, 2);
+  assert.equal(checkoutRequests[1].key, checkoutRequests[0].key);
+  assert.equal(checkoutRequests[1].body, checkoutRequests[0].body, "A lost Stripe response must not change idempotency parameters");
+});
+await test("student decline and teacher cancellation release pending lessons without fees or consent", async () => {
+  for (const actor of ["student", "teacher"]) {
+    const user = await manualFixture();
+    const { row, result } = await createManual(user, { startAt: "2026-09-05T12:00:00.000Z" });
+    assert.equal(result.confirmationExpiresAt, row.starts_at, "A same-day hold ends when the lesson starts");
+    const path = invitationPath(invitationToken(user));
+    const response = actor === "student"
+      ? await call(`${path}/decline`, { user: null })
+      : await call(`/admin/bookings/${row.id}/cancel`, { user: "teacher" });
+    assert.equal(response.status, 200, await response.clone().text());
+    const cancelled = db.prepare("SELECT * FROM bookings WHERE id=?").get(row.id);
+    assert.equal(cancelled.status, "cancelled");
+    assert.equal(cancelled.same_day_fee_status, "not_required");
+    isClientRejection(await call(path, { user: null, body: { paymentConsent: true, allowTeacherPayments: true } }));
+    assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+    assert.equal(checkoutRequests.length, 0);
+    assert.equal(charges.length, 0);
+  }
+});
+await test("expired approval cannot reclaim a slot already booked by somebody else", async () => {
+  const user = await manualFixture();
+  const { row } = await createManual(user);
+  const path = invitationPath(invitationToken(user));
+  db.prepare("UPDATE bookings SET hold_expires_at='2026-09-05T09:59:00.000Z' WHERE id=?").run(row.id);
+  const competitor = await createManual("bob", { paymentMode: "offline" });
+  isClientRejection(await call(path, { user: null, body: { paymentConsent: true, allowTeacherPayments: true } }));
+  assert.equal(db.prepare("SELECT status FROM bookings WHERE id=?").get(competitor.row.id).status, "confirmed");
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE starts_at=? AND status='confirmed'").get(row.starts_at).n, 1);
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+  assert.equal(charges.length, 0);
+});
+await test("expired or concurrently cancelled card setup cannot grant payment permission", async () => {
+  for (const stale of ["expired", "cancelled"]) {
+    const user = await manualFixture({ savedCard: false });
+    const { row } = await createManual(user);
+    assert.equal((await call(invitationPath(invitationToken(user)), { user: null, body: { paymentConsent: true, allowTeacherPayments: true } })).status, 200);
+    const event = manualSetupEvent(row, user);
+    duringSetupRead = () => stale === "expired"
+      ? db.prepare("UPDATE bookings SET hold_expires_at='2026-09-05T09:59:00.000Z' WHERE id=?").run(row.id)
+      : db.prepare("UPDATE bookings SET status='cancelled',hold_expires_at=NULL WHERE id=?").run(row.id);
+    const response = await webhook(event);
+    duringSetupRead = null;
+    isClientRejection(response);
+    assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+    assert.equal(db.prepare("SELECT stripe_payment_method FROM students WHERE id=?").get(user).stripe_payment_method, null, "A stale setup cannot replace the account's card");
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE id=? AND status='confirmed'").get(row.id).n, 0);
+    assert.equal(charges.length, 0);
+  }
+});
+await test("revocation during an open setup cannot be undone by its later successful webhook", async () => {
+  const user = await manualFixture({ savedCard: false });
+  const { row } = await createManual(user);
+  assert.equal((await call(invitationPath(invitationToken(user)), { user: null, body: { paymentConsent: true, allowTeacherPayments: true } })).status, 200);
+  assert.equal((await call("/me/teacher-payments", { user, body: { enabled: false } })).status, 200);
+  const response = await webhook(manualSetupEvent(row, user));
+  assert.equal(response.status, 200, await response.clone().text());
+  assert.equal(db.prepare("SELECT status FROM bookings WHERE id=?").get(row.id).status, "confirmed");
+  assert.equal(teacherPermission(user).teacher_payment_consent_at, null);
+  assert.equal(teacherPermission(user).teacher_payment_consent_version, null);
+});
+await test("approved manual lessons use after-lesson charging and the existing hosted recovery on decline", async () => {
+  const user = await manualFixture();
+  const { row } = await createManual(user);
+  assert.equal((await call(invitationPath(invitationToken(user)), { user: null, body: { paymentConsent: true } })).status, 200);
+  await drain();
+  await chargeDueLessons(env, new Date(row.starts_at));
+  assert.equal(charges.length, 0);
+  decline = true;
+  await chargeDueLessons(env, new Date(row.ends_at));
+  decline = false;
+  assert.equal(charges.length, 1);
+  assert.equal(charges[0].amount, row.amount_cents);
+  const due = db.prepare("SELECT * FROM bookings WHERE id=?").get(row.id);
+  assert.equal(due.status, "confirmed");
+  assert.equal(due.payment_status, "payment_due");
+  assert.ok(due.stripe_session_id);
+  assert.equal(new URLSearchParams(checkoutRequests.at(-1).body).get("mode"), "payment");
+  assert.ok(emailRequests.some((entry) => entry.to.includes(`${user}@example.invalid`) && entry.text.includes("/book/?manage=")));
+  const recovery = await call(`/bookings/${await token(row.id)}/payment`, { user: null, body: { purpose: "lesson" } });
+  assert.equal(recovery.status, 200);
+  assert.ok((await recovery.json()).url.includes("checkout.stripe.com"), "The durable email link resolves to the current hosted payment session");
+  await chargeDueLessons(env, new Date(row.ends_at));
+  assert.equal(charges.length, 1, "Outstanding recovery must not cause another saved-card attempt");
+});
+await test("a failed invitation retries the private approval message and never sends a false confirmation", async () => {
+  const user = await manualFixture();
+  emailUnavailable = true;
+  const { row } = await createManual(user);
+  assert.equal(db.prepare("SELECT status FROM email_log WHERE booking_id=? AND kind='student_manual_confirmation'").get(row.id).status, "failed");
+  const secret = invitationToken(user);
+  const previousRequests = emailRequests.length;
+  db.prepare("UPDATE email_log SET created_at='2026-09-05T09:50:00.000Z' WHERE booking_id=? AND status='failed'").run(row.id);
+  emailUnavailable = false;
+  await worker.scheduled({ cron: "* * * * *", scheduledTime: Date.now() }, env, ctx);
+  await drain();
+  const retried = emailRequests.slice(previousRequests).filter((entry) => entry.to.includes(`${user}@example.invalid`));
+  assert.equal(retried.length, 1);
+  assert.ok(retried[0].text.includes(encodeURIComponent(secret)));
+  assert.equal(db.prepare("SELECT status FROM email_log WHERE booking_id=? AND kind='student_manual_confirmation'").get(row.id).status, "sent");
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_log WHERE booking_id=? AND kind='student_booked'").get(row.id).n, 0);
+  assert.equal(db.prepare("SELECT status FROM bookings WHERE id=?").get(row.id).status, "pending_payment");
+});
+Object.assign(env, { EMAIL_DRY_RUN: "1", TEACHER_NOTIFICATIONS_ENABLED: "0" });
+delete env.RESEND_API_KEY;
 
 if (process.env.INES_PRIVATE_RATES_FILE) {
   await test("all private owner mappings activate exactly and are independently reusable", async () => {

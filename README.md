@@ -1,6 +1,6 @@
 # Português com a Inês
 
-The production website for Inês Dias Baía’s one-to-one European Portuguese
+The production website for Inês Dias Baía’s one-to-one Portuguese
 lessons, online or in Porto.
 
 The approved dark-blue, lilac, cream, and splatty direction is implemented as
@@ -19,6 +19,8 @@ five responsive routes:
 - `/reset-password` — reached from a reset email (noindex)
 - `/schedule` — Inês's own view: teaching hours, days off, and what is booked
   (noindex, teacher account or emergency access key required)
+- `/confirm-lesson` — private emailed approval and saved-card setup for a
+  lesson Inês adds; no charge until the confirmed lesson ends (noindex)
 
 Every route carries a booking action within reach of its closing content, not
 only in the header: the home page closes on one, and the FAQ ends with a route

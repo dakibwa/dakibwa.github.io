@@ -17,7 +17,7 @@ const approachItems = [
   },
   {
     title: "Whatever you’re here for",
-    body: "Moving over, work, an exam, or just talking to your neighbours. You set the target.",
+    body: "Work, travel, an exam, or just talking to your neighbours. You set the target.",
     asset: "/visuals/v2-splats/built-around-you-splat-v2.svg"
   },
   {

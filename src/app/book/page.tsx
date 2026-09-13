@@ -5,7 +5,7 @@ import { BOOKING_API_BASE_URL } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Booking | Português com a Inês",
-  description: "Book a one-to-one European Portuguese lesson in Porto or online."
+  description: "Book a one-to-one Portuguese lesson, online or in person."
 };
 
 /**

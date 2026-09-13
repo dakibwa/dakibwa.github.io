@@ -32,7 +32,9 @@ export type AdminBooking = {
   student_phone: string;
   starts_at: string;
   ends_at: string;
-  status: "confirmed" | "cancelled";
+  status: "pending_payment" | "confirmed" | "cancelled";
+  awaiting_confirmation?: boolean;
+  hold_expires_at?: string;
   location: "online" | "porto";
   notes: string;
   same_day_change: number;
@@ -136,9 +138,14 @@ export function createBookingFor(
     startAt: string;
     location: "online" | "porto";
     notes: string;
+    paymentMode: "card" | "offline";
   },
 ) {
-  return adminRequest<{ booking: { reference: string } }>(
+  return adminRequest<{
+    booking: { reference: string; status: "pending_payment" | "confirmed" };
+    paymentAction: "confirmation_required" | "scheduled" | "offline";
+    confirmationExpiresAt?: string;
+  }>(
     token,
     "/admin/bookings",
     {
