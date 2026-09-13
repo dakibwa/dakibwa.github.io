@@ -2813,7 +2813,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
 
                       <p className="booking-form-note" id="booking-payment-summary">
                         {postpay
-                          ? "Nothing to pay now. Your card is charged after each lesson. Same-day changes cost €5. A no-show costs €5 instead of the lesson price."
+                          ? "No payment is taken now. Your card will be charged after each lesson. Same-day changes cost €5, and a no-show costs €5 instead of the lesson price."
                           : `Pay Inês on the lesson day. Same-day changes cost ${formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}.`}
                         {form.repeat === null ? " Ongoing lessons repeat until you stop them." : ""}
                       </p>
