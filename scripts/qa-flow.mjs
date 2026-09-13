@@ -5,11 +5,11 @@ import path from "node:path";
 const outDir = path.join(process.cwd(), "tmp/qa");
 const base = (process.env.QA_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 const routes = [
-  { id: "home", path: "/", heading: "European Portuguese lessons." },
+  { id: "home", path: "/", heading: "Portuguese Lessons" },
   { id: "approach", path: "/approach", heading: "No class." },
   { id: "lessons", path: "/lessons", heading: "Lessons, and" },
   { id: "faq", path: "/faq", heading: "Questions" },
-  { id: "booking", path: "/book", heading: "Your Portuguese lessons" }
+  { id: "booking", path: "/book", heading: "Your Lessons" }
 ];
 
 await mkdir(outDir, { recursive: true });

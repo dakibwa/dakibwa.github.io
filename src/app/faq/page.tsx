@@ -95,14 +95,9 @@ const faqSections = [
           "It depends on your starting point and how much you practise. We’ll begin with simple conversations and build from there."
       },
       {
-        question: "Is this European or Brazilian Portuguese?",
+        question: "Can I use the Portuguese I already know?",
         answer:
-          "European Portuguese, as spoken here in Portugal."
-      },
-      {
-        question: "I learned Brazilian Portuguese. Is that a problem?",
-        answer:
-          "Not at all. What you’ve learned is a useful starting point. I can help you get familiar with the pronunciation and vocabulary used in Portugal."
+          "Of course. Whatever variety you’ve learned, we’ll build on it and work on the pronunciation, vocabulary and conversations that help you most."
       },
       {
         question: "Can explanations be in English?",

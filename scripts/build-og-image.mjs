@@ -121,7 +121,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8">
       <div class="eyebrow">One&nbsp;to&nbsp;one&nbsp;&middot;&nbsp;Any&nbsp;level</div>
       <div class="wordmark" role="img" aria-label="Português com a Inês"></div>
       <div class="rule"></div>
-      <div class="tagline">European Portuguese lessons<br>in&nbsp;Porto. <b>Or online,<br>wherever&nbsp;you&nbsp;are.</b></div>
+      <div class="tagline">Portuguese lessons.<br><b>One&nbsp;to&nbsp;one,<br>online&nbsp;or&nbsp;in&nbsp;person.</b></div>
     </div>
   </div>
 </body></html>`;
