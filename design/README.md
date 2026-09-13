@@ -151,11 +151,13 @@ the same identity or action:
   details, Google password note or consent checkbox. The final booking
   action follows the payment and change conditions for the selected method.
   A `Terms & privacy` overlay holds the details, without adding a disclosure
-  beneath the workspace. It opens with `How booking works`: booking and charge timing, free
-  changes until the previous Porto calendar day, the €5 same-day fee and the
-  €5 recorded no-show replacement charge. The opening line explains the 14-hour
-  booking notice. Consumer rights, Inês's sole-trader contact
-  details and the privacy notice follow in the same reading column. Use the existing
+  beneath the workspace. Use five short sections: `Booking`, `Payments`,
+  `Changes`, `Your rights` and `Privacy`, with everyday wording and labelled
+  points. The opening line explains the 14-hour booking notice. Payment timing,
+  free changes until the previous Porto calendar day, the €5 same-day fee and
+  the €5 recorded no-show replacement charge remain explicit. Consumer rights,
+  Inês's sole-trader contact details and the privacy notice follow in the same
+  reading column. Use the existing
   Montserrat text and cream surface, with copyable text
   and readable wrapping at 320px. A quiet, sentence-case `Terms & privacy` footer link
   sits at the bottom right on desktop and mobile, with a comfortable touch

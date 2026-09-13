@@ -3,75 +3,72 @@ import { CONTACT_WHATSAPP_NUMBER, CONTACT_WHATSAPP_URL } from "@/lib/config";
 export function TermsPrivacyInformation() {
   return (
     <div className="policy-information">
-      <h2>How booking works</h2>
+      <h2>Booking</h2>
+      <p>Book at least 14 hours ahead. Choose your lessons and check the price before confirming.</p>
+
+      <h2>Payments</h2>
       <ul>
-        <li><strong>Book your time.</strong> Book at least 14 hours ahead. Choose your lessons and check the price before confirming. Nothing is charged at booking.</li>
-        <li><strong>Pay after each lesson.</strong> If you save a card, Stripe charges it automatically when each lesson ends. Otherwise, pay Inês on the lesson day.</li>
-        <li><strong>Move or cancel.</strong> Use your calendar before the lesson starts. It’s free until the day before; on the lesson day, it costs €5 once per lesson. All deadlines use Porto time.</li>
-        <li><strong>If you miss a lesson.</strong> A no-show recorded by Inês costs €5 instead of the lesson price. Any earlier €5 change fee still applies.</li>
+        <li>No payment is taken when you book.</li>
+        <li><strong>Saved card.</strong> Stripe charges it after each lesson and collects any fees automatically. Complete any card setup to confirm your booking.</li>
+        <li><strong>Direct payment.</strong> Pay Inês on the lesson day.</li>
+        <li>Each recurring lesson is paid separately. Prepaid bookings follow the rules shown in your calendar.</li>
+      </ul>
+
+      <h2>Changes</h2>
+      <p>Move or cancel in your calendar before the lesson starts. All deadlines use Porto time.</p>
+      <ul>
+        <li><strong>Before the lesson day:</strong> free.</li>
+        <li><strong>On the lesson day:</strong> €5 once per lesson.</li>
+        <li>You still pay for a moved lesson. Cancelling removes the lesson charge.</li>
+        <li><strong>No-show:</strong> €5 instead of the lesson price if recorded by Inês. Any earlier €5 change fee still applies.</li>
+        <li>If Inês moves or cancels, there is no change fee.</li>
       </ul>
       <p>
-        Moving keeps the lesson price due; cancelling removes it. Saved-card fees are charged automatically.
-        There is no change fee if Inês moves or cancels. Complete any card setup to receive your confirmation.
-        Prepaid bookings keep the rules shown in your calendar.
-      </p>
-      <p>
-        Repeating lessons are paid separately. An ongoing booking repeats until you stop it in your calendar;
-        stopping keeps any lesson booked for today.
-      </p>
-      <p>
-        <strong>Your cancellation rights.</strong> You have 14 days after booking online to exercise your
-        statutory right to withdraw, or longer where the law requires. Email Inês with your name and booking
-        reference; she handles these requests personally. Where statutory withdrawal rights apply, the usual
-        €5 cancellation fee does not apply, and any refund legally due must be made within 14 days of your notice.
-      </p>
-      <p>
-        Lessons are provided by Inês Dias Baía, a sole trader trading as Português com a Inês, NIF 248899945.
-        Contact address: Época, Rua do Rosário, 22, Porto, Portugal.
-        Contact <a href="mailto:aprenderportugues.ines@gmail.com">aprenderportugues.ines@gmail.com</a> or
-        {" "}<a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">{CONTACT_WHATSAPP_NUMBER} (WhatsApp)</a> about
-        bookings, payments, refunds, complaints or your data. Your statutory consumer rights are unaffected by these terms.
-        {" "}<a href="https://cicap.pt/">CICAP, Porto’s consumer arbitration centre</a>, can help with eligible consumer disputes.
+        Ongoing lessons repeat until you stop them in your calendar. Lessons booked for today stay booked.
       </p>
 
-      <h2>Your privacy</h2>
+      <h2>Your rights</h2>
       <p>
-        Inês is responsible for your personal information. Acknowledging this notice does not give consent
-        to marketing or optional data use.
+        After booking online, you have 14 days to cancel the contract, or longer where the law requires.
+        Email Inês your name and booking reference; she handles these requests personally.
       </p>
       <p>
-        <strong>What we use.</strong> Your name, email, sign-in details, time zone and booking history are
-        needed for your account, lessons and booking messages. Without these details, online booking cannot
-        work. Your phone number and lesson notes are optional.
+        Where this legal right applies, there is no €5 cancellation fee. Any refund you are legally owed
+        is due within 14 days of your notice.
       </p>
       <p>
-        <strong>Why.</strong> We use this information to fulfil our agreement with you, meet
-        financial record-keeping duties and protect the service from misuse or disputes (our legitimate
-        interests).
+        Your legal rights still apply. <a href="https://cicap.pt/">CICAP, Porto’s consumer arbitration centre</a>, can help with eligible consumer disputes.
       </p>
       <p>
-        <strong>How long.</strong> Account and booking records stay in your account history until you ask
-        Inês to close it or delete them. Financial records normally need to be kept for 10 years under
-        Portuguese tax law; records needed for outstanding payments or disputes may be kept until those
-        are resolved. These duties can limit deletion.
+        <strong>Your teacher.</strong> Inês Dias Baía, sole trader trading as Português com a Inês. NIF 248899945.
+        Contact address: Época, Rua do Rosário, 22, Porto, Portugal.
       </p>
       <p>
-        <strong>Service providers.</strong> Cloudflare hosts the site and records; Resend sends emails;
-        Google handles optional sign-in and email correspondence; Stripe handles card payments. We never
-        store full card details. Browser storage supports sign-in, security and checkout; there is no advertising analytics.
+        <strong>Contact.</strong> <a href="mailto:aprenderportugues.ines@gmail.com">aprenderportugues.ines@gmail.com</a> or
+        {" "}<a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">{CONTACT_WHATSAPP_NUMBER} (WhatsApp)</a> for
+        bookings, payments, refunds, complaints or privacy requests.
       </p>
+
+      <h2>Privacy</h2>
       <p>
-        Providers may process data outside the EEA, including in the US. Their transfer terms describe EU
-        adequacy decisions, including the EU–US Data Privacy Framework, and EU standard contractual clauses
-        where applicable. Details and safeguards: <a href="https://www.cloudflare.com/cloudflare-customer-dpa/">Cloudflare</a>,
-        {" "}<a href="https://resend.com/legal/dpa">Resend</a>, <a href="https://policies.google.com/privacy/frameworks?hl=en">Google</a> and
-        {" "}<a href="https://stripe.com/privacy">Stripe</a>. You can also request copies from Inês.
+        Inês is responsible for your personal information. Agreeing to this notice does not give permission
+        for marketing or optional data use.
       </p>
-      <p>
-        <strong>Your rights.</strong> You can request access, correction, deletion or transfer of your data,
-        restrict its use or object by contacting Inês above. Some records must be kept by law. You can complain to Portugal’s data
-        protection authority, the <a href="https://www.cnpd.pt/">CNPD</a>.
-      </p>
+      <ul>
+        <li><strong>What we need.</strong> Online booking needs your name, email, sign-in details, time zone and booking history for your account, lessons and booking messages. Your phone number and notes are optional.</li>
+        <li><strong>Why.</strong> To provide lessons under our contract, meet financial record-keeping laws and prevent misuse or handle disputes (our legitimate interests).</li>
+        <li><strong>How long.</strong> Account and booking records stay until you ask Inês to close your account or delete them. Financial records normally stay for 10 years under Portuguese tax law. Records needed for unpaid fees or disputes may stay until resolved. These duties can limit deletion.</li>
+        <li><strong>Who helps us.</strong> Cloudflare hosts the site and records; Resend sends emails; Google handles optional sign-in and email; Stripe handles payments. We never store full card details.</li>
+        <li><strong>Browser storage.</strong> Used for sign-in, security and checkout. No advertising analytics.</li>
+        <li>
+          <strong>Data abroad.</strong> Providers may handle data outside the European Economic Area (EEA), including the US.
+          Their terms explain EU adequacy decisions (including the EU–US Data Privacy Framework) and EU standard
+          contractual clauses where applicable. Read the safeguards: <a href="https://www.cloudflare.com/cloudflare-customer-dpa/">Cloudflare</a>,
+          {" "}<a href="https://resend.com/legal/dpa">Resend</a>, <a href="https://policies.google.com/privacy/frameworks?hl=en">Google</a> and
+          {" "}<a href="https://stripe.com/privacy">Stripe</a>. Ask Inês for copies.
+        </li>
+        <li><strong>Your data rights.</strong> Contact Inês to access, correct, delete or transfer your data, limit its use or object to it. You can also complain to <a href="https://www.cnpd.pt/">CNPD</a>, Portugal’s data protection authority.</li>
+      </ul>
     </div>
   );
 }

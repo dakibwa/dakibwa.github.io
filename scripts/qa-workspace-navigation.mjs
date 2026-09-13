@@ -216,7 +216,7 @@ try {
   assert.equal(await page.locator(".site-footer__legal a").count(), 1);
   assert.equal(await page.locator(".booking-information details").count(), 0);
   assert.equal(await page.getByRole("dialog", { name: "Terms & privacy", exact: true }).count(), 1);
-  assert.equal(await page.locator(".policy-information h2").first().innerText(), "How booking works");
+  assert.equal(await page.locator(".policy-information h2").first().innerText(), "Booking");
   assert.equal(page.url(), bookingUrl);
   assert.equal(await page.locator('#terms-privacy a[href^="https://wa.me/"]').getAttribute("href"), "https://wa.me/351963161134");
   assert.ok(await page.locator("#terms-privacy .policy-information").isVisible());
