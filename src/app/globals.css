@@ -3621,7 +3621,8 @@ html.booking-transitioning .booking-confirmation-stage {
 .booking-confirmation-columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1.3rem;
+  max-width: 44rem;
+  gap: 0.85rem;
   align-items: start;
 }
 
@@ -3633,7 +3634,7 @@ html.booking-transitioning .booking-confirmation-stage {
 }
 
 .booking-confirmation-notes textarea {
-  min-height: 6rem;
+  min-height: 5rem;
 }
 
 .booking-confirmation-payment {
@@ -3645,17 +3646,6 @@ html.booking-transitioning .booking-confirmation-stage {
 .booking-confirmation-payment > .booking-form-note,
 .booking-confirmation-payment > .booking-agreement {
   margin-top: 0;
-}
-
-@container booking (min-width: 720px) {
-  .booking-confirmation-columns {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: clamp(1.5rem, 3vw, 3rem);
-  }
-
-  .booking-confirmation-notes textarea {
-    min-height: 8rem;
-  }
 }
 
 @container booking (max-width: 430px) {
