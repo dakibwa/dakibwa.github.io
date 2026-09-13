@@ -1882,7 +1882,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                   {activeManagedSeries && manageMode === "sequence" ? (
                     <div className="lesson-manage-dialog__decision">
                       <div className="lesson-manage-dialog__actions lesson-manage-dialog__actions--sequence">
-                        <button className="button button--coral" onClick={beginManagedSeriesReschedule} type="button">
+                        <button className="button button--blue" onClick={beginManagedSeriesReschedule} type="button">
                           Move recurrence
                         </button>
                         <button className="button button--quiet" onClick={() => transitionBooking(() => setManageMode("confirm-stop-sequence"))} type="button">
