@@ -97,12 +97,14 @@ try {
       assert.equal(await agreement.getAttribute("aria-pressed"), "false", "Agreement can be withdrawn with the keyboard");
       assert.equal(await button.isDisabled(), true);
       await agreement.press("Enter");
-      await page.getByRole("link", { name: "Read terms & privacy", exact: true }).click();
+      await page.locator(".booking-agreement__control").getByRole("link", { name: "terms & privacy", exact: true }).click();
       await page.locator("#terms-privacy[open]").waitFor();
-      assert.equal(await page.locator(".booking-information details").count(), 1);
+      assert.equal(await page.locator(".booking-information details").count(), 0);
+      assert.equal(await page.getByRole("dialog", { name: "Terms & privacy", exact: true }).count(), 1);
       assert.equal(await page.locator(".policy-information h2").first().innerText(), "How booking works");
       await page.locator("#terms-privacy").screenshot({ path: `${out}/terms-${width}.png` });
       assert.equal(await agreement.getAttribute("aria-pressed"), "true", "Reading the terms keeps the selection and agreement");
+      await page.getByRole("button", { name: "Close terms & privacy", exact: true }).click();
       await page.locator("#booking-confirmation-stage").screenshot({ path: `${out}/agreement-${width}.png` });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Terms and agreement fit at ${width}px`);
       await button.click();
