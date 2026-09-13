@@ -69,6 +69,7 @@ async function fixture(width, options = {}) {
     failDay: "",
     failMove: 0,
     failBookings: false,
+    manualPaymentAction: "scheduled",
   };
   page.on("pageerror", (error) => state.errors.push(error.message));
   await page.route("**/me", (route) =>
@@ -123,10 +124,24 @@ async function fixture(width, options = {}) {
         if (state.failBookings) return fail("Lessons could not be loaded.");
         return route.fulfill({ json: { bookings: state.bookings } });
       }
-      state.bookings.push(
-        lesson("manual", data.name, data.startAt, data.location),
-      );
-      return route.fulfill({ json: { booking: { reference: "TEST-manual" } } });
+      const id = state.bookings.some((entry) => entry.id === "manual")
+        ? `manual-${state.writes.length}`
+        : "manual";
+      const paymentAction = data.paymentMode === "offline" ? "offline" : state.manualPaymentAction;
+      const pending = paymentAction === "confirmation_required";
+      const booking = {
+        ...lesson(id, data.name, data.startAt, data.location),
+        status: pending ? "pending_payment" : "confirmed",
+        awaiting_confirmation: pending,
+        payment_status: pending ? "pending" : paymentAction === "offline" ? "not_required" : "scheduled",
+        hold_expires_at: pending ? "2026-09-10T12:00:00.000Z" : null,
+      };
+      state.bookings.push(booking);
+      return route.fulfill({ json: {
+        booking: { reference: booking.reference, status: booking.status },
+        paymentAction,
+        ...(pending ? { confirmationExpiresAt: booking.hold_expires_at } : {}),
+      } });
     }
     const match = path.match(
       /^\/admin\/bookings\/([^/]+)\/(reschedule|cancel|no-show)$/,
@@ -201,7 +216,175 @@ async function lessonLocation(page, name, location) {
   );
 }
 
+async function manualPaymentsSmoke() {
+  for (const width of [1440, 390]) {
+    const { page, state } = await fixture(width);
+    const manual = page.locator(".teacher-manual");
+    await manual.locator("summary").click();
+    for (const [index, outcome] of ["confirmation_required", "scheduled", "offline"].entries()) {
+      state.manualPaymentAction = outcome;
+      const fields = {
+        email: manual.getByLabel("Student’s email"),
+        name: manual.getByLabel("Student’s name"),
+        date: manual.getByLabel("Date", { exact: true }),
+        time: manual.getByLabel("Time in Porto"),
+        location: manual.getByLabel("Where"),
+        payment: manual.getByRole("combobox", { name: "Payment", exact: true }),
+      };
+      await expect(fields.payment).toHaveValue("card");
+      // Enter a native date first, then other controlled fields. Later updates
+      // must not restore an older form object or lose the entered date/email.
+      await fields.date.fill(`2026-09-${11 + index}`);
+      await fields.email.fill(`manual-${index}@example.invalid`);
+      await fields.name.fill(`Manual Student ${index}`);
+      await fields.time.fill("18:30");
+      await fields.location.selectOption("porto");
+      if (outcome === "offline") await fields.payment.selectOption("offline");
+      await expect(fields.date).toHaveValue(`2026-09-${11 + index}`);
+      await expect(fields.email).toHaveValue(`manual-${index}@example.invalid`);
+      await expect(fields.name).toHaveValue(`Manual Student ${index}`);
+      await expect(fields.time).toHaveValue("18:30");
+      await expect(fields.location).toHaveValue("porto");
+      await manual.getByRole("button", { name: "Add lesson and email student" }).click();
+      await expect(manual.getByRole("status")).toContainText(outcome === "confirmation_required"
+        ? "Lesson reserved."
+        : outcome === "scheduled" ? "authorised saved card" : "Payment is arranged separately.");
+      assert.deepEqual(state.writes.filter((entry) => entry.path === "/admin/bookings").at(-1).data, {
+        email: `manual-${index}@example.invalid`, name: `Manual Student ${index}`,
+        lessonType: "single", startAt: `2026-09-${11 + index}T17:30:00.000Z`,
+        location: "porto", notes: "", paymentMode: outcome === "offline" ? "offline" : "card",
+      });
+      await expect(fields.email).toHaveValue("");
+      await expect(fields.date).toHaveValue("");
+    }
+    await noOverflow(page);
+    assert.deepEqual(state.errors, []);
+    await page.close();
+  }
+
+  async function invitationFixture(width, overrides = {}) {
+    const page = await browser.newPage({ viewport: { width, height: 900 } });
+    await page.clock.setFixedTime(new Date("2026-09-07T10:15:00Z"));
+    const state = {
+      requests: [], errors: [], failGet: false, failPost: false,
+      invitation: {
+        booking: { reference: "INVITATION-UI", status: "pending_payment", lessonType: { id: "single", name: "Single lesson", durationMinutes: 60, priceCents: 2500 },
+          startAt: "2026-09-11T10:00:00.000Z", endAt: "2026-09-11T11:00:00.000Z", location: "online" },
+        expiresAt: "2026-09-10T12:00:00.000Z", hasSavedCard: true, paymentState: "awaiting_confirmation",
+        teacherPaymentsAuthorised: false, acceptedTeacherPayments: null, ...overrides,
+      },
+    };
+    page.on("pageerror", (error) => state.errors.push(error.message));
+    // Only this static site can reach the network. Invitation API responses are
+    // fulfilled below; a regression must not contact Google, Stripe or email.
+    await page.route("**/*", (route) => {
+      if (new URL(route.request().url()).origin === new URL(base).origin) return route.continue();
+      state.errors.push(`Unexpected external request: ${new URL(route.request().url()).origin}`);
+      return route.abort();
+    });
+    await page.route("**/booking-invitations/isolated-manual-ui", async (route) => {
+      const request = route.request();
+      const data = request.method() === "POST" ? request.postDataJSON() : null;
+      state.requests.push({ method: request.method(), data, headers: request.headers() });
+      if (data) {
+        state.invitation.acceptedTeacherPayments ??= data.allowTeacherPayments;
+        if (state.failPost) {
+          state.invitation.paymentState = "setting_up_card";
+          return route.fulfill({ status: 502, json: { error: "Card setup could not be opened. Please try again using this same invitation." } });
+        }
+        state.invitation = { ...state.invitation,
+          booking: { ...state.invitation.booking, status: "confirmed" }, paymentState: "confirmed",
+          teacherPaymentsAuthorised: data.allowTeacherPayments, manageUrl: `${base}/book/?manage=isolated-ui`,
+        };
+      } else if (state.failGet) {
+        state.failGet = false;
+        return route.fulfill({ status: 503, json: { error: "Please try again." } });
+      }
+      return route.fulfill({ json: state.invitation });
+    });
+    return { page, state, open: () => page.goto(`${base}/confirm-lesson/#token=isolated-manual-ui`, { waitUntil: "domcontentloaded" }) };
+  }
+
+  for (const width of [1440, 390]) {
+    for (const allowFuture of [false, true]) {
+      const { page, state, open } = await invitationFixture(width);
+      await open();
+      const consent = page.getByRole("checkbox", { name: /^I agree to the payment terms/ });
+      const optional = page.getByRole("checkbox", { name: /^Allow Inês to use my saved card/ });
+      const submit = page.getByRole("button", { name: "Confirm lesson and agree to pay" });
+      await expect(consent).not.toBeChecked();
+      await expect(optional).not.toBeChecked();
+      await expect(submit).toBeDisabled();
+      if (allowFuture) {
+        await optional.check();
+        await expect(submit).toBeDisabled();
+      }
+      await consent.check();
+      await expect(submit).toBeEnabled();
+      await submit.click();
+      await expect(page.getByRole("status")).toContainText("Your lesson is confirmed.");
+      assert.deepEqual(state.requests.filter((entry) => entry.method === "POST").map((entry) => entry.data), [
+        { paymentConsent: true, allowTeacherPayments: allowFuture },
+      ]);
+      assert(state.requests.every(({ headers }) => !headers.referer && !headers.authorization), "The private invitation must not send a referrer or account session");
+      await expect(page.locator('meta[name="referrer"]')).toHaveAttribute("content", "no-referrer");
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+      assert.equal(new URL(page.url()).search, "");
+      await noOverflow(page);
+      assert.deepEqual(state.errors, []);
+      await page.close();
+    }
+  }
+
+  // An existing permission shown at page load is never a fresh opt-in; it may
+  // have been revoked elsewhere before the student presses confirm.
+  const existing = await invitationFixture(390, { teacherPaymentsAuthorised: true });
+  await existing.open();
+  await expect(existing.page.getByRole("checkbox")).toHaveCount(1);
+  await existing.page.getByRole("checkbox").check();
+  await existing.page.getByRole("button", { name: "Confirm lesson and agree to pay" }).click();
+  await expect(existing.page.getByRole("status")).toContainText("Your lesson is confirmed.");
+  assert.equal(existing.state.requests.find((entry) => entry.method === "POST").data.allowTeacherPayments, false);
+  assert.deepEqual(existing.state.errors, []);
+  await existing.page.close();
+
+  // A provider error can happen after consent is stored. Read back the frozen
+  // scope and do not offer a misleading unchecked option on that same retry.
+  const retry = await invitationFixture(390, { hasSavedCard: false });
+  retry.state.failPost = true;
+  await retry.open();
+  await retry.page.getByRole("checkbox", { name: /^Allow Inês/ }).check();
+  await retry.page.getByRole("checkbox", { name: /^I agree/ }).check();
+  await retry.page.getByRole("button", { name: "Save card and agree to pay" }).click();
+  await expect(retry.page.getByText(/You selected card payments for future lessons/)).toBeVisible();
+  await expect(retry.page.getByRole("checkbox")).toHaveCount(1);
+  await retry.page.getByRole("button", { name: "Save card and agree to pay" }).click();
+  await expect.poll(() => retry.state.requests.filter((entry) => entry.method === "POST").length).toBe(2);
+  assert.deepEqual(retry.state.requests.filter((entry) => entry.method === "POST").map((entry) => entry.data.allowTeacherPayments), [true, false]);
+  assert.deepEqual(retry.state.errors, []);
+  await retry.page.close();
+
+  // The shared skip link changes the fragment. A status retry must retain the
+  // private token already read into memory, without persisting it elsewhere.
+  const skip = await invitationFixture(390);
+  skip.state.failGet = true;
+  await skip.open();
+  await expect(skip.page.getByRole("region", { name: "Lesson confirmation" }).getByRole("alert")).toContainText("Please try again.");
+  await skip.page.getByRole("link", { name: "Skip to content" }).focus();
+  await skip.page.keyboard.press("Enter");
+  assert.equal(new URL(skip.page.url()).hash, "#main-content");
+  await skip.page.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(skip.page.getByRole("checkbox", { name: /^I agree/ })).toBeVisible();
+  assert.equal(skip.state.requests.length, 2);
+  assert.deepEqual(skip.state.errors, []);
+  await skip.page.close();
+}
+
 try {
+  if (process.env.QA_FOCUS === "manual-payments") {
+    await manualPaymentsSmoke();
+    console.log("Manual payment UI passed at 390/1440: controlled field retention, card/offline POSTs, all teacher outcomes, explicit optional consent, frozen retry scope, revocation race, private token handling and skip-link retry.");
+  } else {
   const { page, state } = await fixture(1440);
   // Both lesson lengths retain visible location text through the week/day layout switch.
   for (const width of [1440, 827, 741, 390, 320]) {
@@ -468,6 +651,7 @@ try {
   console.log(
     "Teacher calendar passed: visible locations in 60/90-minute blocks, drag/keyboard/touch, exact hours, retries, partial saves, protected exceptions, drafts, Porto moves, attendance, cancellation, manual fallback, responsive layout and access gate.",
   );
+  }
 } finally {
   await browser.close();
 }

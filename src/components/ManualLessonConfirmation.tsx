@@ -39,7 +39,9 @@ export function ManualLessonConfirmation() {
   useEffect(() => {
     // The private email token stays in the fragment, never the query string,
     // local storage or any outgoing referrer.
-    token.current = new URLSearchParams(window.location.hash.slice(1)).get("token") || "";
+    if (!token.current) {
+      token.current = new URLSearchParams(window.location.hash.slice(1)).get("token") || "";
+    }
     if (!token.current) {
       setError({ message: "Open the full link from Inês’s lesson email to confirm your lesson.", status: 404 });
       setLoading(false);

@@ -95,7 +95,7 @@ export function ManualLessonForm({
               required
               disabled={busy}
               value={lesson.email}
-              onChange={(e) => setLesson({ ...lesson, email: e.target.value })}
+              onChange={(e) => setLesson((current) => ({ ...current, email: e.target.value }))}
             />
           </label>
           <label>
@@ -104,7 +104,7 @@ export function ManualLessonForm({
               type="text"
               disabled={busy}
               value={lesson.name}
-              onChange={(e) => setLesson({ ...lesson, name: e.target.value })}
+              onChange={(e) => setLesson((current) => ({ ...current, name: e.target.value }))}
             />
           </label>
           <label>
@@ -113,7 +113,7 @@ export function ManualLessonForm({
               disabled={busy}
               value={lesson.lessonType}
               onChange={(e) =>
-                setLesson({ ...lesson, lessonType: e.target.value })
+                setLesson((current) => ({ ...current, lessonType: e.target.value }))
               }
             >
               <option value="trial">Trial · 60 minutes</option>
@@ -127,10 +127,10 @@ export function ManualLessonForm({
               disabled={busy}
               value={lesson.location}
               onChange={(e) =>
-                setLesson({
-                  ...lesson,
+                setLesson((current) => ({
+                  ...current,
                   location: e.target.value as "online" | "porto",
-                })
+                }))
               }
             >
               <option value="online">Online</option>
@@ -144,7 +144,7 @@ export function ManualLessonForm({
               required
               disabled={busy}
               value={lesson.date}
-              onChange={(e) => setLesson({ ...lesson, date: e.target.value })}
+              onChange={(e) => setLesson((current) => ({ ...current, date: e.target.value }))}
             />
           </label>
           <label>
@@ -154,7 +154,7 @@ export function ManualLessonForm({
               required
               disabled={busy}
               value={lesson.time}
-              onChange={(e) => setLesson({ ...lesson, time: e.target.value })}
+              onChange={(e) => setLesson((current) => ({ ...current, time: e.target.value }))}
             />
           </label>
           <div className="teacher-manual-payment">
@@ -164,10 +164,10 @@ export function ManualLessonForm({
                 aria-describedby="manual-payment-help"
                 disabled={busy}
                 value={lesson.paymentMode}
-                onChange={(event) => setLesson({
-                  ...lesson,
+                onChange={(event) => setLesson((current) => ({
+                  ...current,
                   paymentMode: event.target.value as "card" | "offline",
-                })}
+                }))}
               >
                 <option value="card">Card after the lesson</option>
                 <option value="offline">Payment arranged separately</option>
