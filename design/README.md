@@ -248,8 +248,9 @@ time where they help someone attend a lesson or understand a deadline.
 
 On a wide booking workspace, place the optional notes box on the left and the
 payment summary, agreement and final action on the right. Stack them in that
-order on narrow screens. Keep the short payment summary concrete: amount,
-charge after the lesson and €5 rules, with the full terms available by link.
+order on narrow screens. Keep prices visible with the chosen lessons. The short
+payment summary explains payment after each lesson and €5 rules, with the full
+terms available by link.
 
 An emailed manual-lesson confirmation uses a simple single-column page with
 the time, location and frozen price. Its required payment agreement and optional

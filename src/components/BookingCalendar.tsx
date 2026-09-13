@@ -2785,7 +2785,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
 
                       <p className="booking-form-note" id="booking-payment-summary">
                         {postpay
-                          ? `Your card is charged ${lessonType ? formatMoneyCents(lessonType.price_cents) : "the lesson price"} when each lesson ends. Same-day changes cost €5. A no-show costs €5 instead of the lesson price.`
+                          ? "Nothing to pay now. Your card is charged after each lesson. Same-day changes cost €5. A no-show costs €5 instead of the lesson price."
                           : `Pay Inês on the lesson day. Same-day changes cost ${formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}.`}
                       </p>
                       <p className="booking-form-note booking-confirmation-payment__detail" id="booking-payment-detail">
