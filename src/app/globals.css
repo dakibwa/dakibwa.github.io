@@ -678,6 +678,11 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
   display: block;
 }
 
+/* Blend this generated mark's white ground into its cream/lilac surfaces. */
+.asset-mark:has(img[src$="/at-your-pace-blob.webp"]) {
+  mix-blend-mode: multiply;
+}
+
 .asset-mark__picture {
   display: block;
   width: 100%;

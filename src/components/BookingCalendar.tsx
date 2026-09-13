@@ -171,7 +171,7 @@ function RepeatAvailability({
 const LESSON_MARKS = [
   "/visuals/v2-splats/booking-availability-splat-v2.svg",
   "/visuals/v2-splats/relaxed-practical-blob.webp",
-  "/visuals/v2-splats/at-your-pace-splat-v2.svg",
+  "/visuals/v2-splats/at-your-pace-blob.webp",
   "/visuals/v2-splats/one-to-one-splat-v2.svg",
   "/visuals/v2-splats/real-life-splat-v2.svg",
   "/visuals/v2-splats/european-portuguese-splat-v2.svg",
@@ -2294,7 +2294,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             </div>
           ) : (
           <div className="calendar-panel unified-calendar__grid">
-            <AssetMark asset="/visuals/v2-splats/at-your-pace-splat-v2.svg" className="calendar-panel__mark" />
+            <AssetMark asset="/visuals/v2-splats/at-your-pace-blob.webp" className="calendar-panel__mark" />
             <div className="unified-calendar__toolbar">
               <div className="unified-calendar__legend" aria-label="Calendar key">
                 <span><i className="is-booked" aria-hidden="true" /> Booked lesson</span>
