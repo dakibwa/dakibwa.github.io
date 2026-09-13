@@ -183,9 +183,11 @@ try {
   aligned(before, await page.evaluate(() => scrollY), "Closing menu preserves page position");
   assert.ok(await page.evaluate(() => document.activeElement.classList.contains("site-footer__menu")));
   assert.equal(await page.locator("main").getAttribute("inert"), null);
+  const faqUrl = page.url();
   await page.locator(".site-footer__legal").getByRole("link", { name: "Terms & privacy", exact: true }).click();
   await page.locator("#terms-privacy[open]").waitFor();
-  await page.goBack();
+  assert.equal(page.url(), faqUrl, "Footer terms open over the current page");
+  await page.getByRole("button", { name: "Close terms & privacy", exact: true }).click();
   await page.getByRole("heading", { name: "Questions before booking?", exact: true }).waitFor();
   assert.equal(await page.locator("main").getAttribute("inert"), null);
 
@@ -208,21 +210,23 @@ try {
   await page.screenshot({ path: `${out}/menu-with-portfolio-mobile.png` });
   await menu.getByRole("link", { name: "Booking", exact: true }).click();
   await page.locator("#booking-title").waitFor();
+  const bookingUrl = page.url();
   await page.locator(".site-footer__legal").getByRole("link", { name: "Terms & privacy", exact: true }).click();
   await page.locator("#terms-privacy[open]").waitFor();
   assert.equal(await page.locator(".site-footer__legal a").count(), 1);
-  assert.equal(await page.locator(".booking-information details").count(), 1);
+  assert.equal(await page.locator(".booking-information details").count(), 0);
+  assert.equal(await page.getByRole("dialog", { name: "Terms & privacy", exact: true }).count(), 1);
   assert.equal(await page.locator(".policy-information h2").first().innerText(), "How booking works");
-  assert.equal(new URL(page.url()).hash, "#terms-privacy");
+  assert.equal(page.url(), bookingUrl);
   assert.equal(await page.locator('#terms-privacy a[href^="https://wa.me/"]').getAttribute("href"), "https://wa.me/351963161134");
   assert.ok(await page.locator("#terms-privacy .policy-information").isVisible());
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-  await page.locator("#terms-privacy > summary").click();
+  await page.getByRole("button", { name: "Close terms & privacy", exact: true }).click();
   assert.equal(await page.locator("#terms-privacy").getAttribute("open"), null);
   await page.locator(".site-footer__legal").getByRole("link", { name: "Terms & privacy", exact: true }).click();
   await page.locator("#terms-privacy[open]").waitFor();
 
-  // Old policy links open the same combined disclosure inside booking.
+  // Old policy links open the same combined dialog inside booking.
   for (const [oldPath, section] of [["booking-terms/", "booking"], ["privacy/", "privacy"], ["terms/#privacy", "privacy"], ["terms/", "terms-privacy"], ["book/#booking", "booking"], ["book/#change-booking", "change-booking"]]) {
     await page.goto(`${base}/${oldPath}`);
     await page.waitForURL(`**/book/#${section}`);
