@@ -260,19 +260,6 @@ acceptance already submitted is shown as recorded, not as an editable checkbox.
 The signed-in profile always exposes the future-payment permission and its
 turn-off action; it is not dependent on keeping the invitation email.
 
-## Wording and confirmation — 13 September 2026
-
-Use `Portuguese Lessons` on the home page and `Your Lessons` in booking.
-Marketing copy describes Portuguese lessons without repeated European/Portugal
-positioning. Retain actual location choices, addresses, qualifications and Porto
-time where they help someone attend a lesson or understand a deadline.
-
-On a wide booking workspace, place the optional notes box on the left and the
-payment summary, agreement and final action on the right. Stack them in that
-order on narrow screens. Keep prices visible with the chosen lessons. The short
-payment summary explains payment after each lesson and €5 rules, with the full
-terms available by link.
-
 ## Motion direction
 
 Use a short opacity-only transition on completed route changes, with faster
