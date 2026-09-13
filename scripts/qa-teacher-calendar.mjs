@@ -13,15 +13,15 @@ const teacher = {
   timezone: "Europe/Lisbon",
   role: "teacher",
 };
-const lesson = (id, name, start, location = "online") => ({
+const lesson = (id, name, start, location = "online", durationMinutes = 60) => ({
   id,
   reference: `TEST-${id}`,
-  lesson_name: "60 minutes",
+  lesson_name: `${durationMinutes} minutes`,
   student_name: name,
   student_email: `${id}@example.invalid`,
   student_phone: "",
   starts_at: start,
-  ends_at: new Date(Date.parse(start) + 3600000).toISOString(),
+  ends_at: new Date(Date.parse(start) + durationMinutes * 60000).toISOString(),
   status: "confirmed",
   location,
   notes: "",
@@ -61,7 +61,7 @@ async function fixture(width, options = {}) {
     ],
     bookings: [
       lesson("now", "Alex", "2026-09-07T10:00:00Z"),
-      lesson("next", "Sam", "2026-09-08T13:00:00Z", "porto"),
+      lesson("next", "Sam", "2026-09-08T13:00:00Z", "porto", 90),
     ],
     writes: [],
     errors: [],
@@ -136,9 +136,11 @@ async function fixture(width, options = {}) {
       if (match[2] === "reschedule") {
         if (state.failMove-- > 0)
           return fail("That time is unavailable. Choose another time.");
+        const duration =
+          Date.parse(booking.ends_at) - Date.parse(booking.starts_at);
         Object.assign(booking, {
           starts_at: data.startAt,
-          ends_at: new Date(Date.parse(data.startAt) + 3600000).toISOString(),
+          ends_at: new Date(Date.parse(data.startAt) + duration).toISOString(),
         });
       } else if (match[2] === "cancel") booking.status = "cancelled";
       else booking.attendance_status = data.noShow ? "no_show" : "expected";
@@ -173,8 +175,50 @@ const noOverflow = async (page) =>
     "Calendar must fit the viewport",
   );
 
+async function lessonLocation(page, name, location) {
+  const block = page.getByRole("button", {
+    name: new RegExp(`^${name},.*View lesson$`),
+  });
+  await expect(block.locator(".teacher-lesson-location")).toHaveText(location);
+  await expect(block.locator(".teacher-lesson-location")).toBeVisible();
+  const contentFits = await block.evaluate((node) => {
+    const bounds = node.getBoundingClientRect();
+    return [...node.children].every((child) => {
+      const content = child.getBoundingClientRect();
+      return (
+        content.left >= bounds.left &&
+        content.right <= bounds.right + 1 &&
+        content.top >= bounds.top &&
+        content.bottom <= bounds.bottom + 1 &&
+        child.scrollWidth <= child.clientWidth + 1
+      );
+    });
+  });
+  assert.equal(
+    contentFits,
+    true,
+    `${name}'s time, name and ${location} must fit in the lesson block`,
+  );
+}
+
 try {
   const { page, state } = await fixture(1440);
+  // Both lesson lengths retain visible location text through the week/day layout switch.
+  for (const width of [1440, 827, 741, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    if (width < 741)
+      await page
+        .getByRole("button", { name: "Monday 7 September, show lessons" })
+        .click();
+    await lessonLocation(page, "Alex", "Online");
+    if (width < 741)
+      await page
+        .getByRole("button", { name: "Tuesday 8 September, show lessons" })
+        .click();
+    await lessonLocation(page, "Sam", "In Porto");
+    await noOverflow(page);
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await showHours(page);
   const from = await slot(page, 1, 480).boundingBox();
   const to = await slot(page, 1, 540).boundingBox();
@@ -422,7 +466,7 @@ try {
   assert.deepEqual(student.state.writes, []);
   await student.page.close();
   console.log(
-    "Teacher calendar passed: drag/keyboard/touch, exact hours, retries, partial saves, protected exceptions, drafts, Porto moves, attendance, cancellation, manual fallback, responsive layout and access gate.",
+    "Teacher calendar passed: visible locations in 60/90-minute blocks, drag/keyboard/touch, exact hours, retries, partial saves, protected exceptions, drafts, Porto moves, attendance, cancellation, manual fallback, responsive layout and access gate.",
   );
 } finally {
   await browser.close();

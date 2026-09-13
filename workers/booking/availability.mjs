@@ -24,6 +24,7 @@ function overlaps(startA, endA, startB, endB) {
 }
 
 export const DEFAULT_BOOKING_HORIZON_DAYS = 56;
+export const DEFAULT_MINIMUM_NOTICE_HOURS = 14;
 
 function mergeStartRanges(ranges) {
   const sorted = [...ranges].sort((a, b) => a.start - b.start);
@@ -67,7 +68,7 @@ export async function loadSettings(env) {
   const settings = Object.fromEntries((results ?? []).map((row) => [row.key, row.value]));
 
   return {
-    minimumNoticeHours: Number(settings.minimum_notice_hours ?? 12),
+    minimumNoticeHours: Number(settings.minimum_notice_hours ?? DEFAULT_MINIMUM_NOTICE_HOURS),
     // Matches what seed.sql writes. The two disagreed for a while, which meant
     // a database missing the row behaved differently from every real one.
     bookingHorizonDays: Number(settings.booking_horizon_days ?? DEFAULT_BOOKING_HORIZON_DAYS),

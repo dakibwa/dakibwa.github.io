@@ -154,6 +154,38 @@ async function webhook(event) {
   return call("/stripe/webhook", { user: null, raw, headers: { "Stripe-Signature": `t=${timestamp},v1=${signature}` } });
 }
 
+await test("the seeded 14-hour rule filters availability and protects booking and move submissions", async () => {
+  const extra = db.prepare(`INSERT INTO availability_exceptions (date,kind,start_minute,end_minute,created_at)
+    VALUES ('2026-09-06','extra',30,120,?)`).run(new Date().toISOString()).lastInsertRowid;
+  let createdId;
+  try {
+    const availability = await call("/availability?lessonType=single&from=2026-09-06&to=2026-09-06", { method: "GET", user: null });
+    const body = await availability.json();
+    assert.equal(body.minimumNoticeHours, 14);
+    const starts = body.slotsByDate["2026-09-06"].map((slot) => slot.startAt);
+    assert.ok(!starts.includes("2026-09-05T23:30:00.000Z"), "13.5 hours must be hidden");
+    assert.ok(starts.includes("2026-09-06T00:00:00.000Z"), "exactly 14 hours remains available");
+
+    const early = await call("/bookings", { body: { lessonType: "single", startAt: "2026-09-05T23:30:00Z" } });
+    assert.equal(early.status, 409);
+    assert.match(await early.text(), /at least 14 hours' notice/);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM bookings").get().n, 0);
+
+    const exact = await call("/bookings", { body: { lessonType: "single", startAt: "2026-09-06T00:00:00Z" } });
+    assert.equal(exact.status, 201, await exact.clone().text());
+    const confirmed = await exact.json();
+    createdId = db.prepare("SELECT id FROM bookings WHERE reference=?").get(confirmed.booking.reference).id;
+    const move = await call(`/bookings/${confirmed.manageToken}/reschedule`, { body: { startAt: "2026-09-05T23:30:00Z" } });
+    assert.equal(move.status, 409);
+    assert.match(await move.text(), /at least 14 hours' notice/);
+    assert.equal(db.prepare("SELECT starts_at FROM bookings WHERE id=?").get(createdId).starts_at, "2026-09-06T00:00:00.000Z");
+    await drain();
+  } finally {
+    if (createdId) db.prepare("DELETE FROM bookings WHERE id=?").run(createdId);
+    db.prepare("DELETE FROM availability_exceptions WHERE id=?").run(extra);
+  }
+});
+
 await test("exact allowlist never derives price from suffix", () => {
   assert.deepEqual(findRecurringCode(env.PRIVATE_RECURRING_CODES, "  test15  ", 60), { duration: 60, cents: 1500 });
   for (const code of ["TEST14", "TEST15extra", "AULA15", "LONGA25", "TEST 15"]) assert.equal(findRecurringCode(env.PRIVATE_RECURRING_CODES, code, 60), null);

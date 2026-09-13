@@ -153,7 +153,8 @@ the same identity or action:
   One compact `Terms & privacy` disclosure beneath the workspace holds the
   details. It opens with `How booking works`: booking and charge timing, free
   changes until the previous Porto calendar day, the €5 same-day fee and the
-  €5 recorded no-show replacement charge. Consumer rights, business contact
+  €5 recorded no-show replacement charge. The opening line explains the 14-hour
+  booking notice. Consumer rights, Inês's sole-trader contact
   details and the privacy notice follow in the same reading column. Use the existing
   Montserrat text, cream surface and coral disclosure marks, with copyable text
   and readable wrapping at 320px. A quiet, sentence-case `Terms & privacy` footer link
@@ -193,6 +194,9 @@ the current site:
   `public/visuals/generated-splats/`;
 - the small splatty V2 emblems live in `public/visuals/v2-splats/` as SVGs or
   size-matched generated WebPs;
+- the relaxed/practical booking mark is an abstract cluster of rounded blobs,
+  with navy, two lilacs and a small coral accent. Inês rejected the previous
+  hand-like silhouette on 13 September 2026;
 - the wordmark and paper texture support the shared site shell.
 
 Do not keep contact sheets, rejected generations, alternate raster exports,
@@ -218,6 +222,9 @@ usual lesson starts and days off; avoid a wall of administration forms.
 - Show the full week on desktop. On small screens, keep a seven-day selector
   above a spacious single-day timetable, with no horizontal page overflow.
   Dates and timed lessons always use Porto time, including at DST boundaries.
+- Every booked lesson shows its time, student and explicit `Online` or `In Porto`
+  label in both layouts, including 60-minute blocks. Keep the location icons and
+  coral marker for Porto lessons.
 - Selecting a booked lesson opens its details and the existing move, cancel,
   attendance and payment-status controls. Keep cancellation confirmation,
   permission checks and server error handling intact.

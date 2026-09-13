@@ -5,7 +5,7 @@ export function TermsPrivacyInformation() {
     <div className="policy-information">
       <h2>How booking works</h2>
       <ul>
-        <li><strong>Book your time.</strong> Choose your lessons and check the price before confirming. Nothing is charged at booking.</li>
+        <li><strong>Book your time.</strong> Book at least 14 hours ahead. Choose your lessons and check the price before confirming. Nothing is charged at booking.</li>
         <li><strong>Pay after each lesson.</strong> If you save a card, Stripe charges it automatically when each lesson ends. Otherwise, pay Inês on the lesson day.</li>
         <li><strong>Move or cancel.</strong> Use your calendar before the lesson starts. It’s free until the day before; on the lesson day, it costs €5 once per lesson. All deadlines use Porto time.</li>
         <li><strong>If you miss a lesson.</strong> A no-show recorded by Inês costs €5 instead of the lesson price. Any earlier €5 change fee still applies.</li>
@@ -32,8 +32,8 @@ export function TermsPrivacyInformation() {
         €5 cancellation fee does not apply, and any refund legally due must be made within 14 days of your notice.
       </p>
       <p>
-        Lessons are provided by Inês Dias Baía (Português com a Inês), NIF 248899945.
-        Business address: Época, Rua do Rosário, 22, Porto, Portugal.
+        Lessons are provided by Inês Dias Baía, a sole trader trading as Português com a Inês, NIF 248899945.
+        Contact address: Época, Rua do Rosário, 22, Porto, Portugal.
         Contact <a href="mailto:aprenderportugues.ines@gmail.com">aprenderportugues.ines@gmail.com</a> or
         {" "}<a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noreferrer">{CONTACT_WHATSAPP_NUMBER} (WhatsApp)</a> about
         bookings, payments, refunds, complaints or your data. Your statutory consumer rights are unaffected by these terms.

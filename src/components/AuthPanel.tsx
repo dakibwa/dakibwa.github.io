@@ -98,7 +98,7 @@ export function AuthPanel({
       </Heading>
       {introText ? <p className="auth-panel__intro">{introText}</p> : null}
 
-      {/* Booking terms and privacy live in their own disclosures on the page,
+      {/* Booking terms and privacy share one disclosure on the page,
           so signing up carries no explanatory copy of its own. */}
       {mode !== "forgot" ? <GoogleSignInButton onError={setError} onSignedIn={onSignedIn} /> : null}
 

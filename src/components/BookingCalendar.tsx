@@ -170,7 +170,7 @@ function RepeatAvailability({
 // have no repeat row.
 const LESSON_MARKS = [
   "/visuals/v2-splats/booking-availability-splat-v2.svg",
-  "/visuals/v2-splats/relaxed-practical-splat-v2.svg",
+  "/visuals/v2-splats/relaxed-practical-blob.webp",
   "/visuals/v2-splats/at-your-pace-splat-v2.svg",
   "/visuals/v2-splats/one-to-one-splat-v2.svg",
   "/visuals/v2-splats/real-life-splat-v2.svg",
@@ -1483,7 +1483,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
             actionLabel="Change time"
             ariaLabel="Selected time"
             detail={localTime ? `${localTime} your time` : undefined}
-            mark="/visuals/v2-splats/relaxed-practical-splat-v2.svg"
+            mark="/visuals/v2-splats/relaxed-practical-blob.webp"
             onAction={changeTimeChoice}
             title={`${formatSlotTime(chosen.startAt)} Porto time`}
           />

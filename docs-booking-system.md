@@ -479,6 +479,13 @@ minutes-from-midnight in Porto time and resolved against `Europe/Lisbon` at quer
 time, so the rules survive DST instead of drifting an hour twice a year. The
 25-hour and 23-hour transition days are covered by tests.
 
+Student bookings and moves require at least **14 elapsed hours** of notice,
+including across Porto clock changes. Slots inside that window are omitted from
+availability and rejected again when a booking or move is submitted; exactly
+14 hours is allowed. `settings.minimum_notice_hours` controls the live rule;
+the seed and missing-setting fallback are both 14. Dan requested this change
+from the previous live setting of 24 hours on 13 September 2026.
+
 `availability_rules.last_start_minute` is the latest a lesson may **begin**, not
 when she finishes. That distinction matters: treating it as a finishing time
 silently shortened the 90-minute format to an 18:30 last start while the
@@ -501,7 +508,7 @@ lesson above.
 
 The combined notice opens at `/book/#terms-privacy` without requiring sign-in.
 It is one native disclosure beneath the workspace, beginning with `How booking
-works`; consumer rights, business details and privacy follow. Sign-up does not
+works`; consumer rights, sole-trader contact details and privacy follow. Sign-up does not
 repeat it. The footer links to `Terms & privacy`; old policy URLs and the
 `#booking`, `#privacy` and `#change-booking` fragments open the same disclosure.
 The visible payment and €5 summary precedes a required `Agree to terms & privacy`
@@ -512,7 +519,8 @@ boolean; payment amounts, timing, enforcement and the monetary agreement version
 are unchanged. Reading the combined notice preserves the selection and agreement.
 
 Dan confirmed the public contact email `aprenderportugues.ines@gmail.com`,
-Época as the business address and Inês's own NIF on 13 September 2026. The
+Época as the contact address, Inês's own NIF and her status as a sole trader
+(trabalhadora independente) on 13 September 2026. The
 identifier is maintained only in the public notice; do not duplicate it here.
 [Época's own site](https://epocaporto.net/) verifies Rua do Rosário, 22, Porto.
 The existing published WhatsApp number is retained. The 11 September review found that

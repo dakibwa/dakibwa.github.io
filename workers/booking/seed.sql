@@ -20,7 +20,7 @@ INSERT INTO availability_rules (weekday, start_minute, last_start_minute, active
   (5, 1020, 1140, 1);
 
 INSERT OR REPLACE INTO settings (key, value) VALUES
-  ('minimum_notice_hours', '24'),
+  ('minimum_notice_hours', '14'),
   -- Eight weeks: enough room to plan without turning the calendar into a
   -- three-month trawl.
   ('booking_horizon_days', '56'),
