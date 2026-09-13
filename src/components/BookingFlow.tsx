@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { AssetMark } from "@/components/BrandMarks";
 import { BookingCalendar } from "@/components/BookingCalendar";
-import { BookingInformation } from "@/components/BookingInformation";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BOOKING_CONFIGURED, CONTACT_WHATSAPP_URL } from "@/lib/config";
@@ -87,8 +86,6 @@ export function BookingFlow({ initialView = "book" }: { initialView?: BookingVie
             )}
           </section>
         </section>
-
-        <BookingInformation />
       </main>
 
       <SiteFooter />
