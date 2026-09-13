@@ -10,6 +10,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
+  Circle,
   MessageSquareText,
   Repeat,
   X
@@ -2780,42 +2781,44 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                     </div>
                   ) : null}
 
-                  {needsPaymentConsent ? (
-                    <label className="booking-payment-consent">
-                      <input
-                        checked={paymentConsent}
-                        onChange={(event) => setPaymentConsent(event.target.checked)}
-                        required
-                        type="checkbox"
-                      />
-                      <span>
-                        I agree that each lesson price is charged to my saved card automatically when that lesson ends.
-                        Moving or cancelling on its Porto calendar day costs €5; if Inês records a no-show, only €5 is
-                        charged instead of the lesson price. See the{" "}
-                        <a href="#booking">booking terms</a>.
-                      </span>
-                    </label>
-                  ) : null}
-
-                  <p className="booking-form-note">
+                  <p className="booking-form-note" id="booking-payment-summary">
                     {postpay
-                      ? "Nothing is charged now. Move or cancel free until the day before."
+                      ? "Nothing is charged now. Your saved card is charged automatically after each lesson. Move or cancel free until the day before; on the day, it costs €5. A recorded no-show costs €5 instead of the lesson price, plus any earlier change fee. Porto time applies."
                       : `Pay Inês on the lesson day. Move or cancel free until the day before; on the day it costs ${formatMoneyCents(SAME_DAY_RESCHEDULE_FEE_CENTS)}.`}
                     {form.repeat === null ? " Ongoing lessons repeat until you stop them in your calendar." : ""}
-                    {!postpay ? <> <a href="#booking">Booking terms</a>.</> : null}
                   </p>
 
-                  {/* Says what is actually about to happen. "Confirm this lesson"
-                      above a preview reading "8 lessons" invites the reader to
-                      believe only the first one is being booked. */}
+                  <div className="booking-agreement">
+                    {needsPaymentConsent ? (
+                      <button
+                        className="booking-agreement__button"
+                        type="button"
+                        aria-pressed={paymentConsent}
+                        aria-describedby="booking-payment-summary booking-agreement-note"
+                        onClick={() => setPaymentConsent((current) => !current)}
+                      >
+                        {paymentConsent ? <CheckCircle2 size={20} aria-hidden="true" /> : <Circle size={20} aria-hidden="true" />}
+                        Agree to terms &amp; privacy
+                      </button>
+                    ) : null}
+                    <a href="#terms-privacy">Read terms &amp; privacy</a>
+                  </div>
+                  {needsPaymentConsent ? (
+                    <p className="booking-form-note booking-agreement__note" id="booking-agreement-note">
+                      Agreeing authorises these card charges and acknowledges the privacy notice.
+                    </p>
+                  ) : null}
+
+                  {/* The final action names both the selection and the obligation
+                      to pay, even though payment happens after the lesson. */}
                   <button className="button button--coral booking-confirm-button" disabled={!canSubmit} type="submit">
                     {submitting
                       ? "Booking…"
                       : form.repeat === "once"
-                        ? bookingChoices.length > 1 ? `Confirm these ${bookingChoices.length} lessons` : "Confirm this lesson"
+                        ? bookingChoices.length > 1 ? `Book ${bookingChoices.length} lessons & agree to pay` : "Book lesson & agree to pay"
                         : seriesPreview
-                          ? `Confirm ${seriesPreview.bookable.length === 1 ? "this lesson" : `these ${seriesPreview.bookable.length} lessons`}`
-                          : "Confirm these lessons"}
+                          ? `Book ${seriesPreview.bookable.length === 1 ? "lesson" : `${seriesPreview.bookable.length} lessons`} & agree to pay`
+                          : "Book lessons & agree to pay"}
                   </button>
 
                 </form>

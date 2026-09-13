@@ -150,19 +150,27 @@ the same identity or action:
   Google sign-in and the account form, with no data-use summary, privacy
   details, Google password note or consent checkbox. The final booking
   action follows the payment and change conditions for the selected method.
-  Compact `Booking terms` and `Your privacy` disclosures beneath the workspace
-  hold the details for anyone who wants them. Use the existing
+  One compact `Terms & privacy` disclosure beneath the workspace holds the
+  details. It opens with `How booking works`: booking and charge timing, free
+  changes until the previous Porto calendar day, the €5 same-day fee and the
+  €5 recorded no-show replacement charge. Consumer rights, business contact
+  details and the privacy notice follow in the same reading column. Use the existing
   Montserrat text, cream surface and coral disclosure marks, with copyable text
-  and readable wrapping at 320px. A quiet, sentence-case `Privacy` footer link
+  and readable wrapping at 320px. A quiet, sentence-case `Terms & privacy` footer link
   sits at the bottom right on desktop and mobile, with a comfortable touch
   target and no button treatment. It opens that disclosure directly, without
   requiring sign-in. The old `/terms`,
   `/booking-terms` and `/privacy` pages redirect into booking; there is no
   separate legal-page hero, index or marketing treatment. Payment wording follows
   the method shown at booking and never implies every booking saves or charges a card.
-  When after-lesson charging is active, every booking presents its
-  saved-card agreement as a distinct required lavender consent block next to
-  the final action; a payment configuration failure replaces action with a
+  When after-lesson charging is active, every booking presents a short
+  `Agree to terms & privacy` toggle beside `Read terms & privacy`, following
+  the visible payment and €5 summary. It starts unselected, has a distinct
+  selected state and supports keyboard toggling. The accompanying note
+  expressly authorises the described card charges and acknowledges the
+  privacy notice; it is not marketing consent. The final action names the
+  number of lessons and says `agree to pay`, even though no money is taken
+  at booking. A payment configuration failure replaces action with a
   visible inline error instead of confirming without a usable payment method.
 
 ## References retained in this repository

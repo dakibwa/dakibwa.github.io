@@ -20,8 +20,8 @@ export function SiteFooter() {
           <BackToTop />
         </div>
       </div>
-      <nav className="site-footer__legal" aria-label="Privacy information">
-        <a href={publicAssetPath("/book/#privacy")}>Privacy</a>
+      <nav className="site-footer__legal" aria-label="Terms and privacy">
+        <a href={publicAssetPath("/book/#terms-privacy")}>Terms &amp; privacy</a>
       </nav>
     </footer>
   );

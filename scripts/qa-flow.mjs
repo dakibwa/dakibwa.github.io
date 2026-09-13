@@ -247,7 +247,7 @@ for (const route of routes) {
     }
 
     if (route.id === "booking") {
-      const contactHref = await page.locator('#privacy a[href^="https://wa.me/"]').getAttribute("href");
+      const contactHref = await page.locator('#terms-privacy a[href^="https://wa.me/"]').getAttribute("href");
       if (contactHref !== "https://wa.me/351963161134") {
         throw new Error(`Booking privacy contact regressed: ${contactHref}.`);
       }
@@ -1039,7 +1039,7 @@ async function bookQaLessonAndReturnToUpcoming({ recurring }) {
   }
 
   await accountPage
-    .getByRole("button", { name: recurring ? "Confirm these 4 lessons" : "Confirm this lesson", exact: true })
+    .getByRole("button", { name: recurring ? "Book 4 lessons & agree to pay" : "Book lesson & agree to pay", exact: true })
     .click();
   await accountPage.getByRole("heading", { name: /booked in/i }).waitFor();
   if (recurring) {
@@ -1096,6 +1096,14 @@ for (const hiddenUntilViewing of [/Stop repeating/, /Cancel all booked lessons/]
     throw new Error(`${hiddenUntilViewing} should appear only after one recurrence is selected.`);
   }
 }
+// Initial account content has its own 3px entrance animation, separate from
+// booking-transitioning. Measure the settled layout, not its first frame.
+await accountPage.waitForFunction(
+  () => document.querySelector(".booking-stage")?.getAnimations({ subtree: true })
+    .every((animation) => animation.playState !== "running"),
+  null,
+  { timeout: 2_000 }
+);
 const initialWorkflowLayout = await accountPage.evaluate(() => {
   const account = document.querySelector(".unified-account-controls")?.getBoundingClientRect();
   const upcoming = document.querySelector("#account-upcoming-lessons")?.getBoundingClientRect();

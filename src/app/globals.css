@@ -5298,42 +5298,66 @@ button.text-action {
   white-space: nowrap;
 }
 
-.booking-payment-consent {
-  display: grid;
-  align-items: start;
-  margin-top: 0.95rem;
+.booking-agreement {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+}
+
+.booking-agreement__button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  max-width: 100%;
   border: 1px solid var(--rule);
   border-radius: var(--squiggle-field);
-  padding: 0.85rem 0.95rem;
+  padding: 0.7rem 0.9rem;
   background: rgba(170, 164, 230, 0.1);
+  color: var(--ink);
   cursor: pointer;
-  gap: 0.7rem;
-  grid-template-columns: auto minmax(0, 1fr);
-}
-
-.booking-payment-consent input {
-  width: 18px;
-  height: 18px;
-  margin-top: 0.12rem;
-  accent-color: var(--coral-action);
-}
-
-.booking-payment-consent span {
+  gap: 0.6rem;
+  font-family: var(--ui);
   font-size: 0.82rem;
-  line-height: 1.55;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
   text-transform: none;
 }
 
-.booking-payment-consent a {
+.booking-agreement__button svg {
+  flex: 0 0 20px;
+  opacity: 0.4;
+}
+
+.booking-agreement__button[aria-pressed="true"] {
+  border-color: var(--coral-action);
+  background: var(--coral-action);
+  color: var(--paper);
+}
+
+.booking-agreement__button[aria-pressed="true"] svg {
+  opacity: 1;
+}
+
+.booking-agreement > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--coral-action);
-  font-weight: 700;
+  font-size: 0.82rem;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.booking-payment-consent:focus-within {
+.booking-agreement__button:focus-visible {
   outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline-offset: 3px;
+}
+
+.booking-agreement__note {
+  margin-top: 0.4rem;
 }
 
 .booking-alert--warn {
@@ -5990,6 +6014,27 @@ button.text-action {
   margin: 0;
 }
 
+.policy-information h2 {
+  margin: 1.6rem 0 0.7rem;
+  font-family: var(--ui);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.policy-information h2:first-child {
+  margin-top: 0.5rem;
+}
+
+.policy-information ul {
+  margin: 0 0 0.9rem;
+  padding-left: 1.2rem;
+}
+
+.policy-information li + li {
+  margin-top: 0.55rem;
+}
+
 .policy-information p + p {
   margin-top: 0.9rem;
 }
@@ -5999,6 +6044,7 @@ button.text-action {
   color: var(--coral-action);
   text-decoration: underline;
   text-underline-offset: 3px;
+  overflow-wrap: anywhere;
 }
 
 .policy-redirect {

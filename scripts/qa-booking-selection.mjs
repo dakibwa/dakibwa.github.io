@@ -15,7 +15,7 @@ const types = [
 ];
 const addWeeks = (start, index) => new Date(Date.parse(start) + index * 7 * 86400000).toISOString();
 try {
-  for (const width of [390, 1280]) {
+  for (const width of [320, 390, 1280]) {
     // Pin Porto time: in any other browser zone each slot also shows "your time",
     // so exact time labels would depend on the machine running the check.
     const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: "reduce", timezoneId: "Europe/Lisbon" });
@@ -85,11 +85,26 @@ try {
       await page.locator("#booking-confirmation-stage").waitFor();
     }
     async function confirm(count) {
-      const button = page.getByRole("button", { name: `Confirm these ${count} lessons`, exact: true });
+      const button = page.getByRole("button", { name: `Book ${count} lessons & agree to pay`, exact: true });
       await button.waitFor();
       assert.equal(await button.isDisabled(), true, "Explicit consent is required for the whole selection");
-      await page.getByRole("checkbox", { name: /^I agree that each lesson price/ }).check();
+      const agreement = page.getByRole("button", { name: "Agree to terms & privacy", exact: true });
+      assert.equal(await agreement.getAttribute("aria-pressed"), "false", "Agreement starts unselected");
+      await agreement.click();
+      assert.equal(await agreement.getAttribute("aria-pressed"), "true");
       assert.equal(await button.isEnabled(), true);
+      await agreement.press("Space");
+      assert.equal(await agreement.getAttribute("aria-pressed"), "false", "Agreement can be withdrawn with the keyboard");
+      assert.equal(await button.isDisabled(), true);
+      await agreement.press("Enter");
+      await page.getByRole("link", { name: "Read terms & privacy", exact: true }).click();
+      await page.locator("#terms-privacy[open]").waitFor();
+      assert.equal(await page.locator(".booking-information details").count(), 1);
+      assert.equal(await page.locator(".policy-information h2").first().innerText(), "How booking works");
+      await page.locator("#terms-privacy").screenshot({ path: `${out}/terms-${width}.png` });
+      assert.equal(await agreement.getAttribute("aria-pressed"), "true", "Reading the terms keeps the selection and agreement");
+      await page.locator("#booking-confirmation-stage").screenshot({ path: `${out}/agreement-${width}.png` });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Terms and agreement fit at ${width}px`);
       await button.click();
     }
     async function checkOverflow() {
@@ -123,10 +138,11 @@ try {
       throw error;
     });
     assert.equal(await page.locator('.booking-chosen-lessons li').count(), 3, "Failure retains the entire selection");
-    await page.getByRole("button", { name: "Confirm these 3 lessons", exact: true }).click();
+    await page.getByRole("button", { name: "Book 3 lessons & agree to pay", exact: true }).click();
     await page.getByRole("heading", { name: "You’re booked in.", exact: true }).waitFor();
     assert.deepEqual(requests.at(-1).startAts.map(start => start.slice(0, 10)).sort(), ["2026-09-16", "2026-09-17", "2026-09-30"]);
     assert.equal(requests.at(-1).expectedPriceCents, 2500);
+    assert.equal(requests.at(-1).paymentConsent, true, "The short control preserves the server's payment authorisation");
     assert.equal("repeat" in requests.at(-1), false);
     bookings = []; series = [];
     await start(true);
@@ -153,5 +169,5 @@ try {
     assert.deepEqual(errors, []);
     await context.close();
   }
-  console.log("Multi-date booking and same-week recurrence browser checks passed at 390px and 1280px.");
+console.log("Booking selection, agreement and combined terms checks passed at 320px, 390px and 1280px.");
 } finally { await browser.close(); }

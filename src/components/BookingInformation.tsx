@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { BookingTermsInformation, PrivacyInformation } from "@/components/PolicyInformation";
+import { TermsPrivacyInformation } from "@/components/PolicyInformation";
 
 export function BookingInformation() {
-  const bookingRef = useRef<HTMLDetailsElement>(null);
-  const privacyRef = useRef<HTMLDetailsElement>(null);
+  const termsRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
     function revealLinkedInformation() {
       const section = window.location.hash.slice(1);
-      const disclosure = section === "booking" || section === "change-booking"
-        ? bookingRef.current
-        : section === "privacy" ? privacyRef.current : null;
+      // Previously shared and emailed links still open the combined information.
+      const disclosure = ["terms-privacy", "booking", "change-booking", "privacy"].includes(section)
+        ? termsRef.current : null;
       if (!disclosure) return;
       disclosure.open = true;
       requestAnimationFrame(() => disclosure.scrollIntoView({ behavior: "instant", block: "start" }));
@@ -41,14 +40,10 @@ export function BookingInformation() {
   }, []);
 
   return (
-    <section className="booking-information" id="change-booking" aria-label="Booking information">
-      <details className="policy-disclosure" id="booking" ref={bookingRef}>
-        <summary>Booking terms</summary>
-        <BookingTermsInformation />
-      </details>
-      <details className="policy-disclosure" id="privacy" ref={privacyRef}>
-        <summary>Your privacy</summary>
-        <PrivacyInformation />
+    <section className="booking-information" id="change-booking" aria-label="Terms and privacy">
+      <details className="policy-disclosure" id="terms-privacy" ref={termsRef}>
+        <summary>Terms &amp; privacy</summary>
+        <TermsPrivacyInformation />
       </details>
     </section>
   );

@@ -459,21 +459,50 @@ lesson above.
 
 ### Payment
 
-The concise public explanation opens at `/book/#booking`; privacy opens at
-`/book/#privacy`, without requiring sign-in. Both are native disclosures beneath
-the workspace. Sign-up does not repeat them. The footer retains only a quiet `Privacy` link;
-old policy URLs redirect into booking. Payment and change conditions appear
-before the confirmation button, with the saved-card agreement kept separate.
-Publishing this presentation does not activate payments or change cancellation
-behaviour. These notices describe the implementation; business contact details
-and the application of statutory withdrawal rights still require verification
-before the service is represented as legally compliant.
+The combined notice opens at `/book/#terms-privacy` without requiring sign-in.
+It is one native disclosure beneath the workspace, beginning with `How booking
+works`; consumer rights, business details and privacy follow. Sign-up does not
+repeat it. The footer links to `Terms & privacy`; old policy URLs and the
+`#booking`, `#privacy` and `#change-booking` fragments open the same disclosure.
+The visible payment and €5 summary precedes a required `Agree to terms & privacy`
+toggle in postpay mode. It explicitly authorises the existing card charges and
+acknowledges the privacy notice. The final button states both the lesson count
+and the obligation to pay. The toggle still sends the existing `paymentConsent`
+boolean; payment amounts, timing, enforcement and the monetary agreement version
+are unchanged. Reading the combined notice preserves the selection and agreement.
 
-The policy contact links use Inês's existing published WhatsApp destination from
-`CONTACT_WHATSAPP_URL`. The 11 September 2026 review found that
+Dan confirmed the public contact email `aprenderportugues.ines@gmail.com`,
+Época as the business address and Inês's own NIF on 13 September 2026. The
+identifier is maintained only in the public notice; do not duplicate it here.
+[Época's own site](https://epocaporto.net/) verifies Rua do Rosário, 22, Porto.
+The existing published WhatsApp number is retained. The 11 September review found that
 `bookings@portuguesewithines.com` is a verified sending address, but the domain
 has no incoming-mail MX records and Resend receiving is disabled. Do not offer
 that address as an inbox until incoming delivery has been configured and verified.
+
+The 13 September notice review used [DL 24/2014](https://diariodarepublica.pt/dr/legislacao-consolidada/decreto-lei/2014-73222992)
+for paid-order wording and statutory withdrawal, [DL 7/2004, article 10](https://diariodarepublica.pt/dr/detalhe/decreto-lei/7-2004-240775)
+for trader identification, [GDPR article 13](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)
+for privacy information and [AT's record-retention guidance](https://info.portaldasfinancas.gov.pt/pt/informacao_fiscal/legislacao/instrucoes_administrativas/Documents/Oficio_Circulado_30213_2019.pdf)
+for the normal ten-year fiscal archive. Provider transfer details link to the
+providers' own published terms; this is not an account-specific transfer audit.
+Account/booking deletion and closure remain requests handled by Inês, not an
+automatic inactivity purge; legal financial and unresolved-dispute records
+can limit deletion.
+
+**Legal limits still requiring operational resolution:** the notice offers
+statutory withdrawal via Inês's confirmed email and says the ordinary €5 fee
+does not override those rights. The current automatic fee logic does not
+distinguish statutory withdrawal, so Inês must handle valid requests and any
+refunds within the legal deadline. This UI change does not introduce an
+early-performance request/acknowledgement, a durable copy of the full contract
+and withdrawal form in confirmation emails, or the online withdrawal function
+introduced by [Directive 2023/2673](https://eur-lex.europa.eu/legal-content/en/ALL/?uri=CELEX%3A32023L2673).
+The applicable Portuguese requirements and their implementation need review.
+Inês's own electronic complaints-book registration also remains unverified;
+Época's registration must not be assumed to cover her teaching business.
+See [DL 156/2005, articles 2 and 5-B](https://diariodarepublica.pt/dr/legislacao-consolidada/decreto-lei/2005-34431675).
+Do not represent this presentation update as certification of legal compliance.
 
 Production uses `payment_mode=postpay` as of 11 September 2026. A new database
 defaults to `off`, where every booking confirms on creation without a card.
