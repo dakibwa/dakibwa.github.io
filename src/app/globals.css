@@ -973,7 +973,7 @@ html[data-akibwa-project="true"] .akibwa-project-banner {
 .editorial-callout {
   max-width: 980px;
   margin: 0 auto;
-  padding: clamp(4rem, 8vw, 8rem) var(--page-pad);
+  padding: clamp(3rem, 5vw, 5rem) var(--page-pad);
   text-align: center;
 }
 

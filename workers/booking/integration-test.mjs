@@ -172,6 +172,25 @@ await test("the seeded 14-hour rule filters availability and protects booking an
   }
 });
 
+await test("lesson history exposes each student's cancellation time independently of lesson and update dates", async () => {
+  booking("history-completed", { start: "2026-09-04T09:00:00.000Z", end: "2026-09-04T10:00:00.000Z" });
+  booking("history-cancelled", { start: "2026-11-05T09:00:00.000Z", end: "2026-11-05T10:00:00.000Z" });
+  booking("history-other", { owner: "bob" });
+  const cancelledAt = "2026-09-03T12:00:00.000Z";
+  db.prepare("UPDATE bookings SET status='cancelled', cancelled_at=? WHERE id IN ('history-cancelled','history-other')").run(cancelledAt);
+  try {
+    const response = await call("/me", { method: "GET" });
+    assert.equal(response.status, 200);
+    const { bookings } = await response.json();
+    assert.equal(bookings.find(row => row.reference === "history-cancelled").cancelledAt, cancelledAt);
+    assert.equal(bookings.find(row => row.reference === "history-completed").cancelledAt, null);
+    assert.ok(!bookings.some(row => row.reference === "history-other"));
+    assert.equal((await call("/me", { method: "GET", user: null })).status, 401);
+  } finally {
+    db.prepare("DELETE FROM bookings WHERE id IN ('history-completed','history-cancelled','history-other')").run();
+  }
+});
+
 await test("exact allowlist never derives price from suffix", () => {
   assert.deepEqual(findRecurringCode(env.PRIVATE_RECURRING_CODES, "  test15  ", 60), { duration: 60, cents: 1500 });
   for (const code of ["TEST14", "TEST15extra", "AULA15", "LONGA25", "TEST 15"]) assert.equal(findRecurringCode(env.PRIVATE_RECURRING_CODES, code, 60), null);

@@ -358,7 +358,9 @@ Preserve these desktop and mobile states:
   consistently: selecting the current view again keeps it open. Upcoming lessons
   owns the four-week calendar. History uses the full width beneath the account
   bar, with two readable columns of records on wide desktop and one on mobile;
-  its `Upcoming lessons` action returns directly to the current schedule.
+  order records by when each lesson ended or was cancelled, newest first,
+  so cancelled future dates do not bury recently completed lessons.
+  Its `Upcoming lessons` action returns directly to the current schedule.
   Profile editing uses the account bar on its own, with paired fields on wide
   desktop; `Done editing` returns to Upcoming lessons. History and profile
   editing never leave a future calendar floating beside or underneath them.

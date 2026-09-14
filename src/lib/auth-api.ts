@@ -17,6 +17,8 @@ export type MyBooking = {
   status: "confirmed" | "cancelled";
   startAt: string;
   endAt: string;
+  /** When the lesson was cancelled, independent of its scheduled date. */
+  cancelledAt?: string | null;
   location: "online" | "porto";
   notes: string;
   lessonType: { id: string; name: string; durationMinutes: number; priceCents: number };

@@ -15,6 +15,10 @@ let bookings = Array.from({ length: 12 }, (_, index) => ({
   endAt: new Date(Date.UTC(2026, 8, 4 - index, 17)).toISOString(),
   lessonType, isPast: true, sameDayFeeApplies: false, seriesId: null, manageToken: `preview-${index}`
 }));
+bookings[0].status = "confirmed";
+bookings[1] = { ...bookings[1], isPast: false, startAt: "2026-11-05T16:00:00Z", endAt: "2026-11-05T17:00:00Z", cancelledAt: "2026-09-03T18:00:00Z" };
+bookings[2] = { ...bookings[2], isPast: false, startAt: "2026-09-07T16:00:00Z", endAt: "2026-09-07T17:00:00Z", cancelledAt: "2026-09-05T09:00:00Z" };
+const expectedHistory = [2, 0, 1, ...Array.from({ length: 9 }, (_, index) => index + 3)].map(index => `Reference PREVIEW-${index}`);
 await context.addInitScript(() => localStorage.setItem("ines-student-session", "navigation-fixture"));
 await context.route("**/me", route => route.fulfill({
   contentType: "application/json", body: JSON.stringify({ student, bookings, series: [], sameDayFeeCents: 500 })
@@ -109,6 +113,13 @@ try {
   aligned(history.width, bar.width, "History uses the account width");
   await settle();
   await page.screenshot({ path: `${out}/history-desktop.png`, fullPage: true });
+  for (const width of [1920, 390]) {
+    await page.setViewportSize({ width, height: width < 500 ? 844 : 1100 });
+    assert.deepEqual(await page.locator("#account-past-lessons .history-lesson-card__reference").allTextContents(), expectedHistory,
+      "History uses the latest completion or cancellation, not future cancelled lesson dates");
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  }
+  await page.setViewportSize({ width: 1920, height: 1100 });
   await accountAction("Edit details");
   await page.getByLabel("Your name", { exact: true }).waitFor();
   assert.equal(await page.locator("#lesson-calendar, #account-past-lessons, #account-upcoming-lessons").count(), 0);

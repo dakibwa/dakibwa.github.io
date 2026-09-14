@@ -53,6 +53,10 @@ function minutesToClock(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
+function historyTime(booking: MyBooking) {
+  return Date.parse(booking.status === "cancelled" && booking.cancelledAt ? booking.cancelledAt : booking.endAt);
+}
+
 function HistoryLessonCard({ booking }: { booking: MyBooking }) {
   const cancelled = booking.status === "cancelled";
 
@@ -380,7 +384,7 @@ export function MyLessons({
   );
   const past = bookings
     .filter((booking) => booking.isPast || booking.status === "cancelled")
-    .sort((a, b) => b.startAt.localeCompare(a.startAt));
+    .sort((a, b) => historyTime(b) - historyTime(a) || b.startAt.localeCompare(a.startAt));
 
   const bookingsByDate = upcoming.reduce<Record<string, MyBooking[]>>((dates, booking) => {
     const key = portoDateKey(new Date(booking.startAt));

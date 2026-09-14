@@ -3462,6 +3462,7 @@ async function handleMe(request, env) {
       status: row.status,
       startAt: row.starts_at,
       endAt: row.ends_at,
+      cancelledAt: row.cancelled_at ?? null,
       location: row.location,
       notes: row.notes,
       lessonType: {
