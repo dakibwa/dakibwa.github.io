@@ -2542,8 +2542,10 @@ for (const width of [1440, 390]) {
   await accountPage.getByRole("heading", { name: "Confirm your lesson", exact: true }).waitFor();
 
   await accountPage.goto(`${base}/book/?view=lessons`, { waitUntil: "domcontentloaded" });
-  const emptyDateButton = accountPage.locator("#lesson-calendar .can-start-booking:not(.has-booking)").first();
-  const emptyDateKey = await emptyDateButton.getAttribute("data-date-key");
+  // Pick a day after the available fixture: earlier empty weeks are deliberately
+  // omitted once a lesson type is selected.
+  const emptyDateKey = new Date(qaFreeStart.getTime() + 24 * 60 * 60_000).toISOString().slice(0, 10);
+  const emptyDateButton = accountPage.locator(`#lesson-calendar .can-start-booking:not(.has-booking)[data-date-key="${emptyDateKey}"]`);
   await emptyDateButton.click();
   await bookingQuestion.getByRole("button", { name: "Choose a lesson", exact: true }).click();
   await accountPage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
