@@ -287,8 +287,8 @@ own splat, the date, the Porto time and one `Change`, with no running total
 because the length row already shows the price. `Change` reopens the calendar
 for that lesson, where `Remove this lesson` drops it. A coral `Back` button at
 the calendar's top right replaces the range label and returns to the unchanged
-selection. While choosing a time, show only one coral `Back` beside the selected
-date; it returns to the date calendar. Use one `Choose a time` heading above the
+selection. While choosing a time, show only `Change` beside the selected date;
+it returns to the date calendar. Use one `Choose a time` heading above the
 slots, without a second title or a generic instruction above the selected date.
 `Add another lesson` sits beneath the rows. No
 slot is held until the final confirmation. Keep 44px actions on phones. A trial

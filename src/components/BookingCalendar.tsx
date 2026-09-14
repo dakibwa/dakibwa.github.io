@@ -2325,12 +2325,13 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                 <strong>{formatLongDate(`${selectedDate}T12:00:00Z`)}</strong>
               </span>
               <button
-                aria-label="Back to dates"
-                className="button button--coral booking-selection-back"
+                aria-label="Change date"
+                className="text-action booking-choice-summary__change"
                 onClick={changeDateChoice}
                 type="button"
               >
-                <ArrowLeft size={16} aria-hidden="true" /> Back
+                <span className="booking-choice-summary__change-label">Change date</span>
+                <span className="booking-choice-summary__change-short" aria-hidden="true">Change</span>
               </button>
             </div>
           ) : (

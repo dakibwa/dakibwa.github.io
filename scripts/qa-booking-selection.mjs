@@ -125,11 +125,11 @@ try {
     const selectionBeforeChangingDay = await page.locator('.booking-chosen-lessons').innerText();
     await page.getByRole("button", { name: "Change lesson 2", exact: true }).click();
     await page.locator('button[data-date-key="2026-09-23"]').click();
-    assert.equal(await page.locator('.booking-date-summary button').count(), 1, "The selected date has one Back action");
-    await page.getByRole("button", { name: "Back to dates", exact: true }).click();
+    assert.equal(await page.locator('.booking-date-summary button').count(), 1, "The selected date has one Change action");
+    await page.getByRole("button", { name: "Change date", exact: true }).click();
     await page.locator('button[data-date-key="2026-09-23"]').waitFor();
     await page.getByRole("button", { name: "Back to your selection", exact: true }).click();
-    assert.equal(await page.locator('.booking-chosen-lessons').innerText(), selectionBeforeChangingDay, "Backing through dates to the selection keeps the original lessons");
+    assert.equal(await page.locator('.booking-chosen-lessons').innerText(), selectionBeforeChangingDay, "Changing the date then backing out keeps the original lessons");
     await page.getByRole("button", { name: "Change lesson 2", exact: true }).click();
     await page.getByRole("button", { name: "Remove this lesson", exact: true }).click();
     assert.equal(await page.locator('.booking-chosen-lessons li').count(), 2);
@@ -162,7 +162,7 @@ try {
     assert.deepEqual(dates, Array.from({ length: 7 }, (_, i) => `2026-09-${14 + i}`), "Only the initial Monday–Sunday week can be chosen");
     await page.locator('button[data-date-key="2026-09-14"]').click();
     assert.equal(await page.getByRole("button", { name: "10:00", exact: true }).count(), 0, "An already selected or overlapping time is unavailable");
-    await page.getByRole("button", { name: "Back to dates", exact: true }).click();
+    await page.getByRole("button", { name: "Change date", exact: true }).click();
     await choose("2026-09-15");
     assert.equal(await page.getByRole("button", { name: /Add a second weekly time/ }).count(), 0);
     await checkOverflow();

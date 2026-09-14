@@ -2168,11 +2168,11 @@ await freeDay.waitFor({ state: "visible" });
 await freeDay.click();
 const selectedDateSummary = accountPage.locator(".booking-date-summary");
 await selectedDateSummary.waitFor({ state: "visible" });
-const backToDates = accountPage.getByRole("button", { name: "Back to dates", exact: true });
-await backToDates.waitFor({ state: "visible" });
+const changeDate = accountPage.getByRole("button", { name: "Change date", exact: true });
+await changeDate.waitFor({ state: "visible" });
 const selectedDateSummaryLayout = await selectedDateSummary.evaluate((summary) => {
   const rectangle = summary.getBoundingClientRect();
-  const action = summary.querySelector(".booking-selection-back")?.getBoundingClientRect();
+  const action = summary.querySelector(".booking-choice-summary__change")?.getBoundingClientRect();
   return {
     actionRight: action?.right ?? 0,
     height: rectangle.height,
@@ -2183,7 +2183,7 @@ if (
   selectedDateSummaryLayout.height > 130 ||
   selectedDateSummaryLayout.summaryRight - selectedDateSummaryLayout.actionRight > 18
 ) {
-  throw new Error(`The chosen date should collapse into a compact row with its Back action on the right: ${JSON.stringify(selectedDateSummaryLayout)}.`);
+  throw new Error(`The chosen date should collapse into a compact row with its change action on the right: ${JSON.stringify(selectedDateSummaryLayout)}.`);
 }
 await waitForOrientation(accountPage);
 await accountPage.waitForFunction(
@@ -2246,10 +2246,10 @@ if (
 await waitForOrientation(accountPage);
 await accountPage.screenshot({ path: path.join(outDir, "booking-calendar-free-day-mobile.png"), fullPage: true });
 
-await backToDates.click();
+await changeDate.click();
 await accountPage.locator("#lesson-calendar .calendar-week").first().waitFor({ state: "visible" });
 if ((await accountPage.locator("#lesson-calendar .calendar-week").count()) !== 8) {
-  throw new Error("Back from the times should restore the full eight-week booking calendar.");
+  throw new Error("Change date should restore the full eight-week booking calendar.");
 }
 await accountPage.getByRole("button", { name: /5 times free/ }).first().click();
 await selectedDateSummary.waitFor({ state: "visible" });
@@ -2551,7 +2551,7 @@ for (const width of [1440, 390]) {
   await accountPage.getByRole("button", { name: "Single lessons · choose one or more dates", exact: true }).click();
   await accountPage.getByRole("button", { name: "Choose a time", exact: true }).click();
   await accountPage.getByText("No free times on this day.", { exact: true }).waitFor();
-  await accountPage.getByRole("button", { name: "Back to dates", exact: true }).click();
+  await accountPage.getByRole("button", { name: "Change date", exact: true }).click();
   const unavailableDate = accountPage.locator(`#lesson-calendar [data-date-key="${emptyDateKey}"]`);
   if (await unavailableDate.isEnabled()) throw new Error("The actual availability check must keep a full day unavailable.");
 }

@@ -3300,6 +3300,10 @@ html.booking-transitioning .booking-confirmation-stage {
     height: 38px;
   }
 
+  .booking-date-summary .booking-choice-summary__change {
+    letter-spacing: 0.02em;
+  }
+
   .booking-choice-summary__change {
     grid-column: auto;
     justify-self: end;
