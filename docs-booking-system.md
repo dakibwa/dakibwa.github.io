@@ -848,9 +848,12 @@ Release `ee812d2` passed all CI gates and published to Cloudflare Pages on
 
 ## Google Calendar and Meet setup
 
-Implementation is opt-in and remains disabled until the Google app, Worker
-secrets, migration and Inês’s connection are ready. Google sign-in alone does
-not grant permission to create online lesson links.
+The Google app is configured in the dedicated `portugues-com-a-ines` project
+and published to Production. Calendar API, migration 0016, Worker secrets and
+the feature flag are configured in production and staging (14 September 2026).
+Sync starts only after Inês connects her account; Google sign-in alone does not
+grant calendar permission. Live event creation still needs verification after
+that connection. The existing Google sign-in client remains separate.
 
 ### Behaviour
 
