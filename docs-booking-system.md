@@ -12,10 +12,11 @@ United Kingdom and the United States. The account this site pointed at until
 August 2026 was Dan's UK account, set up as a test. It could never have taken
 money for a Porto-based business, and its booking URL is now removed.
 
-**Calendar invitations remain the booking calendar feed.** Optional Google Meet
-provisioning uses a separate, private Google calendar created for this app. It
+**The website owns bookings.** Optional lesson sync and Google Meet use a
+separate Google calendar created for this app. Student calendar invitations
+remain available by email. The integration
 does not read Inês’s existing appointments or change website availability.
-See [Google Meet setup](#google-meet-setup) for activation and recovery.
+See [Google Calendar and Meet setup](#google-calendar-and-meet-setup) for activation and recovery.
 
 ## Shape
 
@@ -434,8 +435,10 @@ PaymentIntent.
 
 ### How her calendar stays current
 
-Each lifecycle event emails an iCalendar attachment. Gmail adds the event on
-arrival and applies later updates to the same entry. Three things make an update
+Students receive iCalendar attachments. Before Google connection, Inês also
+receives these attachments; their automatic addition depends on her calendar
+client settings. Once connected, the Worker syncs events directly to her dedicated
+lessons calendar and omits her new attachments to prevent duplicates. Three things make an update
 land on the existing event rather than duplicating it, and all three are easy to
 get wrong:
 
@@ -843,7 +846,7 @@ Release `ee812d2` passed all CI gates and published to Cloudflare Pages on
 - **Reminders** before a lesson.
 - **Two-way Google Calendar sync**, once OAuth verification is worth doing.
 
-## Google Meet setup
+## Google Calendar and Meet setup
 
 Implementation is opt-in and remains disabled until the Google app, Worker
 secrets, migration and Inês’s connection are ready. Google sign-in alone does
@@ -851,22 +854,35 @@ not grant permission to create online lesson links.
 
 ### Behaviour
 
-- Each confirmed online booking gets a separate Meet link. Porto lessons and
-  bookings awaiting payment confirmation do not create a meeting.
+- All confirmed future lessons sync to the visible **Português com a Inês —
+  lessons** Google calendar owned by the connected teacher. Each online lesson
+  gets its own Meet link; Porto lessons have a Porto location and no Meet link.
+  Bookings awaiting payment confirmation do not create calendar events.
 - The student’s booking/manage views and Inês’s lesson details show **Join Google
-  Meet**. Confirmation and change emails include the link when ready. A minute
-  sweep retries delays and sends a short student email when a link becomes ready
-  later, including for future online bookings made before connection.
-- Moving a lesson updates its app calendar event and preserves its link.
-  Cancelling or changing to Porto cancels that event; the website stops showing
-  its link. Cancelling a calendar event does not promise to revoke a Meet URL
-  already delivered in email.
-- Google events are private, with no attendees or Google-generated invitations.
-  Existing emailed calendar invitations keep their UID and sequence handling.
-  They include the link in their description when available; late-link emails
-  carry no competing calendar attachment. Inês should join to admit students.
-- The dedicated calendar is hidden from normal calendar view where Google
-  permits. It is only for provisioning links; D1 remains booking truth.
+  Meet** for online lessons. Confirmation and change emails include the link when
+  ready; delayed links get a short follow-up email. The minute sweep also fills
+  existing future lessons after connection.
+- Moving a lesson updates the same event. Changing to Porto removes the event’s
+  conference; changing to online requests one. Cancelling cancels that event.
+  Cancellation does not promise to revoke a Meet URL previously delivered.
+- The calendar is private by default, but events inherit calendar visibility so
+  explicitly shared read-only viewers can see lesson names, times, location and
+  Meet links. No student email, phone, notes or payment details are copied into
+  these Google events. No attendees or extra Google invitations are created.
+- Students keep their emailed calendar invitations with existing UID/sequence
+  handling. Once the teacher calendar is connected, new teacher emails omit ICS
+  attachments. Old invitations previously imported into her primary calendar may
+  need one-time manual cleanup after checking the new calendar; never remove
+  personal appointments or silently delete old records.
+- Inês can share this specific calendar with `dakibwa@gmail.com` using **Settings
+  and sharing → Add people → See event details**. Dan accepts Google’s sharing
+  invitation to add it to his calendar. This is read-only access; her personal
+  calendars remain separate. Calendar sharing is configured once in Google by
+  its owner, not via a broad ACL permission granted to the website.
+- Booking edits remain on the website. This is one-way website-to-Google sync;
+  personal Google appointments do not block website availability, and edits made
+  directly in Google are not imported into bookings. Inês should use her schedule
+  page for changes and join online lessons to admit students.
 - Provider failures never roll back a confirmed lesson or payment. Per-booking
   claims prevent concurrent creation; event ownership markers and existing
   iCalendar UID lookups recover lost event-create responses. Tokens are encrypted
@@ -896,9 +912,11 @@ not grant permission to create online lesson links.
    matching Google account and grants permission. The callback checks signed
    identity, teacher role, session version/revocation, expiring single-use state
    and PKCE. The shared admin token cannot start OAuth.
-6. Verify an online test lesson produces a joinable link in booking/email,
-   preserves it when moved, hides it when cancelled, and a Porto lesson creates
-   none. Only then enable production and connect Inês’s production account.
+6. Verify Porto and online test lessons both sync, and an online test lesson
+   produces a joinable link in booking/email,
+   preserves it when moved, hides it when cancelled, and a Porto lesson has
+   no Meet link. Verify changing online ↔ Porto preserves the event identity.
+   Only then enable production and connect Inês’s production account.
 
 Expired or revoked Google permission shows a reconnect prompt in her schedule.
 Reconnection reuses the stored calendar and event identities. If the first

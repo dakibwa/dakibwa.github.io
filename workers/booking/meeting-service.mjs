@@ -25,10 +25,18 @@ export async function calendarConnectionStatus(env) {
   if (!enabled(env) || !callback(env)) return { configured: false, connected: false, email: null, needsReconnect: false, pending: 0 };
   const account = await connection(env);
   const pending = await env.DB.prepare(`SELECT COUNT(*) AS count FROM bookings
-    WHERE location = 'online' AND status = 'confirmed' AND ends_at > ? AND meeting_url IS NULL`)
+    WHERE status = 'confirmed' AND ends_at > ?
+      AND (meeting_event_id IS NULL OR meeting_sequence IS NULL OR meeting_sequence != sequence OR (location = 'online' AND meeting_url IS NULL))`)
     .bind(new Date().toISOString()).first();
   return { configured: true, connected: account?.status === "active" && Boolean(account?.calendar_id), email: account?.email ?? null,
     needsReconnect: account?.status === "reconnect" || Boolean(account && !account.calendar_id), pending: pending?.count ?? 0 };
+}
+
+/** Once connected, teacher ICS copies would duplicate the directly synced events.
+ * Keep the same route during a reconnect; the durable sweep catches up afterward. */
+export async function calendarOwnsTeacherInvites(env) {
+  if (!enabled(env)) return false;
+  return Boolean((await connection(env))?.calendar_id);
 }
 
 export async function startCalendarConnection(env, teacher, sessionHash) {
@@ -115,10 +123,10 @@ export async function prepareMeeting(env, input) {
   if (!account || account.status !== "active" || !account.calendar_id) return input;
   const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(input.id).first();
   if (!row || row.status === "pending_payment") return row ?? input;
-  const eligible = row.status === "confirmed" && row.location === "online";
+  const eligible = row.status === "confirmed";
   if (!eligible && !row.meeting_event_id) return row;
   if (eligible && row.ends_at <= new Date().toISOString()) return row;
-  if (row.meeting_sequence === row.sequence && (!eligible || meetingUrl(row))) return row;
+  if (row.meeting_sequence === row.sequence && (!eligible || row.location === "porto" || meetingUrl(row))) return row;
   const now = new Date();
   const claim = random();
   const result = await env.DB.prepare(`UPDATE bookings SET meeting_claim_id = ?, meeting_retry_at = ?
@@ -133,15 +141,17 @@ export async function prepareMeeting(env, input) {
     } else {
       const meeting = await ensureCalendarMeeting(env, account, {
         bookingId: row.id, iCalUID: calendarUid(row.id), eventId: row.meeting_event_id,
-        requestId: `pwi-${row.id}-${row.meeting_attempts ?? 0}`, summary: `Portuguese lesson · ${row.student_name}`,
-        description: `Online Portuguese lesson. Booking reference: ${row.reference}`,
+        requestId: `pwi-${row.id}-${row.sequence}-${row.meeting_attempts ?? 0}`, summary: `Portuguese lesson · ${row.student_name}`,
+        description: `${row.location === "online" ? "Online" : "In-person Porto"} Portuguese lesson. Booking reference: ${row.reference}. Manage lessons on https://portuguesewithines.com/schedule/`,
+        online: row.location === "online",
         startAt: row.starts_at, endAt: row.ends_at,
       });
       // Persist provider identity even if the student changed/cancelled while
       // Google worked; the next sweep then reconciles the same event.
-      await env.DB.prepare(`UPDATE bookings SET meeting_event_id = ?, meeting_url = ?, meeting_sequence = ?,
+      await env.DB.prepare(`UPDATE bookings SET meeting_notified_at = CASE WHEN meeting_url IS ? THEN meeting_notified_at ELSE NULL END,
+        meeting_event_id = ?, meeting_url = ?, meeting_sequence = ?,
         meeting_claim_id = NULL, meeting_retry_at = ?, meeting_attempts = 0 WHERE id = ? AND meeting_claim_id = ?`)
-        .bind(meeting.eventId, meeting.meetingUrl, meeting.status === "ready" ? row.sequence : null,
+        .bind(meeting.meetingUrl, meeting.eventId, meeting.meetingUrl, meeting.status === "ready" ? row.sequence : null,
           meeting.status === "ready" ? null : new Date(now.getTime() + 60000).toISOString(), row.id, claim).run();
     }
   } catch (error) {
@@ -170,8 +180,8 @@ export async function syncPendingMeetings(env, notifyReady) {
   if (!account || account.status !== "active" || !account.calendar_id) return;
   const now = new Date().toISOString();
   const { results } = await env.DB.prepare(`SELECT * FROM bookings WHERE
-    ((location = 'online' AND status = 'confirmed' AND ends_at > ? AND (meeting_url IS NULL OR meeting_sequence IS NULL OR meeting_sequence != sequence))
-      OR (meeting_event_id IS NOT NULL AND (status = 'cancelled' OR location = 'porto') AND (meeting_sequence IS NULL OR meeting_sequence != sequence)))
+    ((status = 'confirmed' AND ends_at > ? AND (meeting_event_id IS NULL OR (location = 'online' AND meeting_url IS NULL) OR meeting_sequence IS NULL OR meeting_sequence != sequence))
+      OR (meeting_event_id IS NOT NULL AND status = 'cancelled' AND (meeting_sequence IS NULL OR meeting_sequence != sequence)))
     AND (meeting_retry_at IS NULL OR meeting_retry_at <= ?) ORDER BY starts_at LIMIT 6`).bind(now, now).all();
   for (const row of results ?? []) await prepareMeeting(env, row);
   // Give the ordinary confirmation a chance to include a synchronously-ready

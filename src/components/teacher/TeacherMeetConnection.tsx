@@ -58,7 +58,7 @@ export function TeacherMeetConnection({ token }: { token: string }) {
     ? !connection
       ? "Checking your Google Meet connection…"
       : connection.connected && !connection.needsReconnect
-        ? "Google Meet connected. Online lesson links will now be created automatically."
+        ? "Google Calendar connected. Lessons will sync automatically, with Meet links for online lessons."
         : "Google Meet is not connected yet. Please try again."
     : callbackResult === "cancelled"
       ? "Google Meet connection was cancelled. You can try again when you’re ready."
@@ -69,20 +69,23 @@ export function TeacherMeetConnection({ token }: { token: string }) {
   return (
     <section className="teacher-meet" aria-labelledby="teacher-meet-title">
       <div className="teacher-meet-copy">
-        <h2 id="teacher-meet-title"><Video size={18} aria-hidden="true" /> Google Meet</h2>
+        <h2 id="teacher-meet-title"><Video size={18} aria-hidden="true" /> Google Calendar & Meet</h2>
         {connection ? (
           <p>
             {!connection.configured
-              ? "Google Meet needs a one-time setup before it can create lesson links."
+              ? "Google Calendar needs a one-time setup to sync lessons and create online lesson links."
               : connection.needsReconnect
-                ? "Reconnect your Google account to keep creating online lesson links."
+                ? "Reconnect your Google account to keep your lesson calendar and online links up to date."
                 : connection.connected
-                  ? `Connected${connection.email ? ` as ${connection.email}` : ""}. Online lesson links are created automatically.`
-                  : "Connect your Google account to create a Meet link for each online lesson."}
+                  ? `Connected${connection.email ? ` as ${connection.email}` : ""}. Lessons sync to your Google Calendar, with Meet links for online lessons.`
+                  : "Connect your Google account to sync all lessons to your calendar and create Meet links for online lessons."}
           </p>
         ) : !error && !feedback ? <p role="status">Checking Google Meet…</p> : null}
         {connection && connection.pending > 0 ? (
-          <p>{connection.pending} online {connection.pending === 1 ? "lesson is" : "lessons are"} waiting for a Meet link.</p>
+          <p>{connection.pending} {connection.pending === 1 ? "lesson is" : "lessons are"} waiting to sync.</p>
+        ) : null}
+        {connection?.connected ? (
+          <p><a href="https://calendar.google.com/" target="_blank" rel="noopener noreferrer">Open Google Calendar</a>. To share your lessons, open “Português com a Inês — lessons” → Settings and sharing → Add people, and choose “See event details”. Change or cancel lessons here on the website.</p>
         ) : null}
         {feedback ? <p role="status">{feedback}</p> : null}
         {error ? <p className="teacher-meet-error" role="alert">{error}</p> : null}

@@ -9,7 +9,7 @@ const input = { bookingId: "lesson-1", iCalUID: "lesson-1@portuguesewithines.com
 const meetingUrl = "https://meet.google.com/abc-defg-hij";
 const calendarId = "private-calendar@group.calendar.google.com";
 function event(overrides = {}) {
-  return { id: "event-1", iCalUID: input.iCalUID, status: "confirmed", summary: input.summary, description: input.description,
+  return { id: "event-1", iCalUID: input.iCalUID, status: "confirmed", summary: input.summary, description: input.description, location: "Online", visibility: "default",
     start: { dateTime: input.startAt }, end: { dateTime: input.endAt },
     extendedProperties: { private: { app: "portuguese-with-ines", bookingId: input.bookingId } },
     conferenceData: { entryPoints: [{ entryPointType: "video", uri: meetingUrl }] }, ...overrides };
@@ -82,7 +82,7 @@ await test("access token refresh is reused for the same encrypted grant", async 
   assert.equal(await calendarAccessToken(env, connection), "test-access");
   assert.equal(calls.length, 1);
 });
-await test("imports one private UID copy with one distinct conference and no attendees/emails", async () => {
+await test("imports one UID copy with one conference, inherited calendar privacy and no attendees/emails", async () => {
   let imports = 0;
   const { connection } = await fixture((url, options) => {
     assert.ok(url.pathname.startsWith(`/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`));
@@ -93,7 +93,8 @@ await test("imports one private UID copy with one distinct conference and no att
     assert.equal(url.searchParams.get("conferenceDataVersion"), "1");
     const body = JSON.parse(options.body);
     assert.equal(body.iCalUID, input.iCalUID);
-    assert.equal(body.visibility, "private");
+    assert.equal(body.visibility, "default");
+    assert.equal(body.location, "Online");
     assert.equal(body.attendees, undefined);
     assert.deepEqual(body.reminders, { useDefault: false });
     assert.deepEqual(body.extendedProperties.private, { app: "portuguese-with-ines", bookingId: input.bookingId });
@@ -148,7 +149,7 @@ await test("pending conference polls are bounded and preserve event identity", a
 });
 await test("pending conference can become ready during bounded polling", async () => {
   let gets = 0;
-  const { connection } = await fixture(() => response(++gets === 1 ? event({ conferenceData: {} }) : event()));
+  const { connection } = await fixture(() => response(++gets === 1 ? event({ conferenceData: { createRequest: { status: { statusCode: "pending" } } } }) : event()));
   assert.equal((await ensureCalendarMeeting(env, connection, { ...input, eventId: "event-1" })).status, "ready");
   assert.equal(gets, 2);
 });
@@ -203,27 +204,28 @@ await test("saved secondary calendar is reused without any provider request", as
   globalThis.fetch = async () => { throw new Error("must not fetch"); };
   assert.equal(await ensureAppCalendar(env, { calendar_id: calendarId, calendar_creation_attempted_at: "2026-09-14" }), calendarId);
 });
-await test("first calendar creation uses the account marker and hides its calendar list entry", async () => {
+await test("first calendar creation uses the account marker and shows the lesson calendar", async () => {
   let mutations = 0;
   const { connection, calls } = await fixture((url, options) => {
     mutations += 1;
     if (options.method === "POST") {
       assert.equal(url.pathname, "/calendar/v3/calendars");
       const body = JSON.parse(options.body);
+      assert.equal(body.summary, "Português com a Inês — lessons");
       assert.equal(body.timeZone, "Europe/Lisbon");
       assert.ok(body.description.includes("app=portuguese-with-ines;google_sub=teacher-google-123"));
       return response({ id: calendarId });
     }
     assert.equal(options.method, "PATCH");
     assert.equal(url.pathname, `/calendar/v3/users/me/calendarList/${encodeURIComponent(calendarId)}`);
-    assert.deepEqual(JSON.parse(options.body), { hidden: true, selected: false });
-    return response({ id: calendarId, selected: false, hidden: true });
+    assert.deepEqual(JSON.parse(options.body), { hidden: false, selected: true });
+    return response({ id: calendarId, selected: true, hidden: false });
   });
   assert.equal(await ensureAppCalendar(env, { ...connection, calendar_id: null }), calendarId);
   assert.equal(mutations, 2);
   assert.ok(calls.every((call) => call.options.method !== "GET"));
 });
-await test("calendar hiding failure does not discard the successfully created ID", async () => {
+await test("calendar display setup failure does not discard the successfully created ID", async () => {
   const { connection } = await fixture((url, options) => options.method === "POST" ? response({ id: calendarId }) : response({}, 403));
   assert.equal(await ensureAppCalendar(env, { ...connection, calendar_id: null }), calendarId);
 });
@@ -262,6 +264,73 @@ await test("pending conference does not restart just because the caller attempt 
     return response(event({ conferenceData: { createRequest: { requestId: "prior-attempt", status: { statusCode: "pending" } } } }));
   });
   assert.equal((await ensureCalendarMeeting(env, connection, { ...input, eventId: "event-1" })).status, "pending");
+});
+
+await test("new Porto lesson imports no conference and is ready without polling", async () => {
+  let imports = 0;
+  const { connection } = await fixture((url, options) => {
+    if (options.method === "GET") return response({ items: [] });
+    assert.equal(options.method, "POST");
+    imports += 1;
+    const body = JSON.parse(options.body);
+    assert.equal(body.location, "Porto");
+    assert.equal(body.visibility, "default");
+    assert.equal(body.conferenceData, undefined);
+    return response(event({ ...body, conferenceData: undefined }));
+  });
+  assert.deepEqual(await ensureCalendarMeeting(env, connection, { ...input, online: false }), { eventId: "event-1", status: "ready", meetingUrl: null });
+  assert.equal(imports, 1);
+});
+await test("existing Porto lesson is ready without creating a conference", async () => {
+  let gets = 0;
+  const { connection } = await fixture((url, options) => {
+    gets += 1;
+    assert.equal(options.method, "GET");
+    return response(event({ location: "Porto", conferenceData: undefined }));
+  });
+  assert.equal((await ensureCalendarMeeting(env, connection, { ...input, eventId: "event-1", online: false })).status, "ready");
+  assert.equal(gets, 1);
+});
+await test("online to Porto clears conferencing and retains its event ID", async () => {
+  const { connection } = await fixture((url, options) => {
+    if (options.method === "GET") return response(event());
+    assert.equal(options.method, "PATCH");
+    assert.ok(url.pathname.endsWith("/events/event-1"));
+    assert.equal(url.searchParams.get("conferenceDataVersion"), "1");
+    assert.equal(url.searchParams.get("sendUpdates"), "none");
+    const body = JSON.parse(options.body);
+    assert.equal(body.conferenceData, null);
+    assert.equal(body.location, "Porto");
+    return response(event(body));
+  });
+  assert.deepEqual(await ensureCalendarMeeting(env, connection, { ...input, eventId: "event-1", online: false }), { eventId: "event-1", meetingUrl: null, status: "ready" });
+});
+await test("Porto to online adds conferencing to the same event", async () => {
+  const { connection } = await fixture((url, options) => {
+    if (options.method === "GET") return response(event({ location: "Porto", conferenceData: null }));
+    assert.equal(options.method, "PATCH");
+    assert.ok(url.pathname.endsWith("/events/event-1"));
+    const body = JSON.parse(options.body);
+    assert.equal(body.location, "Online");
+    assert.equal(body.conferenceData.createRequest.requestId, input.requestId);
+    return response(event());
+  });
+  assert.deepEqual(await ensureCalendarMeeting(env, connection, { ...input, eventId: "event-1", online: true }), { eventId: "event-1", meetingUrl, status: "ready" });
+});
+await test("older explicitly private lesson inherits shared-calendar read permissions", async () => {
+  const { connection } = await fixture((url, options) => {
+    if (options.method === "GET") return response(event({ visibility: "private" }));
+    assert.equal(options.method, "PATCH");
+    const body = JSON.parse(options.body);
+    assert.equal(body.visibility, "default");
+    assert.equal(body.conferenceData, undefined);
+    return response(event(body));
+  });
+  assert.equal((await ensureCalendarMeeting(env, connection, { ...input, eventId: "event-1" })).meetingUrl, meetingUrl);
+});
+await test("Porto sync does not claim success when provider retains conferencing", async () => {
+  const { connection } = await fixture(() => response(event()));
+  await assert.rejects(ensureCalendarMeeting(env, connection, { ...input, eventId: "event-1", online: false }), rejects("calendar_unavailable", 503));
 });
 
 for (const { name, error } of failures) console.error(`FAIL: ${name}\n${error.stack}`);

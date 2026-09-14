@@ -1,4 +1,4 @@
-/** Google Calendar's private event copy provisions one Meet room per booking. */
+/** Dedicated lesson calendar; online lessons also receive their own Meet room. */
 export const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 const CALENDARS_ROOT = "https://www.googleapis.com/calendar/v3/calendars";
 const APP = "portuguese-with-ines";
@@ -193,8 +193,8 @@ export async function ensureAppCalendar(env, connection) {
   let created;
   try {
     created = await calendarRequest(token, CALENDARS_ROOT, "POST", {
-      summary: "Português com a Inês — online lessons",
-      description: `Private meeting links managed by Português com a Inês. app=${APP};google_sub=${connection.google_sub}`,
+      summary: "Português com a Inês — lessons",
+      description: `Lessons managed by Português com a Inês. app=${APP};google_sub=${connection.google_sub}`,
       timeZone: "Europe/Lisbon",
     });
     calendarEventsRoot({ calendar_id: created.id });
@@ -203,9 +203,9 @@ export async function ensureAppCalendar(env, connection) {
     throw problem("calendar_setup_uncertain", 409);
   }
   try {
-    await calendarRequest(token, `https://www.googleapis.com/calendar/v3/users/me/calendarList/${encodeURIComponent(created.id)}`, "PATCH", { selected: false, hidden: true });
+    await calendarRequest(token, `https://www.googleapis.com/calendar/v3/users/me/calendarList/${encodeURIComponent(created.id)}`, "PATCH", { selected: true, hidden: false });
   } catch {
-    // Never discard a successfully created calendar ID because hiding it failed.
+    // Never discard a successfully created calendar ID because display setup failed.
   }
   return created.id;
 }
@@ -214,9 +214,11 @@ export async function ensureAppCalendar(env, connection) {
 export async function ensureCalendarMeeting(env, connection, input) {
   if (!input || !input.bookingId || !input.iCalUID || !input.requestId ||
       typeof input.summary !== "string" || typeof input.description !== "string" ||
+      (input.online !== undefined && typeof input.online !== "boolean") ||
       !Number.isFinite(Date.parse(input.startAt)) || !Number.isFinite(Date.parse(input.endAt)) ||
       Date.parse(input.endAt) <= Date.parse(input.startAt)) throw problem("calendar_invalid_input", 400);
   const root = calendarEventsRoot(connection);
+  const online = input.online !== false;
   const accessToken = await calendarAccessToken(env, connection);
   let event = input.eventId ? await calendarRequest(accessToken, eventUrl(root, input.eventId), "GET", undefined, true) : null;
   if (event) verifyEvent(event, input);
@@ -224,6 +226,9 @@ export async function ensureCalendarMeeting(env, connection, input) {
   const details = {
     summary: input.summary,
     description: input.description,
+    location: online ? "Online" : "Porto",
+    // The calendar remains private unless Inês shares it. Inherit those read permissions.
+    visibility: "default",
     start: { dateTime: input.startAt },
     end: { dateTime: input.endAt },
   };
@@ -232,10 +237,9 @@ export async function ensureCalendarMeeting(env, connection, input) {
       event = await calendarRequest(accessToken, `${root}/import?conferenceDataVersion=1`, "POST", {
         ...details,
         iCalUID: input.iCalUID,
-        visibility: "private",
         reminders: { useDefault: false },
         extendedProperties: { private: { app: APP, bookingId: input.bookingId } },
-        conferenceData: { createRequest: { requestId: input.requestId, conferenceSolutionKey: { type: "hangoutsMeet" } } },
+        ...(online ? { conferenceData: { createRequest: { requestId: input.requestId, conferenceSolutionKey: { type: "hangoutsMeet" } } } } : {}),
       });
     } catch (error) {
       if (error.causeCode !== "calendar_unavailable" && error.causeCode !== "calendar_event_conflict") throw error;
@@ -245,21 +249,30 @@ export async function ensureCalendarMeeting(env, connection, input) {
     }
     verifyEvent(event, input);
   } else {
-    const failed = event.conferenceData?.createRequest?.status?.statusCode === "failure";
+    const failed = online && event.conferenceData?.createRequest?.status?.statusCode === "failure";
+    const hasConference = Boolean(event.hangoutLink || (event.conferenceData && Object.keys(event.conferenceData).length));
+    const createConference = online && (!hasConference || failed);
+    const clearConference = !online && hasConference;
     if (failed && event.conferenceData.createRequest.requestId === input.requestId) throw problem("calendar_conference_failed", 502);
-    if (failed || event.status === "cancelled" || Date.parse(event.start?.dateTime) !== Date.parse(input.startAt) ||
+    if (createConference || clearConference || event.status === "cancelled" || Date.parse(event.start?.dateTime) !== Date.parse(input.startAt) ||
         Date.parse(event.end?.dateTime) !== Date.parse(input.endAt) ||
-        event.summary !== input.summary || event.description !== input.description) {
-      // Only an explicitly failed conference gets a fresh request; reschedules keep the room.
+        event.summary !== input.summary || event.description !== input.description ||
+        event.location !== details.location || (event.visibility && event.visibility !== "default")) {
+      // Reschedules retain the room. Format changes add/remove it on the same event.
       event = await calendarRequest(accessToken, `${eventUrl(root, event.id)}?conferenceDataVersion=1&sendUpdates=none`, "PATCH", {
         ...details,
         ...(event.status === "cancelled" ? { status: "confirmed" } : {}),
-        ...(failed ? { conferenceData: { createRequest: { requestId: input.requestId, conferenceSolutionKey: { type: "hangoutsMeet" } } } } : {}),
+        ...(createConference ? { conferenceData: { createRequest: { requestId: input.requestId, conferenceSolutionKey: { type: "hangoutsMeet" } } } } : {}),
+        ...(clearConference ? { conferenceData: null } : {}),
       });
       verifyEvent(event, input);
     }
   }
   if (event.status === "cancelled") throw problem("calendar_event_conflict", 409);
+  if (!online) {
+    if (event.hangoutLink || (event.conferenceData && Object.keys(event.conferenceData).length)) throw problem("calendar_unavailable");
+    return { eventId: event.id, meetingUrl: null, status: "ready" };
+  }
   let result = meetingResult(event);
   // Most links appear immediately. Bound polling; the caller schedules later retries.
   for (let attempt = 0; result.status === "pending" && attempt < 2; attempt += 1) {

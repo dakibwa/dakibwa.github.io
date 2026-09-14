@@ -1071,6 +1071,32 @@ function seriesEmailFixture() {
   };
 }
 
+await test("direct calendar sync omits teacher attachments but preserves student invitations", async () => {
+  const fixture = seriesEmailFixture();
+  Object.assign(fixture.env, { GOOGLE_CALENDAR_ENABLED: "1", GOOGLE_CALENDAR_CLIENT_ID: "fixture", GOOGLE_CALENDAR_CLIENT_SECRET: "fixture", GOOGLE_CALENDAR_TOKEN_KEY: "aa".repeat(32) });
+  for (const row of fixture.rows) Object.assign(row, { status: "confirmed", meeting_event_id: `event-${row.id}`, meeting_sequence: 0, meeting_url: "https://meet.google.com/abc-defg-hij" });
+  const prepare = fixture.env.DB.prepare;
+  fixture.env.DB.prepare = sql => {
+    const statement = prepare(sql);
+    let args = [];
+    const bind = statement.bind.bind(statement);
+    statement.bind = (...values) => { args = values; return bind(...values); };
+    statement.first = async () => sql.includes("google_calendar_connections")
+      ? { calendar_id: "fixture@group.calendar.google.com", status: "active" }
+      : fixture.rows.find(row => row.id === args[0]);
+    return statement;
+  };
+  const logs = [];
+  const originalLog = console.log;
+  console.log = message => { try { logs.push(JSON.parse(message)); } catch { /* unrelated logs */ } };
+  try {
+    await notifySeries(fixture.env, { rows: fixture.rows, lessonType: fixture.lessonType,
+      settings: fixture.settings, series: { id: "series-synced", occurrences: 3 }, manageUrls: fixture.manageUrls, skipped: [] });
+  } finally { console.log = originalLog; }
+  assert.equal(logs.find(row => row.kind === "teacher_series_booked").calendar, null);
+  assert.equal(logs.find(row => row.kind === "student_series_booked").calendar, "REQUEST");
+});
+
 await test("a repeating booking sends one consolidated email to the client", async () => {
   const fixture = seriesEmailFixture();
   const originalLog = console.log;

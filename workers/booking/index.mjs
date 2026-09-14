@@ -57,7 +57,7 @@ import {
 import { bookingReference, createManageToken, readManageToken, safeEqual } from "./tokens.mjs";
 import { findRecurringCode, recurringRates, recurringLessonType, priceForMove, takeRateLimit } from "./rates.mjs";
 import { bookingSelection, claimSelection } from "./selection.mjs";
-import { calendarConnectionStatus, startCalendarConnection, finishCalendarConnection, prepareMeeting, meetingUrl, markMeetingNotified, syncPendingMeetings } from "./meeting-service.mjs";
+import { calendarOwnsTeacherInvites, calendarConnectionStatus, startCalendarConnection, finishCalendarConnection, prepareMeeting, meetingUrl, markMeetingNotified, syncPendingMeetings } from "./meeting-service.mjs";
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" };
 const PAYMENT_CONSENT_VERSION = "2026-09-01-after-lesson-v1";
@@ -490,7 +490,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         bookingId: row.id,
         dedupeKey: `teacher:${event}:${row.id}:${row.sequence}`,
         replyTo: row.student_email,
-        calendar: { body: invite([{ name: settings.teacherName, email: teacherEmail }]), method },
+        calendar: await calendarOwnsTeacherInvites(env) ? null : { body: invite([{ name: settings.teacherName, email: teacherEmail }]), method },
         content: {
           heading: teacher.heading,
           intro: teacher.intro,
@@ -690,15 +690,15 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
           ? `teacher:series-moved:${series.id}:${first.sequence}`
           : `teacher:series:${series.id}:${rows[0].id}`,
         replyTo: first.student_email,
-        calendar: { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "REQUEST" },
+        calendar: await calendarOwnsTeacherInvites(env) ? null : { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "REQUEST" },
         content: {
           heading: reason === "extended" ? "A weekly slot was extended" : moved ? "A weekly slot was moved" : series.oneOff ? "Lessons were booked" : multipleWeeklyTimes ? "Two weekly times were booked" : "A weekly slot was booked",
           intro:
             reason === "extended"
-              ? `${first.student_name}'s open-ended weekly slot has been carried forward. The new lessons are in the calendar attachment.`
+              ? `${first.student_name}'s open-ended weekly slot has been carried forward. The new lessons will appear in your calendar.`
               : moved
-                ? `${first.student_name}'s upcoming weekly lessons have moved. The updated events are in the calendar attachment.`
-              : `${first.student_name} booked ${series.oneOff ? "these individual lessons" : multipleWeeklyTimes ? "two times each week" : "the same slot each week"}. Every lesson is in the calendar attachment.`,
+                ? `${first.student_name}'s upcoming weekly lessons have moved. The updated events will appear in your calendar.`
+              : `${first.student_name} booked ${series.oneOff ? "these individual lessons" : multipleWeeklyTimes ? "two times each week" : "the same slot each week"}. Every lesson will appear in your calendar.`,
           callout:
             skippedNote,
           hero: `${formatInZone(new Date(first.starts_at), PORTO)}, Porto time`,
@@ -824,7 +824,7 @@ async function notifySeriesCancelled(env, { rows, lessonType, settings }) {
         bookingId: first.id,
         dedupeKey: `teacher:series-cancel:${first.id}:${rows.length}`,
         replyTo: first.student_email,
-        calendar: { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "CANCEL" },
+        calendar: await calendarOwnsTeacherInvites(env) ? null : { body: invite({ name: settings.teacherName, email: teacherEmail }), method: "CANCEL" },
         content: {
           heading: "A weekly run was cancelled",
           preheader: `${first.student_name} · ${count}`,

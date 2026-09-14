@@ -52,7 +52,7 @@ try {
     await setup.page.close();
 
     const ready = await fixture(width, disconnected);
-    await expect(ready.panel).toContainText("2 online lessons are waiting");
+    await expect(ready.panel).toContainText("2 lessons are waiting to sync.");
     await expect(ready.panel.getByRole("button", { name: "Connect Google Meet", exact: true })).toBeVisible();
     assert.deepEqual(ready.calls, [], "OAuth never starts without a click");
     assert.ok(await ready.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
@@ -66,10 +66,12 @@ try {
 
     const connected = await fixture(width, { ...disconnected, connected: true, email: "teacher@example.invalid", pending: 0 }, { callback: "?meet=connected&view=lessons#retained" });
     await expect(connected.panel).toContainText("Connected as teacher@example.invalid");
-    await expect(connected.panel.getByRole("status")).toHaveText(/Google Meet connected/);
+    await expect(connected.panel.getByRole("status")).toHaveText(/Google Calendar connected/);
     assert.equal(new URL(connected.page.url()).search, "?view=lessons");
     assert.equal(new URL(connected.page.url()).hash, "#retained");
     await expect(connected.panel.getByRole("button")).toHaveCount(0);
+    await expect(connected.panel.getByRole("link", { name: "Open Google Calendar", exact: true })).toHaveAttribute("href", "https://calendar.google.com/");
+    await expect(connected.panel).toContainText("See event details");
     await connected.page.close();
   }
 

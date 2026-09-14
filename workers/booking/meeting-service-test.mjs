@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import { calendarConnectionStatus, startCalendarConnection, finishCalendarConnection, prepareMeeting, meetingUrl, syncPendingMeetings, markMeetingNotified } from "./meeting-service.mjs";
+import { calendarConnectionStatus, calendarOwnsTeacherInvites, startCalendarConnection, finishCalendarConnection, prepareMeeting, meetingUrl, syncPendingMeetings, markMeetingNotified } from "./meeting-service.mjs";
 import worker from "./index.mjs";
 import { createSession, sessionHash } from "./auth.mjs";
 import { CALENDAR_SCOPE, encryptCalendarToken, decryptCalendarToken } from "./google-calendar.mjs";
@@ -70,7 +70,7 @@ globalThis.fetch = async (input, options = {}) => {
     return Response.json({ id: "app-calendar@group.calendar.google.com" });
   }
   if (url.pathname.startsWith("/calendar/v3/users/me/calendarList/") && method === "PATCH") {
-    assert.deepEqual(JSON.parse(options.body), { selected: false, hidden: true });
+    assert.deepEqual(JSON.parse(options.body), { selected: true, hidden: false });
     return Response.json({ id: "app-calendar@group.calendar.google.com" });
   }
   assert.match(url.pathname, /^\/calendar\/v3\/calendars\/[^/]+\/events(?:\/[^/]+)?$/);
@@ -80,15 +80,19 @@ globalThis.fetch = async (input, options = {}) => {
   if (suffix === "/import" && method === "POST") {
     await duringImport?.();
     const body = JSON.parse(options.body);
-    const event = { ...body, id: `event-${events.size + 1}`, status: "confirmed", ...(mode === "pending" ? {} : { hangoutLink: link }) };
+    const event = { ...body, id: `event-${events.size + 1}`, status: "confirmed", ...(mode === "pending" || !body.conferenceData ? {} : { hangoutLink: link }) };
     events.set(event.id, event);
     return Response.json(event);
   }
   const id = decodeURIComponent(suffix.slice(1));
   const event = events.get(id);
   if (!event) return Response.json({}, { status: 404 });
-  if (method === "PATCH") Object.assign(event, JSON.parse(options.body));
-  if (mode === "ready") event.hangoutLink = link;
+  if (method === "PATCH") {
+    const patch = JSON.parse(options.body);
+    Object.assign(event, patch);
+    if (patch.conferenceData === null) delete event.hangoutLink;
+  }
+  if (mode === "ready" && event.conferenceData) event.hangoutLink = link;
   return Response.json(event);
 };
 
@@ -138,9 +142,21 @@ try {
     assert.deepEqual(await calendarConnectionStatus({ ...env, GOOGLE_CALENDAR_ENABLED: "0" }), { configured: false, connected: false, email: null, needsReconnect: false, pending: 0 });
     assert.equal(requests.length, 0);
   });
-  await test("only future online confirmed bookings provision rooms", async () => {
-    for (const [id, overrides] of [["porto", { location: "porto" }], ["pending", { status: "pending_payment" }], ["cancelled", { status: "cancelled" }], ["past", { starts_at: iso(-7200000), ends_at: iso(-3600000) }]]) await prepareMeeting(env, addBooking(id, overrides));
+  await test("future confirmed lessons sync while only online lessons receive a Meet room", async () => {
+    for (const [id, overrides] of [["pending", { status: "pending_payment" }], ["cancelled", { status: "cancelled" }], ["past", { starts_at: iso(-7200000), ends_at: iso(-3600000) }]]) await prepareMeeting(env, addBooking(id, overrides));
     assert.equal(requests.length, 0);
+    const porto = await prepareMeeting(env, addBooking("porto", { location: "porto" }));
+    assert.ok(porto.meeting_event_id);
+    assert.equal(porto.meeting_url, null);
+    assert.equal(porto.meeting_sequence, 0);
+    const inPersonEvent = events.get(porto.meeting_event_id);
+    assert.equal(inPersonEvent.location, "Porto");
+    assert.equal(inPersonEvent.visibility, "default", "Shared calendar readers can see lesson details");
+    assert.equal(inPersonEvent.conferenceData, undefined);
+    assert.equal(inPersonEvent.hangoutLink, undefined);
+    const portoRequests = requests.length;
+    await prepareMeeting(env, porto);
+    assert.equal(requests.length, portoRequests, "Unchanged Porto event is not repeatedly synced");
     const result = await prepareMeeting(env, addBooking("online"));
     assert.equal(meetingUrl(result), link);
     assert.equal(result.meeting_sequence, 0);
@@ -182,15 +198,89 @@ try {
     assert.equal(meetingUrl(await prepareMeeting(env, row(result.id))), link);
     assert.equal(events.size, 1);
   });
-  await test("cancellations and a switch to Porto soft-cancel the existing event", async () => {
-    for (const [id, change] of [["cancel", "status='cancelled'"], ["switch", "location='porto'"]]) {
-      const ready = await prepareMeeting(env, addBooking(id));
-      db.prepare(`UPDATE bookings SET ${change}, sequence=sequence+1 WHERE id=?`).run(id);
-      const changed = await prepareMeeting(env, row(id));
+  await test("online and Porto cancellations soft-cancel the existing event", async () => {
+    for (const location of ["online", "porto"]) {
+      const ready = await prepareMeeting(env, addBooking(`cancel-${location}`, { location }));
+      db.prepare("UPDATE bookings SET status='cancelled', sequence=sequence+1 WHERE id=?").run(ready.id);
+      await syncPendingMeetings(env, async () => { throw new Error("Cancelled lesson must not be emailed"); });
+      const changed = row(ready.id);
       assert.equal(meetingUrl(changed), null);
       assert.equal(events.get(ready.meeting_event_id).status, "cancelled");
       assert.equal(changed.meeting_sequence, 1);
     }
+  });
+  await test("online to Porto to online updates one event and adds/removes only the Meet room", async () => {
+    const ready = await prepareMeeting(env, addBooking("format-switch"));
+    const eventId = ready.meeting_event_id;
+    const originalConferenceRequest = events.get(eventId).conferenceData.createRequest.requestId;
+    assert.equal(meetingUrl(ready), link);
+    await markMeetingNotified(env, ready);
+    assert.ok(row(ready.id).meeting_notified_at);
+    db.prepare("UPDATE bookings SET location='porto', sequence=1 WHERE id=?").run(ready.id);
+    await syncPendingMeetings(env, async () => { throw new Error("Porto lesson must not receive Meet email"); });
+    const porto = row(ready.id);
+    assert.equal(porto.meeting_sequence, 1);
+    assert.equal(porto.meeting_event_id, eventId);
+    assert.equal(porto.meeting_url, null);
+    assert.equal(porto.meeting_notified_at, null, "Removing the room clears the old notification marker");
+    assert.equal(events.get(eventId).status, "confirmed");
+    assert.equal(events.get(eventId).location, "Porto");
+    assert.equal(events.get(eventId).hangoutLink, undefined);
+    db.prepare("UPDATE bookings SET location='online', sequence=2 WHERE id=?").run(ready.id);
+    const online = await prepareMeeting(env, row(ready.id));
+    assert.equal(online.meeting_event_id, eventId);
+    assert.equal(online.meeting_sequence, 2);
+    assert.equal(meetingUrl(online), link);
+    assert.equal(events.get(eventId).location, "Online");
+    const recreatedConferenceRequest = events.get(eventId).conferenceData.createRequest.requestId;
+    assert.notEqual(recreatedConferenceRequest, originalConferenceRequest, "Returning online requests a fresh conference after removal");
+    assert.equal(events.size, 1);
+    assert.equal(online.meeting_notified_at, null);
+    let sends = 0;
+    await syncPendingMeetings(env, async booking => { sends++; assert.equal(meetingUrl(booking), link); return true; });
+    assert.equal(sends, 1, "A newly created room can send its ready notification after returning online");
+    assert.ok(row(ready.id).meeting_notified_at);
+    db.prepare("UPDATE bookings SET starts_at=?, ends_at=?, sequence=3 WHERE id=?").run(iso(172800000), iso(176400000), ready.id);
+    const moved = await prepareMeeting(env, row(ready.id));
+    assert.equal(moved.meeting_sequence, 3);
+    assert.equal(moved.meeting_event_id, eventId);
+    assert.equal(meetingUrl(moved), link);
+    assert.equal(events.get(eventId).conferenceData.createRequest.requestId, recreatedConferenceRequest, "A reschedule keeps the existing room");
+    assert.ok(moved.meeting_notified_at, "An unchanged room keeps its notification marker");
+  });
+  await test("background sweep backfills Porto lessons without generating Meet notifications", async () => {
+    addBooking("porto-backfill", { location: "porto" });
+    await syncPendingMeetings(env, async () => { throw new Error("An in-person lesson has no Meet notification"); });
+    const porto = row("porto-backfill");
+    assert.ok(porto.meeting_event_id);
+    assert.equal(porto.meeting_sequence, porto.sequence);
+    assert.equal(porto.meeting_url, null);
+    assert.equal(events.get(porto.meeting_event_id).location, "Porto");
+  });
+  await test("connection status counts unsynced online and Porto lessons, including stale updates", async () => {
+    addBooking("status-online");
+    addBooking("status-porto", { location: "porto" });
+    addBooking("status-stale", { location: "porto", meeting_event_id: "stale-event", meeting_sequence: 0, sequence: 1 });
+    addBooking("status-room-pending", { meeting_event_id: "pending-event", meeting_sequence: 0, meeting_url: null });
+    addBooking("status-synced-porto", { location: "porto", meeting_event_id: "synced-porto", meeting_sequence: 0 });
+    addBooking("status-synced-online", { meeting_event_id: "synced-online", meeting_sequence: 0, meeting_url: link });
+    addBooking("status-completed", { ends_at: iso(-1) });
+    addBooking("status-cancelled", { status: "cancelled" });
+    addBooking("status-payment-pending", { status: "pending_payment" });
+    assert.equal((await calendarConnectionStatus(env)).pending, 4);
+  });
+  await test("teacher invitations stay on the direct calendar route during reconnect", async () => {
+    assert.equal(await calendarOwnsTeacherInvites(env), true);
+    assert.equal(await calendarOwnsTeacherInvites({ ...env, GOOGLE_CALENDAR_ENABLED: "0" }), false);
+    db.prepare("UPDATE google_calendar_connections SET status='reconnect' WHERE id=1").run();
+    assert.equal(await calendarOwnsTeacherInvites(env), true, "Reconnect must not reintroduce duplicate ICS invitations");
+    db.prepare("UPDATE google_calendar_connections SET calendar_id=NULL WHERE id=1").run();
+    assert.equal(await calendarOwnsTeacherInvites(env), false);
+    db.exec("DELETE FROM google_calendar_connections");
+    assert.equal(await calendarOwnsTeacherInvites(env), false);
+    await connectFixture();
+    db.prepare("UPDATE students SET role='student' WHERE id='teacher'").run();
+    assert.equal(await calendarOwnsTeacherInvites(env), false);
   });
   await test("cancellation during provider work hides link and reconciles same event", async () => {
     const input = addBooking("race-cancel");
@@ -228,11 +318,14 @@ try {
     await markMeetingNotified(env, included);
     await syncPendingMeetings(env, async () => { throw new Error("Already-included link must not be resent"); });
   });
-  await test("first OAuth setup creates one hidden app calendar and reconnect reuses it", async () => {
+  await test("first OAuth setup creates one visible app calendar and reconnect reuses it", async () => {
     db.exec("DELETE FROM google_calendar_connections");
     let { callback } = await begin();
     assert.equal(await finishCalendarConnection(env, callback), "connected");
     assert.equal(db.prepare("SELECT calendar_id FROM google_calendar_connections").get().calendar_id, "app-calendar@group.calendar.google.com");
+    const displayRequest = requests.find(request => request.url.includes("/users/me/calendarList/"));
+    assert.ok(displayRequest);
+    assert.deepEqual(JSON.parse(displayRequest.body), { selected: true, hidden: false });
     ({ callback } = await begin());
     assert.equal(await finishCalendarConnection(env, callback), "connected");
     assert.equal(requests.filter(request => request.url === "https://www.googleapis.com/calendar/v3/calendars" && request.method === "POST").length, 1);
