@@ -32,6 +32,7 @@ const AccountControls = dynamic(() => import("@/components/MyLessons").then((m) 
 });
 import { LessonMark } from "@/components/LessonMarks";
 import { fetchMe, readSession, type LessonSeries, type MyBooking, type Student } from "@/lib/auth-api";
+import { SITE_BASE_PATH } from "@/lib/paths";
 import {
   addDaysToKey,
   browserTimeZone,
@@ -403,6 +404,13 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [studentZone, setStudentZone] = useState(BOOKING_TIME_ZONE);
   const [student, setStudent] = useState<Student | null>(null);
+  const isTeacher = student?.role === "teacher";
+
+  useEffect(() => {
+    // The verified account role selects the workspace, including sign-in
+    // halfway through booking. Keep one teacher dashboard and one URL for it.
+    if (isTeacher) window.location.replace(`${SITE_BASE_PATH}/schedule/`);
+  }, [isTeacher]);
   const [recurringRates, setRecurringRates] = useState<Record<number, number>>({});
   const [rateCode, setRateCode] = useState("");
   const [rateMessage, setRateMessage] = useState("");
@@ -1547,6 +1555,10 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
         ) : null}
       </div>
     );
+  }
+
+  if (isTeacher) {
+    return <p className="booking-state-note" role="status">Opening your schedule…</p>;
   }
 
   if (confirmation) {

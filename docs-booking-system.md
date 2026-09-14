@@ -53,6 +53,10 @@ if she is ever locked out. Granting the role is a deliberate manual step:
 UPDATE students SET role = 'teacher' WHERE email = '...';
 ```
 
+When that teacher account opens `/book/` or signs in there, it goes straight to
+the same `/schedule/` dashboard. This is a navigation choice based on the verified
+account role; admin endpoints still check teacher permissions on every request.
+
 Her own bookings are checked for clashes only, not against her published hours
 or the notice window. Those exist to shape what students may choose; she is the
 one deciding, and fitting a lesson in outside them is a normal thing for her to

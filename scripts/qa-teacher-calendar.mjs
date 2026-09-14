@@ -38,9 +38,11 @@ async function fixture(width, options = {}) {
     hasTouch: width < 741,
   });
   await page.clock.setFixedTime(new Date("2026-09-07T10:15:00Z"));
-  await page.addInitScript(() =>
-    localStorage.setItem("ines-student-session", "isolated-teacher-fixture"),
-  );
+  if (!options.signedOut) {
+    await page.addInitScript(() =>
+      localStorage.setItem("ines-student-session", "isolated-teacher-fixture"),
+    );
+  }
   const state = {
     rules: [
       { id: 1, weekday: 1, start_minute: 600, last_start_minute: 690 },
@@ -71,6 +73,14 @@ async function fixture(width, options = {}) {
     failBookings: false,
   };
   page.on("pageerror", (error) => state.errors.push(error.message));
+  await page.route("**/lesson-types", (route) => route.fulfill({
+    json: { lessonTypes: [], postpay: false },
+  }));
+  await page.route("**/me/recurring-rates", (route) => route.fulfill({ json: { rates: {} } }));
+  await page.route("**/availability?**", (route) => route.fulfill({ json: { slotsByDate: {}, horizonDays: 56 } }));
+  await page.route("**/auth/login", (route) => route.fulfill({
+    json: { student: teacher, session: "isolated-teacher-fixture" },
+  }));
   await page.route("**/me", (route) =>
     route.fulfill({
       json: {
@@ -151,8 +161,8 @@ async function fixture(width, options = {}) {
     );
     return route.abort();
   });
-  await page.goto(`${base}/schedule/`, { waitUntil: "domcontentloaded" });
-  if (!options.student)
+  await page.goto(`${base}${options.entry ?? "/schedule/"}`, { waitUntil: "domcontentloaded" });
+  if (!options.student && !options.signedOut)
     await page
       .getByRole("heading", { name: "7 Sept – 13 Sept 2026" })
       .waitFor();
@@ -202,6 +212,33 @@ async function lessonLocation(page, name, location) {
 }
 
 try {
+  for (const [width, entry] of [
+    [1440, "/book/"],
+    [390, "/book/?view=book"],
+    [390, "/book/?view=lessons"],
+    [1440, "/book/?lesson=trial"],
+    [390, "/my-lessons/"],
+  ]) {
+    const redirected = await fixture(width, { entry });
+    await expect(redirected.page).toHaveURL(`${base}/schedule/`);
+    await expect(redirected.page.getByRole("heading", { name: "Your schedule", exact: true })).toBeVisible();
+    await expect(redirected.page.locator(".booking-steps")).toHaveCount(0);
+    await noOverflow(redirected.page);
+    assert.deepEqual(redirected.state.writes, []);
+    assert.deepEqual(redirected.state.errors, []);
+    await redirected.page.close();
+  }
+  const signedIn = await fixture(390, { entry: "/book/?view=lessons", signedOut: true });
+  await expect(signedIn.page).toHaveURL(`${base}/book/?view=lessons`);
+  await signedIn.page.getByLabel("Email", { exact: true }).fill(teacher.email);
+  await signedIn.page.getByLabel("Password", { exact: true }).fill("isolated-fixture-password");
+  await signedIn.page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(signedIn.page).toHaveURL(`${base}/schedule/`);
+  await expect(signedIn.page.getByRole("heading", { name: "7 Sept – 13 Sept 2026" })).toBeVisible();
+  assert.deepEqual(signedIn.state.writes, []);
+  assert.deepEqual(signedIn.state.errors, []);
+  await signedIn.page.close();
+
   const { page, state } = await fixture(1440);
   // Both lesson lengths retain visible location text through the week/day layout switch.
   for (const width of [1440, 827, 741, 390, 320]) {

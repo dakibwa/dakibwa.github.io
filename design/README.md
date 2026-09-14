@@ -214,6 +214,10 @@ mockups, or unused candidates under `public/`.
 
 ## Teacher schedule — 7 September 2026
 
+For a signed-in teacher, every booking entry point opens `/schedule/`, including
+signing in during the student booking flow. Inês has one teacher workspace;
+student accounts and signed-out visitors keep the booking experience.
+
 Inês needs to see her week, make time for students, and protect her days off.
 The timetable is the primary surface, in the existing cream, blue and lilac
 palette. Keep expressive type in the page/section headings and clear Montserrat
