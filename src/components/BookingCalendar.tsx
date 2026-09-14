@@ -813,6 +813,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
   const needsLessonsSignIn = intent === "lessons" && showAccountSignIn && !student;
   const showStartChoice = intent === "choose" && !checkingSession && !managed && !isConfirmingBooking;
   const showLessonChoice = intent === "book" && !managed && !isConfirmingBooking;
+  const canReviewSelection = showLessonChoice && savedChoices.length > 0;
   const showWorkflowCalendar =
     !isConfirmingBooking &&
     !needsLessonsSignIn &&
@@ -1391,6 +1392,19 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
     });
   }
 
+  function selectionBackButton() {
+    return (
+      <button
+        aria-label="Back to your selection"
+        className="button button--coral booking-selection-back"
+        onClick={reviewSavedLessons}
+        type="button"
+      >
+        <ArrowLeft size={16} aria-hidden="true" /> Back
+      </button>
+    );
+  }
+
   function changeSelectedLesson(index: number) {
     const choice = bookingChoices[index];
     if (!choice) return;
@@ -1511,12 +1525,14 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                 ? `Changing ${formatLongDate(activeChange.startAt)} at ${formatSlotTime(activeChange.startAt)}.`
                 : bookingKind === "recurring" ? "Choose the second starting time in this same week." : "Choose another date and time."}
             </p>
-            <div className="booking-selection-progress__actions">
-              <button className="text-action" type="button" onClick={reviewSavedLessons}>Back to your selection</button>
-              {activeChange ? (
-                <button className="text-action" type="button" onClick={removeChangingLesson}>Remove this lesson</button>
-              ) : null}
-            </div>
+            {!showWorkflowCalendar || activeChange ? (
+              <div className="booking-selection-progress__actions">
+                {!showWorkflowCalendar ? selectionBackButton() : null}
+                {activeChange ? (
+                  <button className="text-action" type="button" onClick={removeChangingLesson}>Remove this lesson</button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
         {includeSchedule && !payment && bookingKind !== "trial" && bookingChoices.length < (bookingKind === "recurring" ? 2 : 8) ? (
@@ -2306,22 +2322,25 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
               <span className="booking-choice-summary__copy">
                 <strong>{formatLongDate(`${selectedDate}T12:00:00Z`)}</strong>
               </span>
-              <button
-                aria-label="Change date"
-                className="text-action booking-choice-summary__change"
-                onClick={() =>
-                  transitionBooking(() => {
-                    setSelectedDate("");
-                    setSelectedSlot("");
-                    setCalendarWeekCount(8);
-                    goTo("day");
-                  })
-                }
-                type="button"
-              >
-                <span className="booking-choice-summary__change-label">Change date</span>
-                <span className="booking-choice-summary__change-short" aria-hidden="true">Change</span>
-              </button>
+              <div className="booking-date-summary__actions">
+                {canReviewSelection ? selectionBackButton() : null}
+                <button
+                  aria-label="Change date"
+                  className="text-action booking-choice-summary__change"
+                  onClick={() =>
+                    transitionBooking(() => {
+                      setSelectedDate("");
+                      setSelectedSlot("");
+                      setCalendarWeekCount(8);
+                      goTo("day");
+                    })
+                  }
+                  type="button"
+                >
+                  <span className="booking-choice-summary__change-label">Change date</span>
+                  <span className="booking-choice-summary__change-short" aria-hidden="true">Change</span>
+                </button>
+              </div>
             </div>
           ) : (
           <div className="calendar-panel unified-calendar__grid">
@@ -2334,7 +2353,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                 ) : null}
               </div>
               <div className="unified-calendar__range-actions">
-                {restrictedWeek ? <span className="unified-calendar__range">Same starting week</span> : visibleCalendarWeekCount !== 1 ? (
+                {canReviewSelection ? selectionBackButton() : restrictedWeek ? <span className="unified-calendar__range">Same starting week</span> : visibleCalendarWeekCount !== 1 ? (
                   <span className="unified-calendar__range">Next {visibleCalendarWeekCount} weeks</span>
                 ) : null}
                 {returnCalendarWeekCount && !restrictedWeek ? (

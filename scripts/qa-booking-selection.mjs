@@ -122,6 +122,11 @@ try {
     await page.getByRole("button", { name: "Change lesson 2", exact: true }).click();
     await page.getByRole("button", { name: "Back to your selection", exact: true }).click();
     assert.equal(await page.locator('.booking-chosen-lessons li').count(), 3, "Going back from Change keeps the lesson");
+    const selectionBeforeChangingDay = await page.locator('.booking-chosen-lessons').innerText();
+    await page.getByRole("button", { name: "Change lesson 2", exact: true }).click();
+    await page.locator('button[data-date-key="2026-09-23"]').click();
+    await page.getByRole("button", { name: "Back to your selection", exact: true }).click();
+    assert.equal(await page.locator('.booking-chosen-lessons').innerText(), selectionBeforeChangingDay, "Back remains available after choosing a date and keeps the original selection");
     await page.getByRole("button", { name: "Change lesson 2", exact: true }).click();
     await page.getByRole("button", { name: "Remove this lesson", exact: true }).click();
     assert.equal(await page.locator('.booking-chosen-lessons li').count(), 2);

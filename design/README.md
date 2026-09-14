@@ -285,8 +285,10 @@ Students can collect several single-lesson dates and confirm them together.
 Each chosen lesson is its own row, the same shape as the choices above it: its
 own splat, the date, the Porto time and one `Change`, with no running total
 because the length row already shows the price. `Change` reopens the calendar
-for that lesson, where `Remove this lesson` drops it and `Back to your
-selection` keeps it as it was. `Add another lesson` sits beneath the rows. No
+for that lesson, where `Remove this lesson` drops it. A coral `Back` button at
+the calendar's top right replaces the range label and returns to the unchanged
+selection. Keep it available beside the selected date when choosing a time.
+`Add another lesson` sits beneath the rows. No
 slot is held until the final confirmation. Keep 44px actions on phones. A trial
 remains one first lesson. All selected lessons use
 the chosen duration and location; changing duration requires choosing times
