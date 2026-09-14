@@ -250,9 +250,10 @@ time where they help someone attend a lesson or understand a deadline.
 
 Keep booking confirmation in one column at every width: a compact optional notes
 box, the payment summary underneath, then the agreement and final action. Limit
-the column to a comfortable reading width and let visitors resize the notes box
-for longer notes. The agreement fills the same width as the final action, with
-centred text and its terms link retaining a separate action. Keep prices visible
+the notes box's height while the whole column fills the booking workspace,
+including on desktop. Let visitors resize the notes box for longer notes. The
+agreement fills the same width as the final action, with centred text and its
+terms link retaining a separate action. Keep prices visible
 with the chosen lessons. The short payment summary explains payment after each
 lesson and €5 rules, with the full terms available by link.
 
@@ -271,6 +272,11 @@ decorative hero entrance. Decisions inside the booking flow resize and
 dissolve the existing calendar workspace rather than abruptly replacing the
 page. Keep the rest of the page fixed. Reduced-motion users navigate
 immediately without animation or smooth scrolling.
+
+Pop-ups and their dimmed backgrounds appear with a short, gentle fade. Apply
+the same entrance to terms, booking prompts and student/teacher lesson dialogs,
+keeping their position stable and their controls responsive throughout. Focus
+and dismissal take effect immediately; reduced motion removes the fade.
 
 ## Booking workspace
 
