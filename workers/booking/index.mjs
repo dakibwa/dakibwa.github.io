@@ -57,6 +57,7 @@ import {
 import { bookingReference, createManageToken, readManageToken, safeEqual } from "./tokens.mjs";
 import { findRecurringCode, recurringRates, recurringLessonType, priceForMove, takeRateLimit } from "./rates.mjs";
 import { bookingSelection, claimSelection } from "./selection.mjs";
+import { calendarConnectionStatus, startCalendarConnection, finishCalendarConnection, prepareMeeting, meetingUrl, markMeetingNotified, syncPendingMeetings } from "./meeting-service.mjs";
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" };
 const PAYMENT_CONSENT_VERSION = "2026-09-01-after-lesson-v1";
@@ -181,6 +182,7 @@ function publicBooking(row, lessonType, settings) {
     startAt: row.starts_at,
     endAt: row.ends_at,
     location: row.location,
+    meetingUrl: meetingUrl(row),
     studentName: row.student_name,
     studentEmail: row.student_email,
     studentTimezone: row.student_timezone,
@@ -207,6 +209,7 @@ function lessonDescription(row, lessonType, manageUrl) {
   if (row.student_phone) lines.push(`Phone: ${row.student_phone}`);
   if (row.student_timezone && row.student_timezone !== PORTO) lines.push(`Their timezone: ${row.student_timezone}`);
   if (row.notes) lines.push(`Notes: ${row.notes}`);
+  if (meetingUrl(row)) lines.push(`Join Google Meet: ${meetingUrl(row)}`);
   lines.push(`Reference: ${row.reference}`);
   if (manageUrl) lines.push(`Manage: ${manageUrl}`);
   return lines.join("\n");
@@ -235,6 +238,12 @@ function teacherNotificationsEnabled(env) {
  * Kept in one place so a change to wording cannot drift between the two sides.
  */
 async function notify(env, { event, row, lessonType, settings, manageUrl, previousStartsAt, previousLessonType, byTeacher = false }) {
+  const notifyingSequence = row.sequence;
+  const notifyingStatus = row.status;
+  row = await prepareMeeting(env, row).catch(() => row);
+  // A newer change owns its own notification; do not send a stale confirmation
+  // after a cancellation or move that happened while Google was responding.
+  if (row.sequence !== notifyingSequence || row.status !== notifyingStatus) return [];
   lessonType = { ...lessonType, price_cents: row.amount_cents ?? lessonType.price_cents };
   const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
   const replyTo = settings.replyToEmail || teacherEmail || undefined;
@@ -259,7 +268,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
 
   const baseRows = [
     { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
-    { label: "Where", value: locationLabel(row) },
+    { label: "Where", value: meetingUrl(row) ? "Join Google Meet" : locationLabel(row), url: meetingUrl(row) },
     { label: "Reference", value: row.reference }
   ];
 
@@ -466,6 +475,9 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         action: manageUrl && event !== "cancelled" ? { label: "Change or cancel this lesson", url: manageUrl } : null,
         footer: student.footer
       }
+    }).then(async result => {
+      if (result.ok && !result.skipped && event !== "cancelled") await markMeetingNotified(env, row);
+      return result;
     })
   ];
 
@@ -501,6 +513,29 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   return Promise.allSettled(sends);
 }
 
+/** A link that was not ready for the confirmation gets its own short email. */
+async function notifyMeetingReady(env, input) {
+  const row = await env.DB.prepare("SELECT * FROM bookings WHERE id = ?").bind(input.id).first();
+  const url = meetingUrl(row);
+  if (!url || row.ends_at <= new Date().toISOString()) return false;
+  const settings = await loadSettings(env);
+  const result = await deliver(env, {
+    to: row.student_email, subject: "Your online lesson link", kind: "student_meeting_ready",
+    bookingId: row.id, dedupeKey: `student:meeting:${row.id}:${url}`,
+    replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail,
+    content: {
+      heading: "Your online lesson link",
+      intro: `Hi ${row.student_name}, here’s the Google Meet link for your lesson with Inês.`,
+      hero: `${formatInZone(new Date(row.starts_at), PORTO)}, Porto time`,
+      preheader: "Join your lesson from your email or booking.",
+      rows: [{ label: "Reference", value: row.reference }],
+      action: { label: "Join Google Meet", url },
+      footer: "You can also find this link in your booking. See you soon!"
+    }
+  });
+  return result.ok;
+}
+
 /**
  * A whole run of lessons, in one email each way.
  *
@@ -514,6 +549,12 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
  */
 export async function notifySeries(env, { rows, lessonType, settings, series, manageUrls, skipped, reason = "booked" }) {
   lessonType = { ...lessonType, price_cents: rows[0]?.amount_cents ?? lessonType.price_cents };
+  if (!rows.length) return [];
+  // Bound provider work inside the request. The durable minute sweep finishes
+  // larger selections and emails links that were not ready for confirmation.
+  const notifyingVersions = new Map(rows.map(row => [row.id, `${row.status}:${row.sequence}`]));
+  rows = (await Promise.all(rows.map((row, index) => index < 6 ? prepareMeeting(env, row).catch(() => row) : row)))
+    .filter(row => notifyingVersions.get(row.id) === `${row.status}:${row.sequence}`);
   if (!rows.length) return [];
 
   const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
@@ -559,7 +600,10 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
     { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
     { label: "Where", value: locationLabel(first) },
     { label: series.oneOff ? "Booking" : "Repeats", value: cadence },
-    { label: "Dates", value: dateLines }
+    ...(rows.some(row => meetingUrl(row))
+      ? rows.map(row => ({ label: formatShort(new Date(row.starts_at), PORTO),
+          value: meetingUrl(row) ? "Join Google Meet" : (row.location === "online" ? "Online link will appear in your booking" : locationLabel(row)), url: meetingUrl(row) }))
+      : [{ label: "Dates", value: dateLines }])
   ];
 
   // Price on the student's copy only, per lesson — Inês doesn't need her own
@@ -623,6 +667,9 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
           action: { label: "See all your lessons", url: siteUrl(env, "/book/?view=lessons") },
           footer: seriesFooter
         }
+      }).then(async result => {
+        if (result.ok && !result.skipped) await Promise.all(rows.map(row => markMeetingNotified(env, row)));
+        return result;
       })
     );
   }
@@ -888,6 +935,12 @@ const worker = {
        * function has already returned by the time it rejects.
        */
       if (request.method === "GET" && path === "/health") return await handleHealth(request, env);
+      if (request.method === "GET" && path === "/google-calendar/callback") {
+        const result = await finishCalendarConnection(env, url);
+        return new Response(null, { status: 303, headers: {
+          Location: siteUrl(env, `/schedule/?meet=${result}`), "Cache-Control": "no-store", "Referrer-Policy": "no-referrer"
+        } });
+      }
       if (request.method === "GET" && path === "/lesson-types") {
         // The page adapts without a rebuild when saved-card charging is enabled.
         const settings = await loadSettings(env);
@@ -980,6 +1033,7 @@ const worker = {
     ctx.waitUntil(retryPaymentRecovery(env));
     ctx.waitUntil(retryRefunds(env));
     ctx.waitUntil(resendFailedEmails(env));
+    ctx.waitUntil(syncPendingMeetings(env, row => notifyMeetingReady(env, row)));
 
     // The account has a finite trigger allowance. One per-minute trigger owns
     // prompt money work, and only its 03:10 UTC tick runs the larger nightly
@@ -3464,6 +3518,7 @@ async function handleMe(request, env) {
       endAt: row.ends_at,
       cancelledAt: row.cancelled_at ?? null,
       location: row.location,
+      meetingUrl: meetingUrl(row),
       notes: row.notes,
       lessonType: {
         id: row.lesson_type_id,
@@ -3706,6 +3761,21 @@ async function isAdmin(request, env) {
 async function handleAdmin(request, env, ctx, url, path) {
   const admin = await isAdmin(request, env);
   if (!admin) return fail("Not authorised.", 401, request, env);
+
+  if (request.method === "GET" && path === "/admin/google-calendar") {
+    return json(await calendarConnectionStatus(env), 200, request, env);
+  }
+  if (request.method === "POST" && path === "/admin/google-calendar/connect") {
+    if (!admin.student) return fail("Sign in with your teacher account to connect Google Meet.", 403, request, env);
+    if (!await takeRateLimit(env, `google-connect:${admin.student.id}`, 5)) return fail("Please wait before trying again.", 429, request, env);
+    const session = request.headers.get("Authorization").replace(/^Bearer\s+/i, "");
+    try {
+      const authUrl = await startCalendarConnection(env, admin.student, await sessionHash(session));
+      return json({ url: authUrl }, 200, request, env);
+    } catch {
+      return fail("Google Meet setup is not ready for this account. Please try again after setup.", 503, request, env);
+    }
+  }
 
   if (request.method === "GET" && path === "/admin/bookings") {
     const from = url.searchParams.get("from") ?? new Date(Date.now() - 7 * 86400000).toISOString();

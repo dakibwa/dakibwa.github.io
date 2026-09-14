@@ -1,5 +1,7 @@
 "use client";
 
+import { MeetingLink } from "@/components/MeetingLink";
+
 import { Fragment, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import dynamic from "next/dynamic";
@@ -229,6 +231,8 @@ function BookingSelectionSummary({
 }
 
 type Confirmation = {
+  meetingUrl?: string | null;
+  location: "online" | "porto";
   reference: string;
   startAt: string;
   manageUrl: string;
@@ -589,6 +593,29 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
       .catch(() => undefined)
       .finally(() => setCheckingSession(false));
   }, [initialLessonsView, refreshStudent]);
+
+  // Link creation can finish just after booking confirmation. Refresh the
+  // affected lesson a few times without extending the booking request itself.
+  const awaitingMeetToken = confirmation?.location === "online" && !confirmation.meetingUrl
+    ? confirmation.manageToken
+    : managed?.booking.location === "online" && managed.booking.status === "confirmed" && !managed.booking.meetingUrl
+      ? managedToken : "";
+  useEffect(() => {
+    if (!awaitingMeetToken) return;
+    let active = true;
+    async function refreshMeeting() {
+      try {
+        const result = await fetchBooking(awaitingMeetToken);
+        if (!active) return;
+        setConfirmation(current => current?.manageToken === awaitingMeetToken
+          ? { ...current, meetingUrl: result.booking.meetingUrl, location: result.booking.location } : current);
+        setManaged(current => current?.booking.reference === result.booking.reference ? result : current);
+        if (result.booking.meetingUrl) void refreshStudent();
+      } catch { /* The existing booking remains usable during a network delay. */ }
+    }
+    const timers = [3000, 10000, 30000, 65000, 125000].map(delay => window.setTimeout(() => void refreshMeeting(), delay));
+    return () => { active = false; timers.forEach(timer => window.clearTimeout(timer)); };
+  }, [awaitingMeetToken, refreshStudent]);
 
   // Signing in mid-flow can reveal a history the lesson step didn't know
   // about. If the trial is the current choice, dissolve it and put the real
@@ -1070,6 +1097,8 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
 
       transitionBooking(() =>
         setConfirmation({
+          meetingUrl: result.booking.meetingUrl,
+          location: result.booking.location,
           reference: result.booking.reference,
           startAt: result.booking.startAt,
           manageUrl: result.manageUrl ?? "/book/?view=lessons",
@@ -1585,6 +1614,8 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
           A confirmation and calendar invitation are on their way to <strong>{confirmation.email}</strong>.
         </p>
 
+        <MeetingLink meetingUrl={confirmation.meetingUrl} location={confirmation.location} status="confirmed" />
+
         {confirmation.selection ? (
           <div className="booking-success__series">
             <p><strong>{confirmation.selection.booked.length} lessons booked.</strong>{" "}
@@ -1812,6 +1843,7 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
                   <div className="lesson-manage-dialog__lesson">
                     <strong>{formatLongDate(managed.booking.startAt)}, {formatSlotTime(managed.booking.startAt)}</strong>
                     <span>{formatBookedLessonLabel(managed.booking.lessonType)} · {managed.booking.location === "porto" ? "In Porto" : "Online"}</span>
+                    <MeetingLink meetingUrl={managed.booking.meetingUrl} location={managed.booking.location} status={managed.booking.status} />
                   </div>
 
                   {!manageOutcome && manageMode === "view" ? (

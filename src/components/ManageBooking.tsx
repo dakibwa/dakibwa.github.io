@@ -1,5 +1,7 @@
 "use client";
 
+import { MeetingLink } from "@/components/MeetingLink";
+
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, Clock3, Globe2, MapPin } from "lucide-react";
 import {
@@ -255,6 +257,7 @@ export function ManageBooking({
             <dd>{booking.reference}</dd>
           </div>
         </dl>
+        <MeetingLink meetingUrl={booking.meetingUrl} location={booking.location} status={booking.status} />
       </div>
 
       {cancelled ? (

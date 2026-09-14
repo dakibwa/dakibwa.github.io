@@ -206,7 +206,7 @@ site that confirms bookings while silently sending no confirmations is worse
 than one that is visibly down. No secret belongs in this static site or in any
 `NEXT_PUBLIC_` variable: the Worker holds them all.
 
-Full architecture, the reasoning behind not using the Google Calendar API, and
+Full architecture, optional automatic Google Meet setup, and
 the deployment steps are in [docs-booking-system.md](./docs-booking-system.md).
 
 ## Publication

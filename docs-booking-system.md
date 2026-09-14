@@ -12,12 +12,10 @@ United Kingdom and the United States. The account this site pointed at until
 August 2026 was Dan's UK account, set up as a test. It could never have taken
 money for a Porto-based business, and its booking URL is now removed.
 
-**The Google Calendar API was avoided deliberately.** Reading her calendar needs
-a *sensitive* OAuth scope, which requires Google verification (2–6 weeks). Until
-that clears the app sits in Testing mode, where refresh tokens expire after 7
-days — the integration would break weekly and silently. Instead the Worker emails
-her a real calendar invitation per booking (see below). Two-way sync can be added
-later without students noticing.
+**Calendar invitations remain the booking calendar feed.** Optional Google Meet
+provisioning uses a separate, private Google calendar created for this app. It
+does not read Inês’s existing appointments or change website availability.
+See [Google Meet setup](#google-meet-setup) for activation and recovery.
 
 ## Shape
 
@@ -103,7 +101,7 @@ depending on them having kept the right confirmation email.
   record carries its own algorithm, cost and salt, so the cost can be raised
   later without invalidating anyone.
 - **Google Sign-In**, optional. Only non-sensitive scopes (name, email), so no
-  Google verification review — unlike the Calendar API. Absent a client id the
+  additional Calendar permission. Absent a client id the
   button simply does not render. Matching is by *verified* email, so someone who
   registered with a password and later uses Google lands on the same account.
   Google renders that button itself and will not be styled, so the coral button
@@ -844,3 +842,77 @@ Release `ee812d2` passed all CI gates and published to Cloudflare Pages on
   code.
 - **Reminders** before a lesson.
 - **Two-way Google Calendar sync**, once OAuth verification is worth doing.
+
+## Google Meet setup
+
+Implementation is opt-in and remains disabled until the Google app, Worker
+secrets, migration and Inês’s connection are ready. Google sign-in alone does
+not grant permission to create online lesson links.
+
+### Behaviour
+
+- Each confirmed online booking gets a separate Meet link. Porto lessons and
+  bookings awaiting payment confirmation do not create a meeting.
+- The student’s booking/manage views and Inês’s lesson details show **Join Google
+  Meet**. Confirmation and change emails include the link when ready. A minute
+  sweep retries delays and sends a short student email when a link becomes ready
+  later, including for future online bookings made before connection.
+- Moving a lesson updates its app calendar event and preserves its link.
+  Cancelling or changing to Porto cancels that event; the website stops showing
+  its link. Cancelling a calendar event does not promise to revoke a Meet URL
+  already delivered in email.
+- Google events are private, with no attendees or Google-generated invitations.
+  Existing emailed calendar invitations keep their UID and sequence handling.
+  They include the link in their description when available; late-link emails
+  carry no competing calendar attachment. Inês should join to admit students.
+- The dedicated calendar is hidden from normal calendar view where Google
+  permits. It is only for provisioning links; D1 remains booking truth.
+- Provider failures never roll back a confirmed lesson or payment. Per-booking
+  claims prevent concurrent creation; event ownership markers and existing
+  iCalendar UID lookups recover lost event-create responses. Tokens are encrypted
+  in D1 with AES-GCM and never returned to the browser.
+
+### Activation (not performed by adding this code)
+
+1. Configure an OAuth web client for Português com a Inês in a suitable Google
+   Cloud project, enable Calendar API, complete consent branding and publish the
+   external app to Production. Do not silently repurpose a shared app. Testing
+   mode extra-scope refresh tokens normally expire after seven days.
+2. Request only `openid`, `email`, and
+   `https://www.googleapis.com/auth/calendar.app.created`. This calendar scope
+   permits app-created calendars/events; no primary-calendar read permission is
+   needed. Register the exact callback:
+   `https://ines-booking.dakibwa.workers.dev/google-calendar/callback`.
+3. Apply `workers/booking/migrations/0016-google-meet.sql` once to the target D1.
+   Set Worker secrets `GOOGLE_CALENDAR_CLIENT_ID`,
+   `GOOGLE_CALENDAR_CLIENT_SECRET`, `GOOGLE_CALENDAR_TOKEN_KEY` (random 32-byte
+   key encoded as 64 hex characters), and `GOOGLE_CALENDAR_REDIRECT_URI` (above).
+   Never use frontend/public environment variables for these values. Keep the
+   encryption key: replacing it invalidates stored grants.
+4. Set `GOOGLE_CALENDAR_ENABLED` to `1` only after setup, and release Worker
+   before frontend. Use the isolated staging Worker/database for live proof,
+   with its own callback/client grant and dry-run emails.
+5. Inês signs into `/schedule/`, selects **Connect Google Meet**, chooses her
+   matching Google account and grants permission. The callback checks signed
+   identity, teacher role, session version/revocation, expiring single-use state
+   and PKCE. The shared admin token cannot start OAuth.
+6. Verify an online test lesson produces a joinable link in booking/email,
+   preserves it when moved, hides it when cancelled, and a Porto lesson creates
+   none. Only then enable production and connect Inês’s production account.
+
+Expired or revoked Google permission shows a reconnect prompt in her schedule.
+Reconnection reuses the stored calendar and event identities. If the first
+calendar-create response is lost, the persisted creation-attempt flag prevents
+creating duplicates. An operator must locate the app calendar in Inês’s Google
+Calendar and restore its ID after verifying ownership; reset the flag only after
+confirming no calendar was created. Never reset it as a blind retry.
+
+Disable `GOOGLE_CALENDAR_ENABLED` to stop provider work while retaining existing
+booking links and records. Revoking the app in Google stops access. Stored
+refresh grants and OAuth state are operational credentials, not exportable
+student data. Future deletion/retention tooling must include these tables.
+
+Provider references: [Calendar scopes](https://developers.google.com/workspace/calendar/api/auth),
+[calendar creation](https://developers.google.com/workspace/calendar/api/v3/reference/calendars/insert),
+[event conferences](https://developers.google.com/workspace/calendar/api/guides/create-events),
+[OAuth production readiness](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview).

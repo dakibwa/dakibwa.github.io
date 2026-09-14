@@ -10,6 +10,7 @@ import {
 } from "@/lib/admin-api";
 import { formatSlotTime, portoTimeToUtc } from "@/lib/booking-api";
 import { dateKey, dateLabel } from "@/lib/teacher-calendar";
+import { MeetingLink } from "@/components/MeetingLink";
 
 type Props = {
   booking: AdminBooking;
@@ -155,6 +156,7 @@ export function LessonDetails({
           {booking.student_email}
         </a>
       </div>
+      <MeetingLink meetingUrl={booking.meeting_url} location={booking.location} status={booking.status} />
       {booking.notes ? (
         <p className="teacher-lesson-note">{booking.notes}</p>
       ) : null}

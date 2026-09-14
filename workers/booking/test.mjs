@@ -7,6 +7,7 @@
  */
 
 import assert from "node:assert/strict";
+import { renderEmail } from "./email.mjs";
 import { candidateStartMinutes, computeAvailability, DEFAULT_BOOKING_HORIZON_DAYS, isSlotBookable } from "./availability.mjs";
 import {
   chargeSavedCard,
@@ -1332,6 +1333,17 @@ await test("a trial cannot be converted into a standard lesson", () => {
   const trial = { id: "trial", price_cents: 2000 };
   const single = { id: "single", price_cents: 2500 };
   assert.match(lessonTypeChangeProblem(row, trial, single), /trial lesson/i);
+});
+
+await test("Meet email links are clickable, present in plain text, and reject other hosts", () => {
+  const content = { heading: "Lesson", intro: "Hi", rows: [{ label: "Where", value: "Join Google Meet", url: "https://meet.google.com/abc-defg-hij" }], footer: "See you soon" };
+  const valid = renderEmail(content);
+  assert.match(valid.html, /href="https:\/\/meet.google.com\/abc-defg-hij"/);
+  assert.match(valid.text, /https:\/\/meet.google.com\/abc-defg-hij/);
+  const invalid = renderEmail({ ...content, rows: [{ ...content.rows[0], url: "https://meet.google.com.evil.invalid/abc-defg-hij", value: "<script>alert(1)</script>" }] });
+  assert.ok(!invalid.html.includes('href="https://meet.google.com.evil'));
+  assert.ok(!invalid.html.includes("<script>"));
+  assert.ok(!invalid.text.includes("evil.invalid"));
 });
 
 // --- Report -----------------------------------------------------------------

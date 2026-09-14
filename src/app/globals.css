@@ -7072,3 +7072,27 @@ dialog[open]::backdrop {
     animation: none;
   }
 }
+
+/* A lesson's join action stays with its date and location, including on phones. */
+.meeting-link {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 36px;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--blue-deep);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.meeting-link svg {
+  flex: 0 0 auto;
+}
+
+.meeting-link:hover {
+  color: var(--coral-action);
+}

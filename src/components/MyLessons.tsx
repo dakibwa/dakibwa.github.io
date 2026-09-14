@@ -1,5 +1,7 @@
 "use client";
 
+import { MeetingLink } from "@/components/MeetingLink";
+
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, CircleHelp, CircleX, Globe2, Menu as MenuIcon, Repeat } from "lucide-react";
 import { AuthPanel } from "@/components/AuthPanel";
@@ -792,6 +794,7 @@ export function MyLessons({
                       <span>
                         {formatBookedLessonLabel(nextBooking.lessonType)} · {nextBooking.location === "porto" ? "In Porto" : "Online"}
                       </span>
+                      <MeetingLink meetingUrl={nextBooking.meetingUrl} location={nextBooking.location} status={nextBooking.status} />
                       {isSeries && activeSeries ? (
                         <small>
                           <Repeat size={13} aria-hidden="true" />

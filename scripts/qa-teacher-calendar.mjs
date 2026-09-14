@@ -24,6 +24,7 @@ const lesson = (id, name, start, location = "online", durationMinutes = 60) => (
   ends_at: new Date(Date.parse(start) + durationMinutes * 60000).toISOString(),
   status: "confirmed",
   location,
+  meeting_url: "https://meet.google.com/abc-defg-hij",
   notes: "",
   same_day_change: 0,
   same_day_fee_status: "not_required",
@@ -96,6 +97,7 @@ async function fixture(width, options = {}) {
     const data = request.method() === "POST" ? request.postDataJSON() : null;
     const fail = (error) => route.fulfill({ status: 503, json: { error } });
     if (data) state.writes.push({ path, data });
+    if (path === "/admin/google-calendar") return route.fulfill({ json: { configured: false, connected: false, email: null, needsReconnect: false, pending: 0 } });
     if (path === "/admin/availability") {
       if (data) {
         if (state.failHours-- > 0)
@@ -321,6 +323,7 @@ try {
   await slot(page, 1, 510).click();
   await showLessons(page);
   await page.getByRole("button", { name: /^Alex,.*View lesson$/ }).click();
+  await expect(page.getByRole("dialog").getByRole("link", { name: "Join Google Meet", exact: true })).toHaveAttribute("href", "https://meet.google.com/abc-defg-hij");
   await page.getByRole("button", { name: "Mark no-show", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Mark as a no-show?" }),
@@ -334,6 +337,7 @@ try {
   await showLessons(page);
   const sam = page.getByRole("button", { name: /^Sam,.*View lesson$/ });
   await sam.click();
+  await expect(page.getByRole("dialog").getByRole("link", { name: "Join Google Meet", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(sam).toBeFocused();
   await sam.click();

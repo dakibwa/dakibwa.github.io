@@ -94,6 +94,8 @@ jobs:
           QA_BASE_URL=http://localhost:3000 node scripts/qa-booking-selection.mjs
           QA_BASE_URL=http://localhost:3000 node scripts/qa-payment-recovery.mjs
           QA_BASE_URL=http://localhost:3000 node scripts/qa-teacher-calendar.mjs
+          QA_BASE_URL=http://localhost:3000 node scripts/qa-meet-links.mjs
+          QA_BASE_URL=http://localhost:3000 node scripts/qa-teacher-meet.mjs
 
       # Two uploads of one build: the Pages-shaped tarball for the preview, and
       # the plain directory the Cloudflare deploy needs. Hidden files are kept

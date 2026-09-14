@@ -1135,3 +1135,43 @@
     transition: none !important;
   }
 }
+
+.teacher-meet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--squiggle-card);
+  background: var(--lavender-soft);
+}
+.teacher-meet-copy {
+  min-width: 0;
+}
+.teacher-meet h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font: 700 0.85rem/1.5 var(--ui);
+}
+.teacher-meet p {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.teacher-meet > button {
+  flex: 0 0 auto;
+}
+.teacher-meet-error {
+  color: var(--coral-action);
+}
+@media (max-width: 600px) {
+  .teacher-meet {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

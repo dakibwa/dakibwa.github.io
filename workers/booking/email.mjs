@@ -52,6 +52,10 @@ function escapeRich(value) {
   return escapeHtml(value).replace(/\r?\n/g, "<br>");
 }
 
+function safeMeetingLink(url) {
+  return /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(url ?? "") ? url : null;
+}
+
 function base64(text) {
   const bytes = new TextEncoder().encode(text);
   let binary = "";
@@ -73,7 +77,7 @@ function layout({ heading, preheader, intro, hero, heroNote, rows, callout, acti
   // clients, and the footer already draws one, which doubled the line.
   const rowsHtml = rows.length
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${rows
-        .map(({ label, value }, index) => {
+        .map(({ label, value, url }, index) => {
           const rule = index === rows.length - 1 ? "none" : `1px solid ${BRAND.rule}`;
           return `
         <tr>
@@ -82,7 +86,7 @@ function layout({ heading, preheader, intro, hero, heroNote, rows, callout, acti
           };width:36%;vertical-align:top">${escapeHtml(label)}</td>
           <td style="padding:11px 0;border-bottom:${rule};font:400 15px/1.5 Arial,Helvetica,sans-serif;color:${
             BRAND.ink
-          }">${escapeRich(value)}</td>
+          }">${safeMeetingLink(url) ? `<a href="${escapeHtml(url)}" style="color:${BRAND.blue};font-weight:700;text-decoration:underline">${escapeRich(value)}</a>` : escapeRich(value)}</td>
         </tr>`;
         })
         .join("")}</table>`
@@ -212,7 +216,7 @@ function plainText({ heading, intro, hero, heroNote, rows, callout, action, foot
   if (callout) lines.push("", clean(callout));
   if (rows.length) {
     lines.push("");
-    for (const { label, value } of rows) lines.push(`${label}: ${clean(value)}`);
+    for (const { label, value, url } of rows) lines.push(`${label}: ${clean(value)}${safeMeetingLink(url) ? ` — ${url}` : ""}`);
   }
   if (action) lines.push("", `${action.label}: ${action.url}`);
   lines.push("", clean(footer), "portuguesewithines.com");

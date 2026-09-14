@@ -58,7 +58,7 @@ export function TermsPrivacyInformation() {
         <li><strong>What we need.</strong> Online booking needs your name, email, sign-in details, time zone and booking history for your account, lessons and booking messages. Your phone number and notes are optional.</li>
         <li><strong>Why.</strong> To provide lessons under our contract, meet financial record-keeping laws and prevent misuse or handle disputes (our legitimate interests).</li>
         <li><strong>How long.</strong> Account and booking records stay until you ask Inês to close your account or delete them. Financial records normally stay for 10 years under Portuguese tax law. Records needed for unpaid fees or disputes may stay until resolved. These duties can limit deletion.</li>
-        <li><strong>Who helps us.</strong> Cloudflare hosts the site and records; Resend sends emails; Google handles optional sign-in and email; Stripe handles payments. We never store full card details.</li>
+        <li><strong>Who helps us.</strong> Cloudflare hosts the site and records; Resend sends emails; Google handles optional sign-in, email and online lesson meetings; Stripe handles payments. We never store full card details.</li>
         <li><strong>Browser storage.</strong> Used for sign-in, security and checkout. No advertising analytics.</li>
         <li>
           <strong>Data abroad.</strong> Providers may handle data outside the European Economic Area (EEA), including the US.

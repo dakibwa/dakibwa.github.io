@@ -714,6 +714,34 @@ await test("two ongoing times create 24 lessons and an abandoned checkout releas
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM booking_series WHERE student_id=?").get(user).n, 0);
 });
 
+await test("Meet settings require teacher identity and keep disabled setup inert", async () => {
+  assert.equal((await call("/admin/google-calendar", { method: "GET", user: "outsider" })).status, 401);
+  assert.equal((await call("/admin/google-calendar/connect", { user: "outsider" })).status, 401);
+  const status = await call("/admin/google-calendar", { method: "GET", user: "teacher" });
+  assert.equal(status.status, 200);
+  assert.equal((await status.json()).configured, false);
+  assert.equal((await call("/admin/google-calendar/connect", { user: "teacher" })).status, 503);
+  assert.equal((await call("/admin/google-calendar/connect", { token: env.ADMIN_TOKEN })).status, 403);
+});
+
+await test("Meet links follow booking ownership and disappear for Porto or cancellation", async () => {
+  student("meet-owner"); sessions["meet-owner"] = await createSession("meet-owner", env.BOOKING_TOKEN_SECRET);
+  booking("meet-owned", { owner: "meet-owner", start: "2026-10-05T09:00:00.000Z", end: "2026-10-05T10:00:00.000Z" });
+  db.prepare("UPDATE bookings SET meeting_url='https://meet.google.com/abc-defg-hij' WHERE id='meet-owned'").run();
+  let mine = await call("/me", { method: "GET", user: "meet-owner" });
+  assert.equal((await mine.json()).bookings[0].meetingUrl, "https://meet.google.com/abc-defg-hij");
+  const other = await call("/me", { method: "GET", user: "outsider" });
+  assert.ok(!(await other.json()).bookings.some(row => row.reference === "meet-owned"));
+  const managed = await call(`/bookings/${await token("meet-owned")}`, { method: "GET", user: "meet-owner" });
+  assert.equal((await managed.json()).booking.meetingUrl, "https://meet.google.com/abc-defg-hij");
+  db.prepare("UPDATE bookings SET location='porto' WHERE id='meet-owned'").run();
+  mine = await call("/me", { method: "GET", user: "meet-owner" });
+  assert.equal((await mine.json()).bookings[0].meetingUrl, null);
+  db.prepare("UPDATE bookings SET location='online',status='cancelled' WHERE id='meet-owned'").run();
+  mine = await call("/me", { method: "GET", user: "meet-owner" });
+  assert.equal((await mine.json()).bookings[0].meetingUrl, null);
+});
+
 if (process.env.INES_PRIVATE_RATES_FILE) {
   await test("all private owner mappings activate exactly and are independently reusable", async () => {
     const rows = [...readFileSync(process.env.INES_PRIVATE_RATES_FILE, "utf8").matchAll(/^\| (60|90) \| €(\d+) \| ([A-Z]{4}\d{2}) \|$/gm)]

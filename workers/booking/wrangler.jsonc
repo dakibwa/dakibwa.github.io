@@ -33,6 +33,8 @@
     // Send Inês's booking, change and failed-payment copies to TEACHER_EMAIL.
     // Setting this to "0" pauses these copies; student mail stays live.
     "TEACHER_NOTIFICATIONS_ENABLED": "1",
+    // Enable only after the additive migration, OAuth app setup and secrets.
+    "GOOGLE_CALENDAR_ENABLED": "0",
     // Checkout mounts inside the booking page rather than redirecting to
     // Stripe. Inert until the Stripe secrets exist and payment_mode is postpay.
     "STRIPE_UI_MODE": "embedded",

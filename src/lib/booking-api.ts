@@ -26,6 +26,7 @@ export type Booking = {
   startAt: string;
   endAt: string;
   location: "online" | "porto";
+  meetingUrl?: string | null;
   studentName: string;
   studentEmail: string;
   studentTimezone: string;

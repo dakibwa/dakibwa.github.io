@@ -119,6 +119,14 @@ CREATE TABLE IF NOT EXISTS email_changes (
 CREATE INDEX IF NOT EXISTS idx_email_changes_student ON email_changes (student_id);
 
 CREATE TABLE IF NOT EXISTS bookings (
+  meeting_url TEXT,
+  meeting_event_id TEXT,
+  meeting_sequence INTEGER,
+  meeting_claim_id TEXT,
+  meeting_retry_at TEXT,
+  meeting_attempts INTEGER NOT NULL DEFAULT 0,
+  meeting_notified_at TEXT,
+  meeting_notification_claim_until TEXT,
   charge_started_at TEXT,
   same_day_fee_started_at TEXT,
   charge_request TEXT,
@@ -264,3 +272,23 @@ CREATE TABLE IF NOT EXISTS student_recurring_rates (
 );
 CREATE TABLE IF NOT EXISTS request_limits (key TEXT PRIMARY KEY, window INTEGER NOT NULL, attempts INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS revoked_sessions (token_hash TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);
+
+CREATE TABLE IF NOT EXISTS google_calendar_connections (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  teacher_id TEXT NOT NULL REFERENCES students(id),
+  google_sub TEXT NOT NULL,
+  email TEXT NOT NULL,
+  refresh_token_encrypted TEXT NOT NULL,
+  calendar_id TEXT,
+  calendar_creation_attempted_at TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'reconnect')),
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS google_calendar_oauth_states (
+  state_hash TEXT PRIMARY KEY,
+  teacher_id TEXT NOT NULL REFERENCES students(id),
+  session_version INTEGER NOT NULL,
+  session_hash TEXT NOT NULL,
+  verifier_encrypted TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);

@@ -12,6 +12,7 @@ import { AuthPanel } from "@/components/AuthPanel";
 import { WeeklyTimetable } from "@/components/teacher/WeeklyTimetable";
 import { DaysOffCalendar } from "@/components/teacher/DaysOffCalendar";
 import { LessonDetails } from "@/components/teacher/LessonDetails";
+import { TeacherMeetConnection } from "@/components/teacher/TeacherMeetConnection";
 import { ManualLessonForm } from "@/components/teacher/ManualLessonForm";
 import {
   addException,
@@ -368,6 +369,7 @@ export function TeacherSchedule() {
 
   return (
     <div className="teacher-workspace">
+      <TeacherMeetConnection token={token} />
       {paymentReview.length ? (
         <div className="teacher-inline-notice" role="status">
           <AlertCircle size={19} aria-hidden="true" />

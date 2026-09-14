@@ -8,8 +8,8 @@
  * signature would let anyone sign in as anyone.
  *
  * Only non-sensitive scopes are involved (name and email), so this needs no
- * Google verification review — unlike the Calendar API, which is why her
- * calendar is served by emailed invitations instead.
+ * additional Calendar permission. Optional Meet provisioning uses a separate
+ * OAuth grant; this identity check is shared by both flows.
  */
 
 const CERTS_URL = "https://www.googleapis.com/oauth2/v3/certs";

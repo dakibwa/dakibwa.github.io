@@ -34,6 +34,7 @@ export type AdminBooking = {
   ends_at: string;
   status: "confirmed" | "cancelled";
   location: "online" | "porto";
+  meeting_url?: string | null;
   notes: string;
   same_day_change: number;
   same_day_fee_status:
@@ -192,4 +193,23 @@ export function minutesToTime(minutes: number) {
 export function timeToMinutes(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
   return hours * 60 + minutes;
+}
+
+export type GoogleMeetConnection = {
+  configured: boolean;
+  connected: boolean;
+  email: string | null;
+  needsReconnect: boolean;
+  pending: number;
+};
+
+export function fetchGoogleMeetConnection(token: string) {
+  return adminRequest<GoogleMeetConnection>(token, "/admin/google-calendar");
+}
+
+export function connectGoogleMeet(token: string) {
+  return adminRequest<{ url: string }>(token, "/admin/google-calendar/connect", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
