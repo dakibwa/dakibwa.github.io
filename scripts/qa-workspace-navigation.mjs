@@ -135,6 +135,9 @@ try {
   await page.locator("#account-upcoming-lessons").waitFor();
   assert.equal(await page.locator("#booking-journey-start").count(), 0);
 
+  // This part checks first-time booking links. The completed-history fixture
+  // above makes a trial ineligible once /me finishes loading.
+  bookings = bookings.map(booking => ({ ...booking, status: "cancelled" }));
   await page.goto(`${base}/`);
   await page.getByRole("link", { name: "Book a lesson", exact: true }).click();
   await page.getByRole("heading", { name: "How would you like to book?", exact: true }).waitFor();
