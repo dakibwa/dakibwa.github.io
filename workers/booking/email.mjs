@@ -175,9 +175,6 @@ function layout({ heading, preheader, intro, hero, heroNote, rows, callout, acti
             )}</a>
           </td></tr>
         </table>
-        <p style="margin:14px 0 0;font:400 12px/1.6 Arial,Helvetica,sans-serif;color:${
-          BRAND.lavenderInk
-        };word-break:break-all">Or paste this into your browser:<br>${escapeHtml(action.url)}</p>
       </td></tr>`
           : ""
       }

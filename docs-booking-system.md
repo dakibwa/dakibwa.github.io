@@ -378,6 +378,15 @@ different students were confirmed into the same lesson in testing.
 
 ### Notes on the email and calendar output
 
+- Customer emails use short introductions and one action button. HTML keeps
+  the complete action link in that button; the plain-text alternative includes
+  the URL. The price row carries payment timing and the footer keeps the
+  applicable cancellation/no-show rules without repeating payment timing.
+- `email/receipt-kit/README.md` and `scripts/build-receipt-email-kit.mjs` provide
+  the matching Gmail/Codex receipt-email kit. It attaches the original fiscal
+  PDF issued by Inês's separate automation; it does not issue documents or send
+  customer receipts from the booking Worker.
+
 - **Everything a student typed is escaped.** Four fields reached the HTML raw so
   that callers could pass `<br>` — meaning a name, an address or a lesson note
   arrived in Inês's inbox as markup, and she is the one person who reads every

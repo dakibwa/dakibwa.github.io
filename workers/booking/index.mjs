@@ -315,12 +315,12 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   // Older already-paid bookings retain their earlier lock/refund promise.
   // Current saved-card bookings stay changeable on the day for EUR 5.
   const paidChangeFooter =
-    "Move or cancel it free until the day before, from the link above. On the day of the lesson it's yours — no changes and no refunds.";
-  const savedCardChangeFooter = `Need to change it? Use the link above. Moving or cancelling on the lesson's Porto calendar day costs €${(
+    "Move or cancel free until the day before. No changes or refunds on the lesson day.";
+  const savedCardChangeFooter = `Move or cancel free until the day before (Porto time). Same-day changes or cancellations cost €${(
     settings.sameDayChangeFeeCents / 100
-  ).toFixed(0)}; any earlier is free. The lesson price is charged when the lesson ends; if Inês records a no-show, only €${(
+  ).toFixed(0)}. A no-show costs €${(
     settings.sameDayChangeFeeCents / 100
-  ).toFixed(0)} is charged instead.`;
+  ).toFixed(0)} instead of the lesson price.`;
   const unpaidChangeFooter = `Need to change it? Use the link above. Changing on the day of the lesson costs €${(
     settings.sameDayChangeFeeCents / 100
   ).toFixed(0)}; any earlier is free.`;
@@ -334,7 +334,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
       heading: "You're booked",
       intro: `Olá ${row.student_name.split(" ")[0]}, your lesson with Inês is ${
         isPaid ? "paid and confirmed" : "confirmed"
-      }. It's in your calendar attachment, and you can move or cancel it any time using the button below.`,
+      }. A calendar invitation is attached.`,
       callout: "",
       footer: isPaid ? paidChangeFooter : isOnCard ? savedCardChangeFooter : unpaidChangeFooter
     },
@@ -345,7 +345,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           // — a strange thing to receive when Inês moved your lesson.
           subject: `Inês has moved your lesson — now ${shortWhen}`,
           heading: "Inês has moved your lesson",
-          intro: `Olá ${row.student_name.split(" ")[0]}, Inês has had to move your lesson. Sorry about that — the new time is below and your calendar has been updated. If it doesn't suit, move it again from the link below or reply and she'll find another.`,
+          intro: `Olá ${row.student_name.split(" ")[0]}, Inês has moved your lesson to the time below. An updated calendar invitation is attached. If the new time doesn't suit, choose another time or reply to this email.`,
           callout: "",
           footer: "No charge for a change she makes."
         }
@@ -353,14 +353,14 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
         ? {
             subject: `Your lesson has changed — ${shortWhen}`,
             heading: "Your lesson has changed",
-            intro: `Olá ${row.student_name.split(" ")[0]}, that's done — your lesson is now ${lessonType.duration_minutes} minutes at the time below, and your calendar has been updated.`,
+            intro: `Olá ${row.student_name.split(" ")[0]}, your lesson is now ${lessonType.duration_minutes} minutes at the time below. An updated calendar invitation is attached.`,
             callout: sameDayNotice,
             footer: isPaid ? paidChangeFooter : isOnCard ? savedCardChangeFooter : "You can change or cancel it again from the same link."
           }
         : {
           subject: `Your lesson has moved — ${shortWhen}`,
           heading: "Your lesson has moved",
-          intro: `Olá ${row.student_name.split(" ")[0]}, that's done — your lesson is now at the time below and your calendar has been updated.`,
+          intro: `Olá ${row.student_name.split(" ")[0]}, your new lesson time is below. An updated calendar invitation is attached.`,
           callout: sameDayNotice,
           footer: isPaid ? paidChangeFooter : isOnCard ? savedCardChangeFooter : "You can move or cancel it again from the same link."
         },
@@ -368,7 +368,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
       ? {
           subject: `Inês has cancelled your lesson on ${shortWhen}`,
           heading: "Inês has cancelled this lesson",
-          intro: `Olá ${row.student_name.split(" ")[0]}, Inês has had to cancel this lesson and it has been removed from your calendar. Sorry about that — book another time whenever suits you, or reply and she'll sort one out with you.`,
+          intro: `Olá ${row.student_name.split(" ")[0]}, Inês has cancelled this lesson. Sorry about that — reply to arrange another time. A cancellation update for your calendar is attached.`,
           callout: refundNote,
           footer: wasRefunded ? "Refunded in full — a cancellation she makes never costs you anything." : "No charge for a cancellation she makes."
         }
@@ -1213,10 +1213,10 @@ async function notifyLessonCharged(env, { row, lessonType, amountCents, noShow =
       replyTo: settings.replyToEmail || teacherEmail || undefined,
       content: {
         heading,
-        preheader: `${lessonType.name} · ${amount} to your saved card`,
+        preheader: `${lessonType.name} · ${amount} charged to your saved card`,
         intro: noShow
-          ? `Olá ${row.student_name.split(" ")[0]}, Inês marked this lesson as a no-show, so only the ${amount} no-show amount went to your saved card instead of the full lesson price.`
-          : `Olá ${row.student_name.split(" ")[0]}, your lesson has finished and ${amount} went to your saved card, as agreed when you booked.`,
+          ? `Olá ${row.student_name.split(" ")[0]}, Inês marked this lesson as a no-show. Your saved card was charged ${amount} instead of the lesson price.`
+          : `Olá ${row.student_name.split(" ")[0]}, your lesson is finished. ${amount} was charged to your saved card.`,
         callout: "",
         rows: [
           { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
@@ -1269,7 +1269,7 @@ async function notifySameDayFeeCharged(env, { row, lessonType, amountCents }) {
     content: {
       heading: "Your same-day fee is paid",
       preheader: `${lessonType.name} · ${amount}`,
-      intro: `Olá ${row.student_name.split(" ")[0]}, ${amount} went to your saved card because this lesson was changed or cancelled on its Porto calendar day.`,
+      intro: `Olá ${row.student_name.split(" ")[0]}, your saved card was charged ${amount} for changing or cancelling this lesson on its Porto calendar day.`,
       callout: "You will not be charged this fee again for the same lesson.",
       rows: [{ label: "Reference", value: row.reference }],
       action: null,
@@ -1359,7 +1359,7 @@ async function notifyPaymentDue(env, { row, lessonType, amountCents, purpose = "
     content: {
       heading: "The card didn't go through",
       preheader: `${lessonType.name} · ${amount} still to pay`,
-      intro: `Olá ${row.student_name.split(" ")[0]}, the ${amount} ${isSameDayFee ? "same-day change fee" : isNoShow ? "no-show fee" : "lesson payment"} couldn't be charged to your saved card. Banks do this sometimes; please use the secure button below.`,
+      intro: `Olá ${row.student_name.split(" ")[0]}, we couldn't charge the ${amount} ${isSameDayFee ? "same-day change fee" : isNoShow ? "no-show fee" : "lesson payment"} to your saved card. Please use the secure payment link below.`,
       callout: "",
       rows: [
         { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
