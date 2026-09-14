@@ -117,6 +117,10 @@ async function completeCalendarSetup(env) {
     await env.DB.prepare("UPDATE google_calendar_connections SET calendar_id = ? WHERE id = 1 AND teacher_id = ?")
       .bind(calendarId, saved.teacher_id).run();
   } catch (error) {
+    if (error?.calendarCreationNotStarted) {
+      await env.DB.prepare("UPDATE google_calendar_connections SET calendar_creation_attempted_at = NULL WHERE id = 1 AND teacher_id = ? AND calendar_id IS NULL")
+        .bind(saved.teacher_id).run();
+    }
     // Only our fixed provider codes/statuses: never OAuth payloads or credentials.
     console.warn("google-calendar-setup", error?.causeCode ?? "unexpected_failure", Number(error?.statusCode) || 0);
   }

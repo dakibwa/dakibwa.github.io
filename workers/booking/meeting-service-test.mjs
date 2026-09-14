@@ -351,6 +351,16 @@ try {
     assert.equal(requests.filter(request => request.url === "https://www.googleapis.com/calendar/v3/calendars" && request.method === "POST").length, 1);
     assert.ok(!requests.some(request => String(request.body).includes("authorization_code")));
   });
+  await test("token failure before calendar creation leaves setup retryable", async () => {
+    db.exec("UPDATE google_calendar_connections SET calendar_id=NULL, calendar_creation_attempted_at=NULL");
+    tokenError = true;
+    await syncPendingMeetings(env, async () => true);
+    assert.equal(db.prepare("SELECT calendar_creation_attempted_at FROM google_calendar_connections").get().calendar_creation_attempted_at, null);
+    assert.ok(!requests.some(request => request.url === "https://www.googleapis.com/calendar/v3/calendars"));
+    tokenError = false;
+    await syncPendingMeetings(env, async () => true);
+    assert.equal(db.prepare("SELECT calendar_id FROM google_calendar_connections").get().calendar_id, "app-calendar@group.calendar.google.com");
+  });
   await test("the background sweep never repeats uncertain calendar creation", async () => {
     db.exec("UPDATE google_calendar_connections SET calendar_id=NULL, calendar_creation_attempted_at=NULL");
     calendarCreationFailure = true;

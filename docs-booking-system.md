@@ -930,7 +930,9 @@ confirming no calendar was created. Never reset it as a blind retry. After a
 confirmed recovery clears the creation-attempt flag, the minute sweep resumes
 setup with the saved grant, without another OAuth login. Calendar creation has
 a 30-second timeout; failed attempts log only fixed error codes and HTTP status,
-never provider payloads or credentials.
+never provider payloads or credentials. Failures before sending calendar creation
+remain retryable. Provider requests use Workers-compatible manual redirects and
+reject 3xx responses; credentials are never forwarded to another destination.
 
 Disable `GOOGLE_CALENDAR_ENABLED` to stop provider work while retaining existing
 booking links and records. Revoking the app in Google stops access. Stored

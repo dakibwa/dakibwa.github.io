@@ -75,8 +75,14 @@ export async function decryptCalendarToken(env, text) {
 
 async function providerFetch(url, options, timeoutMs = 10000) {
   try {
-    return await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs), redirect: "error" });
-  } catch {
+    // Workers rejects redirect:"error". Manual mode plus an explicit check
+    // also prevents credentials being forwarded to a redirect destination.
+    const response = await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs), redirect: "manual" });
+    if (response.status >= 300 && response.status < 400) throw problem("calendar_unavailable");
+    return response;
+  } catch (error) {
+    const detail = /redirect/i.test(String(error?.message)) ? "redirect" : /timeout|abort/i.test(String(error?.message)) ? "timeout" : /fetch|network/i.test(String(error?.message)) ? "network" : "other";
+    console.warn("google-calendar-transport", url === "https://oauth2.googleapis.com/token" ? "token" : "calendar", detail);
     throw problem("calendar_unavailable");
   }
 }
@@ -110,6 +116,8 @@ export async function calendarAccessToken(env, connection) {
   });
   const body = await providerJson(response);
   if (!response.ok) {
+    const known = ["invalid_grant", "invalid_client", "invalid_request", "unauthorized_client", "unsupported_grant_type", "server_error", "temporarily_unavailable"];
+    console.warn("google-calendar-token", response.status, known.includes(body.error) ? body.error : "unknown_error");
     if (body.error === "invalid_grant") throw problem("calendar_reconnect_required", 401);
     throw problem("calendar_unavailable");
   }
@@ -190,7 +198,9 @@ export async function ensureAppCalendar(env, connection) {
   }
   if (connection?.calendar_creation_attempted_at) throw problem("calendar_setup_uncertain", 409);
   if (typeof connection?.google_sub !== "string" || !/^[\w-]{1,255}$/.test(connection.google_sub)) throw problem("calendar_invalid_input", 400);
-  const token = await calendarAccessToken(env, connection);
+  let token;
+  try { token = await calendarAccessToken(env, connection); }
+  catch (error) { error.calendarCreationNotStarted = true; throw error; }
   let created;
   try {
     created = await calendarRequest(token, CALENDARS_ROOT, "POST", {

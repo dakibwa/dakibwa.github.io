@@ -38,7 +38,7 @@ async function fixture(handler) {
     assert.equal(url.origin, "https://www.googleapis.com");
     assert.ok(!url.pathname.includes("/calendars/primary"));
     assert.equal(options.headers.Authorization, "Bearer test-access");
-    assert.equal(options.redirect, "error");
+    assert.equal(options.redirect, "manual");
     return handler(url, options, calls);
   };
   return { connection, calls };
@@ -228,6 +228,13 @@ await test("first calendar creation uses the account marker and shows the lesson
 await test("calendar display setup failure does not discard the successfully created ID", async () => {
   const { connection } = await fixture((url, options) => options.method === "POST" ? response({ id: calendarId }) : response({}, 403));
   assert.equal(await ensureAppCalendar(env, { ...connection, calendar_id: null }), calendarId);
+});
+await test("provider requests use Workers-compatible manual redirects and never follow them", async () => {
+  const { connection } = await fixture((url, options) => {
+    assert.equal(options.redirect, "manual");
+    return new Response(null, { status: 302, headers: { Location: "https://untrusted.example.invalid" } });
+  });
+  await assert.rejects(ensureAppCalendar(env, { ...connection, calendar_id: null }), rejects("calendar_setup_uncertain", 409));
 });
 await test("ambiguous calendar creation is not retried automatically", async () => {
   let creates = 0;
