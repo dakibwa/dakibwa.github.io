@@ -343,6 +343,23 @@ try {
     assert.equal(await finishCalendarConnection(env, callback), "error");
     assert.equal(requests.filter(request => request.url === "https://www.googleapis.com/calendar/v3/calendars" && request.method === "POST").length, 1);
   });
+  await test("a confirmed setup recovery resumes from the saved grant once without OAuth", async () => {
+    db.exec("UPDATE google_calendar_connections SET calendar_id=NULL, calendar_creation_attempted_at=NULL");
+    await syncPendingMeetings(env, async () => true);
+    assert.equal(db.prepare("SELECT calendar_id FROM google_calendar_connections").get().calendar_id, "app-calendar@group.calendar.google.com");
+    await syncPendingMeetings(env, async () => true);
+    assert.equal(requests.filter(request => request.url === "https://www.googleapis.com/calendar/v3/calendars" && request.method === "POST").length, 1);
+    assert.ok(!requests.some(request => String(request.body).includes("authorization_code")));
+  });
+  await test("the background sweep never repeats uncertain calendar creation", async () => {
+    db.exec("UPDATE google_calendar_connections SET calendar_id=NULL, calendar_creation_attempted_at=NULL");
+    calendarCreationFailure = true;
+    await syncPendingMeetings(env, async () => true);
+    calendarCreationFailure = false;
+    await syncPendingMeetings(env, async () => true);
+    assert.equal(requests.filter(request => request.url === "https://www.googleapis.com/calendar/v3/calendars" && request.method === "POST").length, 1);
+    assert.equal(db.prepare("SELECT calendar_id FROM google_calendar_connections").get().calendar_id, null);
+  });
   await test("revocation during code exchange cannot finish connecting", async () => {
     const { callback } = await begin();
     duringCodeExchange = async () => { db.prepare("UPDATE students SET session_version=session_version+1 WHERE id='teacher'").run(); };

@@ -96,24 +96,31 @@ export async function finishCalendarConnection(env, url) {
       refresh_token_encrypted=excluded.refresh_token_encrypted, status='active', updated_at=excluded.updated_at
       WHERE google_calendar_connections.teacher_id = excluded.teacher_id`)
       .bind(teacher.id, profile.sub, profile.email, await encryptCalendarToken(env, tokens.refresh_token), new Date().toISOString()).run();
-    let saved = await connection(env);
-    if (!saved?.calendar_id) {
-      // A lost create response must not create a second calendar on reconnect.
-      // Persist the attempt before Google; an ambiguous result needs recovery.
-      const claimed = await env.DB.prepare(`UPDATE google_calendar_connections SET calendar_creation_attempted_at = ?
-        WHERE id = 1 AND teacher_id = ? AND calendar_id IS NULL AND calendar_creation_attempted_at IS NULL`)
-        .bind(new Date().toISOString(), teacher.id).run();
-      if (!claimed?.meta?.changes) return "error";
-      const calendarId = await ensureAppCalendar(env, saved);
-      await env.DB.prepare("UPDATE google_calendar_connections SET calendar_id = ? WHERE id = 1 AND teacher_id = ?")
-        .bind(calendarId, teacher.id).run();
-      saved = await connection(env);
-    }
+    const saved = await completeCalendarSetup(env);
     return saved?.calendar_id ? "connected" : "error";
   } catch {
     // OAuth errors can contain codes, tokens or provider payloads. Never log them.
     return "error";
   }
+}
+
+/** Resume an authorized, explicitly unclaimed setup without another Google login. */
+async function completeCalendarSetup(env) {
+  const saved = await connection(env);
+  if (!saved || saved.status !== "active" || saved.calendar_id || saved.calendar_creation_attempted_at) return saved;
+  const claimed = await env.DB.prepare(`UPDATE google_calendar_connections SET calendar_creation_attempted_at = ?
+    WHERE id = 1 AND teacher_id = ? AND calendar_id IS NULL AND calendar_creation_attempted_at IS NULL`)
+    .bind(new Date().toISOString(), saved.teacher_id).run();
+  if (!claimed?.meta?.changes) return saved;
+  try {
+    const calendarId = await ensureAppCalendar(env, saved);
+    await env.DB.prepare("UPDATE google_calendar_connections SET calendar_id = ? WHERE id = 1 AND teacher_id = ?")
+      .bind(calendarId, saved.teacher_id).run();
+  } catch (error) {
+    // Only our fixed provider codes/statuses: never OAuth payloads or credentials.
+    console.warn("google-calendar-setup", error?.causeCode ?? "unexpected_failure", Number(error?.statusCode) || 0);
+  }
+  return connection(env);
 }
 
 /** Calendar work is best-effort; it must never fail a confirmed lesson/payment. */
@@ -176,7 +183,7 @@ export async function markMeetingNotified(env, row) {
 
 export async function syncPendingMeetings(env, notifyReady) {
   if (!enabled(env)) return;
-  const account = await connection(env);
+  const account = await completeCalendarSetup(env);
   if (!account || account.status !== "active" || !account.calendar_id) return;
   const now = new Date().toISOString();
   const { results } = await env.DB.prepare(`SELECT * FROM bookings WHERE

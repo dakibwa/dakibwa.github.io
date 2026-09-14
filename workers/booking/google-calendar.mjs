@@ -73,9 +73,9 @@ export async function decryptCalendarToken(env, text) {
   }
 }
 
-async function providerFetch(url, options) {
+async function providerFetch(url, options, timeoutMs = 10000) {
   try {
-    return await fetch(url, { ...options, signal: AbortSignal.timeout(10000), redirect: "error" });
+    return await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs), redirect: "error" });
   } catch {
     throw problem("calendar_unavailable");
   }
@@ -127,13 +127,14 @@ async function calendarRequest(accessToken, url, method = "GET", body, allowMiss
     method,
     headers: { Authorization: `Bearer ${accessToken}`, ...(body ? { "Content-Type": "application/json" } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+  }, method === "POST" && url === CALENDARS_ROOT ? 30000 : 10000);
   if (allowMissing && (response.status === 404 || response.status === 410)) return null;
   if (!response.ok) {
     if (response.status === 401) {
       for (const [key, value] of accessTokens) if (value.token === accessToken) accessTokens.delete(key);
       throw problem("calendar_reconnect_required", 401);
     }
+    console.warn("google-calendar-http", method, response.status);
     if (response.status === 409) throw problem("calendar_event_conflict", 409);
     throw problem("calendar_unavailable");
   }

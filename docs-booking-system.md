@@ -926,7 +926,11 @@ Reconnection reuses the stored calendar and event identities. If the first
 calendar-create response is lost, the persisted creation-attempt flag prevents
 creating duplicates. An operator must locate the app calendar in Inês’s Google
 Calendar and restore its ID after verifying ownership; reset the flag only after
-confirming no calendar was created. Never reset it as a blind retry.
+confirming no calendar was created. Never reset it as a blind retry. After a
+confirmed recovery clears the creation-attempt flag, the minute sweep resumes
+setup with the saved grant, without another OAuth login. Calendar creation has
+a 30-second timeout; failed attempts log only fixed error codes and HTTP status,
+never provider payloads or credentials.
 
 Disable `GOOGLE_CALENDAR_ENABLED` to stop provider work while retaining existing
 booking links and records. Revoking the app in Google stops access. Stored
