@@ -5,7 +5,7 @@
  * when Inês's link is shared on WhatsApp, Instagram or messaged around, which is
  * how a one-to-one teacher actually finds students. It reuses the site's own
  * hero rhythm — lavender eyebrow, cream wordmark, coral rule, tagline — over the
- * deep-blue ground, with the home-page radiant burst bleeding off the right.
+ * deep-blue ground, with the complete open-centre lavender splat on the right.
  *
  * Like the email banner, the wordmark is drawn as a cream fill behind its own
  * alpha mask rather than referenced as a raw asset, so the cream is exactly
@@ -32,7 +32,7 @@ const asDataUri = (file, mime) =>
   `data:${mime};base64,${readFileSync(path.join(root, "public", file)).toString("base64")}`;
 
 const wordmark = asDataUri("visuals/wordmark-cream.webp", "image/webp");
-const burst = asDataUri("visuals/generated-splats/business-card-splat-generated-v2.webp", "image/webp");
+const burst = asDataUri("visuals/generated-splats/open-centre-lavender-splat.webp", "image/webp");
 
 const html = `<!doctype html><html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -51,27 +51,26 @@ const html = `<!doctype html><html><head><meta charset="utf-8">
     font-family: "Montserrat", system-ui, sans-serif;
   }
   /*
-   * The site's own hero composition: the burst lives in its own deep panel on
-   * the right, bleeding off the top, right and bottom of the card, and the
-   * panel's hard left edge keeps every streak away from the words. Overlaying
-   * the burst directly on the card put streak tips under "Inês" and "lessons".
+   * Keep the complete splat beside the words on one continuous blue ground.
+   * The asset's transparent margins leave a clear gap beside the wordmark,
+   * while its coloured tips stay safely inside the share card.
    */
   .art {
     position: absolute;
     top: 0;
-    right: 0;
-    width: 470px;
+    right: 24px;
+    width: 500px;
     height: ${HEIGHT}px;
-    overflow: hidden;
-    background: #203e82; /* --blue-deep, as the home hero's art panel */
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .burst {
-    position: absolute;
-    top: -45px;
-    left: -383px;
-    width: 1085px;
-    height: auto;
-    opacity: 0.96;
+    width: 640px;
+    height: 640px;
+    max-width: none;
+    flex-shrink: 0;
+    transform: translateY(12px);
   }
   .content {
     position: absolute;

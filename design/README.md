@@ -183,9 +183,10 @@ the same identity or action:
 ## References retained in this repository
 
 `design/business-cards/` contains the original business-card exports. They are
-historical brand references, not competing website specifications. The cleaned
-blue business-card splat is retained for the generated social share image, but
-the card artwork itself does not appear in the homepage interface.
+historical brand references, not competing website specifications. The social
+share image uses the complete open-centre lavender splat from the lessons page
+on the right of one continuous blue background, with clear space around it.
+Keep its tips intact and separate from the words.
 
 `design/stickers/` contains the historical sticker sheet. Do not cut new
 production assets from it unless a new asset is deliberately reviewed and

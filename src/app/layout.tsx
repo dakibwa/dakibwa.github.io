@@ -39,7 +39,7 @@ const montserrat = Montserrat({
 const SITE_URL = "https://portuguesewithines.com";
 const shareDescription = "One-to-one Portuguese lessons, online or in person. Any level.";
 const shareImage = {
-  url: "/og.png",
+  url: "/og.png?v=20260914",
   width: 1200,
   height: 630,
   alt: "Português com a Inês: one-to-one Portuguese lessons"
