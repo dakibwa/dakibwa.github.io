@@ -1520,11 +1520,13 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
         {!includeSchedule && savedChoices.length ? (
           <div className="booking-selection-progress">
             {selectedLessonsList(savedChoices, false)}
-            <p>
-              {activeChange
-                ? `Changing ${formatLongDate(activeChange.startAt)} at ${formatSlotTime(activeChange.startAt)}.`
-                : bookingKind === "recurring" ? "Choose the second starting time in this same week." : "Choose another date and time."}
-            </p>
+            {activeChange || bookingKind === "recurring" ? (
+              <p>
+                {activeChange
+                  ? `Changing ${formatLongDate(activeChange.startAt)} at ${formatSlotTime(activeChange.startAt)}.`
+                  : "Choose the second starting time in this same week."}
+              </p>
+            ) : null}
             {!showWorkflowCalendar || activeChange ? (
               <div className="booking-selection-progress__actions">
                 {!showWorkflowCalendar ? selectionBackButton() : null}
@@ -2322,25 +2324,14 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
               <span className="booking-choice-summary__copy">
                 <strong>{formatLongDate(`${selectedDate}T12:00:00Z`)}</strong>
               </span>
-              <div className="booking-date-summary__actions">
-                {canReviewSelection ? selectionBackButton() : null}
-                <button
-                  aria-label="Change date"
-                  className="text-action booking-choice-summary__change"
-                  onClick={() =>
-                    transitionBooking(() => {
-                      setSelectedDate("");
-                      setSelectedSlot("");
-                      setCalendarWeekCount(8);
-                      goTo("day");
-                    })
-                  }
-                  type="button"
-                >
-                  <span className="booking-choice-summary__change-label">Change date</span>
-                  <span className="booking-choice-summary__change-short" aria-hidden="true">Change</span>
-                </button>
-              </div>
+              <button
+                aria-label="Back to dates"
+                className="button button--coral booking-selection-back"
+                onClick={changeDateChoice}
+                type="button"
+              >
+                <ArrowLeft size={16} aria-hidden="true" /> Back
+              </button>
             </div>
           ) : (
           <div className="calendar-panel unified-calendar__grid">
@@ -2631,21 +2622,23 @@ export function BookingCalendar({ initialManageToken = "", initialLessonsView = 
               </div>
             ) : (
               <>
-                <p className="eyebrow">
-                  {selectedDate
-                    ? selectedDayBookings.length
-                      ? "Selected day"
-                      : lessonType
-                        ? "Choose a time"
-                        : "Selected day"
-                    : intent === "lessons"
-                      ? "Upcoming lessons"
-                      : "Choose a day"}
-                </p>
+                {!showSelectedDateSummary ? (
+                  <p className="eyebrow">
+                    {selectedDate
+                      ? selectedDayBookings.length
+                        ? "Selected day"
+                        : lessonType
+                          ? "Choose a time"
+                          : "Selected day"
+                      : intent === "lessons"
+                        ? "Upcoming lessons"
+                        : "Choose a day"}
+                  </p>
+                ) : null}
                 <h3>
                   {selectedDate
                     ? showSelectedDateSummary
-                      ? "Available times"
+                      ? "Choose a time"
                       : formatLongDate(`${selectedDate}T12:00:00Z`)
                     : intent === "lessons" && !calendarWindowBookings.length
                       ? "Nothing booked yet"

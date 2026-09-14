@@ -2203,13 +2203,6 @@ html.booking-transitioning .booking-confirmation-stage {
   gap: 0.75rem;
 }
 
-.booking-date-summary__actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-}
-
 .booking-choice-summary__mark {
   width: 44px;
   height: 44px;
@@ -3305,10 +3298,6 @@ html.booking-transitioning .booking-confirmation-stage {
   .booking-choice-summary__mark {
     width: 38px;
     height: 38px;
-  }
-
-  .booking-date-summary .booking-choice-summary__change {
-    letter-spacing: 0.02em;
   }
 
   .booking-choice-summary__change {
