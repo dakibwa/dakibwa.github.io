@@ -1341,24 +1341,61 @@ async function notifyLessonCharged(env, { row, lessonType, amountCents, noShow =
 
 async function notifySameDayFeeCharged(env, { row, lessonType, amountCents }) {
   const settings = await loadSettings(env);
+  const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
   const amount = `€${(amountCents / 100).toFixed(0)}`;
-  await deliver(env, {
-    to: row.student_email,
-    subject: `Same-day change fee paid — ${row.reference}`,
-    kind: "student_same_day_fee_paid",
-    bookingId: row.id,
-    dedupeKey: `same-day-paid:${row.id}`,
-    replyTo: settings.replyToEmail || env.TEACHER_EMAIL || settings.teacherEmail || undefined,
-    content: {
-      heading: "Your same-day fee is paid",
-      preheader: `${lessonType.name} · ${amount}`,
-      intro: `Olá ${row.student_name.split(" ")[0]}, your saved card was charged ${amount} for changing or cancelling this lesson on its Porto calendar day.`,
-      callout: "You will not be charged this fee again for the same lesson.",
-      rows: [{ label: "Reference", value: row.reference }],
-      action: null,
-      footer: "Sent automatically by the booking system on portuguesewithines.com."
-    }
-  });
+  const nif = await studentNif(env, row.student_id);
+
+  const sends = [
+    deliver(env, {
+      to: row.student_email,
+      subject: `Same-day change fee paid — ${row.reference}`,
+      kind: "student_same_day_fee_paid",
+      bookingId: row.id,
+      dedupeKey: `same-day-paid:${row.id}`,
+      replyTo: settings.replyToEmail || teacherEmail || undefined,
+      content: {
+        heading: "Your same-day fee is paid",
+        preheader: `${lessonType.name} · ${amount}`,
+        intro: `Olá ${row.student_name.split(" ")[0]}, your saved card was charged ${amount} for changing or cancelling this lesson on its Porto calendar day.`,
+        callout: "You will not be charged this fee again for the same lesson.",
+        rows: [
+          { label: "Reference", value: row.reference },
+          ...(nif ? [{ label: "NIF", value: `${nif} · on your receipt from Inês` }] : [])
+        ],
+        action: null,
+        footer: "Sent automatically by the booking system on portuguesewithines.com."
+      }
+    })
+  ];
+
+  // A fee is a payment like any other, so it gets the same fiscal reminder.
+  if (teacherEmail) {
+    sends.push(
+      deliver(env, {
+        to: teacherEmail,
+        subject: `Payment received — ${row.student_name}, ${amount} same-day fee`,
+        kind: "teacher_same_day_fee_paid",
+        bookingId: row.id,
+        dedupeKey: `same-day-paid-teacher:${row.id}`,
+        replyTo: row.student_email,
+        content: {
+          heading: "A same-day fee was paid",
+          preheader: `${row.student_name} · same-day fee · ${amount}`,
+          intro: `The ${amount} same-day fee for ${row.student_name}'s lesson was charged successfully.`,
+          callout: "Issue the appropriate Portal das Finanças document for this payment today.",
+          rows: [
+            { label: "Lesson", value: `${lessonType.name} · ${formatInZone(new Date(row.starts_at), PORTO)}` },
+            { label: "Reference", value: row.reference },
+            receiptNifRow(nif)
+          ],
+          action: null,
+          footer: "Sent automatically by the booking system on portuguesewithines.com."
+        }
+      })
+    );
+  }
+
+  return Promise.allSettled(sends);
 }
 
 async function recoverySession(env, { row, lessonType, amountCents, purpose }) {

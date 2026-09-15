@@ -845,6 +845,35 @@ await test("every email Inês gets about a student's lessons carries the NIF her
     "students' booking emails don't repeat it");
 });
 
+await test("a paid same-day fee reminds Inês to issue its fiscal document once, with the NIF", async () => {
+  db.prepare("INSERT OR REPLACE INTO settings VALUES ('payment_mode','postpay')").run();
+  db.prepare("UPDATE students SET nif='123456789' WHERE id='alice'").run();
+  booking("fee-receipt", { start: "2026-09-05T15:00:00.000Z", end: "2026-09-05T16:00:00.000Z" });
+  Object.assign(env, { TEACHER_EMAIL: "ines@example.invalid", RESEND_API_KEY: "re_isolated", EMAIL_DRY_RUN: "0" });
+  sentEmails.length = 0;
+  try {
+    const cancelled = await call(`/bookings/${await token("fee-receipt")}/cancel`);
+    assert.equal(cancelled.status, 200, await cancelled.clone().text());
+    await drain();
+    await chargeDueSameDayFees(env);
+  } finally {
+    Object.assign(env, { EMAIL_DRY_RUN: "1" });
+    delete env.TEACHER_EMAIL;
+    delete env.RESEND_API_KEY;
+    db.prepare("UPDATE students SET nif='' WHERE id='alice'").run();
+  }
+  assert.equal(db.prepare("SELECT same_day_fee_status FROM bookings WHERE id='fee-receipt'").get().same_day_fee_status, "paid");
+  // Teacher booking copies are paused in this suite; the fiscal reminder is not.
+  const reminders = sentEmails.filter((email) => email.to[0] === "ines@example.invalid" && email.subject.startsWith("Payment received"));
+  assert.equal(reminders.length, 1, "one reminder per fee, even after the sweep runs again");
+  assert.equal(reminders[0].subject, "Payment received — Test Student, €5 same-day fee");
+  assert.match(reminders[0].text, /Portal das Finanças/);
+  assert.match(reminders[0].text, /^Reference: fee-receipt$/m);
+  assert.match(reminders[0].text, /^NIF: 123456789$/m);
+  const receipt = sentEmails.find((email) => email.to[0] === "alice@example.invalid" && email.subject.startsWith("Same-day change fee paid"));
+  assert.match(receipt.text, /^NIF: 123456789 · on your receipt from Inês$/m);
+});
+
 await test("Inês's lesson list carries each student's NIF, and students cannot read it", async () => {
   db.prepare("UPDATE students SET nif='123456789' WHERE id='alice'").run();
   booking("admin-nif", { start: "2026-10-12T09:00:00.000Z", end: "2026-10-12T10:00:00.000Z" });

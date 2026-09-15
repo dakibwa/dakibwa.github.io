@@ -597,9 +597,10 @@ price. A `paid` or `payment_due` lesson is never silently repriced: the student
 must cancel/refund and book the other length, or settle the outstanding payment.
 Trials cannot be converted into ordinary lessons through rescheduling.
 
-Every successful payment also sends Inês a private operational reminder to
-issue the appropriate fiscal document in Portal das Finanças, with the
-student's NIF if they gave one (see *NIF for receipts*). Stripe's receipt
+Every successful payment (lesson, no-show fee or €5 same-day fee) also sends
+Inês a private "Payment received" reminder to issue the appropriate fiscal
+document in Portal das Finanças, with the student's NIF if they gave one (see
+*NIF for receipts*). Stripe's receipt
 does not replace that Portuguese tax document, and Stripe Tax is not enabled
 while her IVA basis remains an owner/accountant decision.
 
@@ -710,7 +711,9 @@ booking time are kept:
 - **Scheduled saved-card booking**: students may move or cancel right up to the
   lesson start. A change on the lesson's own Porto date atomically schedules
   one €5 charge to the saved card. A move keeps the later full lesson charge at
-  the new end time; a cancellation removes the full lesson charge.
+  the new end time; a cancellation removes the full lesson charge. Once the fee
+  is paid, the student and Inês are each emailed once; hers is the fiscal
+  reminder.
 - **Booked without automatic payment**: the original pay-in-person promise is
   retained and no new card charge is invented.
 
