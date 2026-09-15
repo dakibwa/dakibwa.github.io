@@ -52,6 +52,12 @@ try {
     await setup.page.close();
 
     const ready = await fixture(width, disconnected);
+    await expect(ready.panel).toContainText("Not connected");
+    await expect(ready.panel).not.toContainText("waiting to sync");
+    const configure = ready.panel.getByRole("button", { name: "Configure", exact: true });
+    await expect(configure).toHaveAttribute("aria-expanded", "false");
+    await configure.click();
+    await expect(configure).toHaveAttribute("aria-expanded", "true");
     await expect(ready.panel).toContainText("2 lessons are waiting to sync.");
     await expect(ready.panel.getByRole("button", { name: "Connect Google Meet", exact: true })).toBeVisible();
     assert.deepEqual(ready.calls, [], "OAuth never starts without a click");
@@ -64,25 +70,38 @@ try {
     assert.deepEqual(ready.errors, []);
     await ready.page.close();
 
+    // While Meet works, the panel is only its logo, its name and Configure.
+    const working = await fixture(width, { ...disconnected, connected: true, email: "teacher@example.invalid", pending: 0 });
+    await expect(working.panel.getByRole("heading", { name: "Google Meet", exact: true })).toBeVisible();
+    await expect(working.panel.locator(".teacher-meet-logo")).toBeVisible();
+    await expect(working.panel.getByRole("button")).toHaveCount(1);
+    await expect(working.panel.locator("p")).toHaveCount(0);
+    await working.panel.getByRole("button", { name: "Configure", exact: true }).click();
+    await expect(working.panel).toContainText("Connected as teacher@example.invalid");
+    await expect(working.panel.getByRole("button", { name: "Reconnect Google Meet", exact: true })).toBeVisible();
+    await expect(working.panel.getByRole("link", { name: "Open Google Calendar", exact: true })).toHaveAttribute("href", "https://calendar.google.com/");
+    await expect(working.panel).toContainText("Settings and sharing");
+    assert.deepEqual(working.calls, [], "Configure alone never starts OAuth");
+    assert.ok(await working.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await working.page.close();
+
     const connected = await fixture(width, { ...disconnected, connected: true, email: "teacher@example.invalid", pending: 0 }, { callback: "?meet=connected&view=lessons#retained" });
+    await expect(connected.panel.getByRole("status")).toHaveText("Google Meet connected.");
     await expect(connected.panel).toContainText("Connected as teacher@example.invalid");
-    await expect(connected.panel.getByRole("status")).toHaveText(/Google Calendar connected/);
     assert.equal(new URL(connected.page.url()).search, "?view=lessons");
     assert.equal(new URL(connected.page.url()).hash, "#retained");
-    await expect(connected.panel.getByRole("button")).toHaveCount(0);
-    await expect(connected.panel.getByRole("link", { name: "Open Google Calendar", exact: true })).toHaveAttribute("href", "https://calendar.google.com/");
-    await expect(connected.panel).toContainText("See event details");
     await connected.page.close();
   }
 
   const reconnect = await fixture(1280, { ...disconnected, connected: true, needsReconnect: true }, { callback: "?meet=error&retained=1" });
+  await expect(reconnect.panel).toContainText("Needs reconnecting");
   await expect(reconnect.panel.getByRole("button", { name: "Reconnect Google Meet", exact: true })).toBeVisible();
   await expect(reconnect.panel.getByRole("status")).toHaveText(/could not be connected/);
   assert.equal(new URL(reconnect.page.url()).search, "?retained=1");
   await reconnect.page.close();
 
   const cancelled = await fixture(1280, disconnected, { callback: "?meet=cancelled" });
-  await expect(cancelled.panel.getByRole("status")).toHaveText(/connection was cancelled/);
+  await expect(cancelled.panel.getByRole("status")).toHaveText(/Connection cancelled/);
   assert.deepEqual(cancelled.calls, []);
   await cancelled.page.close();
 
@@ -93,19 +112,20 @@ try {
   const failed = await fixture(1280, disconnected, { failStatus: true });
   await expect(failed.panel.getByRole("alert")).toContainText("temporarily unavailable");
   failed.recoverStatus();
-  await failed.panel.getByRole("button", { name: "Retry Google Meet status" }).click();
-  await expect(failed.panel.getByRole("button", { name: "Connect Google Meet", exact: true })).toBeVisible();
+  await failed.panel.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(failed.panel.getByRole("button", { name: "Configure", exact: true })).toBeVisible();
   await failed.page.close();
 
   for (const url of ["https://accounts.google.com.example.invalid/o/oauth2/v2/auth", "https://accounts.google.com/other", "http://accounts.google.com/o/oauth2/v2/auth"]) {
     const unsafe = await fixture(1280, disconnected, { connectResult: { url } });
+    await unsafe.panel.getByRole("button", { name: "Configure", exact: true }).click();
     await unsafe.panel.getByRole("button", { name: "Connect Google Meet", exact: true }).click();
     await expect(unsafe.panel.getByRole("alert")).toContainText("could not be opened");
     assert.equal(new URL(unsafe.page.url()).origin, new URL(base).origin);
     await expect(unsafe.panel.getByRole("button", { name: "Connect Google Meet", exact: true })).toBeEnabled();
     await unsafe.page.close();
   }
-  console.log("Teacher Meet connection passed: setup, explicit authorization, connected/reconnect, callbacks, query preservation, retries and unsafe redirect rejection; desktop/mobile.");
+  console.log("Teacher Meet connection passed: setup, one-line working state, Configure, explicit authorization, connected/reconnect, callbacks, query preservation, retries and unsafe redirect rejection; desktop/mobile.");
 } finally {
   await browser.close();
 }

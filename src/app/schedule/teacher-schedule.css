@@ -1052,12 +1052,6 @@
     gap: 0.4rem 0.7rem;
     padding-top: 0.7rem;
   }
-  .teacher-grid-footnote > .teacher-text-button {
-    max-width: 85px;
-    text-align: right;
-    justify-content: flex-end;
-    font-size: 0.64rem;
-  }
   .teacher-calendar-key > span {
     font-size: 0.6rem;
   }
@@ -1137,41 +1131,69 @@
 }
 
 .teacher-meet {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+  padding: 0.6rem 0.75rem 0.6rem 1.2rem;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--squiggle-tile);
+  background: var(--lavender-soft);
+}
+.teacher-meet-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem 1.2rem;
-  border: 1px solid var(--rule-soft);
-  border-radius: var(--squiggle-card);
-  background: var(--lavender-soft);
 }
-.teacher-meet-copy {
+.teacher-meet-bar > button {
+  flex: 0 0 auto;
+  width: auto;
+}
+.teacher-meet-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.1rem 0.8rem;
   min-width: 0;
 }
 .teacher-meet h2 {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.55rem;
   margin: 0;
   font: 700 0.85rem/1.5 var(--ui);
 }
+.teacher-meet-logo {
+  width: 24px;
+  height: auto;
+  flex: none;
+}
+.teacher-meet-attention {
+  color: var(--coral-action);
+  font: 600 0.75rem/1.5 var(--ui);
+}
 .teacher-meet p {
-  margin: 0.35rem 0 0;
+  margin: 0;
   font-size: 0.8rem;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
-.teacher-meet > button {
-  flex: 0 0 auto;
+.teacher-meet-settings {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0 0.35rem;
+  border-top: 1px solid var(--rule-soft);
+}
+.teacher-meet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1.2rem;
+}
+.teacher-meet .teacher-meet-note {
+  color: var(--lavender-ink);
+  font-size: 0.75rem;
 }
 .teacher-meet-error {
   color: var(--coral-action);
-}
-@media (max-width: 600px) {
-  .teacher-meet {
-    align-items: flex-start;
-    flex-direction: column;
-  }
 }

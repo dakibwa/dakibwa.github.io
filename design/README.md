@@ -236,6 +236,13 @@ usual lesson starts and days off; avoid a wall of administration forms.
 - Show the full week on desktop. On small screens, keep a seven-day selector
   above a spacious single-day timetable, with no horizontal page overflow.
   Dates and timed lessons always use Porto time, including at DST boundaries.
+- The timetable spans 08:00–20:00 and widens to fit any teaching hours or
+  lessons outside it. There is no 24-hour view; early or late hours are set
+  with the exact-time editor.
+- Google Meet is one line above the week: its logo, its name and `Configure`.
+  Only a problem adds a short status beside the name. Connection details,
+  connecting or reconnecting, and the Google Calendar link stay behind
+  `Configure`.
 - Every booked lesson shows its time, student and explicit `Online` or `In Porto`
   label in both layouts, including 60-minute blocks. Keep the location icons and
   coral marker for Porto lessons.

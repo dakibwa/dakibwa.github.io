@@ -911,17 +911,18 @@ that connection. The existing Google sign-in client remains separate.
 4. Set `GOOGLE_CALENDAR_ENABLED` to `1` only after setup, and release Worker
    before frontend. Use the isolated staging Worker/database for live proof,
    with its own callback/client grant and dry-run emails.
-5. Inês signs into `/schedule/`, selects **Connect Google Meet**, chooses her
-   matching Google account and grants permission. The callback checks signed
-   identity, teacher role, session version/revocation, expiring single-use state
-   and PKCE. The shared admin token cannot start OAuth.
+5. Inês signs into `/schedule/`, selects **Configure → Connect Google Meet**,
+   chooses her matching Google account and grants permission. The callback
+   checks signed identity, teacher role, session version/revocation, expiring
+   single-use state and PKCE. The shared admin token cannot start OAuth.
 6. Verify Porto and online test lessons both sync, and an online test lesson
    produces a joinable link in booking/email,
    preserves it when moved, hides it when cancelled, and a Porto lesson has
    no Meet link. Verify changing online ↔ Porto preserves the event identity.
    Only then enable production and connect Inês’s production account.
 
-Expired or revoked Google permission shows a reconnect prompt in her schedule.
+Expired or revoked Google permission shows **Needs reconnecting** beside Google
+Meet in her schedule; **Configure → Reconnect Google Meet** restores it.
 Reconnection reuses the stored calendar and event identities. If the first
 calendar-create response is lost, the persisted creation-attempt flag prevents
 creating duplicates. An operator must locate the app calendar in Inês’s Google

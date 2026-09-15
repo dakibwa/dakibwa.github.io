@@ -62,7 +62,6 @@ export function WeeklyTimetable({
     minute: 600,
   });
   const [exactDay, setExactDay] = useState(1);
-  const [fullDay, setFullDay] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
   const exactRef = useRef<HTMLDetailsElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -79,30 +78,27 @@ export function WeeklyTimetable({
       (window) =>
         Number.isFinite(window.start) && Number.isFinite(window.lastStart),
     );
-  const start = fullDay
-    ? 0
-    : Math.max(
-        0,
-        Math.floor(
-          Math.min(
-            480,
-            ...allWindows.map((w) => w.start),
-            ...segments.map((b) => b.start),
-          ) / 60,
-        ) * 60,
-      );
-  const end = fullDay
-    ? 1440
-    : Math.min(
-        1440,
-        Math.ceil(
-          Math.max(
-            1200,
-            ...allWindows.map((w) => w.lastStart + step),
-            ...segments.map((b) => b.end),
-          ) / 60,
-        ) * 60,
-      );
+  // 08:00–20:00, widened to fit any teaching window or lesson outside it.
+  const start = Math.max(
+    0,
+    Math.floor(
+      Math.min(
+        480,
+        ...allWindows.map((w) => w.start),
+        ...segments.map((b) => b.start),
+      ) / 60,
+    ) * 60,
+  );
+  const end = Math.min(
+    1440,
+    Math.ceil(
+      Math.max(
+        1200,
+        ...allWindows.map((w) => w.lastStart + step),
+        ...segments.map((b) => b.end),
+      ) / 60,
+    ) * 60,
+  );
   const minutes = Array.from(
     { length: Math.ceil((end - start) / step) },
     (_, index) => start + index * step,
@@ -421,14 +417,6 @@ export function WeeklyTimetable({
             </>
           ) : null}
         </div>
-        <button
-          className="teacher-text-button"
-          type="button"
-          aria-pressed={fullDay}
-          onClick={() => setFullDay(!fullDay)}
-        >
-          {fullDay ? "Usual daytime view" : "Show all 24 hours"}
-        </button>
       </div>
 
       {editing ? (
