@@ -783,7 +783,7 @@ await test("students add, keep, change and clear their own NIF, and a typo chang
   }
 });
 
-await test("the payment reminder gives Inês the student's NIF for the fiscal document, or says there is none", async () => {
+await test("payment emails carry the NIF: Inês's reminder always, the student's own when given", async () => {
   db.prepare("INSERT OR REPLACE INTO settings VALUES ('payment_mode','postpay')").run();
   db.prepare("UPDATE students SET nif='123456789' WHERE id='alice'").run();
   booking("receipt-nif", { start: "2026-09-04T09:00:00.000Z", end: "2026-09-04T10:00:00.000Z" });
@@ -805,9 +805,10 @@ await test("the payment reminder gives Inês the student's NIF for the fiscal do
   assert.match(withNif.text, /^NIF: 123456789$/m);
   assert.ok(withNif.html.includes("123456789"));
   assert.match(sent("receipt-none", true).text, /^NIF: Not given \(consumidor final\)$/m);
-  for (const reference of ["receipt-nif", "receipt-none"]) {
-    assert.ok(!sent(reference, false).text.includes("NIF"), "the student's payment email stays as it was");
-  }
+  const studentWithNif = sent("receipt-nif", false);
+  assert.match(studentWithNif.text, /^NIF: 123456789 · on your receipt from Inês$/m);
+  assert.ok(studentWithNif.html.includes("123456789"));
+  assert.ok(!sent("receipt-none", false).text.includes("NIF"), "no NIF, no row: the student isn't asked for one here");
 });
 
 await test("Inês's lesson list carries each student's NIF, and students cannot read it", async () => {

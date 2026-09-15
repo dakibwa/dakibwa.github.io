@@ -346,8 +346,9 @@ number of booking rows at once.
   plain message, so a mistyped number never reaches a tax document.
 - **Where it appears.** Each reminder to issue a Portal das Finanças document
   carries a `NIF` row with the number, or `Not given (consumidor final)`, read
-  at payment time. Inês's lesson details show it beside the student's email.
-  It is never sent to Stripe, written to logs or repeated in student emails.
+  at payment time. The student's own payment email shows it, when given, so
+  they can check it before the receipt is issued. Inês's lesson details show it
+  beside the student's email. It is never sent to Stripe or written to logs.
 - **Release order.** Apply `workers/booking/migrations/0017-student-nif.sql` to
   both databases before deploying the Worker that writes it. `/health` reports
   `schema` until the column exists, so the site's release gate refuses to

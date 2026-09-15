@@ -484,7 +484,7 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
 
   if (teacherNotificationsEnabled(env) && teacherEmail) {
     // Only a paid booking asks her to issue a fiscal document.
-    const nifRow = event === "booked" && isPaid ? await receiptNifRow(env, row.student_id) : null;
+    const nifRow = event === "booked" && isPaid ? receiptNifRow(await studentNif(env, row.student_id)) : null;
     sends.push(
       deliver(env, {
         to: teacherEmail,
@@ -1256,14 +1256,18 @@ export async function chargeDueSameDayFees(env, now = new Date()) {
 }
 
 /**
- * The row that goes beside every reminder to issue a fiscal document. Read at
- * payment time, so the document carries the NIF the student had then.
+ * The student's NIF for the fiscal document, or "" for none. Read at payment
+ * time, so the document carries the NIF the student had then.
  */
-async function receiptNifRow(env, studentId) {
-  const student = studentId
-    ? await env.DB.prepare("SELECT nif FROM students WHERE id = ?").bind(studentId).first()
-    : null;
-  return { label: "NIF", value: student?.nif || "Not given (consumidor final)" };
+async function studentNif(env, studentId) {
+  if (!studentId) return "";
+  const student = await env.DB.prepare("SELECT nif FROM students WHERE id = ?").bind(studentId).first();
+  return student?.nif ?? "";
+}
+
+/** The row beside every reminder to issue a fiscal document. */
+function receiptNifRow(nif) {
+  return { label: "NIF", value: nif || "Not given (consumidor final)" };
 }
 
 async function notifyLessonCharged(env, { row, lessonType, amountCents, noShow = false }) {
@@ -1272,6 +1276,7 @@ async function notifyLessonCharged(env, { row, lessonType, amountCents, noShow =
   const start = new Date(row.starts_at);
   const amount = `€${(amountCents / 100).toFixed(0)}`;
   const heading = noShow ? "Your no-show fee is paid" : "Your lesson is paid";
+  const nif = await studentNif(env, row.student_id);
 
   const sends = [
     deliver(env, {
@@ -1290,7 +1295,9 @@ async function notifyLessonCharged(env, { row, lessonType, amountCents, noShow =
         callout: "",
         rows: [
           { label: "Lesson", value: `${lessonType.name} · ${lessonType.duration_minutes} minutes` },
-          { label: "Reference", value: row.reference }
+          { label: "Reference", value: row.reference },
+          // Lets the student check the number before Inês issues the receipt.
+          ...(nif ? [{ label: "NIF", value: `${nif} · on your receipt from Inês` }] : [])
         ],
         action: null,
         footer: "Sent automatically by the booking system on portuguesewithines.com."
@@ -1299,7 +1306,7 @@ async function notifyLessonCharged(env, { row, lessonType, amountCents, noShow =
   ];
 
   if (teacherEmail) {
-    const nifRow = await receiptNifRow(env, row.student_id);
+    const nifRow = receiptNifRow(nif);
     sends.push(
       deliver(env, {
         to: teacherEmail,
