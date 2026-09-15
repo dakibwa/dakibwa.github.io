@@ -356,7 +356,9 @@ number of booking rows at once.
 - **Release order.** Apply `workers/booking/migrations/0017-student-nif.sql` to
   both databases before deploying the Worker that writes it. `/health` reports
   `schema` until the column exists, so the site's release gate refuses to
-  publish against an unmigrated database.
+  publish against an unmigrated database. Released 15 September 2026: 0017 on
+  staging and production (existing accounts start without a NIF), Worker on
+  both, site `592b622`.
 
 ### How far ahead you can book
 
