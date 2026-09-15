@@ -28,7 +28,13 @@ let checkoutUnavailable = false;
 let decline = false;
 const setupIntents = new Map();
 let duringSetupRead = null;
+// Only reached while a test sets RESEND_API_KEY and turns dry run off.
+const sentEmails = [];
 globalThis.fetch = async (url, options) => {
+  if (String(url) === "https://api.resend.com/emails") {
+    sentEmails.push(JSON.parse(options.body));
+    return Response.json({ id: `email_${sentEmails.length}` });
+  }
   if (String(url).startsWith("https://api.stripe.com/v1/setup_intents/")) {
     await duringSetupRead?.();
     return Response.json(setupIntents.get(String(url).split("/").at(-1)) ?? { status: "requires_payment_method" });
@@ -740,6 +746,85 @@ await test("Meet links follow booking ownership and disappear for Porto or cance
   db.prepare("UPDATE bookings SET location='online',status='cancelled' WHERE id='meet-owned'").run();
   mine = await call("/me", { method: "GET", user: "meet-owner" });
   assert.equal((await mine.json()).bookings[0].meetingUrl, null);
+});
+
+await test("sign-up keeps an optional NIF, tidied, and refuses a mistyped one without creating the account", async () => {
+  const signUp = (email, nif) => call("/auth/register", {
+    user: null, body: { name: "Nora Fiscal", email, password: "a-long-password", ...(nif === undefined ? {} : { nif }) }
+  });
+  const given = await signUp("nif-given@example.invalid", "PT 123 456 789");
+  assert.equal(given.status, 201, await given.clone().text());
+  assert.equal((await given.json()).student.nif, "123456789");
+  assert.equal(db.prepare("SELECT nif FROM students WHERE email='nif-given@example.invalid'").get().nif, "123456789");
+  const typo = await signUp("nif-typo@example.invalid", "123456788");
+  assert.equal(typo.status, 400);
+  assert.match(await typo.text(), /isn't valid/);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM students WHERE email='nif-typo@example.invalid'").get().n, 0);
+  const none = await signUp("nif-none@example.invalid");
+  assert.equal(none.status, 201);
+  assert.equal((await none.json()).student.nif, "");
+});
+
+await test("students add, keep, change and clear their own NIF, and a typo changes nothing", async () => {
+  try {
+    let saved = await call("/me", { body: { nif: "123 456 789" } });
+    assert.equal(saved.status, 200);
+    assert.equal((await saved.json()).student.nif, "123456789");
+    saved = await call("/me", { body: { name: "Test Student" } });
+    assert.equal((await saved.json()).student.nif, "123456789", "a field that isn't sent keeps its value");
+    const typo = await call("/me", { body: { nif: "12345", name: "Renamed" } });
+    assert.equal(typo.status, 400);
+    assert.deepEqual({ ...db.prepare("SELECT nif, name FROM students WHERE id='alice'").get() }, { nif: "123456789", name: "Test Student" });
+    assert.equal((await (await call("/me", { method: "GET" })).json()).student.nif, "123456789");
+    saved = await call("/me", { body: { nif: "" } });
+    assert.equal((await saved.json()).student.nif, "");
+  } finally {
+    db.prepare("UPDATE students SET nif='' WHERE id='alice'").run();
+  }
+});
+
+await test("the payment reminder gives Inês the student's NIF for the fiscal document, or says there is none", async () => {
+  db.prepare("INSERT OR REPLACE INTO settings VALUES ('payment_mode','postpay')").run();
+  db.prepare("UPDATE students SET nif='123456789' WHERE id='alice'").run();
+  booking("receipt-nif", { start: "2026-09-04T09:00:00.000Z", end: "2026-09-04T10:00:00.000Z" });
+  booking("receipt-none", { owner: "bob", start: "2026-09-04T11:00:00.000Z", end: "2026-09-04T12:00:00.000Z" });
+  Object.assign(env, { TEACHER_EMAIL: "ines@example.invalid", RESEND_API_KEY: "re_isolated", EMAIL_DRY_RUN: "0" });
+  sentEmails.length = 0;
+  try {
+    await chargeDueLessons(env, new Date("2026-09-04T13:00:00Z"));
+  } finally {
+    Object.assign(env, { EMAIL_DRY_RUN: "1" });
+    delete env.TEACHER_EMAIL;
+    delete env.RESEND_API_KEY;
+    db.prepare("UPDATE students SET nif='' WHERE id='alice'").run();
+  }
+  const sent = (reference, toTeacher) => sentEmails.find((email) =>
+    (email.to[0] === "ines@example.invalid") === toTeacher && email.text.includes(`Reference: ${reference}`));
+  const withNif = sent("receipt-nif", true);
+  assert.match(withNif.text, /Portal das Finanças/);
+  assert.match(withNif.text, /^NIF: 123456789$/m);
+  assert.ok(withNif.html.includes("123456789"));
+  assert.match(sent("receipt-none", true).text, /^NIF: Not given \(consumidor final\)$/m);
+  for (const reference of ["receipt-nif", "receipt-none"]) {
+    assert.ok(!sent(reference, false).text.includes("NIF"), "the student's payment email stays as it was");
+  }
+});
+
+await test("Inês's lesson list carries each student's NIF, and students cannot read it", async () => {
+  db.prepare("UPDATE students SET nif='123456789' WHERE id='alice'").run();
+  booking("admin-nif", { start: "2026-10-12T09:00:00.000Z", end: "2026-10-12T10:00:00.000Z" });
+  booking("admin-none", { owner: "bob", start: "2026-10-12T11:00:00.000Z", end: "2026-10-12T12:00:00.000Z" });
+  try {
+    const listed = await call("/admin/bookings", { method: "GET", user: "teacher" });
+    assert.equal(listed.status, 200);
+    const { bookings } = await listed.json();
+    assert.equal(bookings.find((row) => row.id === "admin-nif").student_nif, "123456789");
+    assert.equal(bookings.find((row) => row.id === "admin-none").student_nif, "");
+    assert.equal((await call("/admin/bookings", { method: "GET", user: "alice" })).status, 401);
+  } finally {
+    db.prepare("UPDATE students SET nif='' WHERE id='alice'").run();
+    db.prepare("DELETE FROM bookings WHERE id IN ('admin-nif','admin-none')").run();
+  }
 });
 
 if (process.env.INES_PRIVATE_RATES_FILE) {

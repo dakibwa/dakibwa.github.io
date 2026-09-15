@@ -64,6 +64,9 @@ CREATE TABLE IF NOT EXISTS students (
   email         TEXT NOT NULL UNIQUE,
   name          TEXT NOT NULL,
   phone         TEXT NOT NULL DEFAULT '',
+  -- Optional Portuguese tax number, 9 digits, for the fatura-recibo Inês
+  -- issues (migration 0017). Empty means consumidor final.
+  nif           TEXT NOT NULL DEFAULT '',
   timezone      TEXT NOT NULL DEFAULT 'Europe/Lisbon',
   password_hash TEXT NOT NULL,
   -- Google's stable account id, and what a Google sign-in matches on. Migration

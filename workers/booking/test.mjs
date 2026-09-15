@@ -24,6 +24,7 @@ import {
 } from "./stripe.mjs";
 import { verifyGoogleIdToken } from "./google.mjs";
 import { hashPassword, verifyPassword, passwordProblem } from "./auth.mjs";
+import { nifProblem, normaliseNif } from "./nif.mjs";
 import { buildCalendarInvite, buildCalendarSeriesInvite, calendarUid } from "./ics.mjs";
 import { normaliseWeeks, occurrenceInstants, outstandingFor, slotOf, SERIES_LENGTHS } from "./series.mjs";
 import { createManageToken, readManageToken, safeEqual, bookingReference } from "./tokens.mjs";
@@ -812,6 +813,20 @@ await test("password length is enforced", () => {
   assert.ok(passwordProblem("short"));
   assert.equal(passwordProblem("eight888"), null);
   assert.ok(passwordProblem("x".repeat(500)));
+});
+
+await test("a NIF is optional, pasted formats are tidied and the check digit catches typos", () => {
+  for (const pasted of [" PT 123 456 789 ", "123.456.789", "123-456-789", "pt123456789", 123456789]) {
+    assert.equal(normaliseNif(pasted), "123456789", `pasted: ${pasted}`);
+  }
+  assert.equal(normaliseNif(undefined), "");
+  assert.equal(nifProblem(""), null, "none given is allowed");
+  // Remainders 0 and 1 both give a check digit of 0.
+  for (const valid of ["123456789", "130000000", "220000000"]) assert.equal(nifProblem(valid), null, `refused: ${valid}`);
+  for (const typo of ["123456788", "132456789", "130000001", "012345678", "000000000"]) {
+    assert.match(nifProblem(typo), /isn't valid/, `accepted: ${typo}`);
+  }
+  for (const shape of ["12345678", "1234567890", "12345678a"]) assert.match(nifProblem(shape), /9 digits/, `accepted: ${shape}`);
 });
 
 // --- Google ID tokens --------------------------------------------------------

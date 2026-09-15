@@ -56,6 +56,7 @@ import {
 } from "./time.mjs";
 import { bookingReference, createManageToken, readManageToken, safeEqual } from "./tokens.mjs";
 import { findRecurringCode, recurringRates, recurringLessonType, priceForMove, takeRateLimit } from "./rates.mjs";
+import { nifProblem, normaliseNif } from "./nif.mjs";
 import { bookingSelection, claimSelection } from "./selection.mjs";
 import { calendarOwnsTeacherInvites, calendarConnectionStatus, startCalendarConnection, finishCalendarConnection, prepareMeeting, meetingUrl, markMeetingNotified, syncPendingMeetings } from "./meeting-service.mjs";
 
@@ -482,6 +483,8 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   ];
 
   if (teacherNotificationsEnabled(env) && teacherEmail) {
+    // Only a paid booking asks her to issue a fiscal document.
+    const nifRow = event === "booked" && isPaid ? await receiptNifRow(env, row.student_id) : null;
     sends.push(
       deliver(env, {
         to: teacherEmail,
@@ -501,7 +504,8 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           rows: [
             ...baseRows,
             { label: "Student", value: `${row.student_name}\n${row.student_email}${row.student_phone ? `\n${row.student_phone}` : ""}` },
-            ...(row.notes ? [{ label: "Notes", value: row.notes }] : [])
+            ...(row.notes ? [{ label: "Notes", value: row.notes }] : []),
+            ...(nifRow ? [nifRow] : [])
           ],
           action: null,
           footer: "Sent automatically by the booking system on portuguesewithines.com."
@@ -867,6 +871,7 @@ function publicStudent(row) {
     email: row.email,
     name: row.name,
     phone: row.phone,
+    nif: row.nif ?? "",
     timezone: row.timezone,
     role: row.role ?? "student"
   };
@@ -1250,6 +1255,17 @@ export async function chargeDueSameDayFees(env, now = new Date()) {
   for (const row of results ?? []) await chargeOneSameDayFee(env, row.id, now);
 }
 
+/**
+ * The row that goes beside every reminder to issue a fiscal document. Read at
+ * payment time, so the document carries the NIF the student had then.
+ */
+async function receiptNifRow(env, studentId) {
+  const student = studentId
+    ? await env.DB.prepare("SELECT nif FROM students WHERE id = ?").bind(studentId).first()
+    : null;
+  return { label: "NIF", value: student?.nif || "Not given (consumidor final)" };
+}
+
 async function notifyLessonCharged(env, { row, lessonType, amountCents, noShow = false }) {
   const settings = await loadSettings(env);
   const teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
@@ -1283,6 +1299,7 @@ async function notifyLessonCharged(env, { row, lessonType, amountCents, noShow =
   ];
 
   if (teacherEmail) {
+    const nifRow = await receiptNifRow(env, row.student_id);
     sends.push(
       deliver(env, {
         to: teacherEmail,
@@ -1298,7 +1315,8 @@ async function notifyLessonCharged(env, { row, lessonType, amountCents, noShow =
           callout: "Issue the appropriate Portal das Finanças document for this payment today.",
           rows: [
             { label: "Lesson", value: `${lessonType.name} · ${formatInZone(start, PORTO)}` },
-            { label: "Reference", value: row.reference }
+            { label: "Reference", value: row.reference },
+            nifRow
           ],
           action: null,
           footer: "Sent automatically by the booking system on portuguesewithines.com."
@@ -1596,6 +1614,8 @@ async function handleHealth(request, env) {
   try {
     const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM lesson_types WHERE active = 1").first();
     lessonTypes = row?.count ?? 0;
+    // Sign-up writes this column (migration 0017), so its absence is an outage.
+    await env.DB.prepare("SELECT nif FROM students LIMIT 0").first();
     const settings = await loadSettings(env);
     teacherEmail = env.TEACHER_EMAIL || settings.teacherEmail;
   } catch {
@@ -3234,12 +3254,13 @@ async function handleRegister(request, env) {
   const email = normaliseEmail(body.email);
   const name = cleanText(body.name, 120);
   const phone = cleanText(body.phone, 40);
+  const nif = normaliseNif(body.nif);
   const timezone = isValidTimeZone(body.timezone) ? body.timezone : PORTO;
 
   if (name.length < 2) return fail("Please give your name.", 400, request, env);
   if (!isEmail(email)) return fail("Please give a valid email address.", 400, request, env);
 
-  const problem = passwordProblem(body.password);
+  const problem = passwordProblem(body.password) ?? nifProblem(nif);
   if (problem) return fail(problem, 400, request, env);
 
   const existing = await env.DB.prepare("SELECT id FROM students WHERE email = ?").bind(email).first();
@@ -3251,9 +3272,9 @@ async function handleRegister(request, env) {
   const now = new Date().toISOString();
 
   await env.DB.prepare(
-    "INSERT INTO students (id, email, name, phone, timezone, password_hash, created_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO students (id, email, name, phone, nif, timezone, password_hash, created_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   )
-    .bind(id, email, name, phone, timezone, await hashPassword(body.password), now, now)
+    .bind(id, email, name, phone, nif, timezone, await hashPassword(body.password), now, now)
     .run();
 
   const student = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(id).first();
@@ -3731,10 +3752,14 @@ async function handleUpdateMe(request, env) {
   // while one sent empty is a student deliberately clearing it. Sending only a
   // name used to wipe the phone number without anyone noticing.
   const phone = "phone" in body ? cleanText(body.phone, 40) : student.phone;
+  const nif = "nif" in body ? normaliseNif(body.nif) : student.nif ?? "";
   const timezone = isValidTimeZone(body.timezone) ? body.timezone : student.timezone;
 
-  await env.DB.prepare("UPDATE students SET name = ?, phone = ?, timezone = ? WHERE id = ?")
-    .bind(name, phone, timezone, student.id)
+  const problem = nifProblem(nif);
+  if ("nif" in body && problem) return fail(problem, 400, request, env);
+
+  await env.DB.prepare("UPDATE students SET name = ?, phone = ?, nif = ?, timezone = ? WHERE id = ?")
+    .bind(name, phone, nif, timezone, student.id)
     .run();
 
   const updated = await env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(student.id).first();
@@ -3780,7 +3805,9 @@ async function handleAdmin(request, env, ctx, url, path) {
   if (request.method === "GET" && path === "/admin/bookings") {
     const from = url.searchParams.get("from") ?? new Date(Date.now() - 7 * 86400000).toISOString();
     const { results } = await env.DB.prepare(
-      "SELECT b.*, l.name AS lesson_name FROM bookings b JOIN lesson_types l ON l.id = b.lesson_type_id WHERE b.starts_at > ? ORDER BY b.starts_at"
+      `SELECT b.*, l.name AS lesson_name, COALESCE(s.nif, '') AS student_nif FROM bookings b
+       JOIN lesson_types l ON l.id = b.lesson_type_id LEFT JOIN students s ON s.id = b.student_id
+       WHERE b.starts_at > ? ORDER BY b.starts_at`
     )
       .bind(from)
       .all();

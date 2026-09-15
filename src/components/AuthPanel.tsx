@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { AlertCircle, Lock, Mail, UserRound } from "lucide-react";
+import { AlertCircle, Lock, Mail, ReceiptText, UserRound } from "lucide-react";
 import { AssetMark } from "@/components/BrandMarks";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { browserTimeZone } from "@/lib/booking-api";
@@ -38,7 +38,7 @@ export function AuthPanel({
   intro?: string;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", nif: "" });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -74,6 +74,7 @@ export function AuthPanel({
               name: form.name.trim(),
               email: form.email.trim(),
               password: form.password,
+              nif: form.nif.trim(),
               timezone: browserTimeZone()
             })
           : await login({ email: form.email.trim(), password: form.password });
@@ -175,6 +176,23 @@ export function AuthPanel({
               value={form.password}
             />
             {mode === "register" ? <small>At least 8 characters.</small> : null}
+          </label>
+        ) : null}
+
+        {mode === "register" ? (
+          <label>
+            <span>
+              <ReceiptText size={16} aria-hidden="true" />
+              NIF <em>(optional)</em>
+            </span>
+            <input
+              autoComplete="off"
+              inputMode="numeric"
+              maxLength={20}
+              onChange={(event) => update({ nif: event.target.value })}
+              value={form.nif}
+            />
+            <small>Added to your receipts.</small>
           </label>
         ) : null}
 

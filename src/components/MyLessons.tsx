@@ -130,8 +130,9 @@ export function MyLessons({
   const [accountSection, setAccountSection] = useState<"history" | "upcoming" | "">("");
   const [expandedUpcomingGroup, setExpandedUpcomingGroup] = useState("");
   const [highlightedBookingReference, setHighlightedBookingReference] = useState("");
-  const [details, setDetails] = useState({ name: "", email: "" });
+  const [details, setDetails] = useState({ name: "", email: "", nif: "" });
   const [savingName, setSavingName] = useState(false);
+  const [savingNif, setSavingNif] = useState(false);
   const [emailPending, setEmailPending] = useState("");
   const [detailsNote, setDetailsNote] = useState("");
   const [feeCents, setFeeCents] = useState(500);
@@ -218,7 +219,7 @@ export function MyLessons({
       }
       const update = () => {
         setStudent(data.student);
-        setDetails({ name: data.student.name, email: data.student.email });
+        setDetails({ name: data.student.name, email: data.student.email, nif: data.student.nif ?? "" });
         setBookings(data.bookings);
         setSeries(data.series ?? []);
         setFeeCents(data.sameDayFeeCents);
@@ -283,7 +284,7 @@ export function MyLessons({
     confirmEmailChange(readSession(), changeToken)
       .then((result) => {
         setStudent(result.student);
-        setDetails({ name: result.student.name, email: result.student.email });
+        setDetails({ name: result.student.name, email: result.student.email, nif: result.student.nif ?? "" });
         setDetailsNote("That's your email address updated.");
         setEmailPending("");
       })
@@ -323,6 +324,23 @@ export function MyLessons({
       setError(caught instanceof Error ? caught.message : "That could not be saved.");
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function saveNif() {
+    setSavingNif(true);
+    setError("");
+    setDetailsNote("");
+    try {
+      // Only the NIF is sent; the endpoint keeps every field it is not sent.
+      const result = await updateProfile(readSession(), { nif: details.nif.trim() });
+      setStudent(result.student);
+      setDetails((current) => ({ ...current, nif: result.student.nif ?? "" }));
+      setDetailsNote(result.student.nif ? "Saved. Your receipts will show this NIF." : "Saved. Your receipts won't show a NIF.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "That could not be saved.");
+    } finally {
+      setSavingNif(false);
     }
   }
 
@@ -720,6 +738,30 @@ export function MyLessons({
               A new email address only takes effect once you confirm it from the link we send.
             </p>
           )}
+
+          <div className="my-lessons__details-row">
+            <label>
+              <span>
+                NIF <em>(optional)</em>
+              </span>
+              <input
+                autoComplete="off"
+                inputMode="numeric"
+                maxLength={20}
+                onChange={(event) => setDetails((current) => ({ ...current, nif: event.target.value }))}
+                value={details.nif}
+              />
+            </label>
+            <button
+              className="button button--coral"
+              disabled={savingNif || details.nif.trim() === (student.nif ?? "")}
+              onClick={saveNif}
+              type="button"
+            >
+              {savingNif ? "Saving…" : "Save NIF"}
+            </button>
+          </div>
+          <p className="my-lessons__details-note">Added to your receipts. Leave it blank if you don&rsquo;t need one.</p>
 
           {detailsNote ? (
             <p className="my-lessons__details-note my-lessons__details-note--ok">{detailsNote}</p>

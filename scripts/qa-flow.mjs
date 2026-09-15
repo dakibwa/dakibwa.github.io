@@ -1237,7 +1237,7 @@ const desktopDetailRows = await accountPanel.locator(".my-lessons__details-row")
     return { fieldRight: field?.right ?? Infinity, actionLeft: action?.left ?? 0 };
   })
 );
-if (desktopDetailRows.length !== 2 || desktopDetailRows.some((row) => row.actionLeft < row.fieldRight - 1)) {
+if (desktopDetailRows.length !== 3 || desktopDetailRows.some((row) => row.actionLeft < row.fieldRight - 1)) {
   throw new Error(`Account field actions should sit beside their fields when they fit: ${JSON.stringify(desktopDetailRows)}.`);
 }
 await accountPage.screenshot({ path: path.join(outDir, "booking-account-edit-desktop.png"), fullPage: true });

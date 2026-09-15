@@ -333,6 +333,26 @@ number of booking rows at once.
   future lessons are re-addressed. Past and cancelled lessons keep the address
   they were taken under, which is the record of what happened.
 
+### NIF for receipts
+
+- **Optional, and only for the fiscal document.** A student can give a NIF when
+  creating an account or later under *Edit details*, where it can also be
+  changed or cleared. Google sign-in creates accounts without one. A private
+  customer's NIF goes on the fatura-recibo only when they ask (CIVA art. 36.º
+  n.º 16); without one, Inês issues to consumidor final.
+- **Stored tidy and checked.** `students.nif` (migration 0017) holds nine digits
+  or an empty string. Spaces, dots, hyphens and a `PT` prefix are removed, and
+  anything that fails the mod-11 check digit or starts with 0 is refused with a
+  plain message, so a mistyped number never reaches a tax document.
+- **Where it appears.** Each reminder to issue a Portal das Finanças document
+  carries a `NIF` row with the number, or `Not given (consumidor final)`, read
+  at payment time. Inês's lesson details show it beside the student's email.
+  It is never sent to Stripe, written to logs or repeated in student emails.
+- **Release order.** Apply `workers/booking/migrations/0017-student-nif.sql` to
+  both databases before deploying the Worker that writes it. `/health` reports
+  `schema` until the column exists, so the site's release gate refuses to
+  publish against an unmigrated database.
+
 ### How far ahead you can book
 
 `booking_horizon_days` is **56**: students can choose a lesson up to eight weeks
@@ -571,7 +591,8 @@ must cancel/refund and book the other length, or settle the outstanding payment.
 Trials cannot be converted into ordinary lessons through rescheduling.
 
 Every successful payment also sends Inês a private operational reminder to
-issue the appropriate fiscal document in Portal das Finanças. Stripe's receipt
+issue the appropriate fiscal document in Portal das Finanças, with the
+student's NIF if they gave one (see *NIF for receipts*). Stripe's receipt
 does not replace that Portuguese tax document, and Stripe Tax is not enabled
 while her IVA basis remains an owner/accountant decision.
 

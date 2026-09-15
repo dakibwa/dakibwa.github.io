@@ -148,7 +148,9 @@ the same identity or action:
   minimum useful text visible. Sign-up itself carries none of it: the booking's
   sign-in card shows `Almost there` as the step's only visible heading, then
   Google sign-in and the account form, with no data-use summary, privacy
-  details, Google password note or consent checkbox. The final booking
+  details, Google password note or consent checkbox. The account form ends
+  with an optional NIF field whose only note is that it is added to receipts;
+  students add, change or clear it under Edit details. The final booking
   action follows the payment and change conditions for the selected method.
   A `Terms & privacy` overlay holds the details, without adding a disclosure
   beneath the workspace. Use five short sections: `Booking`, `Payments`,

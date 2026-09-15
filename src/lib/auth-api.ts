@@ -7,6 +7,8 @@ export type Student = {
   email: string;
   name: string;
   phone: string;
+  /** Optional Portuguese tax number for receipts; empty when none was given. */
+  nif?: string;
   timezone: string;
   /** "teacher" unlocks the schedule page's admin tools. */
   role: "student" | "teacher";
@@ -111,6 +113,7 @@ export function register(input: {
   email: string;
   password: string;
   phone?: string;
+  nif?: string;
   timezone?: string;
 }) {
   return post<{ student: Student; session: string }>("/auth/register", input);
@@ -132,7 +135,7 @@ export function resetPassword(token: string, password: string) {
   return post<{ student: Student; session: string }>("/auth/reset", { token, password });
 }
 
-export function updateProfile(token: string, input: { name?: string; phone?: string; timezone?: string }) {
+export function updateProfile(token: string, input: { name?: string; phone?: string; nif?: string; timezone?: string }) {
   return post<{ student: Student }>("/me", input, token);
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, MapPin, Video, Clock, Mail, ArrowLeft } from "lucide-react";
+import { X, MapPin, Video, Clock, Mail, ArrowLeft, ReceiptText } from "lucide-react";
 import {
   cancelBookingAs,
   rescheduleBookingAs,
@@ -155,6 +155,12 @@ export function LessonDetails({
           <Mail size={16} aria-hidden="true" />
           {booking.student_email}
         </a>
+        {booking.student_nif ? (
+          <span>
+            <ReceiptText size={16} aria-hidden="true" />
+            NIF {booking.student_nif}
+          </span>
+        ) : null}
       </div>
       <MeetingLink meetingUrl={booking.meeting_url} location={booking.location} status={booking.status} />
       {booking.notes ? (

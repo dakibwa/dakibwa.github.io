@@ -30,6 +30,8 @@ export type AdminBooking = {
   student_name: string;
   student_email: string;
   student_phone: string;
+  /** The student's NIF for their receipt; empty when none was given. */
+  student_nif?: string;
   starts_at: string;
   ends_at: string;
   status: "confirmed" | "cancelled";
