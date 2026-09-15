@@ -250,7 +250,9 @@ usual lesson starts and days off; avoid a wall of administration forms.
   coral marker for Porto lessons.
 - Selecting a booked lesson opens its details and the existing move, cancel,
   attendance and payment-status controls. Keep cancellation confirmation,
-  permission checks and server error handling intact.
+  permission checks and server error handling intact. The details always
+  state the student's NIF, or `NIF not given (consumidor final)`, because her
+  receipt automation reads them.
 - Put manual lesson entry last, collapsed under `Add a lesson for a student`.
   It is a backup for a lesson arranged elsewhere; the ordinary student booking
   service remains the primary route. Include online/in-Porto location.

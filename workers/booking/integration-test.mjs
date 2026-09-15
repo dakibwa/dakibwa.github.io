@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import worker, { chargeDueLessons, chargeDueSameDayFees, retryPaymentRecovery, retryRefunds } from "./index.mjs";
+import worker, { chargeDueLessons, chargeDueSameDayFees, notifySeries, retryPaymentRecovery, retryRefunds } from "./index.mjs";
 import { createSession, createResetToken, sessionVersion } from "./auth.mjs";
 import { createManageToken } from "./tokens.mjs";
 import { findRecurringCode, recurringLessonType, priceForMove } from "./rates.mjs";
@@ -809,6 +809,40 @@ await test("payment emails carry the NIF: Inês's reminder always, the student's
   assert.match(studentWithNif.text, /^NIF: 123456789 · on your receipt from Inês$/m);
   assert.ok(studentWithNif.html.includes("123456789"));
   assert.ok(!sent("receipt-none", false).text.includes("NIF"), "no NIF, no row: the student isn't asked for one here");
+});
+
+await test("every email Inês gets about a student's lessons carries the NIF her receipt automation reads", async () => {
+  db.prepare("UPDATE students SET nif='123456789' WHERE id='alice'").run();
+  booking("teacher-copy-nif", { start: "2026-10-19T09:00:00.000Z", end: "2026-10-19T10:00:00.000Z" });
+  booking("teacher-copy-none", { owner: "bob", start: "2026-10-19T11:00:00.000Z", end: "2026-10-19T12:00:00.000Z" });
+  Object.assign(env, { TEACHER_EMAIL: "ines@example.invalid", RESEND_API_KEY: "re_isolated", EMAIL_DRY_RUN: "0", TEACHER_NOTIFICATIONS_ENABLED: "1" });
+  sentEmails.length = 0;
+  try {
+    for (const [id, startAt] of [["teacher-copy-nif", "2026-10-20T09:00:00.000Z"], ["teacher-copy-none", "2026-10-20T11:00:00.000Z"]]) {
+      const moved = await call(`/admin/bookings/${id}/reschedule`, { user: "teacher", body: { startAt } });
+      assert.equal(moved.status, 200, await moved.clone().text());
+    }
+    const rows = db.prepare("SELECT * FROM bookings WHERE id='teacher-copy-nif'").all();
+    await notifySeries(env, {
+      rows, lessonType: db.prepare("SELECT * FROM lesson_types WHERE id='single'").get(),
+      settings: { teacherName: "Inês", teacherEmail: "ines@example.invalid", sameDayChangeFeeCents: 500 },
+      series: { id: "series-nif", occurrences: 1 }, manageUrls: { "teacher-copy-nif": "https://lesson.example/book/?manage=x" }, skipped: []
+    });
+    await drain();
+  } finally {
+    Object.assign(env, { EMAIL_DRY_RUN: "1", TEACHER_NOTIFICATIONS_ENABLED: "0" });
+    delete env.TEACHER_EMAIL;
+    delete env.RESEND_API_KEY;
+    db.prepare("UPDATE students SET nif='' WHERE id='alice'").run();
+  }
+  const toInes = sentEmails.filter((email) => email.to[0] === "ines@example.invalid");
+  const moveEmail = (reference) => toInes.find((email) => email.subject.startsWith("You moved") && email.text.includes(`Reference: ${reference}`));
+  assert.match(moveEmail("teacher-copy-nif").text, /^NIF: 123456789$/m);
+  assert.match(moveEmail("teacher-copy-none").text, /^NIF: Not given \(consumidor final\)$/m);
+  assert.match(toInes.find((email) => email.subject.startsWith("Weekly booking")).text, /^NIF: 123456789$/m);
+  assert.ok(sentEmails.some((email) => email.to[0] !== "ines@example.invalid"), "students were emailed too");
+  assert.ok(!sentEmails.filter((email) => email.to[0] !== "ines@example.invalid").some((email) => email.text.includes("NIF")),
+    "students' booking emails don't repeat it");
 });
 
 await test("Inês's lesson list carries each student's NIF, and students cannot read it", async () => {

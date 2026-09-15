@@ -155,12 +155,11 @@ export function LessonDetails({
           <Mail size={16} aria-hidden="true" />
           {booking.student_email}
         </a>
-        {booking.student_nif ? (
-          <span>
-            <ReceiptText size={16} aria-hidden="true" />
-            NIF {booking.student_nif}
-          </span>
-        ) : null}
+        {/* Her receipt automation reads this, so absence is stated too. */}
+        <span>
+          <ReceiptText size={16} aria-hidden="true" />
+          {booking.student_nif ? `NIF ${booking.student_nif}` : "NIF not given (consumidor final)"}
+        </span>
       </div>
       <MeetingLink meetingUrl={booking.meeting_url} location={booking.location} status={booking.status} />
       {booking.notes ? (

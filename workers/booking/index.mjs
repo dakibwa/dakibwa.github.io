@@ -483,8 +483,8 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
   ];
 
   if (teacherNotificationsEnabled(env) && teacherEmail) {
-    // Only a paid booking asks her to issue a fiscal document.
-    const nifRow = event === "booked" && isPaid ? receiptNifRow(await studentNif(env, row.student_id)) : null;
+    // Her receipt automation reads these emails, so every copy carries the NIF.
+    const nifRow = receiptNifRow(await studentNif(env, row.student_id));
     sends.push(
       deliver(env, {
         to: teacherEmail,
@@ -504,8 +504,8 @@ async function notify(env, { event, row, lessonType, settings, manageUrl, previo
           rows: [
             ...baseRows,
             { label: "Student", value: `${row.student_name}\n${row.student_email}${row.student_phone ? `\n${row.student_phone}` : ""}` },
-            ...(row.notes ? [{ label: "Notes", value: row.notes }] : []),
-            ...(nifRow ? [nifRow] : [])
+            nifRow,
+            ...(row.notes ? [{ label: "Notes", value: row.notes }] : [])
           ],
           action: null,
           footer: "Sent automatically by the booking system on portuguesewithines.com."
@@ -679,6 +679,7 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
   }
 
   if (teacherNotificationsEnabled(env) && teacherEmail) {
+    const nifRow = receiptNifRow(await studentNif(env, first.student_id));
     sends.push(
       deliver(env, {
         to: teacherEmail,
@@ -711,6 +712,7 @@ export async function notifySeries(env, { rows, lessonType, settings, series, ma
           rows: [
             ...rowsForBoth,
             { label: "Student", value: `${first.student_name}\n${first.student_email}${first.student_phone ? `\n${first.student_phone}` : ""}` },
+            nifRow,
             ...(first.notes ? [{ label: "Notes", value: first.notes }] : [])
           ],
           action: null,
@@ -820,6 +822,7 @@ async function notifySeriesCancelled(env, { rows, lessonType, settings }) {
   ];
 
   if (teacherNotificationsEnabled(env) && teacherEmail) {
+    const nifRow = receiptNifRow(await studentNif(env, first.student_id));
     sends.push(
       deliver(env, {
         to: teacherEmail,
@@ -838,6 +841,7 @@ async function notifySeriesCancelled(env, { rows, lessonType, settings }) {
           heroNote: "",
           rows: [
             { label: "Student", value: `${first.student_name}\n${first.student_email}` },
+            nifRow,
             { label: "Cancelled", value: dates }
           ],
           action: null,
@@ -1451,6 +1455,7 @@ async function notifyPaymentDue(env, { row, lessonType, amountCents, purpose = "
   });
 
   if (teacherNotificationsEnabled(env) && teacherEmail) {
+    const nifRow = receiptNifRow(await studentNif(env, row.student_id));
     await deliver(env, {
       to: teacherEmail,
       subject: `Card declined — ${row.student_name}, ${formatShort(start, PORTO)}`,
@@ -1465,6 +1470,7 @@ async function notifyPaymentDue(env, { row, lessonType, amountCents, purpose = "
         callout: "",
         rows: [
           { label: "Student", value: `${row.student_name}\n${row.student_email}` },
+          nifRow,
           { label: "Reference", value: row.reference }
         ],
         action: null,

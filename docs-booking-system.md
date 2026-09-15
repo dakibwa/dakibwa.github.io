@@ -344,11 +344,15 @@ number of booking rows at once.
   or an empty string. Spaces, dots, hyphens and a `PT` prefix are removed, and
   anything that fails the mod-11 check digit or starts with 0 is refused with a
   plain message, so a mistyped number never reaches a tax document.
-- **Where it appears.** Each reminder to issue a Portal das Finanças document
-  carries a `NIF` row with the number, or `Not given (consumidor final)`, read
-  at payment time. The student's own payment email shows it, when given, so
-  they can check it before the receipt is issued. Inês's lesson details show it
-  beside the student's email. It is never sent to Stripe or written to logs.
+- **Where it appears.** Inês's fatura-recibo automation reads her booking
+  emails and schedule, so every email she gets about a student's lessons
+  (bookings, weekly runs, moves, cancellations, declined cards and payments)
+  carries a `NIF` row beside the student, with the number or
+  `Not given (consumidor final)`, read when the email is sent. Her lesson
+  details state it the same way. The student's own payment email shows it,
+  when given, so they can check it before the receipt is issued; their other
+  booking emails do not. It is never sent to Stripe or written to logs, and it
+  stays out of the shareable Google Calendar events.
 - **Release order.** Apply `workers/booking/migrations/0017-student-nif.sql` to
   both databases before deploying the Worker that writes it. `/health` reports
   `schema` until the column exists, so the site's release gate refuses to

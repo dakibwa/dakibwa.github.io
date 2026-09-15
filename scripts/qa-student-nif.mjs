@@ -120,7 +120,7 @@ try {
     assert.deepEqual(details.errors, []);
     await details.page.close();
 
-    // Inês sees the NIF beside the lesson, and nothing when there is none.
+    // Inês, and the receipt automation reading her schedule, see the NIF or that there is none.
     const schedule = await open(width, "/schedule/", {
       session: "qa-nif-teacher",
       me: teacher,
@@ -135,7 +135,7 @@ try {
     await schedule.page.getByRole("button", { name: "Close lesson details" }).click();
     await schedule.page.getByRole("button", { name: /^Carla, .*View lesson$/ }).click();
     await expect(dialog).toContainText("without-nif@example.invalid");
-    await expect(dialog).not.toContainText("NIF");
+    await expect(dialog).toContainText("NIF not given (consumidor final)");
     assert.deepEqual(schedule.errors, []);
     await schedule.page.close();
   }
